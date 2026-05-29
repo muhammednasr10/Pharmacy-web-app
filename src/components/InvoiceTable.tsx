@@ -1,0 +1,132 @@
+import type { Invoice, PaymentMethod } from "../types";
+
+type InvoiceTableProps = {
+  filteredInvoices: Invoice[];
+  t: Record<string, string>;
+  isArabic: boolean;
+  invoiceSearch: string;
+  invoicePaymentFilter: "all" | PaymentMethod;
+  invoiceFromDate: string;
+  invoiceToDate: string;
+  setInvoiceSearch: (value: string) => void;
+  setInvoicePaymentFilter: (value: "all" | PaymentMethod) => void;
+  setInvoiceFromDate: (value: string) => void;
+  setInvoiceToDate: (value: string) => void;
+  onViewInvoice: (invoice: Invoice) => void;
+  onReturnInvoice: (invoice: Invoice) => void;
+  onPrintInvoice: (invoice: Invoice) => void;
+  canUseReturns: boolean;
+  exportInvoicesCSV: () => void;
+  getPaymentLabel: (method: string) => string;
+};
+
+export default function InvoiceTable({
+  filteredInvoices,
+  t,
+  isArabic,
+  invoiceSearch,
+  invoicePaymentFilter,
+  invoiceFromDate,
+  invoiceToDate,
+  setInvoiceSearch,
+  setInvoicePaymentFilter,
+  setInvoiceFromDate,
+  setInvoiceToDate,
+  onViewInvoice,
+  onReturnInvoice,
+  onPrintInvoice,
+  canUseReturns,
+  exportInvoicesCSV,
+  getPaymentLabel,
+}: InvoiceTableProps) {
+  return (
+    <section className="card invoicesPage">
+      <div className="cardHeader">
+        <h2>{t.allInvoices}</h2>
+        <button className="printBtn" onClick={exportInvoicesCSV}>
+          {isArabic ? "تصدير Excel" : "Export Excel"}
+        </button>
+      </div>
+      <div className="filtersBar">
+        <input
+          value={invoiceSearch}
+          onChange={(e) => setInvoiceSearch(e.target.value)}
+          placeholder={
+            isArabic
+              ? "بحث برقم الفاتورة أو العميل أو الكاشير"
+              : "Search invoice, customer, or cashier"
+          }
+        />
+        <select
+          value={invoicePaymentFilter}
+          onChange={(e) => setInvoicePaymentFilter(e.target.value as "all" | PaymentMethod)}
+        >
+          <option value="all">{isArabic ? "كل طرق الدفع" : "All payments"}</option>
+          <option value="cash">{getPaymentLabel("cash")}</option>
+          <option value="visa">{getPaymentLabel("visa")}</option>
+          <option value="wallet">{getPaymentLabel("wallet")}</option>
+          <option value="credit">{getPaymentLabel("credit")}</option>
+        </select>
+        <input type="date" value={invoiceFromDate} onChange={(e) => setInvoiceFromDate(e.target.value)} />
+        <input type="date" value={invoiceToDate} onChange={(e) => setInvoiceToDate(e.target.value)} />
+        <button
+          className="clearCartBtn"
+          onClick={() => {
+            setInvoiceSearch("");
+            setInvoicePaymentFilter("all");
+            setInvoiceFromDate("");
+            setInvoiceToDate("");
+          }}
+        >
+          {isArabic ? "مسح الفلاتر" : "Clear filters"}
+        </button>
+      </div>
+      {filteredInvoices.length === 0 ? (
+        <p className="empty">{t.noInvoices}</p>
+      ) : (
+        <div className="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th>{t.invoiceNo}</th>
+                <th>{t.date}</th>
+                <th>{t.paymentMethod}</th>
+                <th>{isArabic ? "العميل" : "Customer"}</th>
+                <th>{t.subtotal}</th>
+                <th>{t.discount}</th>
+                <th>{t.total}</th>
+                <th>{t.items}</th>
+                <th>{t.action}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredInvoices.map((invoice) => (
+                <tr key={invoice.id}>
+                  <td>{invoice.invoiceNumber || `#${invoice.id}`}</td>
+                  <td>{invoice.date}</td>
+                  <td>{getPaymentLabel(invoice.paymentMethod || "cash")}</td>
+                  <td>{invoice.customerName || "-"}</td>
+                  <td>{(invoice.subtotal || invoice.total || 0).toFixed(2)} {t.currency}</td>
+                  <td>{(invoice.discount || 0).toFixed(2)} {t.currency}</td>
+                  <td>{(invoice.total || 0).toFixed(2)} {t.currency}</td>
+                  <td>{invoice.items?.length || 0}</td>
+                  <td>
+                    <div className="actionButtons">
+                      <button className="smallBtn" onClick={() => onViewInvoice(invoice)}>{t.view}</button>
+                      {canUseReturns && (
+                        <button className="editBtn" onClick={() => onReturnInvoice(invoice)}>
+                          {isArabic ? "مرتجع" : "Return"}
+                        </button>
+                      )}
+                      <button className="printBtn" onClick={() => onPrintInvoice(invoice)}>{t.print}</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
