@@ -9,7 +9,7 @@ type TopbarProps = {
   lang: string;
   onToggleLang: () => void;
   onLogout: () => void;
-  onToggleSidebar: () => void;
+  onToggleMenu: () => void;
 };
 
 export default function Topbar({
@@ -20,12 +20,12 @@ export default function Topbar({
   t,
   onToggleLang,
   onLogout,
-  onToggleSidebar,
+  onToggleMenu,
 }: TopbarProps) {
   return (
     <header className="topbar">
       <div className="topbarBrand">
-        <button className="menuBtn" onClick={onToggleSidebar} type="button" aria-label={isArabic ? "فتح القائمة" : "Open menu"}>
+        <button className="menuBtn" onClick={onToggleMenu} type="button" aria-label={isArabic ? "فتح القائمة" : "Open menu"}>
           <span />
           <span />
           <span />

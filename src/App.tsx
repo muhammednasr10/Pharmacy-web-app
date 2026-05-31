@@ -255,8 +255,7 @@ function formatDateInput(date: Date) {
 function App() {
   const [lang, setLang] = useState<Lang>("ar");
   const [activePage, setActivePage] = useState<Page>("dashboard");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [posMessage, setPosMessage] = useState("");
   const [medicines, setMedicines] = useState<Medicine[]>(medicinesSeed);
@@ -4834,13 +4833,11 @@ if (!allowedPages.includes(activePage)) {
         pharmacyPhone={
           pharmacySettings?.phone || (isArabic ? "نظام إدارة" : "Management System")
         }
-        collapsed={sidebarCollapsed}
-        mobileOpen={mobileSidebarOpen}
-        onToggleCollapse={() => setSidebarCollapsed((value) => !value)}
-        onCloseMobile={() => setMobileSidebarOpen(false)}
+        isOpen={isMenuOpen}
+        onCloseMenu={() => setIsMenuOpen(false)}
         onSelectPage={(page) => {
           setActivePage(page);
-          setMobileSidebarOpen(false);
+          setIsMenuOpen(false);
         }}
       />
 
@@ -4854,7 +4851,7 @@ if (!allowedPages.includes(activePage)) {
           lang={lang}
           onToggleLang={() => setLang(lang === "ar" ? "en" : "ar")}
           onLogout={handleLogout}
-          onToggleSidebar={() => setMobileSidebarOpen((value) => !value)}
+          onToggleMenu={() => setIsMenuOpen((value) => !value)}
         />
 
         {activePage === "dashboard" && (

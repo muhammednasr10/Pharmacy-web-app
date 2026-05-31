@@ -9,10 +9,8 @@ type SidebarProps = {
   t: Record<string, string>;
   pharmacyName: string;
   pharmacyPhone: string;
-  collapsed: boolean;
-  mobileOpen: boolean;
-  onToggleCollapse: () => void;
-  onCloseMobile: () => void;
+  isOpen: boolean;
+  onCloseMenu: () => void;
   onSelectPage: (page: Page) => void;
 };
 
@@ -53,10 +51,8 @@ export default function Sidebar({
   t,
   pharmacyName,
   pharmacyPhone,
-  collapsed,
-  mobileOpen,
-  onToggleCollapse,
-  onCloseMobile,
+  isOpen,
+  onCloseMenu,
   onSelectPage,
 }: SidebarProps) {
   const navigation: { page: Page; label: string }[] = allowedPages.map((page) => {
@@ -92,28 +88,24 @@ export default function Sidebar({
 
   return (
     <>
-      <div
-        className={`sidebarOverlay ${mobileOpen ? "visible" : ""}`}
-        onClick={onCloseMobile}
-      />
-      <aside className={`sidebar ${collapsed ? "collapsed" : ""} ${mobileOpen ? "open" : ""}`}>
+      <div className={`sidebarOverlay ${isOpen ? "visible" : ""}`} onClick={onCloseMenu} />
+      <aside className={`sidebar menuPanel ${isOpen ? "open" : ""}`} aria-hidden={!isOpen}>
         <div className="sidebarHeader">
           <div className="logo">
             <div className="logoIcon logoImageBox">F</div>
-            {!collapsed && (
-              <div>
-                <h2>{pharmacyName}</h2>
-                <p>{pharmacyPhone}</p>
-              </div>
-            )}
+            <div>
+              <h2>{pharmacyName}</h2>
+              <p>{pharmacyPhone}</p>
+            </div>
           </div>
 
           <button
-            className="sidebarCollapseBtn"
-            onClick={onToggleCollapse}
-            aria-label={isArabic ? "طي الشريط الجانبي" : "Toggle Sidebar"}
+            className="menuCloseBtn"
+            onClick={onCloseMenu}
+            aria-label={isArabic ? "إغلاق القائمة" : "Close menu"}
             type="button"
           >
+            <span />
             <span />
           </button>
         </div>
