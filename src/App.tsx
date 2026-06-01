@@ -1,27 +1,6 @@
-import {
-  signInWithEmailAndPassword,
-  onAuthStateChanged,
-  signOut,
-  User,
-} from "firebase/auth";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { jsPDF } from "jspdf";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  setDoc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  onSnapshot,
-  query as firestoreQuery,
-  orderBy,
-  limit,
-  runTransaction,
-} from "firebase/firestore";
-import { db, auth } from "./firebase";
+import * as pharmacyService from "./services/pharmacyService";
 import "./styles.css";
 import { ARABIC_FONT_BASE64 } from "./arabicFont";
 import { LOGO_BASE64 } from "./logoBase64";
@@ -308,7 +287,7 @@ function App() {
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerDebt | null>(null);
   const t = translations[lang];
   const isArabic = lang === "ar";
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<{ uid: string; email?: string } | null>(null);
   const [purchaseSearch, setPurchaseSearch] = useState("");
   const [purchaseFromDate, setPurchaseFromDate] = useState("");
   const [purchaseToDate, setPurchaseToDate] = useState("");
@@ -350,235 +329,166 @@ function App() {
   subscriptionEndDate: "",
   logoBase64: "",
 });
+  const [supabaseTestStatus, setSupabaseTestStatus] = useState<string | null>(null);
+  const [supabaseTestLoading, setSupabaseTestLoading] = useState(false);
   
 useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+  const authSubscription = pharmacyService.onAuthStateChange(async (event, session) => {
+    const currentUser = session?.user
+      ? { uid: session.user.id, email: session.user.email || undefined }
+      : null;
+
+    console.log("[Auth] onAuthStateChange", { event, hasSession: !!session, currentUser });
     setUser(currentUser);
     setAuthLoading(false);
 
     if (!currentUser) {
+      console.log("[Auth] no current user, stopping loading");
       setAppUser(null);
       setUserLoading(false);
       return;
     }
 
     try {
+      console.log("[Auth] loading app user for uid", currentUser.uid);
       setUserLoading(true);
 
-      const userRef = doc(db, "users", currentUser.uid);
-      const userSnap = await getDoc(userRef);
+      const data = await pharmacyService.getAppUserByUid(currentUser.uid);
+      console.log("[Auth] getAppUserByUid result", { uid: currentUser.uid, appUser: data });
 
-      if (!userSnap.exists()) {
+      if (!data) {
+        console.warn("[Auth] app user not found or inaccessible", { uid: currentUser.uid });
         setAppUser(null);
-        await signOut(auth);
+        setUserLoading(false);
+        await pharmacyService.signOutUser();
         alert("هذا المستخدم غير مسجل في نظام الصيدلية");
         return;
       }
 
-      const data = userSnap.data() as AppUser;
-
       if (!data.isActive) {
+        console.warn("[Auth] app user inactive", { uid: currentUser.uid, appUser: data });
         setAppUser(null);
-        await signOut(auth);
+        setUserLoading(false);
+        await pharmacyService.signOutUser();
         alert("هذا المستخدم موقوف");
         return;
       }
 
       setAppUser(data);
     } catch (error) {
-      console.error(error);
+      console.error("[Auth] error loading app user", error);
       setAppUser(null);
-      await signOut(auth);
+      setUserLoading(false);
+      await pharmacyService.signOutUser();
       alert("حدث خطأ أثناء تحميل بيانات المستخدم");
     } finally {
       setUserLoading(false);
     }
   });
 
-  return () => unsubscribe();
-}, []);
-  useEffect(() => {
-  if (!appUser) return;
-
-  async function seedPharmacyDataIfEmpty() {
-  await setDoc(
-    pharmacyDocRef(),
-    {
-      id: getPharmacyId(),
-      name: "صيدلية Focus",
-      name_en: "Focus Pharmacy",
-      phone: "01097049444",
-      address: "12 يوسف الجندي - باب اللوق - ميدان التحرير",
-      currency: "ج.م",
-      isActive: true,
-      invoiceFooter: "شكراً لاستخدامكم نظام Focus",
-      subscriptionPlan: "monthly",
-      subscriptionEndDate: formatDateInput(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),  
-    },
-    { merge: true }
-  );
-
-  const snapshot = await getDocs(medicinesCollectionRef());
-
-  if (snapshot.empty) {
-    for (const medicine of medicinesSeed) {
-      await setDoc(medicineDocRef(medicine.id), medicine);
-    }
-  }
-}
-
-  if (appUser.role === "admin") {
-  seedPharmacyDataIfEmpty();
-}
-const unsubscribePharmacy = onSnapshot(pharmacyDocRef(), (snapshot) => {
-  if (!snapshot.exists()) return;
-
-  const data = snapshot.data() as PharmacySettings;
-
-  setPharmacySettings(data);
-
-  setSettingsForm({
-  name: data.name || "",
-  name_en: data.name_en || "",
-  phone: data.phone || "",
-  address: data.address || "",
-  currency: data.currency || "ج.م",
-  invoiceFooter: data.invoiceFooter || "",
-  subscriptionPlan: data.subscriptionPlan || "monthly",
-  subscriptionEndDate: data.subscriptionEndDate || "",
-  logoBase64: data.logoBase64 || "",
-});
-});
-  const unsubscribeMedicines = onSnapshot(
-    medicinesCollectionRef(),
-    (snapshot) => {
-      const firebaseMedicines = snapshot.docs.map((docItem) => {
-        return docItem.data() as Medicine;
-      });
-
-      setMedicines(firebaseMedicines);
-    }
-  );
-
-  const invoicesQuery = firestoreQuery(
-    invoicesCollectionRef(),
-    orderBy("id", "desc"),
-    limit(10)
-  );
-
-  const unsubscribeInvoices = onSnapshot(invoicesQuery, (snapshot) => {
-  const firebaseInvoices = snapshot.docs.map((docItem) => {
-    return docItem.data() as Invoice;
-  });
-
-  setInvoices(firebaseInvoices);
-});
-
-const returnsQuery = firestoreQuery(
-  returnsCollectionRef(),
-  orderBy("id", "desc"),
-  limit(20)
-);
-
-const unsubscribeReturns = onSnapshot(returnsQuery, (snapshot) => {
-  const firebaseReturns = snapshot.docs.map((docItem) => {
-    return docItem.data() as ReturnRecord;
-  });
-
-  setReturns(firebaseReturns);
-});
-
-const purchasesQuery = firestoreQuery(
-  purchasesCollectionRef(),
-  orderBy("id", "desc"),
-  limit(30)
-);
-
-const unsubscribePurchases = onSnapshot(purchasesQuery, (snapshot) => {
-  const firebasePurchases = snapshot.docs.map((docItem) => {
-    return docItem.data() as PurchaseRecord;
-  });
-
-  setPurchases(firebasePurchases);
-});
-
-const customerPaymentsQuery = firestoreQuery(
-  customerPaymentsCollectionRef(),
-  orderBy("id", "desc"),
-  limit(100)
-);
-
-const unsubscribeCustomerPayments = onSnapshot(
-  customerPaymentsQuery,
-  (snapshot) => {
-    const firebasePayments = snapshot.docs.map((docItem) => {
-      return docItem.data() as CustomerPayment;
-    });
-
-    setCustomerPayments(firebasePayments);
-  }
-);
-
-  const stockMovementsQuery = firestoreQuery(
-  stockMovementsCollectionRef(),
-  orderBy("createdAt", "desc"),
-  limit(50)
-);
-
-const unsubscribeStockMovements = onSnapshot(
-  stockMovementsQuery,
-  (snapshot) => {
-    const firebaseMovements = snapshot.docs.map((docItem) => {
-      return docItem.data() as StockMovement;
-    });
-
-    setStockMovements(firebaseMovements);
-  }
-);
-
-const activityLogsQuery = firestoreQuery(
-  activityLogsCollectionRef(),
-  orderBy("createdAt", "desc"),
-  limit(100)
-);
-
-const unsubscribeActivityLogs = onSnapshot(activityLogsQuery, (snapshot) => {
-  const firebaseLogs = snapshot.docs.map((docItem) => {
-    return docItem.data() as ActivityLog;
-  });
-
-  setActivityLogs(firebaseLogs);
-});
-
-let unsubscribeUsers = () => {};
-
-if (appUser.role === "admin") {
-  unsubscribeUsers = onSnapshot(usersCollectionRef(), (snapshot) => {
-    const firebaseUsers = snapshot.docs
-      .map((docItem) => {
-        return {
-          uid: docItem.id,
-          ...(docItem.data() as AppUser),
-        };
-      })
-      .filter((systemUser) => systemUser.pharmacyId === getPharmacyId());
-
-    setSystemUsers(firebaseUsers);
-  });
-}
-
   return () => {
-  unsubscribePharmacy();
-  unsubscribeMedicines();
-  unsubscribeInvoices();
-  unsubscribeReturns();
-  unsubscribePurchases();
-  unsubscribeCustomerPayments();
-  unsubscribeStockMovements();
-  unsubscribeActivityLogs();
-  unsubscribeUsers();
-};
-}, [appUser]);
+    authSubscription.data?.subscription.unsubscribe();
+  };
+}, []);
+
+async function testSupabaseConnection() {
+  try {
+    setSupabaseTestLoading(true);
+    setSupabaseTestStatus(null);
+
+    const medicines = await pharmacyService.getMedicines();
+    setSupabaseTestStatus(
+      `Supabase OK: found ${medicines.length} medicine${medicines.length === 1 ? "" : "s"}`
+    );
+  } catch (error) {
+    setSupabaseTestStatus(
+      `Supabase error: ${error instanceof Error ? error.message : String(error)}`
+    );
+  } finally {
+    setSupabaseTestLoading(false);
+  }
+}
+
+useEffect(() => {
+    const currentAppUser = appUser;
+    if (!currentAppUser) return;
+
+    const cleanup: Array<() => void> = [];
+
+    async function loadData(user: AppUser) {
+      const pharmacySettings = await pharmacyService.getPharmacySettings(user.pharmacyId);
+      if (pharmacySettings) {
+        setPharmacySettings(pharmacySettings);
+        setSettingsForm({
+          name: pharmacySettings.name || "",
+          name_en: pharmacySettings.name_en || "",
+          phone: pharmacySettings.phone || "",
+          address: pharmacySettings.address || "",
+          currency: pharmacySettings.currency || "ج.م",
+          invoiceFooter: pharmacySettings.invoiceFooter || "",
+          subscriptionPlan: pharmacySettings.subscriptionPlan || "monthly",
+          subscriptionEndDate: pharmacySettings.subscriptionEndDate || "",
+          logoBase64: pharmacySettings.logoBase64 || "",
+        });
+      }
+
+      if (user.role === "admin") {
+        const medicinesList = await pharmacyService.getMedicines();
+        if (medicinesList.length === 0 && typeof medicinesSeed !== "undefined") {
+          for (const medicine of medicinesSeed) {
+            await pharmacyService.addMedicine(medicine);
+          }
+        }
+      }
+
+      setMedicines(await pharmacyService.getMedicines());
+      setInvoices(await pharmacyService.getInvoices());
+      setReturns(await pharmacyService.getReturns());
+      setPurchases(await pharmacyService.getPurchases());
+      setCustomerPayments(await pharmacyService.getCustomerPayments());
+      setStockMovements(await pharmacyService.getStockMovements());
+      setActivityLogs(await pharmacyService.getActivityLogs());
+
+      if (user.role === "admin") {
+        setSystemUsers(await pharmacyService.getSystemUsers(user.pharmacyId));
+      }
+    }
+
+    loadData(currentAppUser).catch((error) => {
+      console.error("Supabase initial load error:", error);
+    });
+
+    cleanup.push(pharmacyService.subscribePharmacySettings(currentAppUser.pharmacyId, (settings) => {
+      setPharmacySettings(settings);
+      setSettingsForm({
+        name: settings.name || "",
+        name_en: settings.name_en || "",
+        phone: settings.phone || "",
+        address: settings.address || "",
+        currency: settings.currency || "ج.م",
+        invoiceFooter: settings.invoiceFooter || "",
+        subscriptionPlan: settings.subscriptionPlan || "monthly",
+        subscriptionEndDate: settings.subscriptionEndDate || "",
+        logoBase64: settings.logoBase64 || "",
+      });
+    }));
+
+    cleanup.push(pharmacyService.subscribeMedicines(setMedicines));
+    cleanup.push(pharmacyService.subscribeInvoices(setInvoices));
+    cleanup.push(pharmacyService.subscribeReturns(setReturns));
+    cleanup.push(pharmacyService.subscribePurchases(setPurchases));
+    cleanup.push(pharmacyService.subscribeCustomerPayments(setCustomerPayments));
+    cleanup.push(pharmacyService.subscribeStockMovements(setStockMovements));
+    cleanup.push(pharmacyService.subscribeActivityLogs(setActivityLogs));
+
+    if (currentAppUser.role === "admin") {
+      cleanup.push(pharmacyService.subscribeUsers(currentAppUser.pharmacyId, setSystemUsers));
+    }
+
+    return () => {
+      cleanup.forEach((unsubscribe) => unsubscribe());
+    };
+  }, [appUser]);
 
    const filteredMedicines = useMemo(() => {
   const value = query.trim().toLowerCase();
@@ -989,15 +899,11 @@ const topSellingMedicines = Object.values(
   const newPlan =
     days >= 365 ? "yearly" : days >= 90 ? "quarterly" : "monthly";
 
-  await setDoc(
-    pharmacyDocRef(),
-    {
-      subscriptionEndDate: newEndDate,
-      subscriptionPlan: newPlan,
-      isActive: true,
-    },
-    { merge: true }
-  );
+  await pharmacyService.updatePharmacySettings(getPharmacyId(), {
+    subscriptionEndDate: newEndDate,
+    subscriptionPlan: newPlan,
+    isActive: true,
+  });
 
   setSettingsForm({
     ...settingsForm,
@@ -1048,23 +954,19 @@ function handleLogoUpload(file: File | null) {
     return;
   }
 
-  await setDoc(
-    pharmacyDocRef(),
-    {
-      id: getPharmacyId(),
-      name: settingsForm.name,
-      name_en: settingsForm.name_en,
-      phone: settingsForm.phone,
-      address: settingsForm.address,
-      currency: settingsForm.currency,
-      invoiceFooter: settingsForm.invoiceFooter,
-      subscriptionPlan: settingsForm.subscriptionPlan,
-      subscriptionEndDate: settingsForm.subscriptionEndDate,
-      logoBase64: settingsForm.logoBase64,
-      isActive: true,
-    },
-    { merge: true }
-  );
+  await pharmacyService.updatePharmacySettings(getPharmacyId(), {
+    id: getPharmacyId(),
+    name: settingsForm.name,
+    name_en: settingsForm.name_en,
+    phone: settingsForm.phone,
+    address: settingsForm.address,
+    currency: settingsForm.currency,
+    invoiceFooter: settingsForm.invoiceFooter,
+    subscriptionPlan: settingsForm.subscriptionPlan,
+    subscriptionEndDate: settingsForm.subscriptionEndDate,
+    logoBase64: settingsForm.logoBase64,
+    isActive: true,
+  });
   await addActivityLog({
   type: "settings_update",
   title: isArabic ? "تعديل الإعدادات" : "Settings Updated",
@@ -1214,38 +1116,6 @@ function canOpenPage(page: Page) {
 function getPharmacyId() {
   return appUser?.pharmacyId || "default-pharmacy";
 }
-function pharmacyDocRef() {
-  return doc(db, "pharmacies", getPharmacyId());
-}
-function medicinesCollectionRef() {
-  return collection(db, "pharmacies", getPharmacyId(), "medicines");
-}
-
-function medicineDocRef(medicineId: number | string) {
-  return doc(db, "pharmacies", getPharmacyId(), "medicines", medicineId.toString());
-}
-
-function invoicesCollectionRef() {
-  return collection(db, "pharmacies", getPharmacyId(), "invoices");
-}
-function returnsCollectionRef() {
-  return collection(db, "pharmacies", getPharmacyId(), "returns");
-}
-function purchasesCollectionRef() {
-  return collection(db, "pharmacies", getPharmacyId(), "purchases");
-}
-function customerPaymentsCollectionRef() {
-  return collection(db, "pharmacies", getPharmacyId(), "customerPayments");
-}
-function stockMovementsCollectionRef() {
-  return collection(db, "pharmacies", getPharmacyId(), "stockMovements");
-}
-function activityLogsCollectionRef() {
-  return collection(db, "pharmacies", getPharmacyId(), "activityLogs");
-}
-function usersCollectionRef() {
-  return collection(db, "users");
-}
   function addToCart(medicine: Medicine) {
     if (medicine.qty <= 0) {
       alert(isArabic ? "هذا الدواء غير متوفر في المخزون" : "This medicine is out of stock");
@@ -1314,7 +1184,7 @@ async function addActivityLog(data: {
       createdAt: new Date().toISOString(),
     };
 
-    await setDoc(doc(activityLogsCollectionRef(), String(logId)), logRecord);
+    await pharmacyService.addActivityLog(logRecord);
   } catch (error) {
     console.error("Activity log error:", error);
   }
@@ -1363,21 +1233,26 @@ async function addActivityLog(data: {
 
 
     const oldMedicine = medicines.find((m) => m.id === medicineId);
-    await setDoc(medicineDocRef(medicineId), medicine);
-    await addDoc(stockMovementsCollectionRef(), {
-  type: editingMedicineId ? "medicine_update" : "medicine_create",
-  medicineId,
-  medicineName_ar: medicine.name_ar,
-  medicineName_en: medicine.name_en,
-  barcode: medicine.barcode,
-  quantityChange: oldMedicine ? medicine.qty - oldMedicine.qty : medicine.qty,
-  qtyBefore: oldMedicine ? oldMedicine.qty : 0,
-  qtyAfter: medicine.qty,
-  pharmacyId: getPharmacyId(),
-  userId: user?.uid || "",
-  userName: appUser?.name || "",
-  createdAt: new Date().toISOString(),
-});
+    if (editingMedicineId) {
+      await pharmacyService.updateMedicine(medicineId, medicine);
+    } else {
+      await pharmacyService.addMedicine(medicine);
+    }
+
+    await pharmacyService.addStockMovement({
+      type: editingMedicineId ? "medicine_update" : "medicine_create",
+      medicineId,
+      medicineName_ar: medicine.name_ar,
+      medicineName_en: medicine.name_en,
+      barcode: medicine.barcode,
+      quantityChange: oldMedicine ? medicine.qty - oldMedicine.qty : medicine.qty,
+      qtyBefore: oldMedicine ? oldMedicine.qty : 0,
+      qtyAfter: medicine.qty,
+      pharmacyId: getPharmacyId(),
+      userId: user?.uid || "",
+      userName: appUser?.name || "",
+      createdAt: new Date().toISOString(),
+    });
 
 await addActivityLog({
   type: editingMedicineId ? "medicine_update" : "medicine_create",
@@ -1437,21 +1312,21 @@ await addActivityLog({
     );
 
     if (!confirmDelete) return;
-    await addDoc(stockMovementsCollectionRef(), {
-  type: "medicine_delete",
-  medicineId: medicine.id,
-  medicineName_ar: medicine.name_ar,
-  medicineName_en: medicine.name_en,
-  barcode: medicine.barcode,
-  quantityChange: -medicine.qty,
-  qtyBefore: medicine.qty,
-  qtyAfter: 0,
-  pharmacyId: getPharmacyId(),
-  userId: user?.uid || "",
-  userName: appUser?.name || "",
-  createdAt: new Date().toISOString(),
-});
-    await deleteDoc(medicineDocRef(medicine.id));
+    await pharmacyService.addStockMovement({
+      type: "medicine_delete",
+      medicineId: medicine.id,
+      medicineName_ar: medicine.name_ar,
+      medicineName_en: medicine.name_en,
+      barcode: medicine.barcode,
+      quantityChange: -medicine.qty,
+      qtyBefore: medicine.qty,
+      qtyAfter: 0,
+      pharmacyId: getPharmacyId(),
+      userId: user?.uid || "",
+      userName: appUser?.name || "",
+      createdAt: new Date().toISOString(),
+    });
+    await pharmacyService.deleteMedicine(medicine.id);
 
 await addActivityLog({
   type: "medicine_delete",
@@ -1656,6 +1531,7 @@ if (paymentMethod === "credit" && !customerName.trim()) {
   const costTotal = buyPrice * item.cartQty;
 
   return {
+    invoiceId,
     medicineId: item.id,
     name_ar: item.name_ar,
     name_en: item.name_en,
@@ -1692,75 +1568,24 @@ const totalProfit = total - totalCost;
   paymentMethod,
 };
 
-    await runTransaction(db, async (transaction) => {
-      const medicineRefs = cart.map((item) => ({
-        item,
-        ref: medicineDocRef(item.id),
-      }));
+    const stockMovements = cart.map((item) => ({
+      id: Date.now() + item.id,
+      type: "sale",
+      medicineId: item.id,
+      medicineName_ar: item.name_ar,
+      medicineName_en: item.name_en,
+      barcode: item.barcode,
+      quantityChange: -item.cartQty,
+      qtyBefore: item.qty,
+      qtyAfter: item.qty - item.cartQty,
+      invoiceNumber,
+      pharmacyId: getPharmacyId(),
+      userId: user?.uid || "",
+      userName: appUser?.name || "",
+      createdAt: new Date().toISOString(),
+    }));
 
-      const medicineSnapshots = [];
-
-      // 1. كل القراءات الأول
-      for (const medicineRef of medicineRefs) {
-        const snap = await transaction.get(medicineRef.ref);
-        medicineSnapshots.push({
-          item: medicineRef.item,
-          ref: medicineRef.ref,
-          snap,
-        });
-      }
-
-      // 2. التحقق من الكميات بعد ما كل القراءات خلصت
-      for (const record of medicineSnapshots) {
-        if (!record.snap.exists()) {
-          throw new Error(
-            isArabic ? "دواء غير موجود في المخزون" : "Medicine not found"
-          );
-        }
-
-        const currentMedicine = record.snap.data() as Medicine;
-
-        if (currentMedicine.qty < record.item.cartQty) {
-          throw new Error(
-            isArabic
-              ? `الكمية غير كافية: ${currentMedicine.name_ar}`
-              : `Not enough stock: ${currentMedicine.name_en}`
-          );
-        }
-      }
-
-      // 3. كل الكتابات بعد القراءات والتحقق
-      for (const record of medicineSnapshots) {
-  const currentMedicine = record.snap.data() as Medicine;
-  const newQty = currentMedicine.qty - record.item.cartQty;
-
-  transaction.update(record.ref, {
-    qty: newQty,
-  });
-
-  const movementRef = doc(stockMovementsCollectionRef());
-
-  transaction.set(movementRef, {
-    type: "sale",
-    medicineId: record.item.id,
-    medicineName_ar: record.item.name_ar,
-    medicineName_en: record.item.name_en,
-    barcode: record.item.barcode,
-    quantityChange: -record.item.cartQty,
-    qtyBefore: currentMedicine.qty,
-    qtyAfter: newQty,
-    invoiceNumber,
-    pharmacyId: getPharmacyId(),
-    userId: user?.uid || "",
-    userName: appUser?.name || "",
-    createdAt: new Date().toISOString(),
-  });
-}
-
-      // 4. تسجيل الفاتورة داخل نفس الـ transaction
-      const invoiceRef = doc(invoicesCollectionRef());
-      transaction.set(invoiceRef, invoice);
-    });
+    await pharmacyService.completeSaleWithStockDeduction(cart, invoice as Invoice, stockMovements);
 
     await addActivityLog({
   type: "sale",
@@ -1894,60 +1719,44 @@ async function completeReturn() {
       total: returnTotal,
     };
 
-    await runTransaction(db, async (transaction) => {
-      const medicineRefs = selectedReturnItems.map((item) => ({
-        item,
-        ref: medicineDocRef(item.medicineId),
-      }));
+    const currentMedicines = await pharmacyService.getMedicines();
+    const stockMovements = selectedReturnItems.map((item) => {
+      const currentMedicine = currentMedicines.find((m) => m.id === item.medicineId);
+      const oldQty = currentMedicine?.qty || 0;
+      const newQty = oldQty + item.quantity;
 
-      const medicineSnapshots = [];
-
-      for (const medicineRef of medicineRefs) {
-        const snap = await transaction.get(medicineRef.ref);
-        medicineSnapshots.push({
-          item: medicineRef.item,
-          ref: medicineRef.ref,
-          snap,
-        });
-      }
-
-      for (const record of medicineSnapshots) {
-        if (!record.snap.exists()) {
-          throw new Error(isArabic ? "دواء غير موجود في المخزون" : "Medicine not found");
-        }
-      }
-
-      for (const record of medicineSnapshots) {
-        const currentMedicine = record.snap.data() as Medicine;
-        const newQty = currentMedicine.qty + record.item.quantity;
-
-        transaction.update(record.ref, {
-          qty: newQty,
-        });
-
-        const movementRef = doc(stockMovementsCollectionRef());
-
-        transaction.set(movementRef, {
-          type: "return",
-          medicineId: record.item.medicineId,
-          medicineName_ar: record.item.name_ar,
-          medicineName_en: record.item.name_en,
-          barcode: record.item.barcode,
-          quantityChange: record.item.quantity,
-          qtyBefore: currentMedicine.qty,
-          qtyAfter: newQty,
-          invoiceNumber: returnInvoice.invoiceNumber,
-          returnNumber,
-          pharmacyId: getPharmacyId(),
-          userId: user?.uid || "",
-          userName: appUser?.name || "",
-          createdAt: new Date().toISOString(),
-        });
-      }
-
-      const returnRef = doc(returnsCollectionRef());
-      transaction.set(returnRef, returnRecord);
+      return {
+        id: Date.now() + item.medicineId,
+        type: "return",
+        medicineId: item.medicineId,
+        medicineName_ar: item.name_ar,
+        medicineName_en: item.name_en,
+        barcode: item.barcode,
+        quantityChange: item.quantity,
+        qtyBefore: oldQty,
+        qtyAfter: newQty,
+        invoiceNumber: returnInvoice.invoiceNumber,
+        returnNumber,
+        pharmacyId: getPharmacyId(),
+        userId: user?.uid || "",
+        userName: appUser?.name || "",
+        createdAt: new Date().toISOString(),
+      };
     });
+
+    for (const item of selectedReturnItems) {
+      const currentMedicine = currentMedicines.find((m) => m.id === item.medicineId);
+      if (!currentMedicine) {
+        throw new Error(isArabic ? "دواء غير موجود في المخزون" : "Medicine not found");
+      }
+      await pharmacyService.updateMedicineStock(item.medicineId, currentMedicine.qty + item.quantity);
+    }
+
+    for (const movement of stockMovements) {
+      await pharmacyService.addStockMovement(movement);
+    }
+
+    await pharmacyService.createReturn(returnRecord);
 
     await addActivityLog({
   type: "return",
@@ -1990,7 +1799,7 @@ async function updateSystemUser(
     return;
   }
 
-  await updateDoc(doc(db, "users", uid), updates);
+  await pharmacyService.updateSystemUser(uid, updates as Partial<SystemUser>);
 
 const updatedUser = systemUsers.find((systemUser) => systemUser.uid === uid);
 
@@ -2056,28 +1865,33 @@ async function savePurchase() {
     };
 
     const purchaseRecord: PurchaseRecord = {
-  id: purchaseId,
-  purchaseNumber,
-  medicineId,
-  medicineName_ar: medicine.name_ar,
-  medicineName_en: medicine.name_en,
-  barcode: medicine.barcode,
-  quantity: purchaseQty,
-  buyPrice: purchaseBuyPrice,
-  sellPrice: purchaseSellPrice,
-  totalCost: purchaseQty * purchaseBuyPrice,
-  supplierName: purchaseForm.supplierName,
-  notes: purchaseForm.notes,
-  pharmacyId: getPharmacyId(),
-  userId: user?.uid || "",
-  userName: appUser?.name || "",
-  date: new Date().toLocaleString(),
-  createdAt: new Date().toISOString(),
-};
+      id: purchaseId,
+      purchaseNumber,
+      medicineId,
+      medicineName_ar: medicine.name_ar,
+      medicineName_en: medicine.name_en,
+      barcode: medicine.barcode,
+      quantity: purchaseQty,
+      buyPrice: purchaseBuyPrice,
+      sellPrice: purchaseSellPrice,
+      totalCost: purchaseQty * purchaseBuyPrice,
+      supplierName: purchaseForm.supplierName,
+      notes: purchaseForm.notes,
+      pharmacyId: getPharmacyId(),
+      userId: user?.uid || "",
+      userName: appUser?.name || "",
+      date: new Date().toLocaleString(),
+      createdAt: new Date().toISOString(),
+    };
 
-    await setDoc(medicineDocRef(medicineId), medicine, { merge: true });
-    await setDoc(doc(purchasesCollectionRef()), purchaseRecord);
-    await addDoc(stockMovementsCollectionRef(), {
+    if (existingMedicine) {
+      await pharmacyService.updateMedicine(medicineId, medicine);
+    } else {
+      await pharmacyService.addMedicine(medicine);
+    }
+
+    await pharmacyService.createPurchase(purchaseRecord);
+    await pharmacyService.addStockMovement({
       type: "purchase",
       purchaseNumber,
       medicineId,
@@ -3686,11 +3500,8 @@ if (paymentAmount > remainingDebt) {
       createdAt: new Date().toISOString(),
     };
 
-    await setDoc(
-  doc(customerPaymentsCollectionRef(), paymentNumber),
-  paymentRecord
-);
-await addActivityLog({
+    await pharmacyService.saveCustomerPayment(paymentRecord);
+    await addActivityLog({
   type: "customer_payment",
   title: isArabic ? "تحصيل من عميل" : "Customer Payment",
   description: isArabic
@@ -3918,19 +3729,11 @@ async function deleteCustomerPayment(payment: CustomerPayment) {
   if (!confirmDelete) return;
 
   try {
-    await deleteDoc(
-      doc(
-        db,
-        "pharmacies",
-        getPharmacyId(),
-        "customerPayments",
-        payment.paymentNumber
-      )
-    );
+    await pharmacyService.deleteCustomerPayment(payment.paymentNumber);
     await addActivityLog({
-  type: "delete_customer_payment",
-  title: isArabic ? "حذف تحصيل" : "Payment Deleted",
-  description: isArabic
+      type: "delete_customer_payment",
+      title: isArabic ? "حذف تحصيل" : "Payment Deleted",
+      description: isArabic
     ? `تم حذف التحصيل رقم ${payment.paymentNumber} للعميل ${payment.customerName}`
     : `Payment ${payment.paymentNumber} for ${payment.customerName} was deleted`,
   referenceType: "customerPayment",
@@ -4719,7 +4522,10 @@ async function handleLogin(e: FormEvent<HTMLFormElement>) {
 
   try {
     setLoginError("");
-    await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
+    const { error } = await pharmacyService.signInWithPassword(loginEmail, loginPassword);
+    if (error) {
+      throw error;
+    }
   } catch (error) {
     console.error(error);
     setLoginError(
@@ -4729,7 +4535,7 @@ async function handleLogin(e: FormEvent<HTMLFormElement>) {
 }
 
 async function handleLogout() {
-  await signOut(auth);
+  await pharmacyService.signOutUser();
 }
 if (authLoading || userLoading) {
   return (
@@ -4853,6 +4659,22 @@ if (!allowedPages.includes(activePage)) {
           onLogout={handleLogout}
           onToggleMenu={() => setIsMenuOpen((value) => !value)}
         />
+
+        <div className="supabaseTestBar" style={{ padding: "10px 16px", borderBottom: "1px solid #e2e8f0", display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
+          <button
+            className="smallBtn"
+            type="button"
+            onClick={testSupabaseConnection}
+            disabled={supabaseTestLoading}
+          >
+            {isArabic ? "اختبار اتصال سوبابيز" : "Test Supabase Connection"}
+          </button>
+          {supabaseTestStatus && (
+            <span style={{ color: supabaseTestStatus.startsWith("Supabase OK") ? "#0b9f31" : "#c02d2d" }}>
+              {supabaseTestStatus}
+            </span>
+          )}
+        </div>
 
         {activePage === "dashboard" && (
           <DashboardPage

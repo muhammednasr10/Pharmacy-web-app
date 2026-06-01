@@ -59,6 +59,7 @@ export type CartItem = Medicine & {
 };
 
 export type InvoiceItem = {
+  invoiceId: number;
   medicineId: number;
   name_ar: string;
   name_en: string;

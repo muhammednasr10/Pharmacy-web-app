@@ -12,10 +12,10 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "@supabase/supabase-js": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@vitejs/plugin-react": "latest",
-    "firebase": "latest",
     "jspdf": "latest",
     "react": "latest",
     "react-dom": "latest",
