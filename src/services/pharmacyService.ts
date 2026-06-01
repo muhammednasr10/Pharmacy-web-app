@@ -14,11 +14,72 @@ import type {
   SystemUser,
 } from "../types";
 
+const camelKeyMap: Record<string, string> = {
+  pharmacy_id: "pharmacyId",
+  customer_name: "customerName",
+  customer_phone: "customerPhone",
+  created_at: "createdAt",
+  updated_at: "updatedAt",
+  invoice_number: "invoiceNumber",
+  invoice_id: "invoiceId",
+  payment_method: "paymentMethod",
+  cashier_id: "cashierId",
+  cashier_name: "cashierName",
+  buy_price: "buyPrice",
+  sell_price: "sellPrice",
+  total_cost: "totalCost",
+  quantity_change: "quantityChange",
+  qty_before: "qtyBefore",
+  qty_after: "qtyAfter",
+  return_number: "returnNumber",
+  purchase_number: "purchaseNumber",
+  original_invoice_id: "originalInvoiceId",
+  user_id: "userId",
+  user_name: "userName",
+  reference_type: "referenceType",
+  reference_id: "referenceId",
+  is_active: "isActive",
+  name_ar: "name_ar",
+  name_en: "name_en",
+  medicine_name_ar: "medicineName_ar",
+  medicine_name_en: "medicineName_en",
+};
+
+const snakeKeyMap: Record<string, string> = {
+  buyPrice: "buy_price",
+  sellPrice: "sell_price",
+  totalCost: "total_cost",
+  quantityChange: "quantity_change",
+  qtyBefore: "qty_before",
+  qtyAfter: "qty_after",
+  invoiceNumber: "invoice_number",
+  invoiceId: "invoice_id",
+  paymentMethod: "payment_method",
+  cashierId: "cashier_id",
+  cashierName: "cashier_name",
+  customerName: "customer_name",
+  customerPhone: "customer_phone",
+  pharmacyId: "pharmacy_id",
+  returnNumber: "return_number",
+  purchaseNumber: "purchase_number",
+  originalInvoiceId: "original_invoice_id",
+  userId: "user_id",
+  userName: "user_name",
+  referenceType: "reference_type",
+  referenceId: "reference_id",
+  paymentNumber: "payment_number",
+  createdAt: "created_at",
+  updatedAt: "updated_at",
+  isActive: "is_active",
+  medicineName_ar: "medicine_name_ar",
+  medicineName_en: "medicine_name_en",
+};
+
 function toCamelCase<T>(row: Record<string, any>): T {
   if (!row || typeof row !== "object") return row as T;
 
   return Object.entries(row).reduce((acc, [key, value]) => {
-    const camelKey = key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+    const camelKey = camelKeyMap[key] || key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
     acc[camelKey] = value;
     return acc;
   }, {} as Record<string, any>) as T;
@@ -28,10 +89,54 @@ function toSnakeCase<T>(data: T): Record<string, any> {
   if (!data || typeof data !== "object") return data as unknown as Record<string, any>;
 
   return Object.entries(data as Record<string, any>).reduce((acc, [key, value]) => {
-    const snakeKey = key.replace(/([A-Z])/g, (match) => `_${match.toLowerCase()}`);
+    const snakeKey = snakeKeyMap[key] || key.replace(/([A-Z])/g, (match) => `_${match.toLowerCase()}`);
     acc[snakeKey] = value;
     return acc;
   }, {} as Record<string, any>);
+}
+
+function prepareMedicinePayload(medicine: Partial<Medicine>): Record<string, any> {
+  return toSnakeCase({
+    id: medicine.id,
+    name_ar: medicine.name_ar,
+    name_en: medicine.name_en,
+    barcode: medicine.barcode,
+    qty: medicine.qty,
+    price: medicine.price,
+    buyPrice: medicine.buyPrice,
+    expiry: medicine.expiry,
+  } as Partial<Medicine>);
+}
+
+function prepareInvoicePayload(invoice: Invoice): Record<string, any> {
+  return toSnakeCase({
+    id: invoice.id,
+    invoiceNumber: invoice.invoiceNumber,
+    date: invoice.date,
+    subtotal: invoice.subtotal,
+    discount: invoice.discount,
+    total: invoice.total,
+    paymentMethod: invoice.paymentMethod,
+    customerName: invoice.customerName || "",
+    cashierId: invoice.cashierId,
+    cashierName: invoice.cashierName,
+    pharmacyId: invoice.pharmacyId,
+    createdAt: invoice.createdAt,
+  } as Partial<Invoice>);
+}
+
+function prepareInvoiceItemPayload(item: InvoiceItem, invoiceId: number): Record<string, any> {
+  return toSnakeCase({
+    id: item.id,
+    invoiceId,
+    medicineId: item.medicineId,
+    name_ar: item.name_ar,
+    name_en: item.name_en,
+    barcode: item.barcode,
+    quantity: item.quantity,
+    unitPrice: item.unitPrice,
+    lineTotal: item.lineTotal,
+  } as Partial<InvoiceItem>);
 }
 
 async function getRows<T>(
@@ -198,7 +303,7 @@ export function subscribeMedicines(callback: (medicines: Medicine[]) => void) {
 }
 
 export async function addMedicine(medicine: Medicine) {
-  const payload = toSnakeCase(medicine);
+  const payload = prepareMedicinePayload(medicine);
   const { error } = await supabase.from("medicines").insert([payload]);
 
   if (error) {
@@ -207,7 +312,7 @@ export async function addMedicine(medicine: Medicine) {
 }
 
 export async function updateMedicine(id: number, medicine: Partial<Medicine>) {
-  const payload = toSnakeCase(medicine);
+  const payload = prepareMedicinePayload(medicine);
   const { error } = await supabase.from("medicines").update(payload).eq("id", id);
 
   if (error) {
@@ -281,8 +386,10 @@ export async function getInvoices(limit = 100): Promise<Invoice[]> {
 
   const items = (itemsData || []).map((row) => toCamelCase<InvoiceItem>(row));
   const itemsByInvoiceId = items.reduce((acc, item) => {
-    acc[item.invoiceId] = acc[item.invoiceId] || [];
-    acc[item.invoiceId].push(item);
+    if (item.invoiceId !== undefined) {
+      acc[item.invoiceId] = acc[item.invoiceId] || [];
+      acc[item.invoiceId].push(item);
+    }
     return acc;
   }, {} as Record<number, InvoiceItem[]>);
 
@@ -311,13 +418,7 @@ export function subscribeInvoices(callback: (invoices: Invoice[]) => void) {
 }
 
 export async function createInvoice(invoice: Invoice) {
-  const invoiceRow = toSnakeCase({
-    ...invoice,
-    invoiceNumber: invoice.invoiceNumber,
-    paymentMethod: invoice.paymentMethod,
-    createdAt: invoice.createdAt,
-    customerName: invoice.customerName || "",
-  });
+  const invoiceRow = prepareInvoicePayload(invoice);
 
   const { data: insertedInvoice, error: insertError } = await supabase
     .from("invoices")
@@ -335,12 +436,7 @@ export async function createInvoice(invoice: Invoice) {
   }
 
   const invoiceItems = invoice.items.map((item) =>
-    toSnakeCase({
-      ...item,
-      invoiceId: invoice.id,
-      unitPrice: item.unitPrice,
-      lineTotal: item.lineTotal,
-    })
+    prepareInvoiceItemPayload(item, insertedInvoice.id)
   );
 
   const { error: itemsError } = await supabase.from("invoice_items").insert(invoiceItems);

@@ -811,7 +811,7 @@ const filteredCustomerPayments = customerPayments.filter((payment) => {
   return (
     !searchValue ||
     payment.customerName.toLowerCase().includes(searchValue) ||
-    payment.paymentNumber.toLowerCase().includes(searchValue) ||
+    (payment.paymentNumber || "").toLowerCase().includes(searchValue) ||
     String(payment.userName || "").toLowerCase().includes(searchValue)
   );
 });
@@ -1204,10 +1204,10 @@ async function addActivityLog(data: {
       return;
     }
 
-    if (newMedicine.qty < 0 || newMedicine.buyPrice < 0 || newMedicine.price <= 0) {
-  alert(isArabic ? "تأكد من الكمية وسعر الشراء وسعر البيع" : "Check quantity, buy price and sell price");
-  return;
-}
+    if (newMedicine.qty < 0 || (newMedicine.buyPrice ?? -1) < 0 || newMedicine.price <= 0) {
+      alert(isArabic ? "تأكد من الكمية وسعر الشراء وسعر البيع" : "Check quantity, buy price and sell price");
+      return;
+    }
 
     const barcodeExists = medicines.find(
       (medicine) => medicine.barcode === newMedicine.barcode && medicine.id !== editingMedicineId
@@ -3720,24 +3720,25 @@ async function deleteCustomerPayment(payment: CustomerPayment) {
     return;
   }
 
+  const paymentNum = payment.paymentNumber || String(payment.id);
   const confirmDelete = window.confirm(
     isArabic
-      ? `هل أنت متأكد من حذف التحصيل رقم ${payment.paymentNumber}؟`
-      : `Are you sure you want to delete payment ${payment.paymentNumber}?`
+      ? `هل أنت متأكد من حذف التحصيل رقم ${paymentNum}؟`
+      : `Are you sure you want to delete payment ${paymentNum}?`
   );
 
   if (!confirmDelete) return;
 
   try {
-    await pharmacyService.deleteCustomerPayment(payment.paymentNumber);
+    await pharmacyService.deleteCustomerPayment(paymentNum);
     await addActivityLog({
       type: "delete_customer_payment",
       title: isArabic ? "حذف تحصيل" : "Payment Deleted",
       description: isArabic
-    ? `تم حذف التحصيل رقم ${payment.paymentNumber} للعميل ${payment.customerName}`
-    : `Payment ${payment.paymentNumber} for ${payment.customerName} was deleted`,
+    ? `تم حذف التحصيل رقم ${paymentNum} للعميل ${payment.customerName}`
+    : `Payment ${paymentNum} for ${payment.customerName} was deleted`,
   referenceType: "customerPayment",
-  referenceId: payment.paymentNumber,
+  referenceId: paymentNum,
 });
     alert(isArabic ? "تم حذف التحصيل" : "Payment deleted");
   } catch (error) {

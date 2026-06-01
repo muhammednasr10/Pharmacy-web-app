@@ -9,6 +9,7 @@ create table if not exists medicines (
   barcode text unique not null,
   qty integer not null,
   price numeric not null,
+  buy_price numeric,
   expiry date not null,
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
