@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ActivityLog, PharmacySettings, AppUser } from "../types";
+import DeveloperCredit from "../components/DeveloperCredit";
 
 type SettingsForm = {
   name: string;
@@ -268,9 +269,16 @@ export default function SettingsPage({
         </button>
         {hasRole(["admin"]) && (
           <button className="printBtn" onClick={exportBackupCSV}>
-            {isArabic ? "تصدير نسخة احتياطية" : "Export Backup"}
+            <span aria-hidden="true">⬇️</span>
+            <span>{isArabic ? "تصدير نسخة احتياطية" : "Export Backup"}</span>
           </button>
         )}
+
+        <div className="settingsSectionTitle">
+          <h3>{isArabic ? "عن المطوّر" : "About the Developer"}</h3>
+          <p>{isArabic ? "الدعم الفني والتطوير" : "Technical support & development"}</p>
+        </div>
+        <DeveloperCredit isArabic={isArabic} variant="inline" />
       </div>
     </section>
   );

@@ -73,7 +73,7 @@ export default function PosPage({
       <div className="posSplit">
         <div>
           <MedicineTable
-            filteredMedicines={filteredMedicines}
+            medicines={filteredMedicines}
             t={t}
             isArabic={isArabic}
             currency={currency}

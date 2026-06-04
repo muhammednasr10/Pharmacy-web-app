@@ -1,4 +1,4 @@
-import { supabase } from "./supabaseClient";
+import { createEphemeralSupabase, supabase } from "./supabaseClient";
 import type {
   ActivityLog,
   AppUser,
@@ -96,16 +96,18 @@ function toSnakeCase<T>(data: T): Record<string, any> {
 }
 
 function prepareMedicinePayload(medicine: Partial<Medicine>): Record<string, any> {
-  return toSnakeCase({
-    id: medicine.id,
-    name_ar: medicine.name_ar,
-    name_en: medicine.name_en,
-    barcode: medicine.barcode,
-    qty: medicine.qty,
-    price: medicine.price,
-    buyPrice: medicine.buyPrice,
-    expiry: medicine.expiry,
-  } as Partial<Medicine>);
+  return stampPharmacy(
+    toSnakeCase({
+      id: medicine.id,
+      name_ar: medicine.name_ar,
+      name_en: medicine.name_en,
+      barcode: medicine.barcode,
+      qty: medicine.qty,
+      price: medicine.price,
+      buyPrice: medicine.buyPrice,
+      expiry: medicine.expiry,
+    } as Partial<Medicine>)
+  );
 }
 
 function prepareInvoicePayload(invoice: Invoice): Record<string, any> {
@@ -139,14 +141,38 @@ function prepareInvoiceItemPayload(item: InvoiceItem, invoiceId: number): Record
   } as Partial<InvoiceItem>);
 }
 
+// Active branch (pharmacy) used to scope all reads/writes. When set, branch-scoped
+// queries are filtered by pharmacy_id and branch-scoped inserts are stamped with it.
+let activePharmacyId: string | null = null;
+
+export function setActivePharmacy(pharmacyId: string | null) {
+  activePharmacyId = pharmacyId;
+}
+
+export function getActivePharmacy() {
+  return activePharmacyId;
+}
+
+function stampPharmacy(payload: Record<string, any>): Record<string, any> {
+  if (activePharmacyId) {
+    return { ...payload, pharmacy_id: activePharmacyId };
+  }
+  return payload;
+}
+
 async function getRows<T>(
   table: string,
   orderBy = "id",
   desc = true,
   limit?: number,
-  filter?: { column: string; value: unknown }
+  filter?: { column: string; value: unknown },
+  pharmacyScoped = false
 ): Promise<T[]> {
   let query = supabase.from(table).select("*");
+
+  if (pharmacyScoped && activePharmacyId) {
+    query = query.eq("pharmacy_id", activePharmacyId);
+  }
 
   if (filter) {
     query = query.eq(filter.column, filter.value as string);
@@ -174,7 +200,8 @@ function subscribeTable<T>(
   orderBy = "id",
   desc = true,
   limit?: number,
-  filter?: { column: string; value: unknown }
+  filter?: { column: string; value: unknown },
+  pharmacyScoped = false
 ) {
   const channel = supabase
     .channel(`realtime-${table}`)
@@ -182,7 +209,7 @@ function subscribeTable<T>(
       "postgres_changes",
       { event: "*", schema: "public", table },
       () => {
-        void getRows<T>(table, orderBy, desc, limit, filter).then(callback);
+        void getRows<T>(table, orderBy, desc, limit, filter, pharmacyScoped).then(callback);
       }
     );
 
@@ -199,6 +226,10 @@ export function signInWithPassword(email: string, password: string) {
 
 export function signOutUser() {
   return supabase.auth.signOut();
+}
+
+export function getAuthSession() {
+  return supabase.auth.getSession();
 }
 
 export function onAuthStateChange(callback: (event: string, session: any) => void) {
@@ -241,7 +272,7 @@ export async function getPharmacySettings(pharmacyId: string): Promise<PharmacyS
     .from("pharmacies")
     .select("*")
     .eq("id", pharmacyId)
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error("getPharmacySettings error:", error.message);
@@ -295,11 +326,11 @@ export function subscribePharmacySettings(
 }
 
 export async function getMedicines(): Promise<Medicine[]> {
-  return getRows<Medicine>("medicines", "id", false, 100);
+  return getRows<Medicine>("medicines", "id", false, 100, undefined, true);
 }
 
 export function subscribeMedicines(callback: (medicines: Medicine[]) => void) {
-  return subscribeTable<Medicine>("medicines", callback, "id", false, 100);
+  return subscribeTable<Medicine>("medicines", callback, "id", false, 100, undefined, true);
 }
 
 export async function addMedicine(medicine: Medicine) {
@@ -337,7 +368,7 @@ export async function updateMedicineStock(medicineId: number, newQty: number) {
 }
 
 export async function addActivityLog(log: ActivityLog) {
-  const payload = toSnakeCase(log);
+  const payload = stampPharmacy(toSnakeCase(log));
   const { error } = await supabase.from("activity_logs").insert([payload]);
 
   if (error) {
@@ -346,7 +377,7 @@ export async function addActivityLog(log: ActivityLog) {
 }
 
 export async function addStockMovement(movement: StockMovement) {
-  const payload = toSnakeCase(movement);
+  const payload = stampPharmacy(toSnakeCase(movement));
   const { error } = await supabase.from("stock_movements").insert([payload]);
 
   if (error) {
@@ -355,9 +386,13 @@ export async function addStockMovement(movement: StockMovement) {
 }
 
 export async function getInvoices(limit = 100): Promise<Invoice[]> {
-  const { data, error } = await supabase
-    .from("invoices")
-    .select("*")
+  let invoiceQuery = supabase.from("invoices").select("*");
+
+  if (activePharmacyId) {
+    invoiceQuery = invoiceQuery.eq("pharmacy_id", activePharmacyId);
+  }
+
+  const { data, error } = await invoiceQuery
     .order("id", { ascending: false })
     .limit(limit);
 
@@ -418,7 +453,7 @@ export function subscribeInvoices(callback: (invoices: Invoice[]) => void) {
 }
 
 export async function createInvoice(invoice: Invoice) {
-  const invoiceRow = prepareInvoicePayload(invoice);
+  const invoiceRow = stampPharmacy(prepareInvoicePayload(invoice));
 
   const { data: insertedInvoice, error: insertError } = await supabase
     .from("invoices")
@@ -499,50 +534,148 @@ export async function completeSaleWithStockDeduction(
     }
   }
 
-  const { error: stockError } = await supabase.from("stock_movements").insert(stockMovements.map(toSnakeCase));
+  const { error: stockError } = await supabase
+    .from("stock_movements")
+    .insert(stockMovements.map((movement) => stampPharmacy(toSnakeCase(movement))));
   if (stockError) {
     throw new Error(stockError.message);
   }
 }
 
 export async function getReturns(): Promise<ReturnRecord[]> {
-  return getRows<ReturnRecord>("returns", "id", false, 100);
+  return getRows<ReturnRecord>("returns", "id", false, 100, undefined, true);
 }
 
 export function subscribeReturns(callback: (returnsData: ReturnRecord[]) => void) {
-  return subscribeTable<ReturnRecord>("returns", callback, "id", false, 100);
+  return subscribeTable<ReturnRecord>("returns", callback, "id", false, 100, undefined, true);
 }
 
 export async function getPurchases(): Promise<PurchaseRecord[]> {
-  return getRows<PurchaseRecord>("purchases", "id", false, 100);
+  return getRows<PurchaseRecord>("purchases", "id", false, 100, undefined, true);
 }
 
 export function subscribePurchases(callback: (purchases: PurchaseRecord[]) => void) {
-  return subscribeTable<PurchaseRecord>("purchases", callback, "id", false, 100);
+  return subscribeTable<PurchaseRecord>("purchases", callback, "id", false, 100, undefined, true);
 }
 
 export async function getCustomerPayments(): Promise<CustomerPayment[]> {
-  return getRows<CustomerPayment>("customer_payments", "id", false, 100);
+  return getRows<CustomerPayment>("customer_payments", "id", false, 100, undefined, true);
 }
 
 export function subscribeCustomerPayments(callback: (payments: CustomerPayment[]) => void) {
-  return subscribeTable<CustomerPayment>("customer_payments", callback, "id", false, 100);
+  return subscribeTable<CustomerPayment>("customer_payments", callback, "id", false, 100, undefined, true);
 }
 
 export async function getStockMovements(): Promise<StockMovement[]> {
-  return getRows<StockMovement>("stock_movements", "created_at", false, 100);
+  return getRows<StockMovement>("stock_movements", "created_at", false, 100, undefined, true);
 }
 
 export function subscribeStockMovements(callback: (movements: StockMovement[]) => void) {
-  return subscribeTable<StockMovement>("stock_movements", callback, "created_at", false, 100);
+  return subscribeTable<StockMovement>("stock_movements", callback, "created_at", false, 100, undefined, true);
 }
 
 export async function getActivityLogs(): Promise<ActivityLog[]> {
-  return getRows<ActivityLog>("activity_logs", "created_at", false, 100);
+  return getRows<ActivityLog>("activity_logs", "created_at", false, 100, undefined, true);
 }
 
 export function subscribeActivityLogs(callback: (logs: ActivityLog[]) => void) {
-  return subscribeTable<ActivityLog>("activity_logs", callback, "created_at", false, 100);
+  return subscribeTable<ActivityLog>("activity_logs", callback, "created_at", false, 100, undefined, true);
+}
+
+export async function getPharmacies(): Promise<PharmacySettings[]> {
+  const { data, error } = await supabase
+    .from("pharmacies")
+    .select("*")
+    .order("id", { ascending: true });
+
+  if (error) {
+    console.error("getPharmacies error:", error.message);
+    return [];
+  }
+
+  return (data || []).map((row) => toCamelCase<PharmacySettings>(row));
+}
+
+export function subscribePharmacies(callback: (rows: PharmacySettings[]) => void) {
+  const channel = supabase
+    .channel("realtime-pharmacies-all")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "pharmacies" },
+      () => {
+        void getPharmacies().then(callback);
+      }
+    );
+
+  void channel.subscribe();
+
+  return () => {
+    void channel.unsubscribe();
+  };
+}
+
+export async function createPharmacy(branch: Partial<PharmacySettings> & { id: string }) {
+  const payload = toSnakeCase({
+    isActive: true,
+    currency: "ج.م",
+    ...branch,
+  });
+  const { error } = await supabase.from("pharmacies").insert([payload]);
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function deletePharmacy(id: string) {
+  const { error } = await supabase.from("pharmacies").delete().eq("id", id);
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+// Cross-branch availability: looks up the same medicine across ALL branches,
+// intentionally ignoring the active-branch filter. Matches by barcode when
+// available, otherwise by name.
+export async function getBranchAvailability(medicine: Partial<Medicine>): Promise<
+  Array<{ pharmacyId: string; qty: number; expiry?: string; price?: number }>
+> {
+  let query = supabase.from("medicines").select("pharmacy_id, qty, expiry, price");
+
+  const barcode = (medicine.barcode || "").trim();
+  if (barcode) {
+    query = query.eq("barcode", barcode);
+  } else {
+    const orParts: string[] = [];
+    if (medicine.name_ar) orParts.push(`name_ar.eq.${medicine.name_ar}`);
+    if (medicine.name_en) orParts.push(`name_en.eq.${medicine.name_en}`);
+    if (orParts.length === 0) return [];
+    query = query.or(orParts.join(","));
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("getBranchAvailability error:", error.message);
+    return [];
+  }
+
+  const totals = new Map<string, { pharmacyId: string; qty: number; expiry?: string; price?: number }>();
+  for (const row of data || []) {
+    const pharmacyId = (row as any).pharmacy_id || "main";
+    const existing = totals.get(pharmacyId);
+    if (existing) {
+      existing.qty += Number((row as any).qty) || 0;
+    } else {
+      totals.set(pharmacyId, {
+        pharmacyId,
+        qty: Number((row as any).qty) || 0,
+        expiry: (row as any).expiry || undefined,
+        price: Number((row as any).price) || undefined,
+      });
+    }
+  }
+
+  return Array.from(totals.values());
 }
 
 export async function getSystemUsers(pharmacyId: string): Promise<SystemUser[]> {
@@ -567,8 +700,92 @@ export async function updateSystemUser(uid: string, updates: Partial<SystemUser>
   }
 }
 
+export function validateNewUserEmail(email: string): string | null {
+  const normalized = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(normalized)) {
+    return "invalid_format";
+  }
+  return null;
+}
+
+export async function createSystemUser(params: {
+  email: string;
+  password: string;
+  name: string;
+  role: AppUser["role"];
+  pharmacyId: string;
+}): Promise<string> {
+  const email = params.email.trim().toLowerCase();
+
+  const emailIssue = validateNewUserEmail(email);
+  if (emailIssue === "invalid_format") {
+    throw new Error("email_address_invalid_format");
+  }
+
+  const ephemeral = createEphemeralSupabase();
+
+  const { data: authData, error: authError } = await ephemeral.auth.signUp({
+    email,
+    password: params.password,
+    options: {
+      data: { name: params.name },
+    },
+  });
+
+  if (authError) {
+    const code = (authError as { code?: string }).code || "";
+    if (code === "email_address_invalid") {
+      throw new Error("email_address_invalid");
+    }
+    if (code === "over_email_send_rate_limit") {
+      throw new Error("over_email_send_rate_limit");
+    }
+    throw new Error(authError.message);
+  }
+
+  const uid = authData.user?.id;
+  if (!uid) {
+    throw new Error("auth_pending_confirmation");
+  }
+
+  const { error: insertError } = await supabase.from("users").insert([
+    {
+      uid,
+      name: params.name.trim(),
+      email,
+      role: params.role,
+      pharmacy_id: params.pharmacyId,
+      is_active: true,
+    },
+  ]);
+
+  if (insertError) {
+    throw new Error(insertError.message);
+  }
+
+  return uid;
+}
+
+export async function sendPasswordResetEmail(email: string) {
+  const base = import.meta.env.BASE_URL || "/";
+  const redirectTo = `${window.location.origin}${base}`;
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+    redirectTo,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function deleteSystemUser(uid: string) {
+  const { error } = await supabase.from("users").delete().eq("uid", uid);
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 export async function saveCustomerPayment(payment: CustomerPayment) {
-  const payload = toSnakeCase(payment);
+  const payload = stampPharmacy(toSnakeCase(payment));
   const { error } = await supabase.from("customer_payments").insert([payload]);
   if (error) {
     throw new Error(error.message);
@@ -587,7 +804,7 @@ export async function deleteCustomerPayment(paymentNumber: string) {
 }
 
 export async function createPurchase(purchase: PurchaseRecord) {
-  const payload = toSnakeCase(purchase);
+  const payload = stampPharmacy(toSnakeCase(purchase));
   const { error } = await supabase.from("purchases").insert([payload]);
   if (error) {
     throw new Error(error.message);
@@ -595,7 +812,7 @@ export async function createPurchase(purchase: PurchaseRecord) {
 }
 
 export async function createReturn(returnRecord: ReturnRecord) {
-  const payload = toSnakeCase(returnRecord);
+  const payload = stampPharmacy(toSnakeCase(returnRecord));
   const { error } = await supabase.from("returns").insert([payload]);
   if (error) {
     throw new Error(error.message);

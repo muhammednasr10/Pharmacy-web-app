@@ -23,6 +23,7 @@ export type Page =
   | "stockMovements"
   | "activityLogs"
   | "users"
+  | "branches"
   | "settings";
 
 export type PaymentMethod = "cash" | "visa" | "wallet" | "credit";

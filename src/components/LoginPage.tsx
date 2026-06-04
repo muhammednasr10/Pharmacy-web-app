@@ -1,4 +1,5 @@
 import type { FormEvent } from "react";
+import DeveloperCredit from "./DeveloperCredit";
 
 type LoginPageProps = {
   status: "loading" | "login" | "denied";
@@ -51,6 +52,7 @@ export default function LoginPage({
           </p>
           <button onClick={onLogout}>{isArabic ? "تسجيل خروج" : "Logout"}</button>
         </div>
+        <DeveloperCredit isArabic={isArabic} variant="login" />
       </div>
     );
   }
@@ -83,6 +85,7 @@ export default function LoginPage({
           {t.langButton}
         </button>
       </form>
+      <DeveloperCredit isArabic={isArabic} variant="login" />
     </div>
   );
 }

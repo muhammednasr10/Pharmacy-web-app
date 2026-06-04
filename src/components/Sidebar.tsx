@@ -1,4 +1,5 @@
 import type { AppUser, Page } from "../types";
+import DeveloperCredit from "./DeveloperCredit";
 
 type SidebarProps = {
   appUser: AppUser | null;
@@ -26,6 +27,7 @@ const pageLabels: Record<Page, string> = {
   stockMovements: "stockMovements",
   activityLogs: "activityLogs",
   users: "users",
+  branches: "branches",
   settings: "settings",
 };
 
@@ -41,6 +43,7 @@ const pageIcons: Record<Page, string> = {
   stockMovements: "🔄",
   activityLogs: "📜",
   users: "👤",
+  branches: "🏢",
   settings: "⚙️",
 };
 
@@ -79,6 +82,8 @@ export default function Sidebar({
         return { page, label: isArabic ? "سجل النشاط" : "Activity Log" };
       case "users":
         return { page, label: isArabic ? "المستخدمين" : "Users" };
+      case "branches":
+        return { page, label: isArabic ? "الفروع" : "Branches" };
       case "settings":
         return { page, label: isArabic ? "الإعدادات" : "Settings" };
       default:
@@ -123,6 +128,10 @@ export default function Sidebar({
             </button>
           ))}
         </nav>
+
+        <div className="sidebarFooter">
+          <DeveloperCredit isArabic={isArabic} variant="sidebar" />
+        </div>
       </aside>
     </>
   );

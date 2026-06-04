@@ -44,7 +44,8 @@ export default function InvoiceTable({
       <div className="cardHeader">
         <h2>{t.allInvoices}</h2>
         <button className="printBtn" onClick={exportInvoicesCSV}>
-          {isArabic ? "تصدير Excel" : "Export Excel"}
+          <span aria-hidden="true">⬇️</span>
+          <span>{isArabic ? "تصدير Excel" : "Export Excel"}</span>
         </button>
       </div>
       <div className="filtersBar">
@@ -118,7 +119,7 @@ export default function InvoiceTable({
                           {isArabic ? "مرتجع" : "Return"}
                         </button>
                       )}
-                      <button className="printBtn" onClick={() => onPrintInvoice(invoice)}>{t.print}</button>
+                      <button className="printBtn" onClick={() => onPrintInvoice(invoice)}><span aria-hidden="true">🖨️</span><span>{t.print}</span></button>
                     </div>
                   </td>
                 </tr>

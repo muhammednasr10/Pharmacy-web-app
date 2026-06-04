@@ -1,17 +1,19 @@
+import { useEffect, useState } from "react";
 import type { NewMedicineForm, Medicine } from "../types";
 import MedicineForm from "../components/MedicineForm";
 import MedicineTable from "../components/MedicineTable";
 
 type InventoryPageProps = {
-  filteredMedicines: Medicine[];
+  medicines: Medicine[];
   newMedicine: NewMedicineForm;
   editingMedicineId: number | null;
   isArabic: boolean;
   t: Record<string, string>;
   currency: string;
   onFormChange: (value: NewMedicineForm) => void;
-  onSave: () => void;
+  onSave: () => void | Promise<void>;
   onCancel: () => void;
+  onOpenAdd: () => void;
   disabled: boolean;
   exportInventoryCSV: () => void;
   isSubscriptionExpired: boolean;
@@ -24,7 +26,7 @@ type InventoryPageProps = {
 };
 
 export default function InventoryPage({
-  filteredMedicines,
+  medicines,
   newMedicine,
   editingMedicineId,
   isArabic,
@@ -33,6 +35,7 @@ export default function InventoryPage({
   onFormChange,
   onSave,
   onCancel,
+  onOpenAdd,
   disabled,
   exportInventoryCSV,
   isSubscriptionExpired,
@@ -43,6 +46,29 @@ export default function InventoryPage({
   onEditMedicine,
   onDeleteMedicine,
 }: InventoryPageProps) {
+  const [showMedicineForm, setShowMedicineForm] = useState(false);
+
+  useEffect(() => {
+    if (editingMedicineId) {
+      setShowMedicineForm(true);
+    }
+  }, [editingMedicineId]);
+
+  function openAddForm() {
+    onOpenAdd();
+    setShowMedicineForm(true);
+  }
+
+  function closeForm() {
+    onCancel();
+    setShowMedicineForm(false);
+  }
+
+  async function handleSave() {
+    await onSave();
+    setShowMedicineForm(false);
+  }
+
   return (
     <section className="card inventoryOnlyPage">
       <div className="cardHeader">
@@ -50,29 +76,45 @@ export default function InventoryPage({
           <h2>{t.inventory}</h2>
           <p className="mutedText">
             {isArabic
-              ? `عدد النتائج: ${filteredMedicines.length}`
-              : `Results: ${filteredMedicines.length}`}
+              ? `إجمالي الأدوية: ${medicines.length}`
+              : `Total medicines: ${medicines.length}`}
           </p>
         </div>
-        <button className="printBtn" onClick={exportInventoryCSV}>
-          {isArabic ? "تصدير Excel" : "Export Excel"}
-        </button>
+        <div className="inventoryHeaderActions">
+          {canManageInventory && !isSubscriptionExpired && (
+            <button type="button" className="addMedicineBtn" onClick={openAddForm}>
+              {isArabic ? "+ إضافة دواء جديد" : "+ Add New Medicine"}
+            </button>
+          )}
+          <button type="button" className="printBtn" onClick={exportInventoryCSV}>
+            <span aria-hidden="true">⬇️</span>
+            <span>{isArabic ? "تصدير Excel" : "Export Excel"}</span>
+          </button>
+        </div>
       </div>
-      <MedicineForm
-        newMedicine={newMedicine}
-        editingMedicineId={editingMedicineId}
-        isArabic={isArabic}
-        t={t}
-        onFormChange={onFormChange}
-        onSave={onSave}
-        onCancel={onCancel}
-        disabled={disabled}
-      />
+
+      {showMedicineForm && canManageInventory && (
+        <div className="medicineFormCard">
+          <MedicineForm
+            newMedicine={newMedicine}
+            editingMedicineId={editingMedicineId}
+            isArabic={isArabic}
+            t={t}
+            onFormChange={onFormChange}
+            onSave={() => void handleSave()}
+            onCancel={closeForm}
+            disabled={disabled}
+            showCancel
+          />
+        </div>
+      )}
+
       <MedicineTable
-        filteredMedicines={filteredMedicines}
+        medicines={medicines}
         t={t}
         isArabic={isArabic}
         currency={currency}
+        showColumnFilters
         showManagementActions={true}
         canUsePOS={canUsePOS}
         canManageInventory={canManageInventory}

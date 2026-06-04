@@ -84,7 +84,7 @@ export default function InvoiceModal({
           </table>
         </div>
         <div className="modalActions">
-          <button className="printFullBtn" onClick={() => onPrint(selectedInvoice)}>{t.printInvoice}</button>
+          <button className="printFullBtn" onClick={() => onPrint(selectedInvoice)}><span aria-hidden="true">🖨️</span><span>{t.printInvoice}</span></button>
           <button className="completeBtn" onClick={onClose}>{t.close}</button>
         </div>
       </div>

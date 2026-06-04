@@ -43,8 +43,6 @@ import type {
 
 const translations = {
   ar: {
-    title: "ويب أب إدارة الصيدلية",
-    subtitle: "نظام مبسط لإدارة المبيعات والمخزون",
     dashboard: "لوحة التحكم",
     inventory: "المخزون",
     pos: "نقطة البيع",
@@ -103,8 +101,6 @@ const translations = {
     filteredInvoices: "فواتير الفترة",
   },
   en: {
-    title: "Pharmacy Web App",
-    subtitle: "Simple sales and inventory management system",
     dashboard: "Dashboard",
     inventory: "Inventory",
     pos: "Point of Sale",
@@ -235,6 +231,13 @@ function App() {
   const [lang, setLang] = useState<Lang>("ar");
   const [activePage, setActivePage] = useState<Page>("dashboard");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  useEffect(() => {
+    document.body.style.overflow = isMenuOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isMenuOpen]);
   const [query, setQuery] = useState("");
   const [posMessage, setPosMessage] = useState("");
   const [medicines, setMedicines] = useState<Medicine[]>(medicinesSeed);
@@ -297,10 +300,43 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
-  const [userLoading, setUserLoading] = useState(true);
+  const [branches, setBranches] = useState<PharmacySettings[]>([]);
+  const [activeBranchId, setActiveBranchId] = useState<string | null>(null);
+  const [branchModal, setBranchModal] = useState<"add" | "edit" | null>(null);
+  const [savingBranch, setSavingBranch] = useState(false);
+  const [availabilityModal, setAvailabilityModal] = useState<{
+    medicine: Medicine;
+    rows: Array<{ pharmacyId: string; qty: number; expiry?: string; price?: number }>;
+  } | null>(null);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [branchForm, setBranchForm] = useState({
+    id: "",
+    name: "",
+    name_en: "",
+    phone: "",
+    address: "",
+    currency: "ج.م",
+    isActive: true,
+  });
+  const [userLoading, setUserLoading] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
+  const [userModal, setUserModal] = useState<"add" | "edit" | null>(null);
+  const [addingUser, setAddingUser] = useState(false);
+  const [savingUserEdit, setSavingUserEdit] = useState(false);
+  const [newUserForm, setNewUserForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "cashier" as AppUser["role"],
+  });
+  const [editUserDraft, setEditUserDraft] = useState<{
+    uid: string;
+    name: string;
+    role: AppUser["role"];
+    email: string;
+  } | null>(null);
   const [dashboardPeriod, setDashboardPeriod] = useState<
     "today" | "7days" | "month" | "custom"
   >("today");
@@ -329,94 +365,98 @@ function App() {
   subscriptionEndDate: "",
   logoBase64: "",
 });
-  const [supabaseTestStatus, setSupabaseTestStatus] = useState<string | null>(null);
-  const [supabaseTestLoading, setSupabaseTestLoading] = useState(false);
-  
 useEffect(() => {
-  const authSubscription = pharmacyService.onAuthStateChange(async (event, session) => {
+  let cancelled = false;
+
+  const processSession = async (session: { user?: { id: string; email?: string | null } } | null) => {
+    if (cancelled) return;
+
     const currentUser = session?.user
       ? { uid: session.user.id, email: session.user.email || undefined }
       : null;
 
-    console.log("[Auth] onAuthStateChange", { event, hasSession: !!session, currentUser });
     setUser(currentUser);
     setAuthLoading(false);
 
     if (!currentUser) {
-      console.log("[Auth] no current user, stopping loading");
       setAppUser(null);
+      setActiveBranchId(null);
+      pharmacyService.setActivePharmacy(null);
       setUserLoading(false);
       return;
     }
 
     try {
-      console.log("[Auth] loading app user for uid", currentUser.uid);
       setUserLoading(true);
-
       const data = await pharmacyService.getAppUserByUid(currentUser.uid);
-      console.log("[Auth] getAppUserByUid result", { uid: currentUser.uid, appUser: data });
 
       if (!data) {
-        console.warn("[Auth] app user not found or inaccessible", { uid: currentUser.uid });
         setAppUser(null);
-        setUserLoading(false);
         await pharmacyService.signOutUser();
         alert("هذا المستخدم غير مسجل في نظام الصيدلية");
         return;
       }
 
       if (!data.isActive) {
-        console.warn("[Auth] app user inactive", { uid: currentUser.uid, appUser: data });
         setAppUser(null);
-        setUserLoading(false);
         await pharmacyService.signOutUser();
         alert("هذا المستخدم موقوف");
         return;
       }
 
       setAppUser(data);
+      setActiveBranchId(data.pharmacyId || null);
     } catch (error) {
       console.error("[Auth] error loading app user", error);
       setAppUser(null);
-      setUserLoading(false);
       await pharmacyService.signOutUser();
       alert("حدث خطأ أثناء تحميل بيانات المستخدم");
     } finally {
-      setUserLoading(false);
+      if (!cancelled) setUserLoading(false);
     }
+  };
+
+  pharmacyService
+    .getAuthSession()
+    .then(({ data: { session } }) => processSession(session))
+    .catch((error) => {
+      console.error("[Auth] getSession failed", error);
+      if (!cancelled) {
+        setAuthLoading(false);
+        setUserLoading(false);
+      }
+    });
+
+  const authSubscription = pharmacyService.onAuthStateChange((event, session) => {
+    if (event === "INITIAL_SESSION") return;
+    void processSession(session);
   });
 
+  const authTimeout = window.setTimeout(() => {
+    if (!cancelled) {
+      setAuthLoading(false);
+      setUserLoading(false);
+    }
+  }, 10000);
+
   return () => {
+    cancelled = true;
+    window.clearTimeout(authTimeout);
     authSubscription.data?.subscription.unsubscribe();
   };
 }, []);
-
-async function testSupabaseConnection() {
-  try {
-    setSupabaseTestLoading(true);
-    setSupabaseTestStatus(null);
-
-    const medicines = await pharmacyService.getMedicines();
-    setSupabaseTestStatus(
-      `Supabase OK: found ${medicines.length} medicine${medicines.length === 1 ? "" : "s"}`
-    );
-  } catch (error) {
-    setSupabaseTestStatus(
-      `Supabase error: ${error instanceof Error ? error.message : String(error)}`
-    );
-  } finally {
-    setSupabaseTestLoading(false);
-  }
-}
 
 useEffect(() => {
     const currentAppUser = appUser;
     if (!currentAppUser) return;
 
+    const branchId = activeBranchId || currentAppUser.pharmacyId;
+    pharmacyService.setActivePharmacy(branchId);
+
     const cleanup: Array<() => void> = [];
 
     async function loadData(user: AppUser) {
-      const pharmacySettings = await pharmacyService.getPharmacySettings(user.pharmacyId);
+      const pharmacySettings = await pharmacyService.getPharmacySettings(branchId);
       if (pharmacySettings) {
         setPharmacySettings(pharmacySettings);
         setSettingsForm({
@@ -432,7 +472,7 @@ useEffect(() => {
         });
       }
 
-      if (user.role === "admin") {
+      if (user.role === "admin" && branchId === "main") {
         const medicinesList = await pharmacyService.getMedicines();
         if (medicinesList.length === 0 && typeof medicinesSeed !== "undefined") {
           for (const medicine of medicinesSeed) {
@@ -449,16 +489,20 @@ useEffect(() => {
       setStockMovements(await pharmacyService.getStockMovements());
       setActivityLogs(await pharmacyService.getActivityLogs());
 
+      setBranches(await pharmacyService.getPharmacies());
+
       if (user.role === "admin") {
-        setSystemUsers(await pharmacyService.getSystemUsers(user.pharmacyId));
+        setSystemUsers(await pharmacyService.getSystemUsers(branchId));
       }
     }
 
     loadData(currentAppUser).catch((error) => {
-      console.error("Supabase initial load error:", error);
+      console.error("Initial data load error:", error);
     });
 
-    cleanup.push(pharmacyService.subscribePharmacySettings(currentAppUser.pharmacyId, (settings) => {
+    cleanup.push(pharmacyService.subscribePharmacies(setBranches));
+
+    cleanup.push(pharmacyService.subscribePharmacySettings(branchId, (settings) => {
       setPharmacySettings(settings);
       setSettingsForm({
         name: settings.name || "",
@@ -482,13 +526,13 @@ useEffect(() => {
     cleanup.push(pharmacyService.subscribeActivityLogs(setActivityLogs));
 
     if (currentAppUser.role === "admin") {
-      cleanup.push(pharmacyService.subscribeUsers(currentAppUser.pharmacyId, setSystemUsers));
+      cleanup.push(pharmacyService.subscribeUsers(branchId, setSystemUsers));
     }
 
     return () => {
       cleanup.forEach((unsubscribe) => unsubscribe());
     };
-  }, [appUser]);
+  }, [appUser, activeBranchId]);
 
    const filteredMedicines = useMemo(() => {
   const value = query.trim().toLowerCase();
@@ -539,6 +583,29 @@ const expiringSoonMedicines = medicines.filter(
 const lowStockCount = lowStockMedicines.length;
 const expiringCount = expiringSoonMedicines.length;
 const expiredCount = expiredMedicines.length;
+
+const medicineName = (m: Medicine) => (isArabic ? m.name_ar : m.name_en) || m.name_ar || m.name_en;
+const alertItems = [
+  ...expiredMedicines.slice(0, 6).map((m) => ({
+    id: `expired-${m.id}`,
+    kind: "expired" as const,
+    name: medicineName(m),
+    detail: `${isArabic ? "انتهت في" : "Expired"}: ${m.expiry}`,
+  })),
+  ...lowStockMedicines.slice(0, 6).map((m) => ({
+    id: `low-${m.id}`,
+    kind: "low" as const,
+    name: medicineName(m),
+    detail: `${isArabic ? "الكمية المتبقية" : "Remaining qty"}: ${m.qty}`,
+  })),
+  ...expiringSoonMedicines.slice(0, 6).map((m) => ({
+    id: `expiring-${m.id}`,
+    kind: "expiring" as const,
+    name: medicineName(m),
+    detail: `${isArabic ? "تنتهي في" : "Expires"}: ${m.expiry}`,
+  })),
+];
+const alertTotal = lowStockCount + expiringCount + expiredCount;
 const subscriptionEndDate = pharmacySettings?.subscriptionEndDate || "";
 const subscriptionEnd = subscriptionEndDate
   ? new Date(`${subscriptionEndDate}T23:59:59`)
@@ -617,6 +684,37 @@ const dashboardProfitTotal = dashboardInvoices.reduce(
 );
 
 const dashboardInvoicesCount = dashboardInvoices.length;
+
+const dashboardSalesTrend = (() => {
+  const buckets = new Map<string, number>();
+  const cursor = new Date(dashboardDateRange.from);
+  cursor.setHours(0, 0, 0, 0);
+  const end = new Date(dashboardDateRange.to);
+  let guard = 0;
+  while (cursor <= end && guard < 120) {
+    buckets.set(formatDateInput(cursor), 0);
+    cursor.setDate(cursor.getDate() + 1);
+    guard += 1;
+  }
+  dashboardInvoices.forEach((invoice) => {
+    const key = formatDateInput(new Date(invoice.createdAt || invoice.date));
+    if (buckets.has(key)) {
+      buckets.set(key, (buckets.get(key) || 0) + safeNumber(invoice.total));
+    }
+  });
+  return Array.from(buckets.entries()).map(([date, total]) => ({ date, total }));
+})();
+
+const dashboardPaymentBreakdown = (() => {
+  const map = new Map<string, number>();
+  dashboardInvoices.forEach((invoice) => {
+    const method = invoice.paymentMethod || "cash";
+    map.set(method, (map.get(method) || 0) + safeNumber(invoice.total));
+  });
+  return Array.from(map.entries())
+    .map(([method, total]) => ({ method, total }))
+    .sort((a, b) => b.total - a.total);
+})();
 
 const dashboardTopSellingMedicines = Object.values(
   dashboardInvoices
@@ -873,7 +971,65 @@ const topSellingMedicines = Object.values(
 )
   .sort((a, b) => b.quantity - a.quantity)
   .slice(0, 5);
-  
+
+  const reportSalesTrend = (() => {
+    const map = new Map<string, number>();
+    for (const invoice of filteredReportInvoices) {
+      const key = (invoice.createdAt || invoice.date || "").slice(0, 10);
+      if (!key) continue;
+      map.set(key, (map.get(key) || 0) + (invoice.total || 0));
+    }
+    const from = new Date(`${reportFrom}T00:00:00`);
+    const to = new Date(`${reportTo}T00:00:00`);
+    const dayMs = 86400000;
+    const span = Math.round((to.getTime() - from.getTime()) / dayMs) + 1;
+    if (span > 0 && span <= 62) {
+      const points: { date: string; total: number }[] = [];
+      for (let i = 0; i < span; i++) {
+        const key = formatDateInput(new Date(from.getTime() + i * dayMs));
+        points.push({ date: key, total: map.get(key) || 0 });
+      }
+      return points;
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+      .map(([date, total]) => ({ date, total }));
+  })();
+
+  const reportPaymentBreakdown = Object.entries(reportPaymentTotals)
+    .map(([method, total]) => ({ method, total }))
+    .filter((slice) => slice.total > 0)
+    .sort((a, b) => b.total - a.total);
+
+  const reportUnitsSold = filteredReportInvoices.reduce(
+    (sum, invoice) =>
+      sum + (invoice.items || []).reduce((s, item) => s + (item.quantity || 0), 0),
+    0
+  );
+
+  const reportReturnsTotal = returns
+    .filter((record: any) => {
+      const key = (record.createdAt || record.date || "").slice(0, 10);
+      return key && key >= reportFrom && key <= reportTo;
+    })
+    .reduce((sum, record: any) => sum + safeNumber(record.total), 0);
+
+  function applyReportQuickRange(preset: "today" | "7days" | "month" | "year") {
+    const today = new Date();
+    let from = new Date();
+    if (preset === "today") {
+      from = today;
+    } else if (preset === "7days") {
+      from = new Date(today.getTime() - 6 * 86400000);
+    } else if (preset === "month") {
+      from = new Date(today.getFullYear(), today.getMonth(), 1);
+    } else {
+      from = new Date(today.getFullYear(), 0, 1);
+    }
+    setReportFrom(formatDateInput(from));
+    setReportTo(formatDateInput(today));
+  }
+
   async function renewSubscription(days = 30) {
   if (!hasRole(["admin"])) {
     alert(
@@ -1114,7 +1270,7 @@ function canOpenPage(page: Page) {
   return false;
 }
 function getPharmacyId() {
-  return appUser?.pharmacyId || "default-pharmacy";
+  return activeBranchId || appUser?.pharmacyId || "default-pharmacy";
 }
   function addToCart(medicine: Medicine) {
     if (medicine.qty <= 0) {
@@ -1294,6 +1450,11 @@ await addActivityLog({
   }
 
   function cancelEditMedicine() {
+    setEditingMedicineId(null);
+    setNewMedicine(emptyMedicineForm);
+  }
+
+  function openAddMedicineForm() {
     setEditingMedicineId(null);
     setNewMedicine(emptyMedicineForm);
   }
@@ -1801,19 +1962,395 @@ async function updateSystemUser(
 
   await pharmacyService.updateSystemUser(uid, updates as Partial<SystemUser>);
 
-const updatedUser = systemUsers.find((systemUser) => systemUser.uid === uid);
+  const updatedUser = systemUsers.find((systemUser) => systemUser.uid === uid);
 
-await addActivityLog({
-  type: "user_update",
-  title: isArabic ? "تعديل مستخدم" : "User Updated",
-  description: isArabic
-    ? `تم تعديل المستخدم ${updatedUser?.name || uid}`
-    : `User ${updatedUser?.name || uid} was updated`,
-  referenceType: "user",
-  referenceId: uid,
-});
+  await addActivityLog({
+    type: "user_update",
+    title: isArabic ? "تعديل مستخدم" : "User Updated",
+    description: isArabic
+      ? `تم تعديل المستخدم ${updates.name || updatedUser?.name || uid}`
+      : `User ${updates.name || updatedUser?.name || uid} was updated`,
+    referenceType: "user",
+    referenceId: uid,
+  });
 
-alert(isArabic ? "تم تحديث المستخدم" : "User updated");
+  setSystemUsers((prev) =>
+    prev.map((u) => (u.uid === uid ? { ...u, ...updates } : u))
+  );
+  if (appUser?.pharmacyId) {
+    setSystemUsers(await pharmacyService.getSystemUsers(appUser.pharmacyId));
+  }
+
+  if (userModal !== "edit") {
+    alert(isArabic ? "تم تحديث المستخدم" : "User updated");
+  }
+}
+
+function getRoleLabel(role: AppUser["role"]) {
+  if (!isArabic) return role;
+  const labels: Record<AppUser["role"], string> = {
+    admin: "مدير",
+    cashier: "كاشير",
+    inventory: "مخزون",
+    manager: "مشرف",
+  };
+  return labels[role] || role;
+}
+
+function formatUserCreationError(message: string) {
+  if (message === "email_address_invalid" || message === "email_address_invalid_format") {
+    return isArabic
+      ? "صيغة الإيميل غير مقبولة. جرّب بريداً آخر مثل cashier@focus-pharmacy.eg"
+      : "Invalid email format. Try another address like cashier@focus-pharmacy.eg";
+  }
+  if (message === "over_email_send_rate_limit") {
+    return isArabic
+      ? "تم إرسال عدد كبير من الطلبات. انتظر دقائق ثم حاول مرة أخرى."
+      : "Too many requests. Please wait a few minutes and try again.";
+  }
+  if (message.includes("already registered") || message.includes("already been registered")) {
+    return isArabic ? "هذا الإيميل مسجل بالفعل" : "This email is already registered";
+  }
+  if (message === "auth_pending_confirmation") {
+    return isArabic
+      ? "تم إنشاء الحساب. قد يحتاج المستخدم لتأكيد البريد قبل أول تسجيل دخول."
+      : "Account created. The user may need to confirm their email before signing in.";
+  }
+  return message;
+}
+
+async function addSystemUser() {
+  if (!canManageUsers()) {
+    alert(isArabic ? "ليس لديك صلاحية لإدارة المستخدمين" : "You do not have permission to manage users");
+    return;
+  }
+  if (!appUser?.pharmacyId) return;
+
+  const name = newUserForm.name.trim();
+  const email = newUserForm.email.trim().toLowerCase();
+  const password = newUserForm.password;
+
+  if (!name || !email) {
+    alert(isArabic ? "أكمل الاسم والإيميل" : "Please fill name and email");
+    return;
+  }
+
+  if (systemUsers.some((u) => u.email.toLowerCase() === email)) {
+    alert(isArabic ? "هذا الإيميل مستخدم بالفعل" : "This email is already in use");
+    return;
+  }
+
+  if (!password) {
+    alert(isArabic ? "أدخل كلمة المرور" : "Enter a password");
+    return;
+  }
+  if (password.length < 6) {
+    alert(isArabic ? "كلمة المرور 6 أحرف على الأقل" : "Password must be at least 6 characters");
+    return;
+  }
+
+  setAddingUser(true);
+  try {
+    const newUid = await pharmacyService.createSystemUser({
+      name,
+      email,
+      password,
+      role: newUserForm.role,
+      pharmacyId: appUser.pharmacyId,
+    });
+
+    await addActivityLog({
+      type: "user_update",
+      title: isArabic ? "إضافة مستخدم" : "User Added",
+      description: isArabic ? `تم إضافة المستخدم ${name}` : `User ${name} was added`,
+      referenceType: "user",
+      referenceId: newUid,
+    });
+
+    setNewUserForm({ name: "", email: "", password: "", role: "cashier" });
+    setUserModal(null);
+    setSystemUsers(await pharmacyService.getSystemUsers(appUser.pharmacyId));
+    alert(isArabic ? "تم إضافة المستخدم بنجاح" : "User added successfully");
+  } catch (error) {
+    console.error(error);
+    const raw = error instanceof Error ? error.message : "";
+    alert(formatUserCreationError(raw) || (isArabic ? "تعذر إضافة المستخدم" : "Could not add user"));
+  } finally {
+    setAddingUser(false);
+  }
+}
+
+function openAddUserModal() {
+  setNewUserForm({ name: "", email: "", password: "", role: "cashier" });
+  setUserModal("add");
+}
+
+function openEditUserModal(systemUser: SystemUser) {
+  setEditUserDraft({
+    uid: systemUser.uid,
+    name: systemUser.name,
+    role: systemUser.role,
+    email: systemUser.email,
+  });
+  setUserModal("edit");
+}
+
+function closeUserModal() {
+  setUserModal(null);
+  setEditUserDraft(null);
+}
+
+function switchBranch(id: string) {
+  if (id === activeBranchId) return;
+  setActiveBranchId(id);
+  setIsMenuOpen(false);
+}
+
+async function openAvailability(medicine: Medicine) {
+  setAvailabilityLoading(true);
+  setAvailabilityModal({ medicine, rows: [] });
+  try {
+    const rows = await pharmacyService.getBranchAvailability(medicine);
+    setAvailabilityModal({ medicine, rows });
+  } catch (error) {
+    console.error("openAvailability error:", error);
+    setAvailabilityModal({ medicine, rows: [] });
+  } finally {
+    setAvailabilityLoading(false);
+  }
+}
+
+function branchLabel(pharmacyId: string) {
+  const branch = branches.find((b) => b.id === pharmacyId);
+  if (!branch) return pharmacyId;
+  return (isArabic ? branch.name : branch.name_en) || branch.name || pharmacyId;
+}
+
+function openAddBranchModal() {
+  setBranchForm({
+    id: "",
+    name: "",
+    name_en: "",
+    phone: "",
+    address: "",
+    currency: pharmacySettings?.currency || "ج.م",
+    isActive: true,
+  });
+  setBranchModal("add");
+}
+
+function openEditBranchModal(branch: PharmacySettings) {
+  setBranchForm({
+    id: branch.id,
+    name: branch.name || "",
+    name_en: branch.name_en || "",
+    phone: branch.phone || "",
+    address: branch.address || "",
+    currency: branch.currency || "ج.م",
+    isActive: branch.isActive !== false,
+  });
+  setBranchModal("edit");
+}
+
+function closeBranchModal() {
+  setBranchModal(null);
+}
+
+function makeBranchId(): string {
+  const base =
+    (branchForm.name_en || branchForm.name || "branch")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "branch";
+  const existing = new Set(branches.map((b) => b.id));
+  if (!existing.has(base)) return base;
+  let i = 2;
+  while (existing.has(`${base}-${i}`)) i += 1;
+  return `${base}-${i}`;
+}
+
+async function saveBranch() {
+  if (appUser?.role !== "admin") {
+    alert(isArabic ? "ليس لديك صلاحية لإدارة الفروع" : "You do not have permission to manage branches");
+    return;
+  }
+  const name = branchForm.name.trim();
+  if (!name) {
+    alert(isArabic ? "من فضلك أدخل اسم الفرع" : "Please enter a branch name");
+    return;
+  }
+
+  setSavingBranch(true);
+  try {
+    if (branchModal === "add") {
+      const id = makeBranchId();
+      await pharmacyService.createPharmacy({
+        id,
+        name,
+        name_en: branchForm.name_en.trim(),
+        phone: branchForm.phone.trim(),
+        address: branchForm.address.trim(),
+        currency: branchForm.currency || "ج.م",
+        isActive: branchForm.isActive,
+      });
+      await addActivityLog({
+        type: "settings_update",
+        title: isArabic ? "إضافة فرع" : "Branch Added",
+        description: isArabic ? `تم إضافة الفرع ${name}` : `Branch ${name} was added`,
+        referenceType: "branch",
+        referenceId: id,
+      });
+    } else {
+      await pharmacyService.updatePharmacySettings(branchForm.id, {
+        name,
+        name_en: branchForm.name_en.trim(),
+        phone: branchForm.phone.trim(),
+        address: branchForm.address.trim(),
+        currency: branchForm.currency || "ج.م",
+        isActive: branchForm.isActive,
+      });
+      await addActivityLog({
+        type: "settings_update",
+        title: isArabic ? "تعديل فرع" : "Branch Updated",
+        description: isArabic ? `تم تعديل الفرع ${name}` : `Branch ${name} was updated`,
+        referenceType: "branch",
+        referenceId: branchForm.id,
+      });
+    }
+    setBranches(await pharmacyService.getPharmacies());
+    closeBranchModal();
+    alert(isArabic ? "تم حفظ بيانات الفرع" : "Branch saved");
+  } catch (error) {
+    console.error("saveBranch error:", error);
+    alert(
+      error instanceof Error
+        ? error.message
+        : isArabic
+        ? "تعذر حفظ الفرع"
+        : "Could not save branch"
+    );
+  } finally {
+    setSavingBranch(false);
+  }
+}
+
+async function removeBranch(id: string, name: string) {
+  if (appUser?.role !== "admin") {
+    alert(isArabic ? "ليس لديك صلاحية لإدارة الفروع" : "You do not have permission to manage branches");
+    return;
+  }
+  if (id === "main") {
+    alert(isArabic ? "لا يمكن حذف الفرع الرئيسي" : "The main branch cannot be deleted");
+    return;
+  }
+  if (id === appUser?.pharmacyId) {
+    alert(isArabic ? "لا يمكنك حذف الفرع التابع له حسابك" : "You cannot delete your own branch");
+    return;
+  }
+  const confirmed = window.confirm(
+    isArabic
+      ? `حذف الفرع "${name}"؟ تأكد أن الفرع لا يحتوي على بيانات (أدوية/فواتير) أولاً.`
+      : `Delete branch "${name}"? Make sure it has no data (medicines/invoices) first.`
+  );
+  if (!confirmed) return;
+
+  try {
+    await pharmacyService.deletePharmacy(id);
+    if (activeBranchId === id) {
+      setActiveBranchId(appUser?.pharmacyId || "main");
+    }
+    await addActivityLog({
+      type: "settings_update",
+      title: isArabic ? "حذف فرع" : "Branch Deleted",
+      description: isArabic ? `تم حذف الفرع ${name}` : `Branch ${name} was deleted`,
+      referenceType: "branch",
+      referenceId: id,
+    });
+    setBranches(await pharmacyService.getPharmacies());
+  } catch (error) {
+    console.error("removeBranch error:", error);
+    alert(
+      isArabic
+        ? "تعذر حذف الفرع. قد يكون مرتبطاً ببيانات (أدوية أو فواتير)."
+        : "Could not delete branch. It may still contain data (medicines or invoices)."
+    );
+  }
+}
+
+async function saveEditUser() {
+  if (!editUserDraft) return;
+  setSavingUserEdit(true);
+  try {
+    await updateSystemUser(editUserDraft.uid, {
+      name: editUserDraft.name.trim(),
+      role: editUserDraft.role,
+    });
+    closeUserModal();
+    alert(isArabic ? "تم حفظ التعديل" : "Changes saved");
+  } finally {
+    setSavingUserEdit(false);
+  }
+}
+
+async function sendUserPasswordReset(email: string) {
+  try {
+    await pharmacyService.sendPasswordResetEmail(email);
+    alert(
+      isArabic
+        ? "تم إرسال رابط تغيير كلمة المرور إلى بريد المستخدم"
+        : "A password reset link was sent to the user's email"
+    );
+  } catch (error) {
+    console.error(error);
+    alert(
+      error instanceof Error
+        ? error.message
+        : isArabic
+        ? "تعذر إرسال رابط تغيير كلمة المرور"
+        : "Could not send password reset link"
+    );
+  }
+}
+
+async function removeSystemUser(uid: string, userName: string) {
+  if (!canManageUsers()) {
+    alert(isArabic ? "ليس لديك صلاحية لإدارة المستخدمين" : "You do not have permission to manage users");
+    return;
+  }
+  if (uid === user?.uid) {
+    alert(isArabic ? "لا يمكنك حذف حسابك الحالي" : "You cannot delete your own account");
+    return;
+  }
+  const confirmed = window.confirm(
+    isArabic
+      ? `حذف المستخدم "${userName}" من النظام؟ لن يستطيع تسجيل الدخول بعد ذلك.`
+      : `Delete user "${userName}"? They will no longer be able to sign in.`
+  );
+  if (!confirmed) return;
+
+  try {
+    await pharmacyService.deleteSystemUser(uid);
+    await addActivityLog({
+      type: "user_update",
+      title: isArabic ? "حذف مستخدم" : "User Deleted",
+      description: isArabic ? `تم حذف المستخدم ${userName}` : `User ${userName} was deleted`,
+      referenceType: "user",
+      referenceId: uid,
+    });
+    if (appUser?.pharmacyId) {
+      setSystemUsers(await pharmacyService.getSystemUsers(appUser.pharmacyId));
+    }
+    alert(isArabic ? "تم حذف المستخدم" : "User deleted");
+  } catch (error) {
+    console.error(error);
+    alert(
+      error instanceof Error
+        ? error.message
+        : isArabic
+        ? "تعذر حذف المستخدم"
+        : "Could not delete user"
+    );
+  }
 }
 
 async function savePurchase() {
@@ -2105,6 +2642,17 @@ function renderInventoryTable(showManagementActions = false) {
                         onClick={() => addToCart(medicine)}
                       >
                         {t.add}
+                      </button>
+                    )}
+
+                    {branches.length > 1 && (
+                      <button
+                        className="branchAvailBtn"
+                        type="button"
+                        title={isArabic ? "التوافر في الفروع" : "Availability across branches"}
+                        onClick={() => void openAvailability(medicine)}
+                      >
+                        🏢 {isArabic ? "الفروع" : "Branches"}
                       </button>
                     )}
 
@@ -2446,9 +2994,13 @@ function addPdfFooter(docPdf: jsPDF, y: number) {
     y = 15;
   }
 
+  const pharmacyName = isArabic
+    ? pharmacySettings?.name || "صيدلية Focus"
+    : pharmacySettings?.name_en || "Focus Pharmacy";
+
   docPdf.setFontSize(9);
   docPdf.text(
-    pharmacySettings?.invoiceFooter || "Generated by Focus System",
+    pharmacySettings?.invoiceFooter || pharmacyName,
     pageWidth / 2,
     y,
     { align: "center" }
@@ -2962,7 +3514,8 @@ function renderPurchasesPage() {
         <h2>{isArabic ? "المخزون الحالي" : "Current Inventory"}</h2>
 
         <button className="printBtn" onClick={exportInventoryCSV}>
-          {isArabic ? "تصدير Excel" : "Export Excel"}
+          <span aria-hidden="true">⬇️</span>
+          <span>{isArabic ? "تصدير Excel" : "Export Excel"}</span>
         </button>
       </div>
 
@@ -2971,7 +3524,8 @@ function renderPurchasesPage() {
   <h2>{isArabic ? "سجل المشتريات" : "Purchases History"}</h2>
 
   <button className="printBtn" onClick={exportPurchasesCSV}>
-    {isArabic ? "تصدير Excel" : "Export Excel"}
+    <span aria-hidden="true">⬇️</span>
+    <span>{isArabic ? "تصدير Excel" : "Export Excel"}</span>
   </button>
 </div>
 
@@ -3280,7 +3834,8 @@ function renderInvoicesTable() {
     <h2>{t.allInvoices}</h2>
 
     <button className="printBtn" onClick={exportInvoicesCSV}>
-      {isArabic ? "تصدير Excel" : "Export Excel"}
+      <span aria-hidden="true">⬇️</span>
+      <span>{isArabic ? "تصدير Excel" : "Export Excel"}</span>
     </button>
   </div>
   <div className="filtersBar">
@@ -3358,7 +3913,7 @@ function renderInvoicesTable() {
     {isArabic ? "مرتجع" : "Return"}
   </button>
 )}
-                        <button className="printBtn" onClick={() => printSavedInvoice(invoice)}>{t.print}</button>
+                        <button className="printBtn" onClick={() => printSavedInvoice(invoice)}><span aria-hidden="true">🖨️</span><span>{t.print}</span></button>
                       </div>
                     </td>
                   </tr>
@@ -3791,7 +4346,8 @@ function renderActivityLogsPage() {
       <div className="cardHeader">
         <h2>{isArabic ? "سجل النشاط" : "Activity Log"}</h2>
         <button className="printBtn" onClick={exportActivityLogsCSV}>
-    {isArabic ? "تصدير Excel" : "Export Excel"}
+    <span aria-hidden="true">⬇️</span>
+    <span>{isArabic ? "تصدير Excel" : "Export Excel"}</span>
   </button>
       </div>
       <div className="filtersBar">
@@ -3927,7 +4483,8 @@ const totalRemaining = customerDebts.reduce(
         <h2>{isArabic ? "العملاء والمديونيات" : "Customers & Debts"}</h2>
 
         <button className="printBtn" onClick={exportCustomersCSV}>
-          {isArabic ? "تصدير Excel" : "Export Excel"}
+          <span aria-hidden="true">⬇️</span>
+          <span>{isArabic ? "تصدير Excel" : "Export Excel"}</span>
         </button>
       </div>
 
@@ -4178,7 +4735,8 @@ const totalRemaining = customerDebts.reduce(
                 className="printBtn"
                 onClick={() => printCustomerPaymentReceipt(payment)}
               >
-                {t.print}
+                <span aria-hidden="true">🖨️</span>
+                <span>{t.print}</span>
               </button>
 
               {hasRole(["admin"]) && (
@@ -4196,7 +4754,8 @@ const totalRemaining = customerDebts.reduce(
                 className="printBtn"
                 onClick={() => printCustomerPaymentReceipt(payment)}
               >
-                {t.print}
+                <span aria-hidden="true">🖨️</span>
+                <span>{t.print}</span>
               </button>
             </td>
           </tr>
@@ -4260,142 +4819,499 @@ const totalRemaining = customerDebts.reduce(
     </section>
   );
 }
-  function renderUsersPage() {
-  return (
-    <section className="card usersPage">
-      <div className="cardHeader">
-        <h2>{isArabic ? "إدارة المستخدمين" : "Users Management"}</h2>
-      </div>
+  function renderUserModal() {
+    const roleOptions: AppUser["role"][] = ["admin", "cashier", "inventory", "manager"];
+    if (!userModal) return null;
 
-      <p className="hintText">
-        {isArabic
-          ? "إنشاء الإيميل والباسورد يتم مؤقتًا من Firebase Authentication، ومن هنا يتم تعديل الدور والحالة."
-          : "Email/password creation is temporarily done from Firebase Authentication. Roles and status are managed here."}
-      </p>
+    const isAdd = userModal === "add";
 
-      {systemUsers.length === 0 ? (
-        <p className="empty">
-          {isArabic ? "لا يوجد مستخدمون" : "No users found"}
-        </p>
-      ) : (
-        <div className="tableWrap">
-          <table>
-            <thead>
-              <tr>
-                <th>{isArabic ? "الاسم" : "Name"}</th>
-                <th>{isArabic ? "الإيميل" : "Email"}</th>
-                <th>{isArabic ? "الدور" : "Role"}</th>
-                <th>{isArabic ? "الحالة" : "Status"}</th>
-                <th>{t.action}</th>
-              </tr>
-            </thead>
+    return (
+      <div className="modalOverlay" onClick={closeUserModal}>
+        <div
+          className="invoiceModal userModal"
+          onClick={(e) => e.stopPropagation()}
+          dir={isArabic ? "rtl" : "ltr"}
+        >
+          <div className="modalHeader">
+            <div>
+              <h2>
+                {isAdd
+                  ? isArabic
+                    ? "إضافة مستخدم جديد"
+                    : "Add New User"
+                  : isArabic
+                  ? "تعديل مستخدم"
+                  : "Edit User"}
+              </h2>
+              <p>
+                {isAdd
+                  ? isArabic
+                    ? "أدخل بيانات الموظف ليتمكن من تسجيل الدخول للنظام"
+                    : "Enter employee details so they can sign in to the system"
+                  : isArabic
+                  ? "تعديل الاسم والدور — الإيميل للعرض فقط"
+                  : "Edit name and role — email is read-only"}
+              </p>
+            </div>
+            <button type="button" className="deleteSmallBtn" onClick={closeUserModal}>
+              {isArabic ? "إغلاق" : "Close"}
+            </button>
+          </div>
 
-            <tbody>
-              {systemUsers.map((systemUser) => (
-                <tr key={systemUser.uid}>
-                  <td>
+          {isAdd ? (
+            <>
+              <div className="userFormGrid">
+                <label>
+                  {isArabic ? "الاسم" : "Name"}
+                  <input
+                    className="searchInput"
+                    value={newUserForm.name}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })}
+                    placeholder={isArabic ? "اسم الموظف" : "Employee name"}
+                  />
+                </label>
+                <label>
+                  {isArabic ? "الإيميل" : "Email"}
+                  <input
+                    className="searchInput"
+                    type="email"
+                    value={newUserForm.email}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
+                    placeholder={isArabic ? "cashier@focus-pharmacy.eg" : "user@your-domain.com"}
+                  />
+                </label>
+                <label>
+                  {isArabic ? "كلمة المرور" : "Password"}
+                  <input
+                    className="searchInput"
+                    type="password"
+                    value={newUserForm.password}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
+                    placeholder={isArabic ? "6 أحرف على الأقل" : "Min. 6 characters"}
+                  />
+                </label>
+                <label>
+                  {isArabic ? "الدور" : "Role"}
+                  <select
+                    className="tableSelect"
+                    value={newUserForm.role}
+                    onChange={(e) =>
+                      setNewUserForm({
+                        ...newUserForm,
+                        role: e.target.value as AppUser["role"],
+                      })
+                    }
+                  >
+                    {roleOptions.map((role) => (
+                      <option key={role} value={role}>
+                        {getRoleLabel(role)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="modalActions">
+                <button type="button" className="editBtn" onClick={closeUserModal}>
+                  {isArabic ? "إلغاء" : "Cancel"}
+                </button>
+                <button
+                  type="button"
+                  className="printBtn"
+                  disabled={addingUser}
+                  onClick={() => void addSystemUser()}
+                >
+                  {addingUser
+                    ? isArabic
+                      ? "جاري الإضافة..."
+                      : "Adding..."
+                    : isArabic
+                    ? "إضافة المستخدم"
+                    : "Add User"}
+                </button>
+              </div>
+            </>
+          ) : (
+            editUserDraft && (
+              <>
+                <div className="userFormGrid">
+                  <label>
+                    {isArabic ? "الاسم" : "Name"}
                     <input
-                      className="tableInput"
-                      value={systemUser.name}
+                      className="searchInput"
+                      value={editUserDraft.name}
                       onChange={(e) =>
-                        setSystemUsers((oldUsers) =>
-                          oldUsers.map((oldUser) =>
-                            oldUser.uid === systemUser.uid
-                              ? { ...oldUser, name: e.target.value }
-                              : oldUser
-                          )
-                        )
+                        setEditUserDraft({ ...editUserDraft, name: e.target.value })
                       }
                     />
-                  </td>
-
-                  <td>{systemUser.email}</td>
-
-                  <td>
+                  </label>
+                  <label>
+                    {isArabic ? "الإيميل" : "Email"}
+                    <input className="searchInput" value={editUserDraft.email} disabled />
+                  </label>
+                  <label>
+                    {isArabic ? "الدور" : "Role"}
                     <select
                       className="tableSelect"
-                      value={systemUser.role}
+                      value={editUserDraft.role}
                       onChange={(e) =>
-                        setSystemUsers((oldUsers) =>
-                          oldUsers.map((oldUser) =>
-                            oldUser.uid === systemUser.uid
-                              ? {
-                                  ...oldUser,
-                                  role: e.target.value as AppUser["role"],
-                                }
-                              : oldUser
-                          )
-                        )
+                        setEditUserDraft({
+                          ...editUserDraft,
+                          role: e.target.value as AppUser["role"],
+                        })
                       }
                     >
-                      <option value="admin">admin</option>
-                      <option value="cashier">cashier</option>
-                      <option value="inventory">inventory</option>
-                      <option value="manager">manager</option>
+                      {roleOptions.map((role) => (
+                        <option key={role} value={role}>
+                          {getRoleLabel(role)}
+                        </option>
+                      ))}
                     </select>
-                  </td>
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  className="editBtn userPasswordResetBtn"
+                  onClick={() => void sendUserPasswordReset(editUserDraft.email)}
+                >
+                  {isArabic ? "إرسال رابط تغيير كلمة المرور" : "Send password reset link"}
+                </button>
+                <div className="modalActions">
+                  <button type="button" className="editBtn" onClick={closeUserModal}>
+                    {isArabic ? "إلغاء" : "Cancel"}
+                  </button>
+                  <button
+                    type="button"
+                    className="printBtn"
+                    disabled={savingUserEdit}
+                    onClick={() => void saveEditUser()}
+                  >
+                    {savingUserEdit
+                      ? isArabic
+                        ? "جاري الحفظ..."
+                        : "Saving..."
+                      : isArabic
+                      ? "حفظ التعديل"
+                      : "Save Changes"}
+                  </button>
+                </div>
+              </>
+            )
+          )}
+        </div>
+      </div>
+    );
+  }
 
-                  <td>
-                    <span
-                      className={
-                        systemUser.isActive ? "badge ok" : "badge danger"
-                      }
-                    >
-                      {systemUser.isActive
-                        ? isArabic
-                          ? "مفعل"
-                          : "Active"
-                        : isArabic
-                        ? "موقوف"
-                        : "Inactive"}
-                    </span>
-                  </td>
+  function renderUsersPage() {
+    const roleOptions: AppUser["role"][] = ["admin", "cashier", "inventory", "manager"];
 
-                  <td>
-                    <div className="actionButtons">
-                      <button
-                        className="smallBtn"
-                        onClick={() =>
-                          updateSystemUser(systemUser.uid, {
-                            name: systemUser.name,
-                            role: systemUser.role,
-                          })
-                        }
-                      >
-                        {isArabic ? "حفظ" : "Save"}
-                      </button>
+    return (
+      <section className="card usersPage">
+        {renderUserModal()}
 
-                      <button
-                        className={
-                          systemUser.isActive
-                            ? "deleteSmallBtn"
-                            : "editBtn"
-                        }
-                        onClick={() => 
-                          updateSystemUser(systemUser.uid, {
-                            isActive: !systemUser.isActive,
-                          })
-                        }
+        <div className="cardHeader">
+          <h2>{isArabic ? "إدارة المستخدمين" : "Users Management"}</h2>
+          <button className="printBtn" type="button" onClick={openAddUserModal}>
+            {isArabic ? "+ إضافة مستخدم" : "+ Add User"}
+          </button>
+        </div>
+
+        <p className="hintText">
+          {isArabic
+            ? "إدارة كاملة: إضافة، تعديل، إيقاف/تفعيل، حذف، وتغيير كلمة المرور عبر البريد."
+            : "Full control: add, edit, activate/deactivate, delete, and reset password via email."}
+        </p>
+
+        {systemUsers.length === 0 ? (
+          <p className="empty">
+            {isArabic ? "لا يوجد مستخدمون — اضغط إضافة مستخدم" : "No users — click Add User"}
+          </p>
+        ) : (
+          <div className="tableWrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>{isArabic ? "الاسم" : "Name"}</th>
+                  <th>{isArabic ? "الإيميل" : "Email"}</th>
+                  <th>{isArabic ? "الدور" : "Role"}</th>
+                  <th>{isArabic ? "الحالة" : "Status"}</th>
+                  <th>{t.action}</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {systemUsers.map((systemUser) => (
+                  <tr key={systemUser.uid}>
+                    <td>{systemUser.name}</td>
+                    <td>{systemUser.email}</td>
+                    <td>{getRoleLabel(systemUser.role)}</td>
+                    <td>
+                      <span
+                        className={systemUser.isActive ? "badge ok" : "badge danger"}
                       >
                         {systemUser.isActive
                           ? isArabic
-                            ? "إيقاف"
-                            : "Deactivate"
+                            ? "مفعل"
+                            : "Active"
                           : isArabic
-                          ? "تفعيل"
-                          : "Activate"}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                          ? "موقوف"
+                          : "Inactive"}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="actionButtons">
+                        <button
+                          type="button"
+                          className="editBtn"
+                          onClick={() => openEditUserModal(systemUser)}
+                        >
+                          {isArabic ? "تعديل" : "Edit"}
+                        </button>
+
+                        <button
+                          type="button"
+                          className={
+                            systemUser.isActive ? "deleteSmallBtn" : "smallBtn"
+                          }
+                          onClick={() =>
+                            updateSystemUser(systemUser.uid, {
+                              isActive: !systemUser.isActive,
+                            })
+                          }
+                        >
+                          {systemUser.isActive
+                            ? isArabic
+                              ? "إيقاف"
+                              : "Deactivate"
+                            : isArabic
+                            ? "تفعيل"
+                            : "Activate"}
+                        </button>
+
+                        <button
+                          type="button"
+                          className="deleteSmallBtn"
+                          disabled={systemUser.uid === user?.uid}
+                          onClick={() =>
+                            void removeSystemUser(systemUser.uid, systemUser.name)
+                          }
+                        >
+                          {isArabic ? "حذف" : "Delete"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    );
+  }
+
+  function renderBranchModal() {
+    if (!branchModal) return null;
+    return (
+      <div className="modalOverlay" onClick={closeBranchModal}>
+        <div className="userFormPanel" onClick={(e) => e.stopPropagation()}>
+          <div className="modalHeader">
+            <h2>
+              {branchModal === "add"
+                ? isArabic
+                  ? "إضافة فرع"
+                  : "Add Branch"
+                : isArabic
+                ? "تعديل فرع"
+                : "Edit Branch"}
+            </h2>
+            <button className="closeBtn" type="button" onClick={closeBranchModal}>
+              ×
+            </button>
+          </div>
+
+          <div className="userFormGrid">
+            <label>
+              <span>{isArabic ? "اسم الفرع" : "Branch name"}</span>
+              <input
+                value={branchForm.name}
+                onChange={(e) => setBranchForm({ ...branchForm, name: e.target.value })}
+                placeholder={isArabic ? "فرع المعادي" : "Maadi Branch"}
+              />
+            </label>
+
+            <label>
+              <span>{isArabic ? "الاسم بالإنجليزية" : "Name (English)"}</span>
+              <input
+                value={branchForm.name_en}
+                onChange={(e) => setBranchForm({ ...branchForm, name_en: e.target.value })}
+                placeholder="Maadi Branch"
+              />
+            </label>
+
+            <label>
+              <span>{isArabic ? "الهاتف" : "Phone"}</span>
+              <input
+                value={branchForm.phone}
+                onChange={(e) => setBranchForm({ ...branchForm, phone: e.target.value })}
+              />
+            </label>
+
+            <label>
+              <span>{isArabic ? "العملة" : "Currency"}</span>
+              <input
+                value={branchForm.currency}
+                onChange={(e) => setBranchForm({ ...branchForm, currency: e.target.value })}
+              />
+            </label>
+
+            <label className="userFormFullWidth">
+              <span>{isArabic ? "العنوان" : "Address"}</span>
+              <input
+                value={branchForm.address}
+                onChange={(e) => setBranchForm({ ...branchForm, address: e.target.value })}
+              />
+            </label>
+
+            <label className="userFormFullWidth branchActiveToggle">
+              <input
+                type="checkbox"
+                checked={branchForm.isActive}
+                onChange={(e) => setBranchForm({ ...branchForm, isActive: e.target.checked })}
+              />
+              <span>{isArabic ? "فرع مفعّل" : "Active branch"}</span>
+            </label>
+          </div>
+
+          <div className="modalActions">
+            <button className="ghostBtn" type="button" onClick={closeBranchModal}>
+              {isArabic ? "إلغاء" : "Cancel"}
+            </button>
+            <button
+              className="printBtn"
+              type="button"
+              disabled={savingBranch}
+              onClick={() => void saveBranch()}
+            >
+              {savingBranch
+                ? isArabic
+                  ? "جارٍ الحفظ..."
+                  : "Saving..."
+                : isArabic
+                ? "حفظ"
+                : "Save"}
+            </button>
+          </div>
         </div>
-      )}
-    </section>
-  );
-}
+      </div>
+    );
+  }
+
+  function renderBranchesPage() {
+    const effectiveBranchId = activeBranchId || appUser?.pharmacyId;
+    return (
+      <section className="card branchesPage">
+        {renderBranchModal()}
+
+        <div className="cardHeader">
+          <h2>{isArabic ? "الفروع" : "Branches"}</h2>
+          <button className="printBtn" type="button" onClick={openAddBranchModal}>
+            {isArabic ? "+ إضافة فرع" : "+ Add Branch"}
+          </button>
+        </div>
+
+        <p className="hintText">
+          {isArabic
+            ? "كل فرع له مخزونه وفواتيره وبياناته المنفصلة. اختر الفرع النشط لعرض وإدارة بياناته."
+            : "Each branch has its own separate inventory, invoices, and data. Pick the active branch to view and manage its data."}
+        </p>
+
+        {branches.length === 0 ? (
+          <p className="empty">
+            {isArabic ? "لا توجد فروع — اضغط إضافة فرع" : "No branches — click Add Branch"}
+          </p>
+        ) : (
+          <div className="tableWrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>{isArabic ? "الفرع" : "Branch"}</th>
+                  <th>{isArabic ? "الهاتف" : "Phone"}</th>
+                  <th>{isArabic ? "العنوان" : "Address"}</th>
+                  <th>{isArabic ? "الحالة" : "Status"}</th>
+                  <th>{t.action}</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {branches.map((branch) => {
+                  const isCurrent = branch.id === effectiveBranchId;
+                  return (
+                    <tr key={branch.id} className={isCurrent ? "branchActiveRow" : ""}>
+                      <td>
+                        <strong>{(isArabic ? branch.name : branch.name_en) || branch.name}</strong>
+                        {isCurrent && (
+                          <span className="badge ok branchCurrentTag">
+                            {isArabic ? "نشط الآن" : "Active"}
+                          </span>
+                        )}
+                      </td>
+                      <td>{branch.phone || "-"}</td>
+                      <td>{branch.address || "-"}</td>
+                      <td>
+                        <span className={branch.isActive !== false ? "badge ok" : "badge danger"}>
+                          {branch.isActive !== false
+                            ? isArabic
+                              ? "مفعل"
+                              : "Active"
+                            : isArabic
+                            ? "موقوف"
+                            : "Inactive"}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="actionButtons">
+                          <button
+                            type="button"
+                            className="smallBtn"
+                            disabled={isCurrent}
+                            onClick={() => switchBranch(branch.id)}
+                          >
+                            {isArabic ? "تبديل" : "Switch"}
+                          </button>
+                          <button
+                            type="button"
+                            className="editBtn"
+                            onClick={() => openEditBranchModal(branch)}
+                          >
+                            {isArabic ? "تعديل" : "Edit"}
+                          </button>
+                          <button
+                            type="button"
+                            className="deleteSmallBtn"
+                            disabled={branch.id === "main" || branch.id === appUser?.pharmacyId}
+                            onClick={() =>
+                              void removeBranch(
+                                branch.id,
+                                (isArabic ? branch.name : branch.name_en) || branch.name
+                              )
+                            }
+                          >
+                            {isArabic ? "حذف" : "Delete"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    );
+  }
+
   function renderStockMovementsTable() {
   return (
     <section className="card stockMovementsPage">
@@ -4403,7 +5319,8 @@ const totalRemaining = customerDebts.reduce(
         <h2>{isArabic ? "حركة المخزون" : "Stock Movements"}</h2>
 
         <button className="printBtn" onClick={exportStockMovementsCSV}>
-          {isArabic ? "تصدير Excel" : "Export Excel"}
+          <span aria-hidden="true">⬇️</span>
+          <span>{isArabic ? "تصدير Excel" : "Export Excel"}</span>
         </button>
       </div>
 
@@ -4584,6 +5501,7 @@ const allowedPagesByRole: Record<AppUser["role"], Page[]> = {
     "stockMovements",
     "activityLogs",
     "users",
+    "branches",
     "settings",
   ],
   cashier: ["pos", "invoices", "returns", "customers"],
@@ -4650,8 +5568,13 @@ if (!allowedPages.includes(activePage)) {
 
       <main className="content">
         <Topbar
-          title={t.title}
-          subtitle={t.subtitle}
+          title={
+            isArabic
+              ? pharmacySettings?.name || "صيدلية Focus"
+              : pharmacySettings?.name_en || pharmacySettings?.name || "Focus Pharmacy"
+          }
+          pharmacyPhone={pharmacySettings?.phone || ""}
+          pharmacyAddress={pharmacySettings?.address || ""}
           appUser={appUser}
           isArabic={isArabic}
           t={t}
@@ -4659,70 +5582,36 @@ if (!allowedPages.includes(activePage)) {
           onToggleLang={() => setLang(lang === "ar" ? "en" : "ar")}
           onLogout={handleLogout}
           onToggleMenu={() => setIsMenuOpen((value) => !value)}
+          isMenuOpen={isMenuOpen}
+          branches={branches}
+          activeBranchId={activeBranchId}
+          onSwitchBranch={switchBranch}
+          alertItems={alertItems}
+          alertTotal={alertTotal}
+          onAlertNavigate={(filter) => {
+            setActivePage("inventory");
+            setInventoryStatusFilter(filter);
+            setIsMenuOpen(false);
+          }}
         />
-
-        <div className="supabaseTestBar" style={{ padding: "10px 16px", borderBottom: "1px solid #e2e8f0", display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
-          <button
-            className="smallBtn"
-            type="button"
-            onClick={testSupabaseConnection}
-            disabled={supabaseTestLoading}
-          >
-            {isArabic ? "اختبار اتصال سوبابيز" : "Test Supabase Connection"}
-          </button>
-          {supabaseTestStatus && (
-            <span style={{ color: supabaseTestStatus.startsWith("Supabase OK") ? "#0b9f31" : "#c02d2d" }}>
-              {supabaseTestStatus}
-            </span>
-          )}
-        </div>
 
         {activePage === "dashboard" && (
           <DashboardPage
             isArabic={isArabic}
             t={t}
-            dashboardPeriod={dashboardPeriod}
-            onDashboardPeriodChange={(value) => setDashboardPeriod(value)}
-            dashboardFromDate={dashboardFromDate}
-            dashboardToDate={dashboardToDate}
-            onDashboardFromDateChange={setDashboardFromDate}
-            onDashboardToDateChange={setDashboardToDate}
-            onExportSummary={async () => {
-              exportDashboardSummaryCSV();
-              await addActivityLog({
-                type: "dashboard_export",
-                title: isArabic ? "تصدير ملخص الداشبورد" : "Dashboard Summary Exported",
-                description: isArabic
-                  ? "تم تصدير ملخص الداشبورد حسب الفترة المختارة"
-                  : "Dashboard summary was exported for the selected period",
-                referenceType: "dashboard",
-                referenceId: dashboardPeriod,
-              });
-            }}
-            onPrintReport={async () => {
-              printDashboardSummaryPDF();
-              await addActivityLog({
-                type: "dashboard_print",
-                title: isArabic ? "طباعة تقرير الداشبورد" : "Dashboard Report Printed",
-                description: isArabic
-                  ? "تم طباعة تقرير الداشبورد حسب الفترة المختارة"
-                  : "Dashboard report was printed for the selected period",
-                referenceType: "dashboard",
-                referenceId: dashboardPeriod,
-              });
-            }}
             lowStockCount={lowStockCount}
             expiredCount={expiredCount}
             expiringCount={expiringCount}
             totalCustomerRemainingDebt={totalCustomerRemainingDebt}
+            totalCustomerPayments={totalCustomerPayments}
             dashboardSalesTotal={dashboardSalesTotal}
             dashboardInvoicesCount={dashboardInvoicesCount}
-            totalInvoicesCount={totalInvoicesCount}
-            totalSalesAmount={totalSalesAmount}
             dashboardProfitTotal={dashboardProfitTotal}
-            totalCustomerPayments={totalCustomerPayments}
-            dashboardTopSellingMedicines={dashboardTopSellingMedicines}
-            dashboardTopCashiers={dashboardTopCashiers}
+            totalInvoicesCount={totalInvoicesCount}
+            totalMedicinesCount={medicines.length}
+            totalPurchasesCount={purchases.length}
+            totalReturnsCount={returns.length}
+            branchesCount={branches.length}
             lowStockMedicines={lowStockMedicines}
             expiringSoonMedicines={expiringSoonMedicines}
             expiredMedicines={expiredMedicines}
@@ -4745,14 +5634,16 @@ if (!allowedPages.includes(activePage)) {
               setQuery("");
             }}
             onOpenCustomerPayments={goToCustomerPaymentForm}
-            inventoryOverview={renderInventoryTable(false)}
-            cartPanel={renderCartPanel()}
+            onNavigate={(page) => {
+              setActivePage(page);
+              setIsMenuOpen(false);
+            }}
           />
         )}
 
         {activePage === "inventory" && (
           <InventoryPage
-            filteredMedicines={filteredMedicines}
+            medicines={medicines}
             newMedicine={newMedicine}
             editingMedicineId={editingMedicineId}
             isArabic={isArabic}
@@ -4761,6 +5652,7 @@ if (!allowedPages.includes(activePage)) {
             onFormChange={setNewMedicine}
             onSave={saveMedicine}
             onCancel={cancelEditMedicine}
+            onOpenAdd={openAddMedicineForm}
             disabled={isSubscriptionExpired}
             exportInventoryCSV={exportInventoryCSV}
             isSubscriptionExpired={isSubscriptionExpired}
@@ -4852,12 +5744,17 @@ if (!allowedPages.includes(activePage)) {
             reportTo={reportTo}
             setReportFrom={setReportFrom}
             setReportTo={setReportTo}
+            onQuickRange={applyReportQuickRange}
             filteredReportInvoicesCount={filteredReportInvoices.length}
             filteredReportProfitTotal={filteredReportProfitTotal}
             filteredReportTotal={filteredReportTotal}
             filteredReportDiscountTotal={filteredReportDiscountTotal}
+            reportUnitsSold={reportUnitsSold}
+            reportReturnsTotal={reportReturnsTotal}
             topSellingMedicines={topSellingMedicines}
             reportPaymentTotals={reportPaymentTotals}
+            reportPaymentBreakdown={reportPaymentBreakdown}
+            reportSalesTrend={reportSalesTrend}
             reportCashierTotals={reportCashierTotals}
             getPaymentLabel={getPaymentLabel}
             currency={t.currency}
@@ -4885,6 +5782,7 @@ if (!allowedPages.includes(activePage)) {
           />
         )}
         {activePage === "users" && canOpenPage("users") && renderUsersPage()}
+        {activePage === "branches" && canOpenPage("branches") && renderBranchesPage()}
         {activePage === "settings" && canOpenPage("settings") && (
           <SettingsPage
             isArabic={isArabic}
@@ -4903,6 +5801,73 @@ if (!allowedPages.includes(activePage)) {
           />
         )}
       </main>
+
+      {availabilityModal && (
+        <div className="modalOverlay" onClick={() => setAvailabilityModal(null)}>
+          <div className="availabilityModal" onClick={(e) => e.stopPropagation()}>
+            <div className="modalHeader">
+              <div>
+                <h2>{isArabic ? "توافر الدواء في الفروع" : "Availability across branches"}</h2>
+                <p>
+                  {(isArabic
+                    ? availabilityModal.medicine.name_ar
+                    : availabilityModal.medicine.name_en) || availabilityModal.medicine.name_ar}
+                </p>
+              </div>
+              <button className="closeBtn" type="button" onClick={() => setAvailabilityModal(null)}>
+                ×
+              </button>
+            </div>
+
+            {availabilityLoading ? (
+              <p className="empty">{isArabic ? "جارٍ التحميل..." : "Loading..."}</p>
+            ) : (
+              <div className="tableWrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>{isArabic ? "الفرع" : "Branch"}</th>
+                      <th>{isArabic ? "المتوفر" : "Available"}</th>
+                      <th>{isArabic ? "أقرب صلاحية" : "Expiry"}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {branches.map((branch) => {
+                      const row = availabilityModal.rows.find((r) => r.pharmacyId === branch.id);
+                      const qty = row?.qty ?? 0;
+                      const isCurrent = branch.id === (activeBranchId || appUser?.pharmacyId);
+                      return (
+                        <tr key={branch.id} className={isCurrent ? "branchActiveRow" : ""}>
+                          <td>
+                            <strong>{(isArabic ? branch.name : branch.name_en) || branch.name}</strong>
+                            {isCurrent && (
+                              <span className="badge ok branchCurrentTag">
+                                {isArabic ? "فرعك" : "Yours"}
+                              </span>
+                            )}
+                          </td>
+                          <td>
+                            <span className={qty <= 0 ? "badge danger" : qty <= 20 ? "badge warn" : "badge ok"}>
+                              {qty}
+                            </span>
+                          </td>
+                          <td>{row?.expiry || "-"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <p className="hintText">
+              {isArabic
+                ? "الأرقام تعكس مخزون كل فرع لنفس الدواء (بالباركود أو الاسم)."
+                : "Quantities reflect each branch's stock for the same medicine (matched by barcode or name)."}
+            </p>
+          </div>
+        </div>
+      )}
 
       {selectedInvoice && (
   <div className="modalOverlay">
@@ -4989,7 +5954,8 @@ if (!allowedPages.includes(activePage)) {
 
       <div className="modalActions">
         <button className="printFullBtn" onClick={() => printSavedInvoice(selectedInvoice)}>
-          {t.printInvoice}
+          <span aria-hidden="true">🖨️</span>
+          <span>{t.printInvoice}</span>
         </button>
 
         <button className="completeBtn" onClick={() => setSelectedInvoice(null)}>
@@ -5122,14 +6088,16 @@ if (!allowedPages.includes(activePage)) {
     className="printFullBtn"
     onClick={() => printCustomerStatement(selectedCustomer)}
   >
-    {isArabic ? "طباعة كشف الحساب" : "Print Statement"}
+    <span aria-hidden="true">🖨️</span>
+    <span>{isArabic ? "طباعة كشف الحساب" : "Print Statement"}</span>
   </button>
 
   <button
     className="printBtn"
     onClick={() => exportCustomerStatementCSV(selectedCustomer)}
   >
-    {isArabic ? "تصدير Excel" : "Export Excel"}
+    <span aria-hidden="true">⬇️</span>
+    <span>{isArabic ? "تصدير Excel" : "Export Excel"}</span>
   </button>
 
   <button className="completeBtn" onClick={() => setSelectedCustomer(null)}>

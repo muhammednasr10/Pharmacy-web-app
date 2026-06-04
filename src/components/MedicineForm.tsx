@@ -9,6 +9,7 @@ type MedicineFormProps = {
   onSave: () => void;
   onCancel: () => void;
   disabled: boolean;
+  showCancel?: boolean;
 };
 
 export default function MedicineForm({
@@ -20,6 +21,7 @@ export default function MedicineForm({
   onSave,
   onCancel,
   disabled,
+  showCancel = false,
 }: MedicineFormProps) {
   return (
     <div className="medicineForm">
@@ -83,9 +85,9 @@ export default function MedicineForm({
         <button className="addMedicineBtn" onClick={onSave} disabled={disabled}>
           {editingMedicineId ? t.saveChanges : t.addMedicineBtn}
         </button>
-        {editingMedicineId && (
-          <button className="cancelMedicineBtn" onClick={onCancel}>
-            {t.cancelEdit}
+        {showCancel && (
+          <button type="button" className="cancelMedicineBtn" onClick={onCancel}>
+            {editingMedicineId ? t.cancelEdit : isArabic ? "إلغاء" : "Cancel"}
           </button>
         )}
       </div>
