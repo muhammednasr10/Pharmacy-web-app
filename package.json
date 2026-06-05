@@ -6,10 +6,11 @@
   "homepage": "https://muhammednasr10.github.io/Pharmacy-web-app",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "vite build",
+    "build": "node scripts/verify-env.mjs && vite build",
+    "build:gh-pages": "vite build --base /Pharmacy-web-app/",
     "preview": "vite preview --host 0.0.0.0",
     "check:supabase": "node scripts/check-supabase.mjs",
-    "predeploy": "npm run build",
+    "predeploy": "npm run build:gh-pages",
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {

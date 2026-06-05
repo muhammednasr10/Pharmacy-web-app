@@ -1,11 +1,8 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// Important for GitHub Pages:
-// If your repo name is Pharmacy-web-app, keep this base exactly.
-// If your repo name is different, change '/Pharmacy-web-app/' to '/YOUR_REPO_NAME/'.
+// Default base is "/" (Vercel + local). GitHub Pages uses: npm run build:gh-pages
 export default defineConfig({
   plugins: [react()],
-  base: '/Pharmacy-web-app/',
+  base: '/',
 });
-
