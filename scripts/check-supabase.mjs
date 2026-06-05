@@ -29,6 +29,7 @@ const TABLES = [
   "returns",
   "stock_movements",
   "activity_logs",
+  "held_invoices",
 ];
 
 const env = loadEnv();

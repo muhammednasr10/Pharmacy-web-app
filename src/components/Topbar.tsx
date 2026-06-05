@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { AppUser } from "../types";
+import { isPharmacyAdmin, isSuperAdmin, getRoleLabel } from "../utils/roles";
 import DeveloperCredit from "./DeveloperCredit";
 
 export type AlertKind = "expired" | "low" | "expiring";
@@ -82,150 +83,219 @@ export default function Topbar({
     setAlertsOpen(false);
   };
 
+  const userInitial = (appUser?.name || "?").trim().charAt(0) || "?";
+  const showBranchSwitch =
+    (isSuperAdmin(appUser) || (isPharmacyAdmin(appUser) && branches.length > 1)) &&
+    branches.length > 0;
+
   return (
     <header className="topbar">
-      <div className="topbarBrand">
-        <button
-          className={`menuBtn ${isMenuOpen ? "open" : ""}`}
-          onClick={onToggleMenu}
-          type="button"
-          aria-label={isArabic ? (isMenuOpen ? "إغلاق القائمة" : "فتح القائمة") : isMenuOpen ? "Close menu" : "Open menu"}
-          aria-expanded={isMenuOpen}
-        >
-          <span className="menuBtnLine" />
-          <span className="menuBtnLine" />
-          <span className="menuBtnLine" />
-        </button>
-        <div className="topbarInfo">
-          <div className="topbarTitle">
-            <h1>{title}</h1>
-            {subtitle ? <p>{subtitle}</p> : null}
-          </div>
-          {(pharmacyPhone || pharmacyAddress) && (
-            <div className="topbarPharmacyMeta">
-              {pharmacyPhone && (
-                <span>
-                  {isArabic ? "الهاتف" : "Phone"}: <strong dir="ltr">{pharmacyPhone}</strong>
-                </span>
-              )}
-              {pharmacyAddress && (
-                <span>
-                  {isArabic ? "العنوان" : "Address"}: <strong>{pharmacyAddress}</strong>
-                </span>
-              )}
+      <button
+        className={`menuBtn ${isMenuOpen ? "open" : ""}`}
+        onClick={onToggleMenu}
+        type="button"
+        aria-label={isArabic ? (isMenuOpen ? "إغلاق القائمة" : "فتح القائمة") : isMenuOpen ? "Close menu" : "Open menu"}
+        aria-expanded={isMenuOpen}
+      >
+        <span className="menuBtnLine" />
+        <span className="menuBtnLine" />
+        <span className="menuBtnLine" />
+      </button>
+
+      <div className="topbarIdentityCard">
+          <div className="topbarPharmacyBlock">
+            <div className="topbarPharmacyAvatar" aria-hidden="true">
+              {title.trim().charAt(0) || "P"}
             </div>
-          )}
-        </div>
-        <div className="topbarDeveloper">
-          <DeveloperCredit isArabic={isArabic} variant="topbar" />
-        </div>
-      </div>
-
-      <div className="topbarActions">
-        {appUser?.role === "admin" && branches.length > 1 && (
-          <label className="branchSwitch" title={isArabic ? "الفرع النشط" : "Active branch"}>
-            <span className="branchSwitchIcon" aria-hidden="true">🏢</span>
-            <select
-              value={activeBranchId || ""}
-              onChange={(e) => onSwitchBranch(e.target.value)}
-              aria-label={isArabic ? "الفرع النشط" : "Active branch"}
-            >
-              {branches.map((branch) => (
-                <option key={branch.id} value={branch.id}>
-                  {(isArabic ? branch.name : branch.name_en) || branch.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-
-        <div className="alertBell" ref={alertRef}>
-          <button
-            type="button"
-            className={`alertBellBtn ${alertsOpen ? "open" : ""}`}
-            onClick={() => setAlertsOpen((value) => !value)}
-            aria-label={isArabic ? "التنبيهات" : "Notifications"}
-            aria-expanded={alertsOpen}
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="M12 3a6 6 0 0 0-6 6v3.6c0 .5-.2 1-.6 1.4L4 15.4c-.6.6-.2 1.6.7 1.6h14.6c.9 0 1.3-1 .7-1.6l-1.4-1.4a2 2 0 0 1-.6-1.4V9a6 6 0 0 0-6-6Z"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M9.5 19a2.5 2.5 0 0 0 5 0"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-              />
-            </svg>
-            {alertTotal > 0 && (
-              <span className="alertBadge">{alertTotal > 99 ? "99+" : alertTotal}</span>
-            )}
-          </button>
-
-          {alertsOpen && (
-            <div className="alertDropdown" dir={isArabic ? "rtl" : "ltr"}>
-              <div className="alertDropdownHeader">
-                <strong>{isArabic ? "التنبيهات" : "Notifications"}</strong>
-                <span>
-                  {alertTotal} {isArabic ? "تنبيه" : "alerts"}
-                </span>
+            <div className="topbarPharmacyContent">
+              <span className="topbarSectionLabel">{isArabic ? "الصيدلية" : "Pharmacy"}</span>
+              <div className="topbarTitle">
+                <h1>{title}</h1>
+                {subtitle ? <p>{subtitle}</p> : null}
               </div>
-
-              {alertItems.length === 0 ? (
-                <div className="alertEmpty">
-                  {isArabic ? "لا توجد تنبيهات حالياً 🎉" : "No notifications 🎉"}
-                </div>
-              ) : (
-                <ul className="alertList">
-                  {alertItems.map((item) => (
-                    <li key={item.id}>
-                      <button
-                        type="button"
-                        className="alertRow"
-                        onClick={() =>
-                          navigate(item.kind === "expired" ? "expired" : item.kind === "low" ? "low" : "expiring")
-                        }
-                      >
-                        <span
-                          className="alertDot"
-                          style={{ background: KIND_META[item.kind].dot }}
+              {(pharmacyPhone || pharmacyAddress) && (
+                <div className="topbarMetaChips">
+                  {pharmacyPhone && (
+                    <span className="topbarMetaChip">
+                      <svg className="topbarMetaIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path
+                          d="M6.5 3h11A2.5 2.5 0 0 1 20 5.5v13A2.5 2.5 0 0 1 17.5 21h-11A2.5 2.5 0 0 1 4 18.5v-13A2.5 2.5 0 0 1 6.5 3Z"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
                         />
-                        <span className="alertText">
-                          <span className="alertName">{item.name}</span>
-                          <span className="alertDetail">{item.detail}</span>
-                        </span>
-                        <span className="alertKindLabel">
-                          {isArabic ? KIND_META[item.kind].ar : KIND_META[item.kind].en}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                        <path d="M9.5 7h5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                      </svg>
+                      <span dir="ltr">{pharmacyPhone}</span>
+                    </span>
+                  )}
+                  {pharmacyAddress && (
+                    <span className="topbarMetaChip">
+                      <svg className="topbarMetaIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path
+                          d="M12 21s6-5.2 6-10a6 6 0 1 0-12 0c0 4.8 6 10 6 10Z"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                        />
+                        <circle cx="12" cy="11" r="2.2" stroke="currentColor" strokeWidth="1.8" />
+                      </svg>
+                      <span>{pharmacyAddress}</span>
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="topbarIdentityDivider topbarIdentityDivider--developer" aria-hidden="true" />
+
+          <div className="topbarDeveloper">
+            <DeveloperCredit isArabic={isArabic} variant="topbar" />
+          </div>
+
+          <div className="topbarIdentityDivider topbarIdentityDivider--account" aria-hidden="true" />
+
+          <div className="topbarAccountBlock">
+            <div className="topbarAccountAvatar" aria-hidden="true">
+              {userInitial}
+            </div>
+            <div className="topbarAccountContent">
+              <span className="topbarSectionLabel">{isArabic ? "الحساب" : "Account"}</span>
+              <strong className="topbarAccountName">{appUser?.name}</strong>
+              <span className="topbarRoleChip">
+                {appUser ? getRoleLabel(appUser.role, isArabic) : ""}
+              </span>
+            </div>
+          </div>
+
+          <div className="topbarIdentityDivider topbarIdentityDivider--actions" aria-hidden="true" />
+
+          <div className="topbarControlsBlock">
+            <span className="topbarSectionLabel">{isArabic ? "التحكم" : "Controls"}</span>
+            <div className="topbarActionRow">
+              {showBranchSwitch && (
+                <label className="topbarMetaChip topbarBranchChip" title={isArabic ? "الفرع النشط" : "Active branch"}>
+                  <svg className="topbarMetaIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path
+                      d="M4 20V8l8-4 8 4v12"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinejoin="round"
+                    />
+                    <path d="M9 20v-6h6v6" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+                  </svg>
+                  <select
+                    value={activeBranchId || ""}
+                    onChange={(e) => onSwitchBranch(e.target.value)}
+                    aria-label={isArabic ? "الفرع النشط" : "Active branch"}
+                  >
+                    {branches.map((branch) => (
+                      <option key={branch.id} value={branch.id}>
+                        {(isArabic ? branch.name : branch.name_en) || branch.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               )}
 
-              <div className="alertDropdownFooter">
-                <button type="button" className="alertFooterBtn" onClick={() => navigate("low")}>
-                  {isArabic ? "عرض كل النواقص في المخزون" : "View all in inventory"}
+              <div className="alertBell" ref={alertRef}>
+                <button
+                  type="button"
+                  className={`topbarIconBtn alertBellBtn ${alertsOpen ? "open" : ""}`}
+                  onClick={() => setAlertsOpen((value) => !value)}
+                  aria-label={isArabic ? "التنبيهات" : "Notifications"}
+                  aria-expanded={alertsOpen}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path
+                      d="M12 3a6 6 0 0 0-6 6v3.6c0 .5-.2 1-.6 1.4L4 15.4c-.6.6-.2 1.6.7 1.6h14.6c.9 0 1.3-1 .7-1.6l-1.4-1.4a2 2 0 0 1-.6-1.4V9a6 6 0 0 0-6-6Z"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M9.5 19a2.5 2.5 0 0 0 5 0"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  {alertTotal > 0 && (
+                    <span className="alertBadge">{alertTotal > 99 ? "99+" : alertTotal}</span>
+                  )}
                 </button>
-              </div>
-            </div>
-          )}
-        </div>
 
-        <div className="userBadge">
-          <strong>{appUser?.name}</strong>
-          <span>{appUser?.role}</span>
-        </div>
-        <button className="langBtn" onClick={onToggleLang}>
-          {t.langButton}
-        </button>
-        <button className="logoutBtn" onClick={onLogout}>
-          {isArabic ? "تسجيل خروج" : "Logout"}
-        </button>
+                {alertsOpen && (
+                  <div className="alertDropdown" dir={isArabic ? "rtl" : "ltr"}>
+                    <div className="alertDropdownHeader">
+                      <strong>{isArabic ? "التنبيهات" : "Notifications"}</strong>
+                      <span>
+                        {alertTotal} {isArabic ? "تنبيه" : "alerts"}
+                      </span>
+                    </div>
+
+                    {alertItems.length === 0 ? (
+                      <div className="alertEmpty">
+                        {isArabic ? "لا توجد تنبيهات حالياً 🎉" : "No notifications 🎉"}
+                      </div>
+                    ) : (
+                      <ul className="alertList">
+                        {alertItems.map((item) => (
+                          <li key={item.id}>
+                            <button
+                              type="button"
+                              className="alertRow"
+                              onClick={() =>
+                                navigate(item.kind === "expired" ? "expired" : item.kind === "low" ? "low" : "expiring")
+                              }
+                            >
+                              <span
+                                className="alertDot"
+                                style={{ background: KIND_META[item.kind].dot }}
+                              />
+                              <span className="alertText">
+                                <span className="alertName">{item.name}</span>
+                                <span className="alertDetail">{item.detail}</span>
+                              </span>
+                              <span className="alertKindLabel">
+                                {isArabic ? KIND_META[item.kind].ar : KIND_META[item.kind].en}
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    <div className="alertDropdownFooter">
+                      <button type="button" className="alertFooterBtn" onClick={() => navigate("low")}>
+                        {isArabic ? "عرض كل النواقص في المخزون" : "View all in inventory"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <button type="button" className="topbarActionChip topbarActionChip--lang" onClick={onToggleLang}>
+                <svg className="topbarMetaIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+                  <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" stroke="currentColor" strokeWidth="1.8" />
+                </svg>
+                <span>{t.langButton}</span>
+              </button>
+
+              <button type="button" className="topbarActionChip topbarActionChip--logout" onClick={onLogout}>
+                <svg className="topbarMetaIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path
+                    d="M9 6V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2v-1"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinejoin="round"
+                  />
+                  <path d="M13 12H3m0 0 3-3M3 12l3 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span>{isArabic ? "تسجيل خروج" : "Logout"}</span>
+              </button>
+            </div>
+          </div>
       </div>
     </header>
   );

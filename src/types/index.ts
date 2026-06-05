@@ -1,12 +1,21 @@
 export type Lang = "ar" | "en";
 
+export type UserRole =
+  | "super_admin"
+  | "admin"
+  | "cashier"
+  | "inventory"
+  | "accountant";
+
 export type AppUser = {
   uid: string;
   name: string;
   email: string;
-  role: "admin" | "cashier" | "inventory" | "manager";
+  role: UserRole;
   pharmacyId: string;
   isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type SystemUser = AppUser;
@@ -23,6 +32,7 @@ export type Page =
   | "stockMovements"
   | "activityLogs"
   | "users"
+  | "tenants"
   | "branches"
   | "settings";
 
@@ -37,6 +47,7 @@ export type Medicine = {
   price: number;
   expiry: string;
   buyPrice?: number;
+  pharmacyId?: string;
   createdAt?: string;
 };
 
@@ -50,8 +61,13 @@ export type PharmacySettings = {
   isActive?: boolean;
   invoiceFooter?: string;
   subscriptionPlan?: string;
+  subscriptionStatus?: string;
+  subscriptionStartedAt?: string;
+  subscriptionEndsAt?: string;
   subscriptionEndDate?: string;
   logoBase64?: string;
+  lowStockThreshold?: number;
+  expiringSoonDays?: number;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -75,6 +91,7 @@ export type InvoiceItem = {
   buyPrice?: number;
   costTotal: number;
   profit?: number;
+  pharmacyId?: string;
 };
 
 export type Invoice = {
@@ -128,7 +145,7 @@ export type CustomerPayment = {
 };
 
 export type ReturnItem = {
-  medicineId: number;
+  medicineId: number | string;
   name_ar: string;
   name_en: string;
   barcode: string;
@@ -152,6 +169,45 @@ export type ReturnRecord = {
   createdAt?: string;
   items?: ReturnItem[];
   total?: number;
+  reason?: string;
+  refundMethod?: "cash" | "deduct_from_cart";
+  isInstant?: boolean;
+};
+
+export type HeldInvoice = {
+  id: string;
+  pharmacyId: string;
+  holdNumber: string;
+  customerName?: string;
+  customerPhone?: string;
+  cartItems: CartItem[];
+  subtotal: number;
+  discount: number;
+  tax: number;
+  total: number;
+  paymentMethod: PaymentMethod;
+  status: "held" | "resumed" | "deleted";
+  createdBy?: string;
+  createdByName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type InstantSaleReturnInput = {
+  invoice: Invoice;
+  items: Array<{
+    medicineId: number;
+    quantity: number;
+    unitPrice: number;
+    buyPrice?: number;
+    name_ar: string;
+    name_en: string;
+    barcode: string;
+  }>;
+  reason: string;
+  refundMethod: "cash" | "deduct_from_cart";
+  userId?: string;
+  userName?: string;
 };
 
 export type PurchaseRecord = {
@@ -206,4 +262,45 @@ export type ActivityLog = {
   userId?: string;
   userName?: string;
   createdAt: string;
+};
+
+export type SubscriptionRequestStatus = "pending" | "approved" | "rejected";
+
+export type SubscriptionRequest = {
+  id: number;
+  requestNumber: string;
+  pharmacyId: string;
+  pharmacyName?: string;
+  plan: string;
+  days: number;
+  amount: number;
+  currency?: string;
+  status: SubscriptionRequestStatus;
+  requestedBy?: string;
+  requestedByName?: string;
+  reviewedBy?: string;
+  reviewedByName?: string;
+  reviewNote?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  reviewedAt?: string;
+};
+
+export type CreatePharmacyInput = {
+  id: string;
+  name: string;
+  name_en?: string;
+  phone?: string;
+  address?: string;
+  subscriptionPlan?: string;
+  subscriptionStatus?: string;
+};
+
+export type CreatePharmacyUserInput = {
+  uid?: string;
+  email: string;
+  password?: string;
+  name: string;
+  role: UserRole;
+  pharmacyId: string;
 };

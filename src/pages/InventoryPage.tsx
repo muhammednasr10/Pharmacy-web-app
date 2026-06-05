@@ -11,7 +11,7 @@ type InventoryPageProps = {
   t: Record<string, string>;
   currency: string;
   onFormChange: (value: NewMedicineForm) => void;
-  onSave: () => void | Promise<void>;
+  onSave: () => boolean | Promise<boolean>;
   onCancel: () => void;
   onOpenAdd: () => void;
   disabled: boolean;
@@ -21,8 +21,11 @@ type InventoryPageProps = {
   canManageInventory: boolean;
   canDeleteMedicine: boolean;
   onAddToCart: (medicine: Medicine) => void;
+  addToCartLabel?: string;
   onEditMedicine: (medicine: Medicine) => void;
   onDeleteMedicine: (medicine: Medicine) => void;
+  lowStockThreshold: number;
+  expiringSoonDays: number;
 };
 
 export default function InventoryPage({
@@ -43,16 +46,33 @@ export default function InventoryPage({
   canManageInventory,
   canDeleteMedicine,
   onAddToCart,
+  addToCartLabel,
   onEditMedicine,
   onDeleteMedicine,
+  lowStockThreshold,
+  expiringSoonDays,
 }: InventoryPageProps) {
   const [showMedicineForm, setShowMedicineForm] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (editingMedicineId) {
       setShowMedicineForm(true);
     }
   }, [editingMedicineId]);
+
+  useEffect(() => {
+    if (!showMedicineForm) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeForm();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showMedicineForm]);
 
   function openAddForm() {
     onOpenAdd();
@@ -64,10 +84,35 @@ export default function InventoryPage({
     setShowMedicineForm(false);
   }
 
-  async function handleSave() {
-    await onSave();
-    setShowMedicineForm(false);
+  function handleEditMedicine(medicine: Medicine) {
+    onEditMedicine(medicine);
+    setShowMedicineForm(true);
   }
+
+  async function handleSave() {
+    if (isSaving) return;
+
+    try {
+      setIsSaving(true);
+      const saved = await onSave();
+      if (saved) {
+        setShowMedicineForm(false);
+      }
+    } catch (error) {
+      console.error("Save medicine error:", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : isArabic
+          ? "حدث خطأ أثناء حفظ الدواء"
+          : "Failed to save medicine"
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  const formTitle = editingMedicineId ? t.editMedicine : t.addMedicine;
 
   return (
     <section className="card inventoryOnlyPage">
@@ -93,22 +138,6 @@ export default function InventoryPage({
         </div>
       </div>
 
-      {showMedicineForm && canManageInventory && (
-        <div className="medicineFormCard">
-          <MedicineForm
-            newMedicine={newMedicine}
-            editingMedicineId={editingMedicineId}
-            isArabic={isArabic}
-            t={t}
-            onFormChange={onFormChange}
-            onSave={() => void handleSave()}
-            onCancel={closeForm}
-            disabled={disabled}
-            showCancel
-          />
-        </div>
-      )}
-
       <MedicineTable
         medicines={medicines}
         t={t}
@@ -120,9 +149,49 @@ export default function InventoryPage({
         canManageInventory={canManageInventory}
         canDeleteMedicine={canDeleteMedicine}
         onAddToCart={onAddToCart}
-        onEditMedicine={onEditMedicine}
+        addToCartLabel={addToCartLabel}
+        onEditMedicine={handleEditMedicine}
         onDeleteMedicine={onDeleteMedicine}
+        lowStockThreshold={lowStockThreshold}
+        expiringSoonDays={expiringSoonDays}
       />
+
+      {showMedicineForm && canManageInventory && (
+        <div className="modalOverlay" onClick={closeForm}>
+          <div className="medicineFormModal" onClick={(event) => event.stopPropagation()}>
+            <div className="modalHeader">
+              <div>
+                <h2>{formTitle}</h2>
+                <p className="mutedText">
+                  {editingMedicineId
+                    ? isArabic
+                      ? "عدّل بيانات الدواء ثم احفظ أو ألغِ"
+                      : "Edit medicine details, then save or cancel"
+                    : isArabic
+                    ? "أدخل بيانات الدواء الجديد"
+                    : "Enter new medicine details"}
+                </p>
+              </div>
+              <button type="button" className="closeBtn" onClick={closeForm} aria-label={t.close}>
+                ×
+              </button>
+            </div>
+            <MedicineForm
+              newMedicine={newMedicine}
+              editingMedicineId={editingMedicineId}
+              isArabic={isArabic}
+              t={t}
+              onFormChange={onFormChange}
+              onSave={handleSave}
+              onCancel={closeForm}
+              disabled={disabled}
+              isSaving={isSaving}
+              showCancel
+              hideTitle
+            />
+          </div>
+        </div>
+      )}
     </section>
   );
 }

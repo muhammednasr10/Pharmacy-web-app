@@ -6,10 +6,12 @@ type MedicineFormProps = {
   isArabic: boolean;
   t: Record<string, string>;
   onFormChange: (form: NewMedicineForm) => void;
-  onSave: () => void;
+  onSave: () => void | Promise<void>;
+  isSaving?: boolean;
   onCancel: () => void;
   disabled: boolean;
   showCancel?: boolean;
+  hideTitle?: boolean;
 };
 
 export default function MedicineForm({
@@ -22,10 +24,12 @@ export default function MedicineForm({
   onCancel,
   disabled,
   showCancel = false,
+  hideTitle = false,
+  isSaving = false,
 }: MedicineFormProps) {
   return (
     <div className="medicineForm">
-      <h3>{editingMedicineId ? t.editMedicine : t.addMedicine}</h3>
+      {!hideTitle && <h3>{editingMedicineId ? t.editMedicine : t.addMedicine}</h3>}
       <div className="formGrid">
         <input
           value={newMedicine.name_ar}
@@ -82,11 +86,22 @@ export default function MedicineForm({
         />
       </div>
       <div className="medicineFormActions">
-        <button className="addMedicineBtn" onClick={onSave} disabled={disabled}>
-          {editingMedicineId ? t.saveChanges : t.addMedicineBtn}
+        <button
+          type="button"
+          className="addMedicineBtn"
+          onClick={() => void onSave()}
+          disabled={disabled || isSaving}
+        >
+          {isSaving
+            ? isArabic
+              ? "جاري الحفظ..."
+              : "Saving..."
+            : editingMedicineId
+            ? t.saveChanges
+            : t.addMedicineBtn}
         </button>
         {showCancel && (
-          <button type="button" className="cancelMedicineBtn" onClick={onCancel}>
+          <button type="button" className="cancelMedicineBtn" onClick={onCancel} disabled={isSaving}>
             {editingMedicineId ? t.cancelEdit : isArabic ? "إلغاء" : "Cancel"}
           </button>
         )}

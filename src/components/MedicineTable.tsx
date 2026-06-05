@@ -1,6 +1,11 @@
 import { useMemo, useState } from "react";
 import type { Medicine } from "../types";
 import { formatDateInput } from "../utils/date";
+import {
+  DEFAULT_EXPIRING_SOON_DAYS,
+  DEFAULT_LOW_STOCK_THRESHOLD,
+  getExpiryLimitValue,
+} from "../utils/inventoryAlerts";
 
 type MedicineTableProps = {
   medicines: Medicine[];
@@ -13,11 +18,21 @@ type MedicineTableProps = {
   canManageInventory: boolean;
   canDeleteMedicine: boolean;
   onAddToCart: (medicine: Medicine) => void;
+  addToCartLabel?: string;
   onEditMedicine: (medicine: Medicine) => void;
   onDeleteMedicine: (medicine: Medicine) => void;
+  lowStockThreshold?: number;
+  expiringSoonDays?: number;
 };
 
 type StockFilter = "all" | "low" | "expiring" | "expired";
+
+const stockFilterOptions: { value: StockFilter; ar: string; en: string }[] = [
+  { value: "all", ar: "الكل", en: "All" },
+  { value: "low", ar: "ناقص", en: "Low stock" },
+  { value: "expiring", ar: "قرب الانتهاء", en: "Expiring" },
+  { value: "expired", ar: "منتهي", en: "Expired" },
+];
 
 export default function MedicineTable({
   medicines,
@@ -30,8 +45,11 @@ export default function MedicineTable({
   canManageInventory,
   canDeleteMedicine,
   onAddToCart,
+  addToCartLabel,
   onEditMedicine,
   onDeleteMedicine,
+  lowStockThreshold = DEFAULT_LOW_STOCK_THRESHOLD,
+  expiringSoonDays = DEFAULT_EXPIRING_SOON_DAYS,
 }: MedicineTableProps) {
   const [nameFilter, setNameFilter] = useState("");
   const [barcodeFilter, setBarcodeFilter] = useState("");
@@ -44,11 +62,10 @@ export default function MedicineTable({
   const [buyMax, setBuyMax] = useState("");
   const [sellMin, setSellMin] = useState("");
   const [sellMax, setSellMax] = useState("");
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   const todayValue = formatDateInput(new Date());
-  const expiringLimit = new Date();
-  expiringLimit.setDate(expiringLimit.getDate() + 30);
-  const expiringLimitValue = formatDateInput(expiringLimit);
+  const expiringLimitValue = getExpiryLimitValue(expiringSoonDays);
 
   const filteredMedicines = useMemo(() => {
     const nameQ = nameFilter.trim().toLowerCase();
@@ -77,7 +94,7 @@ export default function MedicineTable({
 
       const matchesStock =
         stockFilter === "all" ||
-        (stockFilter === "low" && qty <= 20) ||
+        (stockFilter === "low" && qty <= lowStockThreshold) ||
         (stockFilter === "expired" && expiry && expiry < todayValue) ||
         (stockFilter === "expiring" &&
           expiry &&
@@ -119,6 +136,8 @@ export default function MedicineTable({
     isArabic,
     todayValue,
     expiringLimitValue,
+    lowStockThreshold,
+    expiringSoonDays,
   ]);
 
   const hasActiveFilters =
@@ -134,6 +153,9 @@ export default function MedicineTable({
     sellMin ||
     sellMax;
 
+  const hasAdvancedFilters =
+    qtyMin || qtyMax || expiryFrom || expiryTo || buyMin || buyMax || sellMin || sellMax;
+
   function clearFilters() {
     setNameFilter("");
     setBarcodeFilter("");
@@ -148,23 +170,159 @@ export default function MedicineTable({
     setSellMax("");
   }
 
+  function renderRangeField(
+    label: string,
+    minValue: string,
+    maxValue: string,
+    onMinChange: (value: string) => void,
+    onMaxChange: (value: string) => void,
+    options?: { type?: "number" | "date"; step?: string }
+  ) {
+    const inputType = options?.type || "number";
+
+    return (
+      <div className="inventoryFilterRangeCard">
+        <span className="inventoryFilterRangeLabel">{label}</span>
+        <div className="inventoryFilterRangeInputs">
+          <input
+            className="inventoryFilterInput"
+            type={inputType}
+            min={inputType === "number" ? 0 : undefined}
+            step={options?.step}
+            value={minValue}
+            onChange={(e) => onMinChange(e.target.value)}
+            placeholder={isArabic ? "من" : "Min"}
+          />
+          <span className="inventoryFilterRangeSep">{isArabic ? "→" : "→"}</span>
+          <input
+            className="inventoryFilterInput"
+            type={inputType}
+            min={inputType === "number" ? 0 : undefined}
+            step={options?.step}
+            value={maxValue}
+            onChange={(e) => onMaxChange(e.target.value)}
+            placeholder={isArabic ? "إلى" : "Max"}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
-      {showColumnFilters && hasActiveFilters && (
-        <div className="tableFilterMeta">
-          <span>
-            {isArabic
-              ? `عرض ${filteredMedicines.length} من ${medicines.length}`
-              : `Showing ${filteredMedicines.length} of ${medicines.length}`}
-          </span>
-          <button type="button" className="clearCartBtn" onClick={clearFilters}>
-            {isArabic ? "مسح فلاتر الأعمدة" : "Clear column filters"}
-          </button>
+      {showColumnFilters && (
+        <div className="inventoryFilterPanel">
+          <div className="inventoryFilterTop">
+            <div className="inventoryFilterIntro">
+              <h4>{isArabic ? "بحث وتصفية المخزون" : "Search & filter inventory"}</h4>
+              <span className="inventoryFilterCount">
+                {isArabic
+                  ? `${filteredMedicines.length} من ${medicines.length} صنف`
+                  : `${filteredMedicines.length} of ${medicines.length} items`}
+              </span>
+            </div>
+            {hasActiveFilters && (
+              <button type="button" className="inventoryFilterClearBtn" onClick={clearFilters}>
+                {isArabic ? "مسح الفلاتر" : "Clear filters"}
+              </button>
+            )}
+          </div>
+
+          <div className="inventoryFilterMain">
+            <div className="inventoryFilterField inventoryFilterFieldWide">
+              <label>{isArabic ? "بحث بالاسم" : "Search by name"}</label>
+              <input
+                className="inventoryFilterInput"
+                value={nameFilter}
+                onChange={(e) => setNameFilter(e.target.value)}
+                placeholder={isArabic ? "اكتب اسم الدواء..." : "Type medicine name..."}
+              />
+            </div>
+            <div className="inventoryFilterField">
+              <label>{t.barcode}</label>
+              <input
+                className="inventoryFilterInput"
+                value={barcodeFilter}
+                onChange={(e) => setBarcodeFilter(e.target.value)}
+                placeholder={isArabic ? "رقم الباركود..." : "Barcode number..."}
+              />
+            </div>
+            <div className="inventoryFilterField inventoryFilterFieldChips">
+              <label>{isArabic ? "حالة المخزون" : "Stock status"}</label>
+              <div className="inventoryFilterChips">
+                {stockFilterOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={
+                      stockFilter === option.value
+                        ? "inventoryFilterChip isActive"
+                        : "inventoryFilterChip"
+                    }
+                    onClick={() => setStockFilter(option.value)}
+                  >
+                    {isArabic ? option.ar : option.en}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="inventoryFilterAdvancedToggle">
+            <button
+              type="button"
+              className="inventoryFilterAdvancedBtn"
+              onClick={() => setShowAdvancedFilters((open) => !open)}
+              aria-expanded={showAdvancedFilters}
+            >
+              <span>{isArabic ? "فلاتر متقدمة" : "Advanced filters"}</span>
+              {hasAdvancedFilters && <span className="inventoryFilterAdvancedDot" />}
+              <span className={`inventoryFilterChevron ${showAdvancedFilters ? "isOpen" : ""}`}>
+                ▾
+              </span>
+            </button>
+          </div>
+
+          {showAdvancedFilters && (
+            <div className="inventoryFilterAdvanced">
+              {renderRangeField(
+                t.qty,
+                qtyMin,
+                qtyMax,
+                setQtyMin,
+                setQtyMax
+              )}
+              {renderRangeField(
+                t.expiry,
+                expiryFrom,
+                expiryTo,
+                setExpiryFrom,
+                setExpiryTo,
+                { type: "date" }
+              )}
+              {renderRangeField(
+                isArabic ? "سعر الشراء" : "Buy price",
+                buyMin,
+                buyMax,
+                setBuyMin,
+                setBuyMax,
+                { step: "0.01" }
+              )}
+              {renderRangeField(
+                isArabic ? "سعر البيع" : "Sell price",
+                sellMin,
+                sellMax,
+                setSellMin,
+                setSellMax,
+                { step: "0.01" }
+              )}
+            </div>
+          )}
         </div>
       )}
 
       <div className="tableWrap">
-        <table className={showColumnFilters ? "tableWithFilters" : ""}>
+        <table>
           <thead>
             <tr>
               <th>{t.medicine}</th>
@@ -176,120 +334,6 @@ export default function MedicineTable({
               <th>{isArabic ? "الربح" : "Profit"}</th>
               <th>{t.action}</th>
             </tr>
-            {showColumnFilters && (
-              <tr className="tableFilterRow">
-                <th>
-                  <input
-                    className="colFilterInput"
-                    value={nameFilter}
-                    onChange={(e) => setNameFilter(e.target.value)}
-                    placeholder={isArabic ? "بحث..." : "Search..."}
-                  />
-                </th>
-                <th>
-                  <input
-                    className="colFilterInput"
-                    value={barcodeFilter}
-                    onChange={(e) => setBarcodeFilter(e.target.value)}
-                    placeholder={isArabic ? "باركود..." : "Barcode..."}
-                  />
-                </th>
-                <th>
-                  <div className="colFilterRange">
-                    <input
-                      className="colFilterInput"
-                      type="number"
-                      min={0}
-                      value={qtyMin}
-                      onChange={(e) => setQtyMin(e.target.value)}
-                      placeholder={isArabic ? "من" : "Min"}
-                    />
-                    <input
-                      className="colFilterInput"
-                      type="number"
-                      min={0}
-                      value={qtyMax}
-                      onChange={(e) => setQtyMax(e.target.value)}
-                      placeholder={isArabic ? "إلى" : "Max"}
-                    />
-                  </div>
-                </th>
-                <th>
-                  <select
-                    className="colFilterSelect"
-                    value={stockFilter}
-                    onChange={(e) => setStockFilter(e.target.value as StockFilter)}
-                  >
-                    <option value="all">{isArabic ? "الكل" : "All"}</option>
-                    <option value="low">{isArabic ? "ناقص" : "Low"}</option>
-                    <option value="expiring">{isArabic ? "قرب الانتهاء" : "Expiring"}</option>
-                    <option value="expired">{isArabic ? "منتهي" : "Expired"}</option>
-                  </select>
-                  <div className="colFilterRange colFilterRangeDates">
-                    <input
-                      className="colFilterInput"
-                      type="date"
-                      value={expiryFrom}
-                      onChange={(e) => setExpiryFrom(e.target.value)}
-                      title={isArabic ? "صلاحية من" : "Expiry from"}
-                    />
-                    <input
-                      className="colFilterInput"
-                      type="date"
-                      value={expiryTo}
-                      onChange={(e) => setExpiryTo(e.target.value)}
-                      title={isArabic ? "صلاحية إلى" : "Expiry to"}
-                    />
-                  </div>
-                </th>
-                <th>
-                  <div className="colFilterRange">
-                    <input
-                      className="colFilterInput"
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={buyMin}
-                      onChange={(e) => setBuyMin(e.target.value)}
-                      placeholder={isArabic ? "من" : "Min"}
-                    />
-                    <input
-                      className="colFilterInput"
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={buyMax}
-                      onChange={(e) => setBuyMax(e.target.value)}
-                      placeholder={isArabic ? "إلى" : "Max"}
-                    />
-                  </div>
-                </th>
-                <th>
-                  <div className="colFilterRange">
-                    <input
-                      className="colFilterInput"
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={sellMin}
-                      onChange={(e) => setSellMin(e.target.value)}
-                      placeholder={isArabic ? "من" : "Min"}
-                    />
-                    <input
-                      className="colFilterInput"
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={sellMax}
-                      onChange={(e) => setSellMax(e.target.value)}
-                      placeholder={isArabic ? "إلى" : "Max"}
-                    />
-                  </div>
-                </th>
-                <th />
-                <th />
-              </tr>
-            )}
           </thead>
           <tbody>
             {filteredMedicines.length === 0 ? (
@@ -304,7 +348,7 @@ export default function MedicineTable({
                   <td>{isArabic ? medicine.name_ar : medicine.name_en}</td>
                   <td>{medicine.barcode}</td>
                   <td>
-                    <span className={medicine.qty <= 20 ? "badge danger" : "badge ok"}>
+                    <span className={medicine.qty <= lowStockThreshold ? "badge danger" : "badge ok"}>
                       {medicine.qty}
                     </span>
                   </td>
@@ -326,7 +370,7 @@ export default function MedicineTable({
                           className="smallBtn"
                           onClick={() => onAddToCart(medicine)}
                         >
-                          {t.add}
+                          {addToCartLabel || t.add}
                         </button>
                       )}
                       {showManagementActions && canManageInventory && (

@@ -32,6 +32,13 @@ type PosPageProps = {
   onCustomerNameChange: (value: string) => void;
   onCompleteSale: () => void;
   getPaymentLabel: (method: string) => string;
+  heldInvoicesCount: number;
+  isHolding: boolean;
+  onHoldInvoice: () => void;
+  onOpenHeldInvoices: () => void;
+  onOpenInstantReturn: () => void;
+  lowStockThreshold: number;
+  expiringSoonDays: number;
 };
 
 export default function PosPage({
@@ -64,6 +71,13 @@ export default function PosPage({
   onCustomerNameChange,
   onCompleteSale,
   getPaymentLabel,
+  heldInvoicesCount,
+  isHolding,
+  onHoldInvoice,
+  onOpenHeldInvoices,
+  onOpenInstantReturn,
+  lowStockThreshold,
+  expiringSoonDays,
 }: PosPageProps) {
   return (
     <section className="card posOnlyPage">
@@ -84,6 +98,8 @@ export default function PosPage({
             onAddToCart={onAddToCart}
             onEditMedicine={onEditMedicine}
             onDeleteMedicine={onDeleteMedicine}
+            lowStockThreshold={lowStockThreshold}
+            expiringSoonDays={expiringSoonDays}
           />
         </div>
         <PosCart
@@ -109,6 +125,11 @@ export default function PosPage({
           onCustomerNameChange={onCustomerNameChange}
           onCompleteSale={onCompleteSale}
           getPaymentLabel={getPaymentLabel}
+          heldInvoicesCount={heldInvoicesCount}
+          isHolding={isHolding}
+          onHoldInvoice={onHoldInvoice}
+          onOpenHeldInvoices={onOpenHeldInvoices}
+          onOpenInstantReturn={onOpenInstantReturn}
         />
       </div>
     </section>

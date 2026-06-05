@@ -18,6 +18,7 @@ type InvoiceTableProps = {
   canUseReturns: boolean;
   exportInvoicesCSV: () => void;
   getPaymentLabel: (method: string) => string;
+  embedded?: boolean;
 };
 
 export default function InvoiceTable({
@@ -38,16 +39,22 @@ export default function InvoiceTable({
   canUseReturns,
   exportInvoicesCSV,
   getPaymentLabel,
+  embedded = false,
 }: InvoiceTableProps) {
+  const Wrapper = embedded ? "div" : "section";
+  const wrapperClass = embedded ? "invoicePickerEmbed" : "card invoicesPage";
+
   return (
-    <section className="card invoicesPage">
-      <div className="cardHeader">
-        <h2>{t.allInvoices}</h2>
-        <button className="printBtn" onClick={exportInvoicesCSV}>
-          <span aria-hidden="true">⬇️</span>
-          <span>{isArabic ? "تصدير Excel" : "Export Excel"}</span>
-        </button>
-      </div>
+    <Wrapper className={wrapperClass}>
+      {!embedded && (
+        <div className="cardHeader">
+          <h2>{t.allInvoices}</h2>
+          <button className="printBtn" onClick={exportInvoicesCSV}>
+            <span aria-hidden="true">⬇️</span>
+            <span>{isArabic ? "تصدير Excel" : "Export Excel"}</span>
+          </button>
+        </div>
+      )}
       <div className="filtersBar">
         <input
           value={invoiceSearch}
@@ -103,7 +110,15 @@ export default function InvoiceTable({
             <tbody>
               {filteredInvoices.map((invoice) => (
                 <tr key={invoice.id}>
-                  <td>{invoice.invoiceNumber || `#${invoice.id}`}</td>
+                  <td>
+                    {embedded ? (
+                      <span className="invoiceDocBadge">
+                        {invoice.invoiceNumber || `#${invoice.id}`}
+                      </span>
+                    ) : (
+                      invoice.invoiceNumber || `#${invoice.id}`
+                    )}
+                  </td>
                   <td>{invoice.date}</td>
                   <td>{getPaymentLabel(invoice.paymentMethod || "cash")}</td>
                   <td>{invoice.customerName || "-"}</td>
@@ -128,6 +143,6 @@ export default function InvoiceTable({
           </table>
         </div>
       )}
-    </section>
+    </Wrapper>
   );
 }

@@ -24,6 +24,11 @@ type PosCartProps = {
   onCustomerNameChange: (value: string) => void;
   onCompleteSale: () => void;
   getPaymentLabel: (method: string) => string;
+  heldInvoicesCount: number;
+  isHolding: boolean;
+  onHoldInvoice: () => void;
+  onOpenHeldInvoices: () => void;
+  onOpenInstantReturn: () => void;
 };
 
 export default function PosCart({
@@ -49,6 +54,11 @@ export default function PosCart({
   onCustomerNameChange,
   onCompleteSale,
   getPaymentLabel,
+  heldInvoicesCount,
+  isHolding,
+  onHoldInvoice,
+  onOpenHeldInvoices,
+  onOpenInstantReturn,
 }: PosCartProps) {
   return (
     <div className="posPanel">
@@ -106,6 +116,31 @@ export default function PosCart({
       <div className="totalBox">
         <span>{t.total}</span>
         <strong>{total.toFixed(2)} {currency}</strong>
+      </div>
+      <div className="posActionRow">
+        {cart.length > 0 && (
+          <button
+            className="posActionBtn holdBtn"
+            type="button"
+            onClick={onHoldInvoice}
+            disabled={isHolding || isSubscriptionExpired}
+          >
+            {isHolding
+              ? isArabic
+                ? "جاري التعليق..."
+                : "Holding..."
+              : isArabic
+              ? "تعليق الفاتورة"
+              : "Hold Invoice"}
+          </button>
+        )}
+        <button className="posActionBtn" type="button" onClick={onOpenHeldInvoices}>
+          {isArabic ? "الفواتير المعلقة" : "Held Invoices"}
+          {heldInvoicesCount > 0 ? ` (${heldInvoicesCount})` : ""}
+        </button>
+        <button className="posActionBtn" type="button" onClick={onOpenInstantReturn}>
+          {isArabic ? "مرتجع سريع" : "Quick Return"}
+        </button>
       </div>
       <button
         className="completeBtn"

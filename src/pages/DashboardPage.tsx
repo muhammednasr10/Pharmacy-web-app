@@ -23,7 +23,7 @@ type DashboardPageProps = {
   isSubscriptionExpired: boolean;
   isSubscriptionExpiringSoon: boolean;
   hasAdminRole: boolean;
-  onRenewSubscription: (days: number) => void;
+  onOpenSubscriptionSettings: () => void;
   onOpenPOS: () => void;
   onOpenPurchases: () => void;
   onOpenInventory: (filter: "all" | "low" | "expiring" | "expired") => void;
@@ -68,7 +68,7 @@ export default function DashboardPage({
   isSubscriptionExpired,
   isSubscriptionExpiringSoon,
   hasAdminRole,
-  onRenewSubscription,
+  onOpenSubscriptionSettings,
   onOpenPOS,
   onOpenPurchases,
   onOpenInventory,
@@ -195,14 +195,8 @@ export default function DashboardPage({
           </span>
           {hasAdminRole && (
             <div className="renewActions">
-              <button className="renewBtn" onClick={() => onRenewSubscription(30)}>
-                {isArabic ? "30 يوم" : "30 Days"}
-              </button>
-              <button className="renewBtn" onClick={() => onRenewSubscription(90)}>
-                {isArabic ? "3 شهور" : "3 Months"}
-              </button>
-              <button className="renewBtn" onClick={() => onRenewSubscription(365)}>
-                {isArabic ? "سنة" : "1 Year"}
+              <button className="renewBtn" onClick={onOpenSubscriptionSettings}>
+                {isArabic ? "طلب تجديد اشتراك" : "Request renewal"}
               </button>
             </div>
           )}

@@ -1,5 +1,22 @@
+import { useEffect, useState } from "react";
 import type { AppUser, Page } from "../types";
 import DeveloperCredit from "./DeveloperCredit";
+
+function useMobileMenuLayout() {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 950px)").matches : false
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 950px)");
+    const sync = () => setIsMobile(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
+  return isMobile;
+}
 
 type SidebarProps = {
   appUser: AppUser | null;
@@ -28,6 +45,7 @@ const pageLabels: Record<Page, string> = {
   activityLogs: "activityLogs",
   users: "users",
   branches: "branches",
+  tenants: "tenants",
   settings: "settings",
 };
 
@@ -44,6 +62,7 @@ const pageIcons: Record<Page, string> = {
   activityLogs: "📜",
   users: "👤",
   branches: "🏢",
+  tenants: "🏪",
   settings: "⚙️",
 };
 
@@ -58,6 +77,9 @@ export default function Sidebar({
   onCloseMenu,
   onSelectPage,
 }: SidebarProps) {
+  const isMobile = useMobileMenuLayout();
+  const menuVisible = isOpen;
+
   const navigation: { page: Page; label: string }[] = allowedPages.map((page) => {
     switch (page) {
       case "dashboard":
@@ -84,6 +106,8 @@ export default function Sidebar({
         return { page, label: isArabic ? "المستخدمين" : "Users" };
       case "branches":
         return { page, label: isArabic ? "الفروع" : "Branches" };
+      case "tenants":
+        return { page, label: isArabic ? "الصيدليات (SaaS)" : "Pharmacies (SaaS)" };
       case "settings":
         return { page, label: isArabic ? "الإعدادات" : "Settings" };
       default:
@@ -93,8 +117,18 @@ export default function Sidebar({
 
   return (
     <>
-      <div className={`sidebarOverlay ${isOpen ? "visible" : ""}`} onClick={onCloseMenu} />
-      <aside className={`sidebar menuPanel ${isOpen ? "open" : ""}`} aria-hidden={!isOpen}>
+      {isMobile && (
+        <div
+          className={`sidebarOverlay ${isOpen ? "visible" : ""}`}
+          onClick={onCloseMenu}
+          aria-hidden="true"
+        />
+      )}
+      <aside
+        className={`sidebar menuPanel ${menuVisible ? "open" : ""} ${isMobile ? "sidebarMobile" : "sidebarDesktop"}`}
+        aria-hidden={!menuVisible}
+      >
+        <div className="sidebarInner">
         <div className="sidebarHeader">
           <div className="logo">
             <div className="logoIcon logoImageBox">F</div>
@@ -105,7 +139,7 @@ export default function Sidebar({
           </div>
 
           <button
-            className="menuCloseBtn"
+            className={`menuCloseBtn ${!isMobile ? "menuCloseBtnDesktop" : ""}`}
             onClick={onCloseMenu}
             aria-label={isArabic ? "إغلاق القائمة" : "Close menu"}
             type="button"
@@ -131,6 +165,7 @@ export default function Sidebar({
 
         <div className="sidebarFooter">
           <DeveloperCredit isArabic={isArabic} variant="sidebar" />
+        </div>
         </div>
       </aside>
     </>
