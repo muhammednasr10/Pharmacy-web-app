@@ -114,8 +114,8 @@ export default function LoginPage({
               ? "أنشئ حساباً جديداً للوصول إلى نظام الصيدلية"
               : "Create a new account to access the pharmacy system"
             : isArabic
-              ? "ادخل بياناتك للوصول إلى نظام الصيدلية"
-              : "Enter your credentials to access the pharmacy system"}
+              ? "ادخل اسم المستخدم أو البريد وكلمة المرور"
+              : "Enter username or email and password"}
         </p>
 
         <button
@@ -147,11 +147,11 @@ export default function LoginPage({
         )}
 
         <input
-          type="email"
+          type="text"
           value={loginEmail}
           onChange={(e) => onEmailChange(e.target.value)}
-          placeholder={isArabic ? "البريد الإلكتروني" : "Email"}
-          autoComplete="email"
+          placeholder={isArabic ? "اسم المستخدم أو البريد الإلكتروني" : "Username or email"}
+          autoComplete="username"
         />
         <input
           type="password"

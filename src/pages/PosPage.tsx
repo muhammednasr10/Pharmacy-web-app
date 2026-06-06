@@ -39,6 +39,7 @@ type PosPageProps = {
   onOpenInstantReturn: () => void;
   lowStockThreshold: number;
   expiringSoonDays: number;
+  workShiftLabel?: string;
 };
 
 export default function PosPage({
@@ -78,11 +79,15 @@ export default function PosPage({
   onOpenInstantReturn,
   lowStockThreshold,
   expiringSoonDays,
+  workShiftLabel,
 }: PosPageProps) {
   return (
     <section className="card posOnlyPage">
-      <div className="cardHeader">
+      <div className="cardHeader posPageHeader">
         <h2>{t.pos}</h2>
+        {workShiftLabel && (
+          <span className="posShiftBadge">{workShiftLabel}</span>
+        )}
       </div>
       <div className="posSplit">
         <div>

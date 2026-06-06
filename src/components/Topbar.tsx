@@ -20,6 +20,7 @@ export type BranchOption = {
 type TopbarProps = {
   title: string;
   subtitle?: string;
+  pharmacyLogo?: string;
   pharmacyPhone?: string;
   pharmacyAddress?: string;
   appUser: AppUser | null;
@@ -47,6 +48,7 @@ const KIND_META: Record<AlertKind, { dot: string; ar: string; en: string }> = {
 export default function Topbar({
   title,
   subtitle = "",
+  pharmacyLogo = "",
   pharmacyPhone = "",
   pharmacyAddress = "",
   appUser,
@@ -103,42 +105,52 @@ export default function Topbar({
 
       <div className="topbarIdentityCard">
           <div className="topbarPharmacyBlock">
-            <div className="topbarPharmacyAvatar" aria-hidden="true">
-              {title.trim().charAt(0) || "P"}
+            <div className="topbarPharmacyAvatar logoImageBox" aria-hidden="true">
+              {pharmacyLogo ? (
+                <img src={pharmacyLogo} alt="" />
+              ) : (
+                title.trim().charAt(0) || "P"
+              )}
             </div>
             <div className="topbarPharmacyContent">
-              <span className="topbarSectionLabel">{isArabic ? "الصيدلية" : "Pharmacy"}</span>
-              <div className="topbarTitle">
-                <h1>{title}</h1>
-                {subtitle ? <p>{subtitle}</p> : null}
-              </div>
+              <span className="topbarSectionLabel topbarPharmacyLabel">
+                {isArabic ? "الصيدلية" : "Pharmacy"}
+              </span>
+              <h1 className="topbarPharmacyName">{title}</h1>
+              {subtitle ? <p className="topbarPharmacySubtitle">{subtitle}</p> : null}
               {(pharmacyPhone || pharmacyAddress) && (
-                <div className="topbarMetaChips">
+                <div className="topbarPharmacyMeta">
                   {pharmacyPhone && (
-                    <span className="topbarMetaChip">
-                      <svg className="topbarMetaIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <path
-                          d="M6.5 3h11A2.5 2.5 0 0 1 20 5.5v13A2.5 2.5 0 0 1 17.5 21h-11A2.5 2.5 0 0 1 4 18.5v-13A2.5 2.5 0 0 1 6.5 3Z"
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                        />
-                        <path d="M9.5 7h5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                      </svg>
-                      <span dir="ltr">{pharmacyPhone}</span>
-                    </span>
+                    <div className="topbarPharmacyMetaItem">
+                      <span className="topbarPharmacyMetaIcon" aria-hidden="true">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                          <path
+                            d="M6.5 3h11A2.5 2.5 0 0 1 20 5.5v13A2.5 2.5 0 0 1 17.5 21h-11A2.5 2.5 0 0 1 4 18.5v-13A2.5 2.5 0 0 1 6.5 3Z"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                          />
+                          <path d="M9.5 7h5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                        </svg>
+                      </span>
+                      <span className="topbarPharmacyMetaText" dir="ltr">
+                        {pharmacyPhone}
+                      </span>
+                    </div>
                   )}
                   {pharmacyAddress && (
-                    <span className="topbarMetaChip">
-                      <svg className="topbarMetaIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <path
-                          d="M12 21s6-5.2 6-10a6 6 0 1 0-12 0c0 4.8 6 10 6 10Z"
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                        />
-                        <circle cx="12" cy="11" r="2.2" stroke="currentColor" strokeWidth="1.8" />
-                      </svg>
-                      <span>{pharmacyAddress}</span>
-                    </span>
+                    <div className="topbarPharmacyMetaItem">
+                      <span className="topbarPharmacyMetaIcon" aria-hidden="true">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                          <path
+                            d="M12 21s6-5.2 6-10a6 6 0 1 0-12 0c0 4.8 6 10 6 10Z"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                          />
+                          <circle cx="12" cy="11" r="2.2" stroke="currentColor" strokeWidth="1.8" />
+                        </svg>
+                      </span>
+                      <span className="topbarPharmacyMetaText">{pharmacyAddress}</span>
+                    </div>
                   )}
                 </div>
               )}

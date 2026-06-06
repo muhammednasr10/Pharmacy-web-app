@@ -1,25 +1,45 @@
 * { box-sizing: border-box; }
 
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+}
+
 body {
   margin: 0;
   background: #f3f7f5;
   font-family: Arial, Tahoma, sans-serif;
   color: #172033;
+  overflow-x: hidden;
 }
 
 button, input, select { font-family: inherit; }
 
-.app { min-height: 100vh; display: flex; flex-direction: row; position: relative; }
-
-.app[dir="rtl"] {
-  flex-direction: row-reverse;
+.app {
+  min-height: 100vh;
+  position: relative;
+  width: 100%;
+  max-width: 100%;
 }
 
 .content {
   flex: 1;
   min-width: 0;
+  width: 100%;
+  max-width: 100%;
   padding: 24px;
   overflow: auto;
+}
+
+.appStickyHeader {
+  position: sticky;
+  top: 0;
+  z-index: 900;
+  margin: -24px -24px 22px;
+  padding: 24px 24px 0;
+  background: linear-gradient(180deg, #f3f7f5 88%, rgba(243, 247, 245, 0));
 }
 
 .sidebar {
@@ -27,84 +47,46 @@ button, input, select { font-family: inherit; }
   color: white;
   padding: 24px 20px;
   z-index: 995;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-}
-
-.sidebarDesktop {
-  position: sticky;
-  top: 0;
-  align-self: flex-start;
-  width: 272px;
-  min-width: 272px;
-  max-width: 272px;
-  height: 100vh;
-  max-height: 100vh;
-  flex-shrink: 0;
-  border-radius: 0;
-  box-shadow: -4px 0 28px rgba(0, 0, 0, 0.1);
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-  transition:
-    min-width 0.38s cubic-bezier(0.22, 1, 0.36, 1),
-    width 0.38s cubic-bezier(0.22, 1, 0.36, 1),
-    max-width 0.38s cubic-bezier(0.22, 1, 0.36, 1),
-    padding 0.38s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.3s ease;
-}
-
-.app[dir="ltr"] .sidebarDesktop {
-  box-shadow: 4px 0 28px rgba(0, 0, 0, 0.1);
-}
-
-.sidebarDesktop:not(.open) {
-  width: 0;
-  min-width: 0;
-  max-width: 0;
-  padding-left: 0;
-  padding-right: 0;
-  opacity: 0;
-  pointer-events: none;
-  box-shadow: none;
   overflow: hidden;
-}
-
-.sidebarInner {
-  width: 232px;
-  min-width: 232px;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: calc(100vh - 48px);
 }
 
-.sidebarMobile {
+.sidebarPanel {
   position: fixed;
   top: 0;
-  left: 0;
+  right: 0;
   width: min(320px, 88vw);
   max-width: 320px;
+  height: 100vh;
   max-height: 100vh;
-  border-radius: 0 22px 22px 0;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.24);
-  transform: translateX(-100%);
+  border-radius: 22px 0 0 22px;
+  box-shadow: -8px 0 40px rgba(0, 0, 0, 0.22);
+  transform: translateX(100%);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
   transition:
-    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
     opacity 0.32s ease,
-    visibility 0.4s;
+    visibility 0.42s;
   will-change: transform, opacity;
 }
 
-.app[dir="rtl"] .sidebarMobile {
-  left: auto;
-  right: 0;
-  border-radius: 22px 0 0 22px;
-  transform: translateX(100%);
+.sidebarPanel.open {
+  transform: translateX(0);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.sidebarInner {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 100%;
+  overflow: hidden;
 }
 
 .sidebarHeader {
@@ -113,6 +95,7 @@ button, input, select { font-family: inherit; }
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 30px;
+  flex-shrink: 0;
 }
 
 .logo {
@@ -176,7 +159,10 @@ button, input, select { font-family: inherit; }
   display: grid;
   gap: 10px;
   flex: 1;
+  min-height: 0;
   align-content: start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .sidebarNavItem {
@@ -263,27 +249,6 @@ button, input, select { font-family: inherit; }
   pointer-events: auto;
 }
 
-.sidebarMobile.open {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(0);
-  pointer-events: auto;
-}
-
-.app[dir="rtl"] .sidebarMobile.open {
-  transform: translateX(0);
-}
-
-.menuCloseBtnDesktop {
-  display: none;
-}
-
-@media (min-width: 951px) {
-  .menuCloseBtnDesktop {
-    display: grid;
-  }
-}
-
 .menuCloseBtn {
   width: 44px;
   height: 44px;
@@ -322,11 +287,11 @@ button, input, select { font-family: inherit; }
 
 .topbar {
   position: relative;
-  z-index: 1000;
+  z-index: 2;
   display: flex;
-  align-items: stretch;
-  gap: 12px;
-  margin-bottom: 22px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .topbarIdentityCard {
@@ -335,16 +300,88 @@ button, input, select { font-family: inherit; }
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 18px 20px;
-  padding: 14px 18px;
-  border-radius: 20px;
+  gap: 12px 14px;
+  padding: 10px 14px;
+  border-radius: 16px;
   background:
     linear-gradient(135deg, rgba(5, 105, 59, 0.04) 0%, transparent 42%),
     linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
   border: 1px solid #dcefe4;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 10px 28px rgba(16, 24, 40, 0.06);
+    0 6px 18px rgba(16, 24, 40, 0.05);
+}
+
+.appNavBar {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 0;
+  padding-bottom: 12px;
+}
+
+.appNavBarTrack {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding: 4px 2px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: #abefc6 transparent;
+}
+
+.appNavBarTrack::-webkit-scrollbar {
+  height: 6px;
+}
+
+.appNavBarTrack::-webkit-scrollbar-thumb {
+  background: #abefc6;
+  border-radius: 999px;
+}
+
+.appNavBarItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid #dcefe4;
+  background: rgba(255, 255, 255, 0.94);
+  color: #344054;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.22s ease,
+    border-color 0.22s ease,
+    color 0.22s ease,
+    transform 0.18s ease,
+    box-shadow 0.22s ease;
+}
+
+.appNavBarItem:hover {
+  background: #fff;
+  border-color: #abefc6;
+  color: #05693b;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(5, 105, 59, 0.08);
+}
+
+.appNavBarItem.active {
+  background: linear-gradient(135deg, #05693b, #0e9f6e);
+  border-color: #05693b;
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(5, 105, 59, 0.22);
+}
+
+.appNavBarIcon {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.appNavBarLabel {
+  white-space: nowrap;
 }
 
 .alertBell {
@@ -356,12 +393,12 @@ button, input, select { font-family: inherit; }
 }
 
 .topbarIconBtn {
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
   border: 1px solid #e4e7ec;
-  border-radius: 12px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.92);
   color: #344054;
   cursor: pointer;
@@ -535,23 +572,23 @@ button, input, select { font-family: inherit; }
 .topbarPharmacyBlock {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   flex: 1 1 220px;
   min-width: 0;
 }
 
 .topbarPharmacyAvatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   background: linear-gradient(135deg, #05693b, #12b76a);
   color: #fff;
   display: grid;
   place-items: center;
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 900;
   flex-shrink: 0;
-  box-shadow: 0 8px 18px rgba(5, 105, 59, 0.22);
+  box-shadow: 0 6px 14px rgba(5, 105, 59, 0.2);
 }
 
 .topbarPharmacyContent {
@@ -559,11 +596,75 @@ button, input, select { font-family: inherit; }
   display: flex;
   flex-direction: column;
   gap: 2px;
+  flex: 1;
+}
+
+.topbarPharmacyLabel {
+  color: #05693b;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.topbarPharmacyName {
+  margin: 0;
+  font-size: clamp(1.1rem, 1.5vw, 1.3rem);
+  line-height: 1.15;
+  font-weight: 800;
+  color: #101828;
+  letter-spacing: -0.01em;
+}
+
+.topbarPharmacySubtitle {
+  margin: 0;
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.topbarPharmacyMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-top: 4px;
+  padding: 5px 8px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ecfdf3 0%, #f6fef9 100%);
+  border: 1px solid #abefc6;
+}
+
+.topbarPharmacyMetaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.topbarPharmacyMetaIcon {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  background: #fff;
+  border: 1px solid #d1fadf;
+  color: #05693b;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(5, 105, 59, 0.08);
+}
+
+.topbarPharmacyMetaText {
+  font-size: 11px;
+  font-weight: 700;
+  color: #344054;
+  line-height: 1.3;
+  word-break: break-word;
 }
 
 .topbarSectionLabel,
 .devCreditLabel {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   color: #667085;
   letter-spacing: 0.02em;
@@ -611,7 +712,7 @@ button, input, select { font-family: inherit; }
 .topbarIdentityDivider {
   width: 1px;
   align-self: stretch;
-  min-height: 56px;
+  min-height: 42px;
   background: linear-gradient(180deg, transparent, #d0d5dd, transparent);
   flex-shrink: 0;
 }
@@ -624,23 +725,23 @@ button, input, select { font-family: inherit; }
 .topbarAccountBlock {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex: 0 1 180px;
+  gap: 10px;
+  flex: 0 1 160px;
   min-width: 0;
 }
 
 .topbarAccountAvatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
   background: linear-gradient(135deg, #175cd3, #53b1fd);
   color: #fff;
   display: grid;
   place-items: center;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 900;
   flex-shrink: 0;
-  box-shadow: 0 8px 18px rgba(23, 92, 211, 0.2);
+  box-shadow: 0 5px 12px rgba(23, 92, 211, 0.18);
 }
 
 .topbarAccountContent {
@@ -651,10 +752,10 @@ button, input, select { font-family: inherit; }
 }
 
 .topbarAccountName {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
   color: #101828;
-  line-height: 1.3;
+  line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -664,12 +765,12 @@ button, input, select { font-family: inherit; }
   display: inline-flex;
   align-items: center;
   width: fit-content;
-  padding: 3px 9px;
+  padding: 2px 8px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid #e4e7ec;
   color: #475467;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: capitalize;
 }
@@ -677,7 +778,7 @@ button, input, select { font-family: inherit; }
 .topbarControlsBlock {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
   flex: 0 1 auto;
   min-width: 0;
 }
@@ -686,19 +787,19 @@ button, input, select { font-family: inherit; }
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .topbarActionChip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
+  gap: 5px;
+  padding: 6px 10px;
   border-radius: 999px;
   border: 1px solid #e4e7ec;
   background: rgba(255, 255, 255, 0.92);
   color: #344054;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
@@ -761,11 +862,11 @@ button, input, select { font-family: inherit; }
   justify-content: center;
   align-items: center;
   align-self: center;
-  gap: 6px;
-  width: 46px;
-  height: 46px;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
   border: 1px solid #dcefe4;
-  border-radius: 14px;
+  border-radius: 12px;
   background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.95),
@@ -797,8 +898,8 @@ button, input, select { font-family: inherit; }
 
 .menuBtnLine {
   display: block;
-  width: 20px;
-  height: 2.5px;
+  width: 18px;
+  height: 2px;
   background: #05693b;
   border-radius: 999px;
   transition:
@@ -810,7 +911,7 @@ button, input, select { font-family: inherit; }
 }
 
 .menuBtn.open .menuBtnLine:nth-child(1) {
-  transform: translateY(8.5px) rotate(45deg);
+  transform: translateY(7px) rotate(45deg);
 }
 
 .menuBtn.open .menuBtnLine:nth-child(2) {
@@ -819,26 +920,43 @@ button, input, select { font-family: inherit; }
 }
 
 .menuBtn.open .menuBtnLine:nth-child(3) {
-  transform: translateY(-8.5px) rotate(-45deg);
-}
-
-@media (max-width: 950px) {
-  .app { display: block; }
-
-  .sidebarMobile {
-    width: min(320px, 88vw);
-    max-width: 320px;
-  }
-
-  .menuBtn {
-    display: flex;
-  }
+  transform: translateY(-7px) rotate(-45deg);
 }
 
 @media (max-width: 700px) {
-  .sidebarMobile {
-    width: min(300px, 90vw);
+  .appStickyHeader {
+    margin: -16px -16px 18px;
+    padding: 16px 16px 0;
+  }
+
+  .content {
+    padding: 16px;
+  }
+
+  .sidebarPanel {
+    width: min(300px, 92vw);
     max-width: 300px;
+  }
+
+  .appNavBarItem {
+    padding: 9px 12px;
+    font-size: 12px;
+  }
+
+  .topbarPharmacyAvatar {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+
+  .topbarPharmacyName {
+    font-size: 1.15rem;
+  }
+
+  .topbarPharmacyMeta {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
   }
 
   .topbar {
@@ -995,7 +1113,14 @@ button, input, select { font-family: inherit; }
 }
 
 .workGrid { display: grid; grid-template-columns: 1.55fr 1fr; gap: 18px; }
-.card { background: white; border-radius: 18px; padding: 22px; box-shadow: 0 10px 28px rgba(0,0,0,0.05); }
+.card {
+  background: white;
+  border-radius: 18px;
+  padding: 22px;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.05);
+  width: 100%;
+  max-width: 100%;
+}
 .cardHeader { display: flex; justify-content: space-between; align-items: center; }
 .cardHeader h2 { margin: 0 0 18px; }
 
@@ -1612,6 +1737,952 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
 }
 .settingsPage {
   margin-top: 22px;
+  width: 100%;
+}
+
+.settingsTabPanel {
+  margin-top: 4px;
+  width: 100%;
+}
+
+.hrPage .hrFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.hrPage .hrFilters label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #344054;
+}
+
+.hrAttendanceFilters {
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.hrFiltersFields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.hrAttendanceHoursStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 18px;
+  align-items: center;
+  margin-inline-start: auto;
+  font-size: 13px;
+  color: #344054;
+  line-height: 1.4;
+}
+
+.hrAttendanceHoursStat strong {
+  color: #027a48;
+  font-weight: 700;
+}
+
+.hrAttendanceHoursStatOvertime strong {
+  color: #b54708;
+}
+
+.hrAttendanceHoursStatLate strong {
+  color: #b54708;
+}
+
+.hrAttendanceHoursStatPermission strong {
+  color: #175cd3;
+}
+
+.hrAttendanceStatusWrap {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.hrAttendanceFlag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.08rem 0.4rem;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+
+.hrAttendanceFlagLate {
+  background: #fffaeb;
+  color: #b54708;
+  border: 1px solid #fedf89;
+}
+
+.hrAttendanceFlagPermission {
+  background: #eff8ff;
+  color: #175cd3;
+  border: 1px solid #b9e6fe;
+}
+
+.hrQuickActions {
+  background: #f9fafb;
+  border: 1px solid #eaecf0;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.hrQuickActions h3 {
+  margin: 0 0 0.75rem;
+  font-size: 15px;
+}
+
+.hrQuickRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.hrActionsCell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.hrAttendanceLogModal {
+  max-width: 720px;
+  width: min(96vw, 720px);
+}
+
+.hrAttendanceLogTableWrap {
+  overflow: auto;
+  max-width: 100%;
+  border: 1px solid #eaecf0;
+  border-radius: 12px;
+  background: #fff;
+  max-height: min(72vh, 680px);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+}
+
+.hrAttendanceTable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 860px;
+}
+
+.hrAttendanceTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f9fafb;
+  border-bottom: 1px solid #eaecf0;
+  padding: 0.4rem 0.55rem;
+  font-size: 11px;
+  white-space: nowrap;
+  font-weight: 600;
+  color: #344054;
+}
+
+.hrAttendanceTable tbody td {
+  padding: 0.28rem 0.55rem;
+  border-bottom: 1px solid #f2f4f7;
+  font-size: 12px;
+  vertical-align: middle;
+  line-height: 1.35;
+}
+
+.hrAttendanceTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.hrAttendanceTable tbody tr:hover td {
+  background: #fcfcfd;
+}
+
+.hrAttendanceTable .col-date {
+  min-width: 92px;
+  position: sticky;
+  z-index: 1;
+  background: #fff;
+  box-shadow: 1px 0 0 #f2f4f7;
+  white-space: nowrap;
+}
+
+[dir="ltr"] .hrAttendanceTable .col-date {
+  left: 0;
+}
+
+[dir="rtl"] .hrAttendanceTable .col-date {
+  right: 0;
+  box-shadow: -1px 0 0 #f2f4f7;
+}
+
+.hrAttendanceTable thead .col-date {
+  z-index: 3;
+  background: #f9fafb;
+}
+
+.hrAttendanceTable tbody tr:hover .col-date {
+  background: #fcfcfd;
+}
+
+.hrAttendanceDayCompact {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 12px;
+  color: #475467;
+}
+
+.hrAttendanceDayCompact strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: #101828;
+}
+
+.hrAttendanceTable .col-name {
+  min-width: 110px;
+  max-width: 160px;
+  font-weight: 600;
+  color: #344054;
+}
+
+.hrAttendanceTable .col-status {
+  min-width: 84px;
+}
+
+.hrAttendanceTable .col-time {
+  text-align: center;
+  white-space: nowrap;
+  min-width: 72px;
+  color: #475467;
+  font-variant-numeric: tabular-nums;
+}
+
+.hrAttendanceTable .col-hours {
+  text-align: center;
+  white-space: nowrap;
+  min-width: 96px;
+  color: #344054;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+}
+
+.hrAttendanceTable .col-actions {
+  min-width: 118px;
+  max-width: 132px;
+  width: 132px;
+  vertical-align: middle;
+  background: #fff;
+  position: sticky;
+  z-index: 1;
+  padding: 0.28rem 0.4rem;
+}
+
+[dir="ltr"] .hrAttendanceTable .col-actions {
+  right: 0;
+  box-shadow: -1px 0 0 #f2f4f7;
+}
+
+[dir="rtl"] .hrAttendanceTable .col-actions {
+  left: 0;
+  box-shadow: 1px 0 0 #f2f4f7;
+}
+
+.hrAttendanceTable thead .col-actions {
+  z-index: 3;
+  background: #f9fafb;
+}
+
+.hrAttendanceTable tbody tr:hover .col-actions {
+  background: #fcfcfd;
+}
+
+.hrAttendanceRowToday .col-actions {
+  background: #fffbeb;
+}
+
+.hrAttendanceRowToday:hover .col-actions {
+  background: #fef3c7;
+}
+
+.hrAttendanceActions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+}
+
+.hrAttendanceActionRow,
+.hrAttendanceQuickActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  width: 100%;
+}
+
+.hrAttendanceQuickActions .smallBtn {
+  min-width: 0;
+  padding: 0.12rem 0.25rem;
+  font-size: 10px;
+  line-height: 1.25;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.hrAttendanceQuickActions .smallBtn.dangerBtn {
+  grid-column: span 2;
+}
+
+.hrAttendanceEditBtn {
+  width: 100%;
+  padding: 0.15rem 0.35rem;
+  font-size: 11px;
+}
+
+.hrAttendanceActionsEmpty {
+  color: #98a2b3;
+  text-align: center;
+  display: block;
+  font-size: 12px;
+}
+
+.hrAttendanceStatus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.hrAttendanceStatusEmpty {
+  background: #f2f4f7;
+  color: #667085;
+}
+
+.hrAttendanceStatus-present {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.hrAttendanceStatus-late {
+  background: #fffaeb;
+  color: #b54708;
+}
+
+.hrAttendanceStatus-absent {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.hrAttendanceStatus-leave {
+  background: #eff8ff;
+  color: #175cd3;
+}
+
+.hrAttendanceStatus-sick {
+  background: #f4f3ff;
+  color: #5925dc;
+}
+
+.hrAttendanceRowToday td {
+  background: #fffbeb;
+}
+
+.hrAttendanceRowToday:hover td {
+  background: #fef3c7 !important;
+}
+
+.hrAttendanceRowToday .col-date {
+  background: #fffbeb;
+  box-shadow: inset 3px 0 0 #f59e0b;
+}
+
+[dir="rtl"] .hrAttendanceRowToday .col-date {
+  box-shadow: inset -3px 0 0 #f59e0b;
+}
+
+.hrAttendanceRowToday:hover .col-date {
+  background: #fef3c7;
+}
+
+.hrAttendanceLogInput {
+  min-width: 6.5rem;
+  padding: 0.2rem 0.4rem;
+  font-size: 12px;
+}
+
+.hrMonthInput {
+  min-width: 9rem;
+}
+
+.hrAttendanceLogTimeCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hrOvernightHint {
+  color: #175cd3;
+  font-size: 11px;
+}
+
+.hrAttendanceLogSummary {
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  background: #f0f9ff;
+  border: 1px solid #b9e6fe;
+  border-radius: 10px;
+  font-size: 15px;
+}
+
+.hrPayrollPanel {
+  width: 100%;
+}
+
+.hrPayrollToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 1rem;
+}
+
+.hrPayrollToolbar .hrFilters {
+  margin-bottom: 0;
+  flex: 1 1 auto;
+}
+
+.hrPayrollSettingsBtn {
+  flex-shrink: 0;
+}
+
+.hrPayrollSettingsModal {
+  max-width: 520px;
+  width: min(96vw, 520px);
+  max-height: min(92vh, 820px);
+  overflow-y: auto;
+}
+
+.hrPayrollSettingsSection {
+  margin: 1rem 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid #eaecf0;
+}
+
+.hrPayrollSettingsSection h4 {
+  margin: 0 0 0.35rem;
+  font-size: 14px;
+  color: #101828;
+}
+
+.workScheduleEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.workScheduleTimes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.workScheduleTimes label,
+.workScheduleBreakRow label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.workScheduleHint,
+.workScheduleEmpty {
+  margin: 0;
+  font-size: 12px;
+  color: #667085;
+}
+
+.workScheduleBreaks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.workScheduleBreaksHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.workScheduleBreakRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.workScheduleRemoveBtn {
+  margin-bottom: 2px;
+  white-space: nowrap;
+}
+
+.workScheduleEmployeeSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0.75rem;
+  border: 1px solid #eaecf0;
+  border-radius: 10px;
+  background: #fafafa;
+}
+
+.workScheduleEmployeeSection > label:not(.workScheduleCustomRow) {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  color: #344054;
+  font-weight: 600;
+}
+
+.workScheduleCustomRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 4px 0 0;
+  font-weight: 600;
+  font-size: 13px;
+  color: #344054;
+  cursor: pointer;
+  user-select: none;
+}
+
+.workScheduleCustomRow input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.workShiftsEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.workShiftsTabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.workShiftsTab {
+  border: 1px solid #d0d5dd;
+  background: #fff;
+  color: #344054;
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.workShiftsTab.active {
+  background: #ecfdf3;
+  border-color: #12b76a;
+  color: #027a48;
+  font-weight: 600;
+}
+
+.workShiftsPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.workShiftDefaultPick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #475467;
+}
+
+.workShiftLateGraceField {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  color: #344054;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.workShiftLateGraceField .searchInput {
+  max-width: 140px;
+}
+
+.hrShiftBadge {
+  display: inline-flex;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: #eff8ff;
+  color: #175cd3;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.hrShiftWindow {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  color: #667085;
+}
+
+.hrAttendanceTable .col-shift {
+  min-width: 88px;
+  white-space: nowrap;
+}
+
+.posPageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.posShiftBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: #eff8ff;
+  color: #175cd3;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.hrPayrollSettingsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
+  margin-bottom: 0.75rem;
+}
+
+.hrPayrollSettingsGrid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  width: 100%;
+}
+
+.hrPayrollSettingsGrid .tableInput,
+.hrPayrollSettingsGrid select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.hrPayrollTableWrap {
+  overflow: auto;
+  max-width: 100%;
+  border: 1px solid #eaecf0;
+  border-radius: 12px;
+  background: #fff;
+  max-height: min(72vh, 760px);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+}
+
+.hrPayrollTable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 1100px;
+}
+
+.hrPayrollTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f9fafb;
+  border-bottom: 1px solid #eaecf0;
+  padding: 0.65rem 0.75rem;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.hrPayrollTable tbody td {
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid #f2f4f7;
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+.hrPayrollTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.hrPayrollTable tbody tr:hover td {
+  background: #fcfcfd;
+}
+
+.hrPayrollTable .col-name {
+  min-width: 130px;
+  max-width: 180px;
+  font-weight: 600;
+  position: sticky;
+  z-index: 1;
+  background: #fff;
+  box-shadow: 1px 0 0 #f2f4f7;
+}
+
+[dir="ltr"] .hrPayrollTable .col-name {
+  left: 0;
+}
+
+[dir="rtl"] .hrPayrollTable .col-name {
+  right: 0;
+  box-shadow: -1px 0 0 #f2f4f7;
+}
+
+.hrPayrollTable thead .col-name {
+  z-index: 3;
+  background: #f9fafb;
+}
+
+.hrPayrollTable tbody tr:hover .col-name {
+  background: #fcfcfd;
+}
+
+.hrPayrollTable .col-attendance {
+  text-align: center;
+  color: #475467;
+  background: #fafafa;
+  min-width: 72px;
+}
+
+.hrPayrollTable thead .col-attendance {
+  background: #f4f6f8;
+}
+
+.hrPayrollTable .col-money {
+  text-align: center;
+  white-space: nowrap;
+  min-width: 108px;
+}
+
+.hrPayrollTable .hrBaseSalaryBtn,
+.hrPayrollTable .hrAdditionsBtn,
+.hrPayrollTable .hrDeductionsBtn {
+  width: 100%;
+  max-width: 130px;
+}
+
+.hrPayrollHint {
+  margin-top: 1rem;
+}
+
+.hrPayrollInput {
+  width: 4.75rem;
+  min-width: 4rem;
+}
+
+.hrPayrollNet {
+  color: #027a48;
+}
+
+.hrAdditionsBtn {
+  border: 1px dashed #84caff;
+  background: #f0f9ff;
+  color: #175cd3;
+  border-radius: 8px;
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.hrAdditionsBtn:hover:not(:disabled) {
+  background: #e0f2fe;
+}
+
+.hrAdditionsBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.hrBaseSalaryBtn {
+  border: 1px dashed #d0d5dd;
+  background: #f9fafb;
+  color: #344054;
+  border-radius: 8px;
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.hrBaseSalaryBtn:hover:not(:disabled) {
+  background: #f2f4f7;
+  border-color: #98a2b3;
+}
+
+.hrBaseSalaryBtn:disabled {
+  opacity: 0.85;
+  cursor: default;
+  border-style: solid;
+}
+
+.hrAdditionsModal {
+  max-width: 420px;
+  width: min(96vw, 420px);
+}
+
+.hrAdditionsForm {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.hrAdditionsForm label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 13px;
+}
+
+.hrAdditionsTotal {
+  margin-bottom: 1rem;
+  background: #f0fdf4;
+  border: 1px solid #abefc6;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+}
+
+.hrAdditionsReadonlyInput {
+  background: #f9fafb;
+  color: #475467;
+  cursor: default;
+}
+
+.hrDeductionsBtn {
+  border: 1px dashed #fda29b;
+  background: #fef3f2;
+  color: #b42318;
+  border-radius: 8px;
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.hrDeductionsBtn:hover:not(:disabled) {
+  background: #fee4e2;
+}
+
+.hrDeductionsBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.hrDeductionsModal {
+  max-width: 460px;
+  width: min(96vw, 460px);
+}
+
+.hrDeductionsSection {
+  margin-bottom: 1rem;
+  background: #fffaeb;
+  border: 1px solid #fedf89;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+}
+
+.hrDeductionsSection h4 {
+  margin: 0 0 0.65rem;
+  font-size: 14px;
+}
+
+.hrDeductionLine {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.35rem 0;
+  font-size: 13px;
+  border-bottom: 1px dashed #fde68a;
+}
+
+.hrDeductionLine:last-of-type {
+  border-bottom: none;
+}
+
+.hrDeductionLine small {
+  color: #667085;
+}
+
+.hrDeductionSubtotal {
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid #fedf89;
+  font-size: 14px;
+}
+
+.hrDeductionsTotal {
+  margin-bottom: 1rem;
+  background: #fef3f2;
+  border: 1px solid #fda29b;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+}
+
+.hrPayrollSummary {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: #ecfdf3;
+  border: 1px solid #abefc6;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.linkAccountBtn {
+  background: #1570ef;
+  white-space: nowrap;
+}
+
+.linkAccountBtn:hover {
+  filter: brightness(0.95);
 }
 
 .settingsTabsNav {
@@ -1621,6 +2692,273 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
   margin-bottom: 18px;
   padding-bottom: 14px;
   border-bottom: 1px solid #eaecf0;
+}
+
+.staffPageTabsBar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #eaecf0;
+}
+
+.staffPageTabsBar .settingsTabsNav {
+  flex: 1 1 auto;
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+  min-width: 0;
+}
+
+.staffAddEmployeeBtn {
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.employeePhotoThumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #eaecf0;
+  display: block;
+}
+
+.employeePhotoPlaceholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #eef4ff;
+  color: #175cd3;
+  font-weight: 700;
+  font-size: 15px;
+  border: 1px solid #b9d4ff;
+}
+
+.col-photo {
+  width: 56px;
+  text-align: center;
+}
+
+.staffEmployeesTableWrap {
+  overflow: auto;
+  max-width: 100%;
+}
+
+.staffEmployeesTable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 920px;
+}
+
+.staffEmployeesTable thead th {
+  padding: 0.45rem 0.55rem;
+  font-size: 12px;
+  white-space: nowrap;
+  font-weight: 600;
+  color: #344054;
+  background: #f9fafb;
+  border-bottom: 1px solid #eaecf0;
+}
+
+.staffEmployeesTable tbody td {
+  padding: 0.35rem 0.55rem;
+  border-bottom: 1px solid #f2f4f7;
+  font-size: 13px;
+  vertical-align: middle;
+  line-height: 1.35;
+}
+
+.staffEmployeesTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.staffEmployeesTable tbody tr:hover td {
+  background: #fcfcfd;
+}
+
+.staffEmployeesTable .col-photo {
+  width: 56px;
+  min-width: 56px;
+  padding-inline: 0.35rem;
+}
+
+.staffEmployeesTable .employeePhotoThumb,
+.staffEmployeesTable .employeePhotoPlaceholder {
+  margin-inline: auto;
+}
+
+.staffEmployeesTable .col-actions {
+  min-width: 92px;
+  max-width: 104px;
+  width: 104px;
+  vertical-align: middle;
+  background: #fff;
+  position: sticky;
+  z-index: 1;
+  padding: 0.3rem 0.4rem;
+}
+
+[dir="ltr"] .staffEmployeesTable .col-actions {
+  right: 0;
+  box-shadow: -1px 0 0 #f2f4f7;
+}
+
+[dir="rtl"] .staffEmployeesTable .col-actions {
+  left: 0;
+  box-shadow: 1px 0 0 #f2f4f7;
+}
+
+.staffEmployeesTable thead .col-actions {
+  z-index: 2;
+  background: #f9fafb;
+}
+
+.staffEmployeesTable tbody tr:hover .col-actions {
+  background: #fcfcfd;
+}
+
+.staffEmployeesActions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+}
+
+.staffEmployeesActionBtn {
+  width: 100%;
+  min-width: 0;
+  padding: 0.18rem 0.35rem;
+  font-size: 11px;
+  line-height: 1.25;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.employeePhotoField .employeePhotoUploadRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.employeeTopRow {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+[dir="ltr"] .employeeTopRow {
+  flex-direction: row-reverse;
+}
+
+.employeeCodeField {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  color: #344054;
+  font-weight: 600;
+  width: 140px;
+  max-width: 140px;
+  flex-shrink: 0;
+}
+
+.employeeCodeField .searchInput {
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.employeePhotoCompact {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 112px;
+  flex-shrink: 0;
+}
+
+.employeePhotoCompactLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: #344054;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.employeePhotoPicker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  margin: 0;
+}
+
+.employeePhotoPickerHint {
+  font-size: 11px;
+  font-weight: 600;
+  color: #175cd3;
+  line-height: 1.2;
+}
+
+.employeePhotoThumbForm,
+.employeePhotoPlaceholderForm {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+}
+
+.employeePhotoPlaceholderForm {
+  font-size: 32px;
+}
+
+.employeePhotoFileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.employeePhotoRemoveBtn {
+  border: 0;
+  background: transparent;
+  color: #b42318;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1.2;
+}
+
+.employeePhotoRemoveBtn:hover {
+  text-decoration: underline;
+}
+
+.employeePhotoUploadActions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.employeePhotoUploadActions input[type="file"] {
+  max-width: 100%;
+  font-size: 12px;
 }
 
 .settingsTabBtn {
@@ -1644,10 +2982,6 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
   background: #e6f4ef;
   border-color: #007b49;
   color: #007b49;
-}
-
-.settingsTabPanel {
-  margin-top: 4px;
 }
 
 .settingsActions {
@@ -2382,7 +3716,25 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
 .settingsForm {
   display: grid;
   gap: 12px;
-  max-width: 720px;
+  width: 100%;
+  max-width: none;
+}
+
+@media (min-width: 900px) {
+  .settingsForm {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 18px;
+  }
+
+  .settingsSectionTitle,
+  .settingsLogoBlock,
+  .settingsActions,
+  .settingsFieldHint,
+  .settingsForm textarea,
+  .settingsTabPanel > .empty,
+  .subscriptionTab {
+    grid-column: 1 / -1;
+  }
 }
 
 .settingsForm label {
@@ -2925,6 +4277,71 @@ button:disabled {
   font-weight: 600;
 }
 
+.settingsLogoBlock {
+  grid-column: 1 / -1;
+  padding: 16px;
+  border: 1px solid #dcefe4;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f6fef9 0%, #ffffff 100%);
+}
+
+.settingsLogoRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.settingsLogoPreview {
+  width: 96px;
+  height: 96px;
+  border-radius: 18px;
+  border: 1px dashed #abefc6;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.settingsLogoPreview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  padding: 8px;
+}
+
+.settingsLogoPlaceholder {
+  font-size: 12px;
+  font-weight: 700;
+  color: #98a2b3;
+  text-align: center;
+  padding: 8px;
+}
+
+.settingsLogoActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.settingsLogoInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.settingsLogoUploadBtn {
+  margin: 0;
+  cursor: pointer;
+}
+
 .settingsForm label {
   font-weight: 800;
   color: #344054;
@@ -3262,6 +4679,7 @@ button:disabled {
   margin-top: auto;
   padding: 14px 16px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
 }
 .devCredit-sidebar {
   flex-direction: column;

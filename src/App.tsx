@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { jsPDF } from "jspdf";
 import * as pharmacyService from "./services/pharmacyService";
 import "./styles.css";
 import { ARABIC_FONT_BASE64 } from "./arabicFont";
 import { LOGO_BASE64 } from "./logoBase64";
 import Sidebar from "./components/Sidebar";
+import AppNavBar from "./components/AppNavBar";
 import Topbar from "./components/Topbar";
 import StatCard from "./components/StatCard";
 import MedicineTable from "./components/MedicineTable";
@@ -18,11 +19,13 @@ import LoginPage from "./components/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import InventoryPage from "./pages/InventoryPage";
 import PosPage from "./pages/PosPage";
+import { getShiftDisplayName } from "./utils/workSchedule";
 import InvoicesPage from "./pages/InvoicesPage";
 import ReturnsPage from "./pages/ReturnsPage";
 import ReturnModal from "./components/ReturnModal";
 import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
+import EmployeesUsersPage from "./pages/EmployeesUsersPage";
 import SuperAdminPage from "./pages/SuperAdminPage";
 import {
   getAllowedPages,
@@ -61,6 +64,7 @@ import type {
   ReturnRecord,
   StockMovement,
   SubscriptionRequest,
+  LoginAccountRequest,
   SystemUser,
   UserRole,
 } from "./types";
@@ -247,6 +251,13 @@ const emptyMedicineForm: NewMedicineForm = {
   expiry: "",
 };
 
+const ACTIVE_PAGE_STORAGE_KEY = "pharmacy_active_page";
+
+function clearSessionNavigationState() {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(ACTIVE_PAGE_STORAGE_KEY);
+}
+
 function formatDateInput(date: Date) {
   return date.toISOString().slice(0, 10);
 }
@@ -254,30 +265,14 @@ function formatDateInput(date: Date) {
 function App() {
   const [lang, setLang] = useState<Lang>("ar");
   const [activePage, setActivePage] = useState<Page>("dashboard");
-  const [isMenuOpen, setIsMenuOpen] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return window.matchMedia("(min-width: 951px)").matches;
-  });
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
-    const media = window.matchMedia("(max-width: 950px)");
-    const syncScrollLock = () => {
-      document.body.style.overflow = media.matches && isMenuOpen ? "hidden" : "";
-    };
-    syncScrollLock();
-    media.addEventListener("change", syncScrollLock);
+    document.body.style.overflow = isMenuOpen ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
-      media.removeEventListener("change", syncScrollLock);
     };
   }, [isMenuOpen]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (window.matchMedia("(max-width: 950px)").matches) {
-      setIsMenuOpen(false);
-    }
-  }, [activePage]);
 
   const [query, setQuery] = useState("");
   const [posMessage, setPosMessage] = useState("");
@@ -315,6 +310,7 @@ function App() {
   const [invoiceToDate, setInvoiceToDate] = useState("");
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [subscriptionRequests, setSubscriptionRequests] = useState<SubscriptionRequest[]>([]);
+  const [loginAccountRequests, setLoginAccountRequests] = useState<LoginAccountRequest[]>([]);
   const [newMedicine, setNewMedicine] = useState<NewMedicineForm>(emptyMedicineForm);
   const emptyPurchaseForm = {
     barcode: "",
@@ -350,6 +346,8 @@ function App() {
   const [paymentSearch, setPaymentSearch] = useState("");
   const [authLoading, setAuthLoading] = useState(true);
   const [appUser, setAppUser] = useState<AppUser | null>(null);
+  const [currentWorkShiftId, setCurrentWorkShiftId] = useState<string>("");
+  const [currentWorkShiftLabel, setCurrentWorkShiftLabel] = useState<string>("");
   const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
   const [branches, setBranches] = useState<PharmacySettings[]>([]);
   const [activeBranchId, setActiveBranchId] = useState<string | null>(null);
@@ -391,7 +389,7 @@ function App() {
     name: "",
     email: "",
     password: "",
-    role: "admin" as UserRole,
+    role: "pharmacy_admin" as UserRole,
     uid: "",
     pharmacyId: "",
   });
@@ -414,25 +412,6 @@ function App() {
     role: AppUser["role"];
     email: string;
   } | null>(null);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      setIsMenuOpen(false);
-      setAvailabilityModal(null);
-      setSelectedInvoice(null);
-      setSelectedReturn(null);
-      setSelectedCustomer(null);
-      setReturnInvoice(null);
-      setShowPurchaseModal(false);
-      setShowCustomerPaymentModal(false);
-      setUserModal(null);
-      setEditUserDraft(null);
-      setBranchModal(null);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
 
   const [dashboardPeriod, setDashboardPeriod] = useState<
     "today" | "7days" | "month" | "custom"
@@ -464,6 +443,65 @@ function App() {
   lowStockThreshold: DEFAULT_LOW_STOCK_THRESHOLD,
   expiringSoonDays: DEFAULT_EXPIRING_SOON_DAYS,
 });
+
+  useEffect(() => {
+    if (!appUser) return;
+    const savedPage = sessionStorage.getItem(ACTIVE_PAGE_STORAGE_KEY) as Page | null;
+    if (!savedPage) return;
+    const page = savedPage === "hr" ? "users" : savedPage;
+    if (getAllowedPages(appUser).includes(page)) {
+      setActivePage(page);
+    }
+  }, [appUser?.uid]);
+
+  useEffect(() => {
+    if (!appUser) return;
+    sessionStorage.setItem(ACTIVE_PAGE_STORAGE_KEY, activePage);
+  }, [activePage, appUser]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setIsMenuOpen(false);
+      setAvailabilityModal(null);
+      setSelectedInvoice(null);
+      setSelectedReturn(null);
+      setSelectedCustomer(null);
+      setReturnInvoice(null);
+      setShowPurchaseModal(false);
+      setShowCustomerPaymentModal(false);
+      setUserModal(null);
+      setEditUserDraft(null);
+      setBranchModal(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  useEffect(() => {
+    if (!appUser) return;
+    const pages = getAllowedPages(appUser);
+    if (activePage === "hr") {
+      setActivePage("users");
+      return;
+    }
+    if (!pages.includes(activePage)) {
+      setActivePage(pages[0] || "dashboard");
+    }
+  }, [appUser, activePage]);
+
+  const refreshAdminRequestsStable = useCallback(async () => {
+    if (!isSuperAdmin(appUser)) return;
+    setSubscriptionRequests(await pharmacyService.getAllSubscriptionRequests());
+    setLoginAccountRequests(await pharmacyService.getAllLoginAccountRequests());
+  }, [appUser?.uid]);
+
+  useEffect(() => {
+    if (!appUser || !isSuperAdmin(appUser)) return;
+    if (activePage !== "tenants") return;
+    void refreshAdminRequestsStable();
+  }, [activePage, appUser?.uid, refreshAdminRequestsStable]);
+
 useEffect(() => {
   let cancelled = false;
 
@@ -491,6 +529,7 @@ useEffect(() => {
     if (!currentUser || !authUser) {
       setAppUser(null);
       setActiveBranchId(null);
+      clearSessionNavigationState();
       pharmacyService.setActivePharmacy(null);
       pharmacyService.setCurrentAppUser(null);
       setUserLoading(false);
@@ -544,6 +583,7 @@ useEffect(() => {
 
       pharmacyService.setCurrentAppUser(data);
       setAppUser(data);
+      void pharmacyService.recordLastLogin(data.uid);
 
       if (isSuperAdmin(data)) {
         const tenantScope = activeBranchId || data.pharmacyId || "main";
@@ -595,6 +635,23 @@ useEffect(() => {
 }, []);
 
 useEffect(() => {
+  if (!appUser) {
+    setCurrentWorkShiftId("");
+    setCurrentWorkShiftLabel("");
+    return;
+  }
+  void pharmacyService.resolveWorkShiftForUser(appUser).then((ctx) => {
+    if (!ctx) {
+      setCurrentWorkShiftId("");
+      setCurrentWorkShiftLabel("");
+      return;
+    }
+    setCurrentWorkShiftId(ctx.shiftId);
+    setCurrentWorkShiftLabel(getShiftDisplayName(ctx.shiftId, ctx.shifts, isArabic));
+  });
+}, [appUser, isArabic]);
+
+useEffect(() => {
     const currentAppUser = appUser;
     if (!currentAppUser) return;
 
@@ -639,6 +696,9 @@ useEffect(() => {
       setStockMovements(await pharmacyService.getStockMovements());
       setActivityLogs(await pharmacyService.getActivityLogs());
       setSubscriptionRequests(await pharmacyService.getAllSubscriptionRequests());
+      if (isSuperAdmin(user)) {
+        setLoginAccountRequests(await pharmacyService.getAllLoginAccountRequests());
+      }
       try {
         setHeldInvoices(await pharmacyService.getHeldInvoices(branchId));
       } catch (heldError) {
@@ -686,6 +746,9 @@ useEffect(() => {
     cleanup.push(pharmacyService.subscribeStockMovements(setStockMovements));
     cleanup.push(pharmacyService.subscribeActivityLogs(setActivityLogs));
     cleanup.push(pharmacyService.subscribeSubscriptionRequests(setSubscriptionRequests));
+    if (isSuperAdmin(currentAppUser)) {
+      cleanup.push(pharmacyService.subscribeLoginAccountRequests(setLoginAccountRequests));
+    }
     cleanup.push(pharmacyService.subscribeHeldInvoices(setHeldInvoices, branchId));
 
     if (isPharmacyAdmin(currentAppUser)) {
@@ -1196,7 +1259,7 @@ const topSellingMedicines = Object.values(
     days: number;
     amount: number;
   }): Promise<SubscriptionRequest | null> {
-    if (!hasRole(["admin", "super_admin"])) {
+    if (!hasRole(["pharmacy_admin", "super_admin"])) {
       return null;
     }
 
@@ -1329,6 +1392,105 @@ const topSellingMedicines = Object.values(
     }
   }
 
+  async function handleApproveLoginAccountRequest(requestId: number): Promise<boolean> {
+    if (!isSuperAdmin(appUser)) return false;
+
+    const request = await pharmacyService.getLoginAccountRequestById(requestId);
+    if (!request || request.status !== "pending" || !request.password) {
+      alert(isArabic ? "الطلب غير موجود أو تمت معالجته" : "Request not found or already processed");
+      return false;
+    }
+
+    try {
+      const uid = await pharmacyService.createSystemUser({
+        name: request.employeeName,
+        email: request.email,
+        password: request.password,
+        role: request.role,
+        pharmacyId: request.pharmacyId,
+        employeeId: request.employeeId,
+        username: request.username,
+      });
+
+      await pharmacyService.updateLoginAccountRequestStatus(requestId, {
+        status: "approved",
+        reviewedBy: appUser?.uid,
+        reviewedByName: appUser?.name,
+        clearPassword: true,
+      });
+
+      await addActivityLog({
+        type: "login_account_request_approved",
+        title: isArabic ? "اعتماد طلب حساب دخول" : "Login account approved",
+        description: isArabic
+          ? `تم إنشاء حساب ${request.username} للموظف ${request.employeeName}`
+          : `Created account ${request.username} for ${request.employeeName}`,
+        referenceType: "login_account_request",
+        referenceId: String(requestId),
+        pharmacyId: request.pharmacyId,
+      });
+
+      setLoginAccountRequests(await pharmacyService.getAllLoginAccountRequests());
+      if (isPharmacyAdmin(appUser) || isSuperAdmin(appUser)) {
+        setSystemUsers(await pharmacyService.getAllSystemUsers());
+      }
+      alert(
+        isArabic
+          ? `تم اعتماد الطلب وإنشاء الحساب (${request.username})`
+          : `Request approved. Account created (${request.username})`
+      );
+      return true;
+    } catch (error) {
+      console.error(error);
+      const message = error instanceof Error ? error.message : "";
+      alert(
+        isArabic
+          ? `تعذر اعتماد الطلب${message ? `: ${formatUserCreationError(message)}` : ""}`
+          : `Could not approve${message ? `: ${message}` : ""}`
+      );
+      return false;
+    }
+  }
+
+  async function handleRejectLoginAccountRequest(
+    requestId: number,
+    note?: string
+  ): Promise<boolean> {
+    if (!isSuperAdmin(appUser)) return false;
+
+    const request = loginAccountRequests.find((item) => item.id === requestId);
+    if (!request || request.status !== "pending") return false;
+
+    try {
+      await pharmacyService.updateLoginAccountRequestStatus(requestId, {
+        status: "rejected",
+        reviewedBy: appUser?.uid,
+        reviewedByName: appUser?.name,
+        reviewNote: note,
+        clearPassword: true,
+      });
+
+      await addActivityLog({
+        type: "login_account_request_rejected",
+        title: isArabic ? "رفض طلب حساب دخول" : "Login account rejected",
+        description: isArabic
+          ? `تم رفض طلب ${request.requestNumber} — ${request.employeeName}`
+          : `Rejected ${request.requestNumber} — ${request.employeeName}`,
+        referenceType: "login_account_request",
+        referenceId: String(requestId),
+        pharmacyId: request.pharmacyId,
+      });
+
+      setLoginAccountRequests(await pharmacyService.getAllLoginAccountRequests());
+      alert(isArabic ? "تم رفض الطلب" : "Request rejected");
+      return true;
+    } catch (error) {
+      console.error(error);
+      alert(isArabic ? "تعذر رفض الطلب" : "Could not reject request");
+      return false;
+    }
+  }
+
   async function handleRejectSubscriptionRequest(
     requestId: number,
     note?: string
@@ -1370,20 +1532,44 @@ const topSellingMedicines = Object.values(
 function handleLogoUpload(file: File | null) {
   if (!file) return;
 
+  const allowedTypes = ["image/png", "image/jpeg", "image/webp"];
+  if (!allowedTypes.includes(file.type)) {
+    alert(
+      isArabic
+        ? "يرجى اختيار صورة PNG أو JPG أو WebP"
+        : "Please choose a PNG, JPG, or WebP image"
+    );
+    return;
+  }
+
+  const maxBytes = 2 * 1024 * 1024;
+  if (file.size > maxBytes) {
+    alert(
+      isArabic
+        ? "حجم الصورة كبير. الحد الأقصى 2 ميجابايت"
+        : "Image is too large. Maximum size is 2 MB"
+    );
+    return;
+  }
+
   const reader = new FileReader();
 
   reader.onload = () => {
-    setSettingsForm({
-      ...settingsForm,
+    setSettingsForm((current) => ({
+      ...current,
       logoBase64: String(reader.result || ""),
-    });
+    }));
+  };
+
+  reader.onerror = () => {
+    alert(isArabic ? "تعذر قراءة الصورة" : "Could not read the image");
   };
 
   reader.readAsDataURL(file);
 }
 
   async function savePharmacySettings() {
-  if (!hasRole(["admin", "super_admin"])) {
+  if (!hasRole(["pharmacy_admin", "super_admin"])) {
     alert(isArabic ? "ليس لديك صلاحية لتعديل الإعدادات" : "You do not have permission to edit settings");
     return;
   }
@@ -1425,7 +1611,11 @@ function handleLogoUpload(file: File | null) {
     settingsUpdates.subscriptionEndDate = settingsForm.subscriptionEndDate;
   }
 
-  await pharmacyService.updatePharmacySettings(getPharmacyId(), settingsUpdates);
+  await pharmacyService.upsertPharmacySettings(getPharmacyId(), settingsUpdates);
+  const refreshedSettings = await pharmacyService.getPharmacySettings(getPharmacyId());
+  if (refreshedSettings) {
+    setPharmacySettings(refreshedSettings);
+  }
   await addActivityLog({
   type: "settings_update",
   title: isArabic ? "تعديل الإعدادات" : "Settings Updated",
@@ -1499,50 +1689,50 @@ function showSubscriptionExpiredAlert() {
 }
 
 function canManageInventory() {
-  return hasRole(["admin", "super_admin", "inventory"]);
+  return hasRole(["pharmacy_admin", "super_admin", "inventory"]);
 }
 
 function canUsePurchases() {
-  return hasRole(["admin", "super_admin", "inventory"]);
+  return hasRole(["pharmacy_admin", "super_admin", "inventory"]);
 }
 
 function canViewReports() {
-  return hasRole(["admin", "super_admin", "accountant"]);
+  return hasRole(["pharmacy_admin", "super_admin", "accountant"]);
 }
 
 function canViewStockMovements() {
-  return hasRole(["admin", "super_admin", "inventory", "accountant"]);
+  return hasRole(["pharmacy_admin", "super_admin", "inventory", "accountant"]);
 }
 
 function canViewActivityLogs() {
-  return hasRole(["admin", "super_admin", "accountant"]);
+  return hasRole(["pharmacy_admin", "super_admin", "accountant"]);
 }
 
 function canManageUsers() {
-  return hasRole(["admin", "super_admin"]);
+  return hasRole(["pharmacy_admin", "super_admin"]);
 }
 
 function canDeleteMedicine() {
-  return hasRole(["admin", "super_admin"]);
+  return hasRole(["pharmacy_admin", "super_admin"]);
 }
 
 function canViewInvoices() {
-  return hasRole(["admin", "super_admin", "cashier", "accountant"]);
+  return hasRole(["pharmacy_admin", "super_admin", "cashier", "accountant"]);
 }
 
 function canViewCustomers() {
-  return hasRole(["admin", "super_admin", "cashier", "accountant"]);
+  return hasRole(["pharmacy_admin", "super_admin", "cashier", "accountant"]);
 }
 
 function canUsePOS() {
-  return hasRole(["admin", "super_admin", "cashier"]);
+  return hasRole(["pharmacy_admin", "super_admin", "cashier"]);
 }
 function canUseReturns() {
-  return hasRole(["admin", "super_admin", "cashier"]);
+  return hasRole(["pharmacy_admin", "super_admin", "cashier"]);
 }
 
 function canDeleteReturn() {
-  return hasRole(["admin", "super_admin"]);
+  return hasRole(["pharmacy_admin", "super_admin"]);
 }
 
 function findMedicineForReturnItem(
@@ -2056,6 +2246,7 @@ const totalProfit = total - totalCost;
   pharmacyId: getPharmacyId(),
   cashierId: user?.uid || "",
   cashierName: appUser?.name || "",
+  shiftId: currentWorkShiftId || undefined,
   customerName: customerName.trim(),
   date: new Date().toLocaleString(),
   createdAt: new Date().toISOString(),
@@ -5137,7 +5328,7 @@ function startCustomerPayment(customer: CustomerDebt) {
 }
 
 async function deleteCustomerPayment(payment: CustomerPayment) {
-  if (!hasRole(["admin", "super_admin"])) {
+  if (!hasRole(["pharmacy_admin", "super_admin"])) {
     alert(
       isArabic
         ? "الحذف متاح للأدمن فقط"
@@ -6360,7 +6551,7 @@ function resetTenantUserForm() {
     name: "",
     email: "",
     password: "",
-    role: "admin",
+    role: "pharmacy_admin",
     uid: "",
     pharmacyId: selectedTenantId || defaultPharmacyIdForUserForm(),
   });
@@ -6501,8 +6692,16 @@ async function handleLogin(e: FormEvent<HTMLFormElement>) {
   try {
     setLoginError("");
     setRegisterSuccess("");
-    const { error } = await pharmacyService.signInWithPassword(loginEmail, loginPassword);
+    const { error } = await pharmacyService.signInWithUsernameOrEmail(loginEmail, loginPassword);
     if (error) {
+      if (error.message === "username_login_not_configured") {
+        setLoginError(
+          isArabic
+            ? "نظام اسم المستخدم غير مفعّل. شغّل supabase/username-login.sql في Supabase."
+            : "Username login not configured. Run supabase/username-login.sql in Supabase."
+        );
+        return;
+      }
       throw error;
     }
   } catch (error) {
@@ -6559,6 +6758,7 @@ function switchAuthMode(mode: "login" | "register") {
 }
 
 async function handleLogout() {
+  clearSessionNavigationState();
   await pharmacyService.signOutUser();
 }
 if (authLoading || userLoading) {
@@ -6641,66 +6841,47 @@ if (!appUser) {
   );
 }
 
-if (!allowedPages.includes(activePage)) {
-  setTimeout(() => {
-    setActivePage(allowedPages[0] || "dashboard");
-  }, 0);
-}
   return (
     <div className="app" dir={isArabic ? "rtl" : "ltr"}>
-      <Sidebar
-        appUser={appUser}
-        activePage={activePage}
-        setActivePage={setActivePage}
-        allowedPages={allowedPages}
-        isArabic={isArabic}
-        t={t}
-        pharmacyName={
-          isArabic
-            ? pharmacySettings?.name || "صيدلية Focus"
-            : pharmacySettings?.name_en || "Focus Pharmacy"
-        }
-        pharmacyPhone={
-          pharmacySettings?.phone || (isArabic ? "نظام إدارة" : "Management System")
-        }
-        isOpen={isMenuOpen}
-        onCloseMenu={() => setIsMenuOpen(false)}
-        onSelectPage={(page) => {
-          setActivePage(page);
-          if (typeof window !== "undefined" && window.matchMedia("(max-width: 950px)").matches) {
-            setIsMenuOpen(false);
-          }
-        }}
-      />
-
       <main className="content">
-        <Topbar
-          title={
-            isArabic
-              ? pharmacySettings?.name || "صيدلية Focus"
-              : pharmacySettings?.name_en || pharmacySettings?.name || "Focus Pharmacy"
-          }
-          pharmacyPhone={pharmacySettings?.phone || ""}
-          pharmacyAddress={pharmacySettings?.address || ""}
-          appUser={appUser}
-          isArabic={isArabic}
-          t={t}
-          lang={lang}
-          onToggleLang={() => setLang(lang === "ar" ? "en" : "ar")}
-          onLogout={handleLogout}
-          onToggleMenu={() => setIsMenuOpen((value) => !value)}
-          isMenuOpen={isMenuOpen}
-          branches={branches}
-          activeBranchId={activeBranchId}
-          onSwitchBranch={switchBranch}
-          alertItems={alertItems}
-          alertTotal={alertTotal}
-          onAlertNavigate={(filter) => {
-            setActivePage("inventory");
-            setInventoryStatusFilter(filter);
-            setIsMenuOpen(false);
-          }}
-        />
+        <div className="appStickyHeader">
+          <Topbar
+            title={
+              isArabic
+                ? pharmacySettings?.name || "صيدلية Focus"
+                : pharmacySettings?.name_en || pharmacySettings?.name || "Focus Pharmacy"
+            }
+            pharmacyPhone={pharmacySettings?.phone || ""}
+            pharmacyAddress={pharmacySettings?.address || ""}
+            pharmacyLogo={appLogo}
+            appUser={appUser}
+            isArabic={isArabic}
+            t={t}
+            lang={lang}
+            onToggleLang={() => setLang(lang === "ar" ? "en" : "ar")}
+            onLogout={handleLogout}
+            onToggleMenu={() => setIsMenuOpen((value) => !value)}
+            isMenuOpen={isMenuOpen}
+            branches={branches}
+            activeBranchId={activeBranchId}
+            onSwitchBranch={switchBranch}
+            alertItems={alertItems}
+            alertTotal={alertTotal}
+            onAlertNavigate={(filter) => {
+              setActivePage("inventory");
+              setInventoryStatusFilter(filter);
+              setIsMenuOpen(false);
+            }}
+          />
+
+          <AppNavBar
+            activePage={activePage}
+            allowedPages={allowedPages}
+            isArabic={isArabic}
+            t={t}
+            onSelectPage={setActivePage}
+          />
+        </div>
 
         {activePage === "dashboard" && (
           <DashboardPage
@@ -6743,7 +6924,6 @@ if (!allowedPages.includes(activePage)) {
             onOpenCustomerPayments={goToCustomerPaymentForm}
             onNavigate={(page) => {
               setActivePage(page);
-              setIsMenuOpen(false);
             }}
           />
         )}
@@ -6815,6 +6995,7 @@ if (!allowedPages.includes(activePage)) {
             onOpenInstantReturn={() => setShowInstantReturnModal(true)}
             lowStockThreshold={lowStockThreshold}
             expiringSoonDays={expiringSoonDays}
+            workShiftLabel={currentWorkShiftLabel}
           />
         )}
 
@@ -6929,7 +7110,17 @@ if (!allowedPages.includes(activePage)) {
             }
           />
         )}
-        {activePage === "users" && canOpenPage("users") && renderUsersPage()}
+        {activePage === "users" && canOpenPage("users") && (
+          <EmployeesUsersPage
+            isArabic={isArabic}
+            appUser={appUser}
+            pharmacyId={getPharmacyId()}
+            pharmacies={branches}
+            currency={settingsForm.currency || "ج.م"}
+            currentUid={user?.uid}
+            onActivityLog={addActivityLog}
+          />
+        )}
         {activePage === "tenants" && canOpenPage("tenants") && (
           <SuperAdminPage
             isArabic={isArabic}
@@ -6955,6 +7146,10 @@ if (!allowedPages.includes(activePage)) {
             subscriptionRequests={subscriptionRequests}
             onApproveSubscriptionRequest={handleApproveSubscriptionRequest}
             onRejectSubscriptionRequest={handleRejectSubscriptionRequest}
+            loginAccountRequests={loginAccountRequests}
+            onApproveLoginAccountRequest={handleApproveLoginAccountRequest}
+            onRejectLoginAccountRequest={handleRejectLoginAccountRequest}
+            onRefreshAdminRequests={refreshAdminRequestsStable}
           />
         )}
         {activePage === "branches" && canOpenPage("branches") && renderBranchesPage()}
@@ -6978,6 +7173,28 @@ if (!allowedPages.includes(activePage)) {
           />
         )}
       </main>
+
+      <Sidebar
+        activePage={activePage}
+        allowedPages={allowedPages}
+        isArabic={isArabic}
+        t={t}
+        pharmacyName={
+          isArabic
+            ? pharmacySettings?.name || "صيدلية Focus"
+            : pharmacySettings?.name_en || "Focus Pharmacy"
+        }
+        pharmacyPhone={
+          pharmacySettings?.phone || (isArabic ? "نظام إدارة" : "Management System")
+        }
+        pharmacyLogo={appLogo}
+        isOpen={isMenuOpen}
+        onCloseMenu={() => setIsMenuOpen(false)}
+        onSelectPage={(page) => {
+          setActivePage(page);
+          setIsMenuOpen(false);
+        }}
+      />
 
       {availabilityModal && (
         <div className="modalOverlay" onClick={() => setAvailabilityModal(null)}>

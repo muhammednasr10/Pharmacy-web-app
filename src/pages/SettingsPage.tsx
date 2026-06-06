@@ -72,7 +72,7 @@ export default function SettingsPage({
   const [customDays, setCustomDays] = useState(30);
   const [submittingRequest, setSubmittingRequest] = useState(false);
   const [paymentRequest, setPaymentRequest] = useState<SubscriptionRequest | null>(null);
-  const isAdmin = hasRole(["admin", "super_admin"]);
+  const isAdmin = hasRole(["pharmacy_admin", "super_admin"]);
 
   const pendingRequest = pharmacySubscriptionRequests.find((r) => r.status === "pending");
   const requestDays =
@@ -273,7 +273,52 @@ export default function SettingsPage({
         <div className="settingsForm settingsTabPanel">
           <div className="settingsSectionTitle">
             <h3>{isArabic ? "بيانات الصيدلية" : "Pharmacy Information"}</h3>
-            <p>{isArabic ? "الاسم، الهاتف، العنوان والعملة" : "Name, phone, address and currency"}</p>
+            <p>
+              {isArabic
+                ? "الاسم، الهاتف، العنوان، العملة ولوجو الصيدلية"
+                : "Name, phone, address, currency and pharmacy logo"}
+            </p>
+          </div>
+
+          <div className="settingsLogoBlock">
+            <label>{isArabic ? "لوجو الصيدلية" : "Pharmacy Logo"}</label>
+            <div className="settingsLogoRow">
+              <div className="settingsLogoPreview">
+                {settingsForm.logoBase64 ? (
+                  <img src={settingsForm.logoBase64} alt={isArabic ? "لوجو الصيدلية" : "Pharmacy logo"} />
+                ) : (
+                  <span className="settingsLogoPlaceholder">
+                    {isArabic ? "لا يوجد لوجو" : "No logo"}
+                  </span>
+                )}
+              </div>
+              <div className="settingsLogoActions">
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  id="pharmacy-logo-upload"
+                  className="settingsLogoInput"
+                  onChange={(e) => handleLogoUpload(e.target.files?.[0] || null)}
+                />
+                <label htmlFor="pharmacy-logo-upload" className="printBtn settingsLogoUploadBtn">
+                  {isArabic ? "رفع لوجو" : "Upload Logo"}
+                </label>
+                {settingsForm.logoBase64 && (
+                  <button
+                    type="button"
+                    className="deleteSmallBtn"
+                    onClick={() => setSettingsForm({ ...settingsForm, logoBase64: "" })}
+                  >
+                    {isArabic ? "حذف اللوجو" : "Remove Logo"}
+                  </button>
+                )}
+              </div>
+            </div>
+            <p className="settingsFieldHint">
+              {isArabic
+                ? "PNG أو JPG — حتى 2 ميجابايت. يُحفظ في Supabase عند الضغط على «حفظ الإعدادات»"
+                : "PNG or JPG — up to 2 MB. Saved to Supabase when you click Save Settings"}
+            </p>
           </div>
 
           <label>{isArabic ? "اسم الصيدلية" : "Pharmacy Name"}</label>
@@ -327,8 +372,8 @@ export default function SettingsPage({
             <h3>{isArabic ? "بيانات الفاتورة" : "Invoice Settings"}</h3>
             <p>
               {isArabic
-                ? "النص واللوجو الذي يظهر على الفواتير والتقارير"
-                : "Footer text and logo shown on invoices and reports"}
+                ? "النص الذي يظهر أسفل الفواتير والتقارير"
+                : "Footer text shown on invoices and reports"}
             </p>
           </div>
 
@@ -338,25 +383,6 @@ export default function SettingsPage({
             onChange={(e) => setSettingsForm({ ...settingsForm, invoiceFooter: e.target.value })}
             placeholder={isArabic ? "شكراً لزيارتكم" : "Thank you"}
           />
-
-          <label>{isArabic ? "لوجو الصيدلية" : "Pharmacy Logo"}</label>
-          <input type="file" accept="image/*" onChange={(e) => handleLogoUpload(e.target.files?.[0] || null)} />
-
-          {settingsForm.logoBase64 && (
-            <>
-              <div className="settingsLogoPreview">
-                <img src={settingsForm.logoBase64} alt="Pharmacy logo" />
-              </div>
-
-              <button
-                type="button"
-                className="deleteSmallBtn"
-                onClick={() => setSettingsForm({ ...settingsForm, logoBase64: "" })}
-              >
-                {isArabic ? "حذف اللوجو" : "Remove Logo"}
-              </button>
-            </>
-          )}
 
           {renderSaveActions()}
         </div>

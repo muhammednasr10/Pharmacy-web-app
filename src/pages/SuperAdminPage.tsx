@@ -1,5 +1,5 @@
-import { useState } from "react";
-import type { AppUser, PharmacySettings, SubscriptionRequest, UserRole } from "../types";
+import { useEffect, useState } from "react";
+import type { AppUser, LoginAccountRequest, PharmacySettings, SubscriptionRequest, UserRole } from "../types";
 import { computeSubscriptionEndDate } from "../config/subscription";
 import { getRoleLabel, superAdminRoleOptions } from "../utils/roles";
 
@@ -42,6 +42,10 @@ type SuperAdminPageProps = {
   subscriptionRequests: SubscriptionRequest[];
   onApproveSubscriptionRequest: (requestId: number) => Promise<boolean>;
   onRejectSubscriptionRequest: (requestId: number, note?: string) => Promise<boolean>;
+  loginAccountRequests: LoginAccountRequest[];
+  onApproveLoginAccountRequest: (requestId: number) => Promise<boolean>;
+  onRejectLoginAccountRequest: (requestId: number, note?: string) => Promise<boolean>;
+  onRefreshAdminRequests: () => Promise<void>;
 };
 
 function isPharmacyActive(pharmacy: PharmacySettings) {
@@ -69,7 +73,14 @@ export default function SuperAdminPage({
   subscriptionRequests,
   onApproveSubscriptionRequest,
   onRejectSubscriptionRequest,
+  loginAccountRequests,
+  onApproveLoginAccountRequest,
+  onRejectLoginAccountRequest,
+  onRefreshAdminRequests,
 }: SuperAdminPageProps) {
+  useEffect(() => {
+    void onRefreshAdminRequests();
+  }, [onRefreshAdminRequests]);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [manageModalOpen, setManageModalOpen] = useState(false);
   const [addUserModalOpen, setAddUserModalOpen] = useState(false);
@@ -84,7 +95,9 @@ export default function SuperAdminPage({
   const activeCount = pharmacies.filter(isPharmacyActive).length;
   const suspendedCount = pharmacies.length - activeCount;
   const pendingRequests = subscriptionRequests.filter((r) => r.status === "pending");
+  const pendingLoginRequests = loginAccountRequests.filter((r) => r.status === "pending");
   const [requestActionId, setRequestActionId] = useState<number | null>(null);
+  const [loginRequestActionId, setLoginRequestActionId] = useState<number | null>(null);
   const [requestUpdating, setRequestUpdating] = useState(false);
 
   async function handleApproveRequest(requestId: number) {
@@ -110,6 +123,32 @@ export default function SuperAdminPage({
     } finally {
       setRequestUpdating(false);
       setRequestActionId(null);
+    }
+  }
+
+  async function handleApproveLoginRequest(requestId: number) {
+    setLoginRequestActionId(requestId);
+    setRequestUpdating(true);
+    try {
+      await onApproveLoginAccountRequest(requestId);
+    } finally {
+      setRequestUpdating(false);
+      setLoginRequestActionId(null);
+    }
+  }
+
+  async function handleRejectLoginRequest(requestId: number) {
+    const note = window.prompt(
+      isArabic ? "سبب الرفض (اختياري):" : "Rejection reason (optional):"
+    );
+    if (note === null) return;
+    setLoginRequestActionId(requestId);
+    setRequestUpdating(true);
+    try {
+      await onRejectLoginAccountRequest(requestId, note || undefined);
+    } finally {
+      setRequestUpdating(false);
+      setLoginRequestActionId(null);
     }
   }
 
@@ -270,6 +309,89 @@ export default function SuperAdminPage({
                           className="dangerBtn"
                           disabled={requestUpdating && requestActionId === request.id}
                           onClick={() => void handleRejectRequest(request.id)}
+                        >
+                          {isArabic ? "رفض" : "Reject"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="saasRequestsPanel">
+        <div className="saasPageHeader">
+          <div>
+            <h3>{isArabic ? "طلبات حسابات الدخول" : "Login account requests"}</h3>
+            <p className="pageHint">
+              {isArabic
+                ? "طلبات مديري الصيدليات لإنشاء حسابات دخول للموظفين"
+                : "Pharmacy admins request new employee login accounts"}
+            </p>
+          </div>
+          <span className={`saasRequestsCount${pendingLoginRequests.length ? " active" : ""}`}>
+            {pendingLoginRequests.length} {isArabic ? "قيد المراجعة" : "pending"}
+          </span>
+          <button type="button" className="printBtn" onClick={() => void onRefreshAdminRequests()}>
+            {isArabic ? "تحديث" : "Refresh"}
+          </button>
+        </div>
+
+        {pendingLoginRequests.length === 0 ? (
+          <p className="empty">
+            {isArabic ? "لا توجد طلبات حسابات دخول" : "No pending login account requests"}
+          </p>
+        ) : (
+          <div className="tableWrap">
+            <table className="dataTable saasRequestsTable">
+              <thead>
+                <tr>
+                  <th>{isArabic ? "رقم الطلب" : "Request #"}</th>
+                  <th>{isArabic ? "الصيدلية" : "Pharmacy"}</th>
+                  <th>{isArabic ? "الموظف" : "Employee"}</th>
+                  <th>{isArabic ? "الإيميل" : "Email"}</th>
+                  <th>{isArabic ? "المستخدم" : "Username"}</th>
+                  <th>{isArabic ? "الدور" : "Role"}</th>
+                  <th>{isArabic ? "مقدم الطلب" : "Requested by"}</th>
+                  <th>{isArabic ? "التاريخ" : "Date"}</th>
+                  <th>{isArabic ? "إجراءات" : "Actions"}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingLoginRequests.map((request) => (
+                  <tr key={request.id}>
+                    <td dir="ltr">
+                      <code>{request.requestNumber}</code>
+                    </td>
+                    <td>
+                      <strong>{request.pharmacyName || request.pharmacyId}</strong>
+                    </td>
+                    <td>{request.employeeName}</td>
+                    <td dir="ltr">{request.email}</td>
+                    <td dir="ltr">{request.username}</td>
+                    <td>{getRoleLabel(request.role, isArabic)}</td>
+                    <td>{request.requestedByName || "—"}</td>
+                    <td>
+                      {request.createdAt ? new Date(request.createdAt).toLocaleString() : "—"}
+                    </td>
+                    <td>
+                      <div className="saasActions">
+                        <button
+                          type="button"
+                          className="smallBtn"
+                          disabled={requestUpdating && loginRequestActionId === request.id}
+                          onClick={() => void handleApproveLoginRequest(request.id)}
+                        >
+                          {isArabic ? "اعتماد" : "Approve"}
+                        </button>
+                        <button
+                          type="button"
+                          className="dangerBtn"
+                          disabled={requestUpdating && loginRequestActionId === request.id}
+                          onClick={() => void handleRejectLoginRequest(request.id)}
                         >
                           {isArabic ? "رفض" : "Reject"}
                         </button>

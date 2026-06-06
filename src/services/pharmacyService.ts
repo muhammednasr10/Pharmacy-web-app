@@ -1,10 +1,11 @@
 import { createEphemeralSupabase, supabase } from "./supabaseClient";
-import { isSuperAdmin, normalizeAppUser } from "../utils/roles";
+import { isSuperAdmin, normalizeAppUser, normalizeRole } from "../utils/roles";
 import type {
   ActivityLog,
   AppUser,
   SubscriptionRequest,
   SubscriptionRequestStatus,
+  LoginAccountRequest,
   CartItem,
   CreatePharmacyInput,
   CreatePharmacyUserInput,
@@ -20,7 +21,29 @@ import type {
   StockMovement,
   SystemUser,
   UserRole,
+  EmployeeProfile,
+  AttendanceRecord,
+  AttendanceStatus,
+  PayrollRecord,
+  Employee,
+  WorkBreak,
+  ShiftId,
+  PharmacyShift,
 } from "../types";
+import {
+  WORK_SCHEDULE_DEFAULTS,
+  DEFAULT_PHARMACY_SHIFTS,
+  DEFAULT_ALLOWED_LATE_MINUTES,
+  clonePharmacyShifts,
+  computeWorkHoursFromSchedule,
+  inferShiftIdFromTime,
+  isCheckInLate,
+  normalizeTimeValue,
+  parsePharmacyShifts,
+  parseWorkBreaks,
+  resolveWorkSchedule,
+  type WorkSchedule,
+} from "../utils/workSchedule";
 
 const camelKeyMap: Record<string, string> = {
   pharmacy_id: "pharmacyId",
@@ -71,6 +94,20 @@ const camelKeyMap: Record<string, string> = {
   is_instant: "isInstant",
   low_stock_threshold: "lowStockThreshold",
   expiring_soon_days: "expiringSoonDays",
+  payroll_pay_day: "payrollPayDay",
+  payroll_sick_deduction_percent: "payrollSickDeductionPercent",
+  payroll_absent_deduction_percent: "payrollAbsentDeductionPercent",
+  payroll_leave_deduction_percent: "payrollLeaveDeductionPercent",
+  payroll_max_leave_days: "payrollMaxLeaveDays",
+  payroll_standard_work_hours: "payrollStandardWorkHours",
+  payroll_overtime_percent: "payrollOvertimePercent",
+  payroll_work_day_start: "payrollWorkDayStart",
+  payroll_work_day_end: "payrollWorkDayEnd",
+  payroll_work_breaks: "payrollWorkBreaks",
+  work_shifts: "workShifts",
+  default_shift_id: "defaultShiftId",
+  assigned_shift_id: "assignedShiftId",
+  shift_id: "shiftId",
   request_number: "requestNumber",
   pharmacy_name: "pharmacyName",
   requested_by: "requestedBy",
@@ -79,6 +116,19 @@ const camelKeyMap: Record<string, string> = {
   reviewed_by_name: "reviewedByName",
   review_note: "reviewNote",
   reviewed_at: "reviewedAt",
+  employee_id: "employeeId",
+  employee_code: "employeeCode",
+  photo_base64: "photoBase64",
+  required_work_hours: "requiredWorkHours",
+  use_custom_work_schedule: "useCustomWorkSchedule",
+  work_day_start: "workDayStart",
+  work_day_end: "workDayEnd",
+  work_breaks: "workBreaks",
+  employee_name: "employeeName",
+  job_title: "jobTitle",
+  commission_rate: "commissionRate",
+  hire_date: "hireDate",
+  last_login_at: "lastLoginAt",
 };
 
 const snakeKeyMap: Record<string, string> = {
@@ -123,6 +173,24 @@ const snakeKeyMap: Record<string, string> = {
   isInstant: "is_instant",
   lowStockThreshold: "low_stock_threshold",
   expiringSoonDays: "expiring_soon_days",
+  payrollPayDay: "payroll_pay_day",
+  payrollSickDeductionPercent: "payroll_sick_deduction_percent",
+  payrollAbsentDeductionPercent: "payroll_absent_deduction_percent",
+  payrollLeaveDeductionPercent: "payroll_leave_deduction_percent",
+  payrollMaxLeaveDays: "payroll_max_leave_days",
+  payrollStandardWorkHours: "payroll_standard_work_hours",
+  payrollOvertimePercent: "payroll_overtime_percent",
+  payrollWorkDayStart: "payroll_work_day_start",
+  payrollWorkDayEnd: "payroll_work_day_end",
+  payrollWorkBreaks: "payroll_work_breaks",
+  workShifts: "work_shifts",
+  defaultShiftId: "default_shift_id",
+  assignedShiftId: "assigned_shift_id",
+  shiftId: "shift_id",
+  useCustomWorkSchedule: "use_custom_work_schedule",
+  workDayStart: "work_day_start",
+  workDayEnd: "work_day_end",
+  workBreaks: "work_breaks",
   requestNumber: "request_number",
   pharmacyName: "pharmacy_name",
   requestedBy: "requested_by",
@@ -131,6 +199,35 @@ const snakeKeyMap: Record<string, string> = {
   reviewedByName: "reviewed_by_name",
   reviewNote: "review_note",
   reviewedAt: "reviewed_at",
+  employeeId: "employee_id",
+  employeeCode: "employee_code",
+  photoBase64: "photo_base64",
+  requiredWorkHours: "required_work_hours",
+  employeeName: "employee_name",
+  jobTitle: "job_title",
+  commissionRate: "commission_rate",
+  hireDate: "hire_date",
+  lastLoginAt: "last_login_at",
+  baseSalary: "base_salary",
+  workDate: "work_date",
+  checkIn: "check_in",
+  checkOut: "check_out",
+  periodStart: "period_start",
+  periodEnd: "period_end",
+  workingDays: "working_days",
+  presentDays: "present_days",
+  absentDays: "absent_days",
+  sickDays: "sick_days",
+  leaveDays: "leave_days",
+  workMinutes: "work_minutes",
+  specialAllowances: "special_allowances",
+  incentives: "incentives",
+  commission: "commission",
+  taxes: "taxes",
+  insurance: "insurance",
+  calculatedSalary: "calculated_salary",
+  netPay: "net_pay",
+  paidAt: "paid_at",
 };
 
 function toCamelCase<T>(row: Record<string, any>): T {
@@ -337,6 +434,41 @@ export function signInWithPassword(email: string, password: string) {
   return supabase.auth.signInWithPassword({ email, password });
 }
 
+/** Resolve username or email to the Auth email address */
+export async function resolveLoginEmail(identifier: string): Promise<string | null> {
+  const trimmed = identifier.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.includes("@")) {
+    return trimmed.toLowerCase();
+  }
+
+  const { data, error } = await supabase.rpc("resolve_login_email", {
+    login_identifier: trimmed,
+  });
+
+  if (error) {
+    if (
+      error.message.includes("resolve_login_email") &&
+      (error.message.includes("does not exist") || error.code === "42883")
+    ) {
+      throw new Error("username_login_not_configured");
+    }
+    console.error("resolveLoginEmail error:", error.message);
+    return null;
+  }
+
+  return typeof data === "string" && data ? data : null;
+}
+
+export async function signInWithUsernameOrEmail(identifier: string, password: string) {
+  const email = await resolveLoginEmail(identifier);
+  if (!email) {
+    return { data: { user: null, session: null }, error: { message: "invalid_login_identifier" } as Error };
+  }
+  return signInWithPassword(email, password);
+}
+
 function getAuthRedirectUrl() {
   const base = import.meta.env.BASE_URL || "/";
   const path = base.endsWith("/") ? base : `${base}/`;
@@ -456,6 +588,337 @@ export async function updatePharmacySettings(
 
   const { error } = await supabase.from("pharmacies").update(payload).eq("id", pharmacyId);
 
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export const PAYROLL_DEFAULTS = {
+  payDay: 30,
+  sickDeductionPercent: 25,
+  absentDeductionPercent: 100,
+  maxLeaveDays: 2,
+  standardWorkHours: 8,
+  overtimePercent: 150,
+  defaultTaxes: 0,
+  defaultInsurance: 0,
+  workDayStart: WORK_SCHEDULE_DEFAULTS.dayStart,
+  workDayEnd: WORK_SCHEDULE_DEFAULTS.dayEnd,
+  workBreaks: [] as WorkBreak[],
+  workShifts: clonePharmacyShifts(DEFAULT_PHARMACY_SHIFTS),
+  defaultShiftId: "A" as ShiftId,
+} as const;
+
+export type PayrollSettingsValues = {
+  payDay: number;
+  sickDeductionPercent: number;
+  absentDeductionPercent: number;
+  maxLeaveDays: number;
+  standardWorkHours: number;
+  overtimePercent: number;
+  defaultTaxes: number;
+  defaultInsurance: number;
+  workDayStart: string;
+  workDayEnd: string;
+  workBreaks: WorkBreak[];
+  workShifts: PharmacyShift[];
+  defaultShiftId: ShiftId;
+};
+
+export function resolvePharmacyWorkSchedule(
+  settings: Partial<PharmacySettings> | null | undefined
+): WorkSchedule {
+  const shifts = resolvePharmacyShifts(settings);
+  const shiftA = shifts.find((item) => item.id === "A") || shifts[0];
+  return {
+    dayStart: shiftA.dayStart,
+    dayEnd: shiftA.dayEnd,
+    breaks: shiftA.breaks.map((item) => ({ ...item })),
+  };
+}
+
+export function resolvePharmacyShifts(
+  settings: Partial<PharmacySettings> | null | undefined
+): PharmacyShift[] {
+  const legacy = {
+    dayStart: normalizeTimeValue(settings?.payrollWorkDayStart, WORK_SCHEDULE_DEFAULTS.dayStart),
+    dayEnd: normalizeTimeValue(settings?.payrollWorkDayEnd, WORK_SCHEDULE_DEFAULTS.dayEnd),
+    breaks: parseWorkBreaks(settings?.payrollWorkBreaks),
+  };
+  const hasStoredShifts = Array.isArray(settings?.workShifts) && settings!.workShifts!.length >= 3;
+  const parsed = parsePharmacyShifts(
+    hasStoredShifts ? settings?.workShifts : settings?.workShifts,
+    legacy
+  );
+  return clonePharmacyShifts(parsed);
+}
+
+export async function resolveWorkShiftForUser(
+  appUser: AppUser | null | undefined
+): Promise<{ shiftId: ShiftId; schedule: WorkSchedule; shifts: PharmacyShift[] } | null> {
+  if (!appUser?.pharmacyId) return null;
+
+  const [settings, employees] = await Promise.all([
+    loadPayrollSettings(appUser.pharmacyId),
+    getEmployees(),
+  ]);
+
+  const employee = employees.find((item) => item.id === appUser.employeeId);
+
+  if (employee) {
+    const resolved = resolveWorkSchedule(employee, settings.workShifts, settings.defaultShiftId);
+    return {
+      shiftId: resolved.shiftId,
+      schedule: {
+        dayStart: resolved.dayStart,
+        dayEnd: resolved.dayEnd,
+        breaks: resolved.breaks,
+      },
+      shifts: settings.workShifts,
+    };
+  }
+
+  const inferredId = inferShiftIdFromTime(new Date(), settings.workShifts);
+  const inferredShift =
+    settings.workShifts.find((item) => item.id === inferredId) || settings.workShifts[0];
+
+  return {
+    shiftId: inferredId,
+    schedule: {
+      dayStart: inferredShift.dayStart,
+      dayEnd: inferredShift.dayEnd,
+      breaks: inferredShift.breaks.map((item) => ({ ...item })),
+    },
+    shifts: settings.workShifts,
+  };
+}
+
+export { resolveWorkSchedule, computeWorkHoursFromSchedule, isCheckInLate };
+
+export function applyMaxLeavePolicy(
+  rawLeaveDays: number,
+  rawAbsentDays: number,
+  maxLeaveDays: number
+): { leaveDays: number; absentDays: number; excessLeaveDays: number } {
+  const allowed = Math.max(0, Math.floor(Number(maxLeaveDays) || 0));
+  const rawLeave = Math.max(0, Number(rawLeaveDays) || 0);
+  const rawAbsent = Math.max(0, Number(rawAbsentDays) || 0);
+  const leaveDays = Math.min(rawLeave, allowed);
+  const excessLeaveDays = Math.max(0, rawLeave - allowed);
+  return {
+    leaveDays,
+    absentDays: rawAbsent + excessLeaveDays,
+    excessLeaveDays,
+  };
+}
+
+export type AttendanceDeductionBreakdown = {
+  dailyRate: number;
+  absentDays: number;
+  sickDays: number;
+  leaveDays: number;
+  absentAmount: number;
+  sickAmount: number;
+  leaveAmount: number;
+  attendanceTotal: number;
+};
+
+export function computeAttendanceDeductionBreakdown(
+  record: Partial<PayrollRecord>,
+  rates: { absentPct: number; sickPct: number }
+): AttendanceDeductionBreakdown {
+  const baseSalary = Number(record.baseSalary ?? 0);
+  const dailyRate = baseSalary / 30;
+  const absentDays = Number(record.absentDays ?? 0);
+  const sickDays = Number(record.sickDays ?? 0);
+  const leaveDays = Number(record.leaveDays ?? 0);
+  const absentAmount =
+    Math.round(dailyRate * absentDays * (Number(rates.absentPct) / 100) * 100) / 100;
+  const sickAmount =
+    Math.round(dailyRate * sickDays * (Number(rates.sickPct) / 100) * 100) / 100;
+  const leaveAmount = 0;
+  const attendanceTotal =
+    Math.round((absentAmount + sickAmount + leaveAmount) * 100) / 100;
+  return {
+    dailyRate,
+    absentDays,
+    sickDays,
+    leaveDays,
+    absentAmount,
+    sickAmount,
+    leaveAmount,
+    attendanceTotal,
+  };
+}
+
+export function computeTaxInsuranceFromPercent(
+  record: Partial<PayrollRecord>,
+  taxesPercent: number,
+  insurancePercent: number
+): { taxes: number; insurance: number } {
+  const gross = Number(record.calculatedSalary ?? 0) + sumPayrollAdditions(record);
+  const taxPct = Math.min(100, Math.max(0, Number(taxesPercent) || 0));
+  const insPct = Math.min(100, Math.max(0, Number(insurancePercent) || 0));
+  return {
+    taxes: Math.round(gross * (taxPct / 100) * 100) / 100,
+    insurance: Math.round(gross * (insPct / 100) * 100) / 100,
+  };
+}
+
+export function sumPayrollDeductions(record: Partial<PayrollRecord>): number {
+  return (
+    Number(record.deductions ?? 0) +
+    Number(record.taxes ?? 0) +
+    Number(record.insurance ?? 0)
+  );
+}
+
+function isLegacyPayrollDefaults(settings: Partial<PharmacySettings>) {
+  return settings.payrollPayDay === 1 && Number(settings.payrollSickDeductionPercent ?? 0) === 0;
+}
+
+export function resolvePayrollSettings(
+  settings: Partial<PharmacySettings> | null | undefined
+): PayrollSettingsValues {
+  const payDay = settings?.payrollPayDay;
+  const sick = settings?.payrollSickDeductionPercent;
+  const absent = settings?.payrollAbsentDeductionPercent;
+  const maxLeave = settings?.payrollMaxLeaveDays;
+  const standardHours = settings?.payrollStandardWorkHours;
+  const overtime = settings?.payrollOvertimePercent;
+  const taxes = settings?.payrollDefaultTaxes;
+  const insurance = settings?.payrollDefaultInsurance;
+  const workSchedule = resolvePharmacyWorkSchedule(settings);
+  const workShifts = resolvePharmacyShifts(settings);
+  const defaultShiftId = (settings?.defaultShiftId as ShiftId) || PAYROLL_DEFAULTS.defaultShiftId;
+
+  if (
+    payDay == null &&
+    sick == null &&
+    absent == null &&
+    maxLeave == null &&
+    standardHours == null &&
+    overtime == null &&
+    taxes == null &&
+    insurance == null &&
+    settings?.payrollWorkDayStart == null &&
+    settings?.payrollWorkDayEnd == null &&
+    settings?.payrollWorkBreaks == null &&
+    settings?.workShifts == null
+  ) {
+    return {
+      ...PAYROLL_DEFAULTS,
+      workBreaks: [...PAYROLL_DEFAULTS.workBreaks],
+      workShifts: clonePharmacyShifts(PAYROLL_DEFAULTS.workShifts),
+    };
+  }
+
+  if (isLegacyPayrollDefaults(settings || {})) {
+    return {
+      ...PAYROLL_DEFAULTS,
+      workBreaks: [...PAYROLL_DEFAULTS.workBreaks],
+      workShifts: clonePharmacyShifts(PAYROLL_DEFAULTS.workShifts),
+    };
+  }
+
+  return {
+    payDay: Math.min(31, Math.max(1, Number(payDay ?? PAYROLL_DEFAULTS.payDay))),
+    sickDeductionPercent: Math.min(
+      100,
+      Math.max(0, Number(sick ?? PAYROLL_DEFAULTS.sickDeductionPercent))
+    ),
+    absentDeductionPercent: Math.min(
+      100,
+      Math.max(0, Number(absent ?? PAYROLL_DEFAULTS.absentDeductionPercent))
+    ),
+    maxLeaveDays: Math.max(0, Math.floor(Number(maxLeave ?? PAYROLL_DEFAULTS.maxLeaveDays))),
+    standardWorkHours: Math.max(0, Number(standardHours ?? PAYROLL_DEFAULTS.standardWorkHours)),
+    overtimePercent: Math.max(0, Number(overtime ?? PAYROLL_DEFAULTS.overtimePercent)),
+    defaultTaxes: Math.min(
+      100,
+      Math.max(0, Number(taxes ?? PAYROLL_DEFAULTS.defaultTaxes))
+    ),
+    defaultInsurance: Math.min(
+      100,
+      Math.max(0, Number(insurance ?? PAYROLL_DEFAULTS.defaultInsurance))
+    ),
+    workDayStart: workSchedule.dayStart,
+    workDayEnd: workSchedule.dayEnd,
+    workBreaks: workSchedule.breaks.map((item) => ({ ...item })),
+    workShifts: clonePharmacyShifts(workShifts),
+    defaultShiftId,
+  };
+}
+
+export async function loadPayrollSettings(pharmacyId: string): Promise<PayrollSettingsValues> {
+  const settings = await getPharmacySettings(pharmacyId);
+  const resolved = resolvePayrollSettings(settings);
+
+  const shouldPersist =
+    settings &&
+    (settings.payrollPayDay == null ||
+      settings.payrollSickDeductionPercent == null ||
+      settings.payrollAbsentDeductionPercent == null ||
+      settings.payrollMaxLeaveDays == null ||
+      settings.payrollStandardWorkHours == null ||
+      settings.payrollOvertimePercent == null ||
+      settings.payrollDefaultTaxes == null ||
+      settings.payrollDefaultInsurance == null ||
+      settings.payrollWorkDayStart == null ||
+      settings.payrollWorkDayEnd == null ||
+      settings.payrollWorkBreaks == null ||
+      settings.workShifts == null ||
+      settings.defaultShiftId == null ||
+      isLegacyPayrollDefaults(settings));
+
+  if (shouldPersist) {
+    try {
+      const shiftA = resolved.workShifts.find((item) => item.id === "A") || resolved.workShifts[0];
+      await updatePharmacySettings(pharmacyId, {
+        payrollPayDay: resolved.payDay,
+        payrollSickDeductionPercent: resolved.sickDeductionPercent,
+        payrollAbsentDeductionPercent: resolved.absentDeductionPercent,
+        payrollMaxLeaveDays: resolved.maxLeaveDays,
+        payrollStandardWorkHours: resolved.standardWorkHours,
+        payrollOvertimePercent: resolved.overtimePercent,
+        payrollDefaultTaxes: resolved.defaultTaxes,
+        payrollDefaultInsurance: resolved.defaultInsurance,
+        payrollWorkDayStart: shiftA.dayStart,
+        payrollWorkDayEnd: shiftA.dayEnd,
+        payrollWorkBreaks: shiftA.breaks,
+        workShifts: resolved.workShifts,
+        defaultShiftId: resolved.defaultShiftId,
+      });
+    } catch (error) {
+      console.error("loadPayrollSettings persist error:", error);
+    }
+  }
+
+  return resolved;
+}
+
+export async function upsertPharmacySettings(
+  pharmacyId: string,
+  updates: Partial<PharmacySettings>
+) {
+  const existing = await getPharmacySettings(pharmacyId);
+  if (existing) {
+    await updatePharmacySettings(pharmacyId, updates);
+    return;
+  }
+
+  const payload = toSnakeCase({
+    id: pharmacyId,
+    name: updates.name || pharmacyId,
+    name_en: updates.name_en || updates.name || pharmacyId,
+    phone: updates.phone || "",
+    address: updates.address || "",
+    currency: updates.currency || "ج.م",
+    isActive: updates.isActive ?? true,
+    ...updates,
+  });
+
+  const { error } = await supabase.from("pharmacies").insert([payload]);
   if (error) {
     throw new Error(error.message);
   }
@@ -1148,6 +1611,179 @@ export async function updateSubscriptionRequestStatus(
   }
 }
 
+function buildLoginAccountRequestNumber() {
+  return `ACC-${Date.now()}`;
+}
+
+export async function getAllLoginAccountRequests(): Promise<LoginAccountRequest[]> {
+  const { data, error } = await supabase
+    .from("login_account_requests")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("getAllLoginAccountRequests error:", error.message, error.code);
+    return [];
+  }
+
+  return (data || []).map((row) => {
+    const req = toCamelCase<LoginAccountRequest>(row);
+    delete req.password;
+    return req;
+  });
+}
+
+export async function getPharmacyLoginAccountRequests(
+  pharmacyId: string
+): Promise<LoginAccountRequest[]> {
+  const { data, error } = await supabase
+    .from("login_account_requests")
+    .select("*")
+    .eq("pharmacy_id", pharmacyId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("getPharmacyLoginAccountRequests error:", error.message);
+    return [];
+  }
+
+  return (data || []).map((row) => {
+    const req = toCamelCase<LoginAccountRequest>(row);
+    delete req.password;
+    return req;
+  });
+}
+
+export async function getLoginAccountRequestById(id: number): Promise<LoginAccountRequest | null> {
+  const { data, error } = await supabase
+    .from("login_account_requests")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return toCamelCase<LoginAccountRequest>(data);
+}
+
+export async function getPendingLoginAccountRequestForEmployee(
+  employeeId: string
+): Promise<LoginAccountRequest | null> {
+  const { data, error } = await supabase
+    .from("login_account_requests")
+    .select("*")
+    .eq("employee_id", employeeId)
+    .eq("status", "pending")
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  const req = toCamelCase<LoginAccountRequest>(data);
+  delete req.password;
+  return req;
+}
+
+export function subscribeLoginAccountRequests(callback: (rows: LoginAccountRequest[]) => void) {
+  const channel = supabase.channel("realtime-login-account-requests").on(
+    "postgres_changes",
+    { event: "*", schema: "public", table: "login_account_requests" },
+    () => {
+      void getAllLoginAccountRequests().then(callback);
+    }
+  );
+
+  void channel.subscribe();
+  return () => {
+    void channel.unsubscribe();
+  };
+}
+
+export async function createLoginAccountRequest(input: {
+  pharmacyId: string;
+  pharmacyName: string;
+  employeeId: string;
+  employeeName: string;
+  email: string;
+  username: string;
+  password: string;
+  role: UserRole;
+  requestedBy?: string;
+  requestedByName?: string;
+}): Promise<LoginAccountRequest> {
+  const existing = await getPendingLoginAccountRequestForEmployee(input.employeeId);
+  if (existing) {
+    throw new Error("pending_login_request_exists");
+  }
+
+  const payload = toSnakeCase({
+    requestNumber: buildLoginAccountRequestNumber(),
+    pharmacyId: input.pharmacyId,
+    pharmacyName: input.pharmacyName,
+    employeeId: input.employeeId,
+    employeeName: input.employeeName,
+    email: input.email.trim().toLowerCase(),
+    username: input.username.trim(),
+    password: input.password,
+    role: normalizeRole(input.role),
+    status: "pending" as SubscriptionRequestStatus,
+    requestedBy: input.requestedBy,
+    requestedByName: input.requestedByName,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  const { data, error } = await supabase
+    .from("login_account_requests")
+    .insert([payload])
+    .select("*")
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const created = toCamelCase<LoginAccountRequest>(data);
+  delete created.password;
+  return created;
+}
+
+export async function updateLoginAccountRequestStatus(
+  requestId: number,
+  updates: {
+    status: SubscriptionRequestStatus;
+    reviewedBy?: string;
+    reviewedByName?: string;
+    reviewNote?: string;
+    clearPassword?: boolean;
+  }
+) {
+  const payload: Record<string, unknown> = {
+    status: updates.status,
+    reviewed_by: updates.reviewedBy,
+    reviewed_by_name: updates.reviewedByName,
+    review_note: updates.reviewNote,
+    reviewed_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  if (updates.clearPassword) {
+    payload.password = null;
+  }
+
+  const { error } = await supabase
+    .from("login_account_requests")
+    .update(payload)
+    .eq("id", requestId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 export async function createPharmacy(data: CreatePharmacyInput) {
   const payload = toSnakeCase({
     id: data.id,
@@ -1302,17 +1938,25 @@ export async function getAllSystemUsers(): Promise<SystemUser[]> {
 }
 
 export async function getSystemUsers(pharmacyId: string): Promise<SystemUser[]> {
-  return getRows<SystemUser>("users", "uid", false, 100, {
+  const rows = await getRows<SystemUser>("users", "uid", false, 100, {
     column: "pharmacy_id",
     value: pharmacyId,
   });
+  return rows.map((row) => normalizeAppUser(row));
 }
 
 export function subscribeUsers(pharmacyId: string, callback: (users: SystemUser[]) => void) {
-  return subscribeTable<SystemUser>("users", callback, "uid", false, 100, {
-    column: "pharmacy_id",
-    value: pharmacyId,
-  });
+  return subscribeTable<SystemUser>(
+    "users",
+    (rows) => callback(rows.map((row) => normalizeAppUser(row))),
+    "uid",
+    false,
+    100,
+    {
+      column: "pharmacy_id",
+      value: pharmacyId,
+    }
+  );
 }
 
 export async function updateSystemUser(uid: string, updates: Partial<SystemUser>) {
@@ -1337,8 +1981,11 @@ export async function createSystemUser(params: {
   name: string;
   role: AppUser["role"];
   pharmacyId: string;
+  employeeId?: string;
+  username?: string;
 }): Promise<string> {
   const email = params.email.trim().toLowerCase();
+  const role = normalizeRole(params.role);
 
   const emailIssue = validateNewUserEmail(email);
   if (emailIssue === "invalid_format") {
@@ -1353,7 +2000,7 @@ export async function createSystemUser(params: {
     options: {
       data: {
         name: params.name.trim(),
-        role: params.role,
+        role,
         pharmacy_id: params.pharmacyId,
       },
     },
@@ -1381,9 +2028,11 @@ export async function createSystemUser(params: {
   const { error: insertError } = await supabase.from("users").insert([
     {
       uid,
+      employee_id: params.employeeId || null,
+      username: params.username?.trim() || null,
       name: params.name.trim(),
       email,
-      role: params.role,
+      role,
       pharmacy_id: params.pharmacyId,
       is_active: true,
     },
@@ -1391,6 +2040,10 @@ export async function createSystemUser(params: {
 
   if (insertError && !insertError.message.toLowerCase().includes("duplicate")) {
     throw new Error(insertError.message);
+  }
+
+  if (insertError?.message.toLowerCase().includes("duplicate") && params.employeeId) {
+    await linkUserToEmployee(uid, params.employeeId);
   }
 
   return uid;
@@ -1936,4 +2589,692 @@ export async function createInstantSaleReturn(
 
 export function applyReturnToCurrentCart(currentDiscount: number, returnAmount: number) {
   return Math.max(0, currentDiscount + returnAmount);
+}
+
+// --- HR: employee profiles, attendance, payroll ---
+
+export function combineWorkDateTime(
+  workDate: string,
+  time: string,
+  dayOffset = 0
+): string | undefined {
+  if (!time) return undefined;
+  const [hours, minutes] = time.split(":").map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return undefined;
+  const d = new Date(`${workDate}T12:00:00`);
+  d.setDate(d.getDate() + dayOffset);
+  d.setHours(hours, minutes, 0, 0);
+  return d.toISOString();
+}
+
+export function isOvernightTimePair(checkInTime: string, checkOutTime: string): boolean {
+  const [inH, inM] = checkInTime.split(":").map(Number);
+  const [outH, outM] = checkOutTime.split(":").map(Number);
+  if (!Number.isFinite(inH) || !Number.isFinite(outH)) return false;
+  const inMinutes = inH * 60 + (Number.isFinite(inM) ? inM : 0);
+  const outMinutes = outH * 60 + (Number.isFinite(outM) ? outM : 0);
+  return outMinutes <= inMinutes;
+}
+
+export function buildAttendanceCheckInIso(workDate: string, checkInTime: string): string | undefined {
+  return combineWorkDateTime(workDate, checkInTime, 0);
+}
+
+export function buildAttendanceCheckOutIso(
+  workDate: string,
+  checkInTime: string,
+  checkOutTime: string
+): string | undefined {
+  if (!checkOutTime) return undefined;
+  const dayOffset =
+    checkInTime && isOvernightTimePair(checkInTime, checkOutTime) ? 1 : 0;
+  return combineWorkDateTime(workDate, checkOutTime, dayOffset);
+}
+
+export function calcAttendanceWorkedMinutes(
+  checkIn?: string,
+  checkOut?: string
+): number | null {
+  if (!checkIn || !checkOut) return null;
+  const start = new Date(checkIn);
+  let end = new Date(checkOut);
+  if (end.getTime() <= start.getTime()) {
+    end = new Date(end.getTime() + 86400000);
+  }
+  return Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
+}
+
+export function calcAttendanceWorkedHours(checkIn?: string, checkOut?: string): number | null {
+  const minutes = calcAttendanceWorkedMinutes(checkIn, checkOut);
+  return minutes === null ? null : minutes / 60;
+}
+
+function countDaysInclusive(start: string, end: string): number {
+  const s = new Date(`${start}T12:00:00`);
+  const e = new Date(`${end}T12:00:00`);
+  if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return 0;
+  return Math.floor((e.getTime() - s.getTime()) / 86400000) + 1;
+}
+
+function sumAttendanceWorkMinutes(
+  records: Array<{ checkIn?: string; checkOut?: string }>
+): number {
+  return records.reduce((sum, rec) => {
+    const minutes = calcAttendanceWorkedMinutes(rec.checkIn, rec.checkOut);
+    return sum + (minutes ?? 0);
+  }, 0);
+}
+
+export function computeHourlyRate(baseSalary: number, requiredWorkHoursPerDay = 8): number {
+  const dailyHours = Math.max(1, Number(requiredWorkHoursPerDay) || 8);
+  return Number(baseSalary) / 30 / dailyHours;
+}
+
+export function splitRegularAndOvertimeMinutes(
+  records: Array<{ checkIn?: string; checkOut?: string }>,
+  standardWorkHoursPerDay: number
+): { regularMinutes: number; overtimeMinutes: number; totalMinutes: number } {
+  const standardMinutes = Math.max(0, Number(standardWorkHoursPerDay) || 0) * 60;
+  let regularMinutes = 0;
+  let overtimeMinutes = 0;
+
+  for (const rec of records) {
+    const dayMinutes = calcAttendanceWorkedMinutes(rec.checkIn, rec.checkOut) ?? 0;
+    if (standardMinutes <= 0) {
+      regularMinutes += dayMinutes;
+      continue;
+    }
+    regularMinutes += Math.min(dayMinutes, standardMinutes);
+    overtimeMinutes += Math.max(0, dayMinutes - standardMinutes);
+  }
+
+  return {
+    regularMinutes,
+    overtimeMinutes,
+    totalMinutes: regularMinutes + overtimeMinutes,
+  };
+}
+
+export function computePayrollEarnedFromAttendance(
+  baseSalary: number,
+  records: Array<{ checkIn?: string; checkOut?: string }>,
+  requiredWorkHoursPerDay: number,
+  standardWorkHoursPerDay: number,
+  overtimePercent: number
+): { calculatedSalary: number; overtimePay: number; workMinutes: number } {
+  const { regularMinutes, overtimeMinutes, totalMinutes } = splitRegularAndOvertimeMinutes(
+    records,
+    standardWorkHoursPerDay
+  );
+  const hourlyRate = computeHourlyRate(baseSalary, requiredWorkHoursPerDay);
+  const calculatedSalary = Math.round(hourlyRate * (regularMinutes / 60) * 100) / 100;
+  const overtimePay =
+    overtimeMinutes > 0
+      ? Math.round(hourlyRate * (overtimePercent / 100) * (overtimeMinutes / 60) * 100) / 100
+      : 0;
+
+  return { calculatedSalary, overtimePay, workMinutes: totalMinutes };
+}
+
+export function computeEmployeeOvertimeIncentives(
+  baseSalary: number,
+  records: Array<{ checkIn?: string; checkOut?: string }>,
+  requiredWorkHoursPerDay: number,
+  overtimePercent: number
+) {
+  const dailyHours = Math.max(1, Number(requiredWorkHoursPerDay) || 8);
+  const split = splitRegularAndOvertimeMinutes(records, dailyHours);
+  const earned = computePayrollEarnedFromAttendance(
+    baseSalary,
+    records,
+    dailyHours,
+    dailyHours,
+    overtimePercent
+  );
+  const hourlyRate = computeHourlyRate(baseSalary, dailyHours);
+  return {
+    regularMinutes: split.regularMinutes,
+    overtimeMinutes: split.overtimeMinutes,
+    totalMinutes: split.totalMinutes,
+    overtimePay: earned.overtimePay,
+    hourlyRate,
+    overtimePercent,
+  };
+}
+
+export function computeEarnedSalary(
+  baseSalary: number,
+  workMinutes: number,
+  requiredWorkHoursPerDay = 8
+): number {
+  const hourlyRate = computeHourlyRate(baseSalary, requiredWorkHoursPerDay);
+  const workHours = Math.max(0, Number(workMinutes) || 0) / 60;
+  return Math.round(hourlyRate * workHours * 100) / 100;
+}
+
+export function sumPayrollAdditions(record: Partial<PayrollRecord>): number {
+  return (
+    Number(record.specialAllowances ?? 0) +
+    Number(record.bonuses ?? 0) +
+    Number(record.incentives ?? 0) +
+    Number(record.commission ?? 0)
+  );
+}
+
+export function filterAttendanceForEmployee(
+  attendance: Array<{ userId: string }>,
+  userId: string,
+  employeeId?: string
+) {
+  return attendance.filter(
+    (row) => row.userId === userId || (employeeId ? row.userId === employeeId : false)
+  );
+}
+
+export function computePayrollNet(record: Partial<PayrollRecord>): number {
+  const calculatedSalary = Number(record.calculatedSalary ?? 0);
+  const additions = sumPayrollAdditions(record);
+  const deductions = Number(record.deductions ?? 0);
+  const taxes = Number(record.taxes ?? 0);
+  const insurance = Number(record.insurance ?? 0);
+  return Math.round((calculatedSalary + additions - deductions - taxes - insurance) * 100) / 100;
+}
+
+export async function getEmployeeProfiles(): Promise<EmployeeProfile[]> {
+  return getRows<EmployeeProfile>("employee_profiles", "user_name", false, 500, undefined, true);
+}
+
+export async function upsertEmployeeProfile(
+  profile: Partial<EmployeeProfile> & { userId: string; userName: string }
+) {
+  const id = profile.id ?? Date.now();
+  const payload = stampPharmacy(
+    toSnakeCase({
+      ...profile,
+      id,
+      baseSalary: Number(profile.baseSalary ?? 0),
+      updatedAt: new Date().toISOString(),
+    })
+  );
+  const { error } = await supabase
+    .from("employee_profiles")
+    .upsert([payload], { onConflict: "pharmacy_id,user_id" });
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function getAttendanceRecords(fromDate: string, toDate: string): Promise<AttendanceRecord[]> {
+  let query = applyPharmacyFilter(supabase.from("attendance_records").select("*"))
+    .gte("work_date", fromDate)
+    .lte("work_date", toDate)
+    .order("work_date", { ascending: false });
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("getAttendanceRecords error:", error.message);
+    return [];
+  }
+
+  return (data || []).map((row) => toCamelCase<AttendanceRecord>(row));
+}
+
+export async function upsertAttendanceRecord(
+  record: Partial<AttendanceRecord> & { userId: string; userName: string; workDate: string }
+) {
+  const id = record.id ?? Date.now();
+  const payload = stampPharmacy(
+    toSnakeCase({
+      ...record,
+      id,
+      status: record.status || "present",
+      updatedAt: new Date().toISOString(),
+    })
+  );
+  const { error } = await supabase
+    .from("attendance_records")
+    .upsert([payload], { onConflict: "pharmacy_id,user_id,work_date" });
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function deleteAttendanceRecord(id: number) {
+  const { error } = await supabase.from("attendance_records").delete().eq("id", id);
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+async function getAttendanceForDay(userId: string, workDate: string): Promise<AttendanceRecord | null> {
+  let query = applyPharmacyFilter(
+    supabase.from("attendance_records").select("*").eq("user_id", userId).eq("work_date", workDate)
+  );
+  const { data, error } = await query.maybeSingle();
+  if (error || !data) return null;
+  return toCamelCase<AttendanceRecord>(data);
+}
+
+export async function recordCheckIn(
+  userId: string,
+  userName: string,
+  workDate?: string,
+  options?: {
+    expectedSchedule?: WorkSchedule;
+    shiftId?: ShiftId;
+    graceMinutes?: number;
+  }
+) {
+  const date = workDate || new Date().toISOString().slice(0, 10);
+  const existing = await getAttendanceForDay(userId, date);
+  if (existing?.checkIn) {
+    throw new Error("already_checked_in");
+  }
+
+  const checkIn = new Date().toISOString();
+  let status: AttendanceStatus =
+    existing?.status && existing.status !== "absent" ? existing.status : "present";
+
+  if (
+    options?.expectedSchedule &&
+    isCheckInLate(
+      checkIn,
+      options.expectedSchedule,
+      options.graceMinutes ?? DEFAULT_ALLOWED_LATE_MINUTES
+    )
+  ) {
+    status = "late";
+  }
+
+  await upsertAttendanceRecord({
+    ...existing,
+    userId,
+    userName,
+    workDate: date,
+    checkIn,
+    status,
+    shiftId: options?.shiftId ?? existing?.shiftId,
+  });
+}
+
+export async function recordCheckOut(userId: string, userName: string, workDate?: string) {
+  const date = workDate || new Date().toISOString().slice(0, 10);
+  const existing = await getAttendanceForDay(userId, date);
+  if (!existing?.checkIn) {
+    throw new Error("check_in_required");
+  }
+  if (existing.checkOut) {
+    throw new Error("already_checked_out");
+  }
+  await upsertAttendanceRecord({
+    ...existing,
+    userId,
+    userName,
+    workDate: date,
+    checkOut: new Date().toISOString(),
+  });
+}
+
+export async function setAttendanceStatus(
+  userId: string,
+  userName: string,
+  workDate: string,
+  status: AttendanceStatus,
+  notes?: string
+) {
+  const existing = await getAttendanceForDay(userId, workDate);
+  await upsertAttendanceRecord({
+    ...existing,
+    userId,
+    userName,
+    workDate,
+    status,
+    notes: notes ?? existing?.notes,
+    checkIn: status === "absent" || status === "leave" || status === "sick" ? undefined : existing?.checkIn,
+    checkOut: status === "absent" || status === "leave" || status === "sick" ? undefined : existing?.checkOut,
+  });
+}
+
+export async function getPayrollRecords(periodStart: string, periodEnd: string): Promise<PayrollRecord[]> {
+  let query = applyPharmacyFilter(supabase.from("payroll_records").select("*"))
+    .eq("period_start", periodStart)
+    .eq("period_end", periodEnd)
+    .order("user_name", { ascending: true });
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("getPayrollRecords error:", error.message);
+    return [];
+  }
+
+  return (data || []).map((row) => toCamelCase<PayrollRecord>(row));
+}
+
+export async function upsertPayrollRecord(
+  record: Partial<PayrollRecord> & { userId: string; periodStart: string; periodEnd: string }
+) {
+  const calculatedSalary = Number(record.calculatedSalary ?? 0);
+  const bonuses = Number(record.bonuses ?? 0);
+  const deductions = Number(record.deductions ?? 0);
+  const netPay = Number(record.netPay ?? computePayrollNet(record));
+  const id = record.id ?? Date.now();
+
+  const payload = stampPharmacy(
+    toSnakeCase({
+      ...record,
+      id,
+      calculatedSalary,
+      bonuses,
+      deductions,
+      netPay,
+      updatedAt: new Date().toISOString(),
+    })
+  );
+
+  const { error } = await supabase.from("payroll_records").upsert([payload]);
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function updatePayrollRecord(id: number, updates: Partial<PayrollRecord>) {
+  const payload = toSnakeCase({ ...updates, updatedAt: new Date().toISOString() });
+  if (updates.netPay === undefined) {
+    const financialKeys: (keyof PayrollRecord)[] = [
+      "calculatedSalary",
+      "specialAllowances",
+      "bonuses",
+      "incentives",
+      "commission",
+      "deductions",
+      "taxes",
+      "insurance",
+    ];
+    if (financialKeys.some((key) => updates[key] !== undefined)) {
+      payload.net_pay = computePayrollNet(updates as Partial<PayrollRecord>);
+    }
+  }
+  const { error } = await supabase.from("payroll_records").update(payload).eq("id", id);
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function generatePayroll(
+  periodStart: string,
+  periodEnd: string,
+  employees: Array<{ uid: string; name: string; isActive?: boolean; salary?: number }>,
+  options: {
+    sickDeductionPercent?: number;
+    absentDeductionPercent?: number;
+    maxLeaveDays?: number;
+    standardWorkHours?: number;
+    overtimePercent?: number;
+    defaultTaxes?: number;
+    defaultInsurance?: number;
+    workShifts?: PharmacyShift[];
+    defaultShiftId?: ShiftId;
+  } = {}
+): Promise<PayrollRecord[]> {
+  const dbEmployees = await getEmployees();
+  const profiles = await getEmployeeProfiles();
+  const attendance = await getAttendanceRecords(periodStart, periodEnd);
+  const existingPayroll = await getPayrollRecords(periodStart, periodEnd);
+  const workingDays = countDaysInclusive(periodStart, periodEnd);
+  const sickPct = Number(options.sickDeductionPercent ?? 25);
+  const absentPct = Number(options.absentDeductionPercent ?? 100);
+  const maxLeaveDays = Math.max(0, Math.floor(Number(options.maxLeaveDays ?? PAYROLL_DEFAULTS.maxLeaveDays)));
+  const standardWorkHours = Math.max(0, Number(options.standardWorkHours ?? PAYROLL_DEFAULTS.standardWorkHours));
+  const overtimePercent = Math.max(0, Number(options.overtimePercent ?? PAYROLL_DEFAULTS.overtimePercent));
+  const defaultTaxesPercent = Math.min(
+    100,
+    Math.max(0, Number(options.defaultTaxes ?? PAYROLL_DEFAULTS.defaultTaxes))
+  );
+  const defaultInsurancePercent = Math.min(
+    100,
+    Math.max(0, Number(options.defaultInsurance ?? PAYROLL_DEFAULTS.defaultInsurance))
+  );
+  const results: PayrollRecord[] = [];
+
+  for (const emp of employees.filter((e) => e.isActive !== false)) {
+    const dbEmployee =
+      dbEmployees.find((e) => e.id === emp.uid) ||
+      dbEmployees.find((e) => e.name === emp.name);
+    const existing = existingPayroll.find(
+      (p) => p.userId === emp.uid || (dbEmployee ? p.userId === dbEmployee.id : false)
+    );
+    if (existing && existing.status === "paid") {
+      results.push(existing);
+      continue;
+    }
+
+    const profile = profiles.find((p) => p.userId === emp.uid);
+    const baseSalary = Number(emp.salary ?? dbEmployee?.salary ?? profile?.baseSalary ?? 0);
+    const empAttendance = filterAttendanceForEmployee(
+      attendance,
+      emp.uid,
+      dbEmployee?.id
+    );
+    const presentDays = empAttendance.filter(
+      (a) =>
+        a.status === "present" ||
+        a.status === "late" ||
+        (a.checkIn && a.status !== "absent" && a.status !== "leave" && a.status !== "sick")
+    ).length;
+    const sickDays = empAttendance.filter((a) => a.status === "sick").length;
+    const rawAbsentDays = empAttendance.filter((a) => a.status === "absent").length;
+    const rawLeaveDays = empAttendance.filter((a) => a.status === "leave").length;
+    const leavePolicy = applyMaxLeavePolicy(rawLeaveDays, rawAbsentDays, maxLeaveDays);
+    const absentDays = leavePolicy.absentDays;
+    const leaveDays = leavePolicy.leaveDays;
+    const requiredWorkHours = dbEmployee
+      ? Math.max(
+          1,
+          computeWorkHoursFromSchedule(
+            resolveWorkSchedule(
+              dbEmployee,
+              options.workShifts || PAYROLL_DEFAULTS.workShifts,
+              options.defaultShiftId || "A"
+            )
+          ) || Number(dbEmployee.requiredWorkHours ?? 8)
+        )
+      : 8;
+    const earned = computePayrollEarnedFromAttendance(
+      baseSalary,
+      empAttendance,
+      requiredWorkHours,
+      requiredWorkHours,
+      overtimePercent
+    );
+    const calculatedSalary = earned.calculatedSalary;
+    const workMinutesFinal = earned.workMinutes;
+    const attendanceBreakdown = computeAttendanceDeductionBreakdown(
+      { baseSalary, absentDays, sickDays, leaveDays },
+      { absentPct, sickPct }
+    );
+    const autoDeductions = attendanceBreakdown.attendanceTotal;
+    const specialAllowances = existing?.specialAllowances ?? 0;
+    const bonuses = existing?.bonuses ?? 0;
+    const incentives = earned.overtimePay;
+    const commission = existing?.commission ?? 0;
+    const draftForTax: Partial<PayrollRecord> = {
+      calculatedSalary,
+      specialAllowances,
+      bonuses,
+      incentives,
+      commission,
+    };
+    const { taxes, insurance } = computeTaxInsuranceFromPercent(
+      draftForTax,
+      defaultTaxesPercent,
+      defaultInsurancePercent
+    );
+    const deductions = autoDeductions;
+    const draftRecord: PayrollRecord = {
+      id: existing?.id ?? Date.now() + results.length,
+      userId: emp.uid,
+      userName: emp.name,
+      periodStart,
+      periodEnd,
+      workingDays,
+      presentDays,
+      absentDays,
+      sickDays,
+      leaveDays,
+      workMinutes: workMinutesFinal,
+      baseSalary,
+      calculatedSalary,
+      specialAllowances,
+      bonuses,
+      incentives,
+      commission,
+      deductions,
+      taxes,
+      insurance,
+      netPay: 0,
+      status: existing?.status === "paid" ? "paid" : "draft",
+      notes: existing?.notes,
+    };
+    draftRecord.netPay = computePayrollNet(draftRecord);
+
+    const record = draftRecord;
+
+    await upsertPayrollRecord(record);
+    results.push(record);
+  }
+
+  return results;
+}
+
+// --- Employees (HR staff records, separate from login accounts) ---
+
+export async function getEmployees(): Promise<Employee[]> {
+  return getRows<Employee>("employees", "employee_code", false, 500, undefined, true);
+}
+
+export async function suggestNextEmployeeCode(pharmacyId?: string): Promise<string> {
+  const scopeId = pharmacyId || resolveStampPharmacyId();
+  const employees = await getEmployees();
+  const scoped = employees.filter((e) => e.pharmacyId === scopeId);
+  let maxNum = 0;
+  for (const emp of scoped) {
+    const code = (emp.employeeCode || "").trim();
+    const match = code.match(/(\d+)\s*$/);
+    if (match) {
+      maxNum = Math.max(maxNum, parseInt(match[1], 10));
+    }
+  }
+  return `EMP-${String(maxNum + 1).padStart(3, "0")}`;
+}
+
+export async function getEmployeeById(id: string): Promise<Employee | null> {
+  let query = applyPharmacyFilter(supabase.from("employees").select("*").eq("id", id));
+  const { data, error } = await query.maybeSingle();
+  if (error || !data) return null;
+  return toCamelCase<Employee>(data);
+}
+
+export async function createEmployee(
+  input: Omit<Employee, "id" | "createdAt" | "updatedAt"> & { id?: string }
+): Promise<Employee> {
+  const id = input.id || crypto.randomUUID();
+  const pharmacyId = input.pharmacyId || resolveStampPharmacyId();
+  let employeeCode = (input.employeeCode || "").trim();
+  if (!employeeCode) {
+    employeeCode = await suggestNextEmployeeCode(pharmacyId);
+  }
+  const payload = stampPharmacy(
+    toSnakeCase({
+      ...input,
+      id,
+      pharmacyId,
+      employeeCode,
+      salary: Number(input.salary ?? 0),
+      commissionRate: Number(input.commissionRate ?? 0),
+      requiredWorkHours: Number(input.requiredWorkHours ?? 8),
+      assignedShiftId: (input.assignedShiftId as ShiftId) || "A",
+      useCustomWorkSchedule: Boolean(input.useCustomWorkSchedule),
+      workDayStart: input.useCustomWorkSchedule ? input.workDayStart || null : null,
+      workDayEnd: input.useCustomWorkSchedule ? input.workDayEnd || null : null,
+      workBreaks: input.useCustomWorkSchedule ? parseWorkBreaks(input.workBreaks) : null,
+      isActive: input.isActive !== false,
+      updatedAt: new Date().toISOString(),
+    })
+  );
+  const { data, error } = await supabase.from("employees").insert([payload]).select("*").single();
+  if (error) {
+    throw new Error(error.message);
+  }
+  return toCamelCase<Employee>(data);
+}
+
+export async function updateEmployee(id: string, updates: Partial<Employee>) {
+  const payload = toSnakeCase({ ...updates, updatedAt: new Date().toISOString() });
+  const { error } = await supabase.from("employees").update(payload).eq("id", id);
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function setEmployeeActive(id: string, isActive: boolean) {
+  await updateEmployee(id, { isActive });
+}
+
+export async function linkUserToEmployee(uid: string, employeeId: string | null) {
+  const payload: Record<string, unknown> = {
+    employee_id: employeeId,
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await supabase.from("users").update(payload).eq("uid", uid);
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function linkExistingAuthUser(params: {
+  uid: string;
+  employeeId: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  pharmacyId: string;
+  username?: string;
+  isActive?: boolean;
+}) {
+  const { error } = await supabase.from("users").upsert([
+    {
+      uid: params.uid,
+      employee_id: params.employeeId,
+      name: params.name.trim(),
+      email: params.email.trim().toLowerCase(),
+      username: params.username?.trim() || null,
+      role: params.role,
+      pharmacy_id: params.pharmacyId,
+      is_active: params.isActive !== false,
+      updated_at: new Date().toISOString(),
+    },
+  ]);
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function updateLoginAccount(uid: string, updates: Partial<SystemUser>) {
+  const payload = toSnakeCase({ ...updates, updatedAt: new Date().toISOString() });
+  const { error } = await supabase.from("users").update(payload).eq("uid", uid);
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function recordLastLogin(uid: string) {
+  const { error } = await supabase
+    .from("users")
+    .update({ last_login_at: new Date().toISOString() })
+    .eq("uid", uid);
+  if (error) {
+    console.error("recordLastLogin error:", error.message);
+  }
 }

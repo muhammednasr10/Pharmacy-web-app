@@ -2,23 +2,66 @@ export type Lang = "ar" | "en";
 
 export type UserRole =
   | "super_admin"
-  | "admin"
+  | "pharmacy_admin"
   | "cashier"
   | "inventory"
   | "accountant";
 
 export type AppUser = {
   uid: string;
+  employeeId?: string;
+  username?: string;
   name: string;
   email: string;
   role: UserRole;
   pharmacyId: string;
   isActive: boolean;
+  lastLoginAt?: string;
   createdAt?: string;
   updatedAt?: string;
 };
 
 export type SystemUser = AppUser;
+
+export type WorkBreak = {
+  start: string;
+  end: string;
+};
+
+export type ShiftId = "A" | "B" | "C";
+
+export type PharmacyShift = {
+  id: ShiftId;
+  label: string;
+  labelAr: string;
+  dayStart: string;
+  dayEnd: string;
+  breaks: WorkBreak[];
+  allowedLateMinutes: number;
+};
+
+export type Employee = {
+  id: string;
+  pharmacyId: string;
+  employeeCode?: string;
+  photoBase64?: string;
+  name: string;
+  phone?: string;
+  jobTitle?: string;
+  salary: number;
+  commissionRate: number;
+  requiredWorkHours: number;
+  useCustomWorkSchedule?: boolean;
+  assignedShiftId?: ShiftId;
+  workDayStart?: string;
+  workDayEnd?: string;
+  workBreaks?: WorkBreak[];
+  hireDate?: string;
+  isActive: boolean;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
 
 export type Page =
   | "dashboard"
@@ -34,7 +77,8 @@ export type Page =
   | "users"
   | "tenants"
   | "branches"
-  | "settings";
+  | "settings"
+  | "hr";
 
 export type PaymentMethod = "cash" | "visa" | "wallet" | "credit";
 
@@ -68,6 +112,19 @@ export type PharmacySettings = {
   logoBase64?: string;
   lowStockThreshold?: number;
   expiringSoonDays?: number;
+  payrollPayDay?: number;
+  payrollSickDeductionPercent?: number;
+  payrollAbsentDeductionPercent?: number;
+  payrollMaxLeaveDays?: number;
+  payrollStandardWorkHours?: number;
+  payrollOvertimePercent?: number;
+  payrollDefaultTaxes?: number;
+  payrollDefaultInsurance?: number;
+  payrollWorkDayStart?: string;
+  payrollWorkDayEnd?: string;
+  payrollWorkBreaks?: WorkBreak[];
+  workShifts?: PharmacyShift[];
+  defaultShiftId?: ShiftId;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -106,6 +163,7 @@ export type Invoice = {
   customerName: string;
   cashierId?: string;
   cashierName?: string;
+  shiftId?: ShiftId;
   pharmacyId?: string;
   totalCost?: number;
   totalProfit?: number;
@@ -266,6 +324,28 @@ export type ActivityLog = {
 
 export type SubscriptionRequestStatus = "pending" | "approved" | "rejected";
 
+export type LoginAccountRequest = {
+  id: number;
+  requestNumber: string;
+  pharmacyId: string;
+  pharmacyName?: string;
+  employeeId: string;
+  employeeName: string;
+  email: string;
+  username: string;
+  password?: string;
+  role: UserRole;
+  status: SubscriptionRequestStatus;
+  requestedBy?: string;
+  requestedByName?: string;
+  reviewedBy?: string;
+  reviewedByName?: string;
+  reviewNote?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  reviewedAt?: string;
+};
+
 export type SubscriptionRequest = {
   id: number;
   requestNumber: string;
@@ -304,3 +384,68 @@ export type CreatePharmacyUserInput = {
   role: UserRole;
   pharmacyId: string;
 };
+
+export type AttendanceStatus = "present" | "absent" | "late" | "leave" | "sick";
+
+export type EmployeeProfile = {
+  id: number;
+  pharmacyId?: string;
+  userId: string;
+  userName: string;
+  baseSalary: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type AttendanceRecord = {
+  id: number;
+  pharmacyId?: string;
+  userId: string;
+  userName: string;
+  workDate: string;
+  checkIn?: string;
+  checkOut?: string;
+  status: AttendanceStatus;
+  shiftId?: ShiftId;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type PayrollRecord = {
+  id: number;
+  pharmacyId?: string;
+  userId: string;
+  userName: string;
+  periodStart: string;
+  periodEnd: string;
+  workingDays: number;
+  presentDays: number;
+  absentDays: number;
+  sickDays?: number;
+  leaveDays?: number;
+  workMinutes?: number;
+  baseSalary: number;
+  calculatedSalary: number;
+  specialAllowances?: number;
+  bonuses: number;
+  incentives?: number;
+  commission?: number;
+  deductions: number;
+  taxes?: number;
+  insurance?: number;
+  netPay: number;
+  status: "draft" | "approved" | "paid";
+  notes?: string;
+  paidAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type PayrollAdditionField =
+  | "specialAllowances"
+  | "bonuses"
+  | "incentives"
+  | "commission";
+
+export type PayrollEditableField = PayrollAdditionField | "deductions" | "taxes" | "insurance";
