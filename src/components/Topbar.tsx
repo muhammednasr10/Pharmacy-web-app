@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { AppUser } from "../types";
 import { isPharmacyAdmin, isSuperAdmin, getRoleLabel } from "../utils/roles";
-import DeveloperCredit from "./DeveloperCredit";
 
 export type AlertKind = "expired" | "low" | "expiring";
 
@@ -144,12 +143,6 @@ export default function Topbar({
                 </div>
               )}
             </div>
-          </div>
-
-          <div className="topbarIdentityDivider topbarIdentityDivider--developer" aria-hidden="true" />
-
-          <div className="topbarDeveloper">
-            <DeveloperCredit isArabic={isArabic} variant="topbar" />
           </div>
 
           <div className="topbarIdentityDivider topbarIdentityDivider--account" aria-hidden="true" />
