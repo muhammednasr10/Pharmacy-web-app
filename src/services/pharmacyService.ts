@@ -6,6 +6,7 @@ import type {
   SubscriptionRequest,
   SubscriptionRequestStatus,
   LoginAccountRequest,
+  PharmacyLoginAccount,
   CartItem,
   CreatePharmacyInput,
   CreatePharmacyUserInput,
@@ -16,6 +17,7 @@ import type {
   InvoiceItem,
   Medicine,
   PharmacySettings,
+  PharmacyCost,
   PurchaseRecord,
   ReturnRecord,
   StockMovement,
@@ -29,6 +31,9 @@ import type {
   WorkBreak,
   ShiftId,
   PharmacyShift,
+  EmployeeRequest,
+  EmployeeRequestStatus,
+  EmployeeRequestType,
 } from "../types";
 import {
   WORK_SCHEDULE_DEFAULTS,
@@ -65,6 +70,7 @@ const camelKeyMap: Record<string, string> = {
   qty_after: "qtyAfter",
   return_number: "returnNumber",
   purchase_number: "purchaseNumber",
+  cost_number: "costNumber",
   original_invoice_id: "originalInvoiceId",
   user_id: "userId",
   user_name: "userName",
@@ -108,6 +114,7 @@ const camelKeyMap: Record<string, string> = {
   default_shift_id: "defaultShiftId",
   assigned_shift_id: "assignedShiftId",
   shift_id: "shiftId",
+  early_leave_outcome: "earlyLeaveOutcome",
   request_number: "requestNumber",
   pharmacy_name: "pharmacyName",
   requested_by: "requestedBy",
@@ -129,6 +136,9 @@ const camelKeyMap: Record<string, string> = {
   commission_rate: "commissionRate",
   hire_date: "hireDate",
   last_login_at: "lastLoginAt",
+  request_type: "requestType",
+  end_date: "endDate",
+  requested_time: "requestedTime",
 };
 
 const snakeKeyMap: Record<string, string> = {
@@ -187,6 +197,7 @@ const snakeKeyMap: Record<string, string> = {
   defaultShiftId: "default_shift_id",
   assignedShiftId: "assigned_shift_id",
   shiftId: "shift_id",
+  earlyLeaveOutcome: "early_leave_outcome",
   useCustomWorkSchedule: "use_custom_work_schedule",
   workDayStart: "work_day_start",
   workDayEnd: "work_day_end",
@@ -208,6 +219,9 @@ const snakeKeyMap: Record<string, string> = {
   commissionRate: "commission_rate",
   hireDate: "hire_date",
   lastLoginAt: "last_login_at",
+  requestType: "request_type",
+  endDate: "end_date",
+  requestedTime: "requested_time",
   baseSalary: "base_salary",
   workDate: "work_date",
   checkIn: "check_in",
@@ -367,7 +381,29 @@ function resolveHeldInvoicesPharmacyId(pharmacyId?: string): string | null {
 }
 
 function stampPharmacy(payload: Record<string, any>): Record<string, any> {
+  if (payload.pharmacy_id) {
+    return { ...payload };
+  }
   return { ...payload, pharmacy_id: resolveStampPharmacyId() };
+}
+
+function prepareMedicinePayloadForPharmacy(
+  medicine: Partial<Medicine>,
+  pharmacyId: string
+): Record<string, any> {
+  return {
+    ...toSnakeCase({
+      id: medicine.id,
+      name_ar: medicine.name_ar,
+      name_en: medicine.name_en,
+      barcode: medicine.barcode,
+      qty: medicine.qty,
+      price: medicine.price,
+      buyPrice: medicine.buyPrice,
+      expiry: medicine.expiry,
+    } as Partial<Medicine>),
+    pharmacy_id: pharmacyId,
+  };
 }
 
 async function getRows<T>(
@@ -404,6 +440,8 @@ async function getRows<T>(
   return (data || []).map((row) => toCamelCase<T>(row));
 }
 
+let realtimeChannelSeq = 0;
+
 function subscribeTable<T>(
   table: string,
   callback: (rows: T[]) => void,
@@ -413,8 +451,9 @@ function subscribeTable<T>(
   filter?: { column: string; value: unknown },
   pharmacyScoped = false
 ) {
+  const channelName = `realtime-${table}-${++realtimeChannelSeq}`;
   const channel = supabase
-    .channel(`realtime-${table}`)
+    .channel(channelName)
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table },
@@ -426,7 +465,7 @@ function subscribeTable<T>(
   void channel.subscribe();
 
   return () => {
-    void channel.unsubscribe();
+    void supabase.removeChannel(channel);
   };
 }
 
@@ -663,7 +702,9 @@ export async function resolveWorkShiftForUser(
     getEmployees(),
   ]);
 
-  const employee = employees.find((item) => item.id === appUser.employeeId);
+  const employee =
+    employees.find((item) => item.id === appUser.employeeId) ||
+    (await resolveLinkedEmployeeForAppUser(appUser));
 
   if (employee) {
     const resolved = resolveWorkSchedule(employee, settings.workShifts, settings.defaultShiftId);
@@ -957,6 +998,349 @@ export async function getMedicines(): Promise<Medicine[]> {
   return getRows<Medicine>("medicines", "id", false, 100, undefined, true);
 }
 
+export async function getMedicinesForPharmacy(pharmacyId: string): Promise<Medicine[]> {
+  const { data, error } = await supabase
+    .from("medicines")
+    .select("*")
+    .eq("pharmacy_id", pharmacyId)
+    .order("id", { ascending: true });
+
+  if (error) {
+    console.error("getMedicinesForPharmacy error:", error.message);
+    return [];
+  }
+
+  return (data || []).map((row) => toCamelCase<Medicine>(row));
+}
+
+export async function runWithPharmacyScope<T>(
+  pharmacyId: string,
+  fn: () => Promise<T>
+): Promise<T> {
+  const previous = activePharmacyId;
+  activePharmacyId = pharmacyId;
+  try {
+    return await fn();
+  } finally {
+    activePharmacyId = previous;
+  }
+}
+
+export async function getPurchasesForPharmacies(pharmacyIds: string[]): Promise<PurchaseRecord[]> {
+  const ids = [...new Set(pharmacyIds.filter(Boolean))];
+  if (ids.length === 0) return getPurchases();
+
+  const { data, error } = await supabase
+    .from("purchases")
+    .select("*")
+    .in("pharmacy_id", ids)
+    .order("created_at", { ascending: false })
+    .limit(500);
+
+  if (error) {
+    console.error("getPurchasesForPharmacies error:", error.message);
+    return [];
+  }
+
+  return (data || []).map((row) => toCamelCase<PurchaseRecord>(row));
+}
+
+export type PurchaseBatchItem = {
+  barcode: string;
+  name_ar: string;
+  name_en: string;
+  qty: number;
+  buyPrice: number;
+  price: number;
+  expiry: string;
+};
+
+function formatPurchaseError(message: string) {
+  const lower = message.toLowerCase();
+  if (lower.includes("purchases") && lower.includes("barcode") && lower.includes("schema")) {
+    return "عمود barcode غير موجود في جدول purchases. شغّل supabase/add-purchases-columns.sql في Supabase SQL Editor ثم أعد المحاولة.";
+  }
+  if (lower.includes("column") && lower.includes("does not exist") && lower.includes("purchases")) {
+    return "أعمدة جدول purchases ناقصة. شغّل supabase/add-purchases-columns.sql في Supabase SQL Editor.";
+  }
+  if (lower.includes("medicine_name") && lower.includes("not-null")) {
+    return "عمود medicine_name مطلوب في جدول purchases. حدّث التطبيق (refresh) أو شغّل add-purchases-columns.sql.";
+  }
+  if (
+    lower.includes("medicines_barcode_key") ||
+    lower.includes("medicines_pharmacy_barcode_unique") ||
+    (lower.includes("duplicate key") && lower.includes("barcode"))
+  ) {
+    return "الباركود مسجّل مسبقاً في هذا الفرع أو فرع آخر. تأكد من الباركود أو شغّل supabase/fix-purchases-complete.sql.";
+  }
+  if (lower.includes("purchases_purchase_number_key")) {
+    return "رقم التوريد مربوط بقيد فريد في قاعدة البيانات. شغّل supabase/fix-purchases-complete.sql في Supabase (قسم إزالة unique على purchase_number).";
+  }
+  if (lower.includes("duplicate key")) {
+    return `تعارض في رقم السجل: ${message}`;
+  }
+  return message;
+}
+
+async function createIdAllocator(table: string) {
+  const { data, error } = await supabase
+    .from(table)
+    .select("id")
+    .order("id", { ascending: false })
+    .limit(1);
+
+  if (error) {
+    console.error(`createIdAllocator ${table}:`, error.message);
+  }
+
+  let cursor = Number(data?.[0]?.id) || 0;
+  return () => {
+    cursor += 1 + Math.floor(Math.random() * 17);
+    return cursor;
+  };
+}
+
+async function purchaseLineExists(
+  purchaseNumber: string,
+  barcode: string,
+  pharmacyId: string
+) {
+  const { data, error } = await supabase
+    .from("purchases")
+    .select("id")
+    .eq("purchase_number", purchaseNumber)
+    .eq("barcode", barcode)
+    .eq("pharmacy_id", pharmacyId)
+    .limit(1);
+
+  if (error) {
+    console.error("purchaseLineExists:", error.message);
+    return false;
+  }
+
+  return (data?.length ?? 0) > 0;
+}
+
+export async function savePurchaseBatch(params: {
+  pharmacyId: string;
+  purchaseNumber: string;
+  supplierName?: string;
+  notes?: string;
+  userId?: string;
+  userName?: string;
+  items: PurchaseBatchItem[];
+}) {
+  if (!params.items.length) {
+    throw new Error("No purchase items");
+  }
+
+  if (!params.pharmacyId) {
+    throw new Error("Target pharmacy is required");
+  }
+
+  await runWithPharmacyScope(params.pharmacyId, async () => {
+    const branchMedicines = await getMedicinesForPharmacy(params.pharmacyId);
+    const nowIso = new Date().toISOString();
+    const purchaseDate = new Date().toLocaleString();
+    const nextMedicineId = await createIdAllocator("medicines");
+    const nextPurchaseId = await createIdAllocator("purchases");
+    const nextMovementId = await createIdAllocator("stock_movements");
+    let savedCount = 0;
+
+    for (let index = 0; index < params.items.length; index += 1) {
+      const item = params.items[index];
+      const barcode = String(item.barcode ?? "").trim();
+      const nameAr = String(item.name_ar ?? "").trim();
+      const nameEn = String(item.name_en ?? "").trim();
+
+      if (!barcode || !nameAr || !nameEn || !item.expiry) {
+        throw new Error("بيانات الصنف غير مكتملة (الباركود أو الاسم أو الصلاحية)");
+      }
+
+      if (await purchaseLineExists(params.purchaseNumber, barcode, params.pharmacyId)) {
+        continue;
+      }
+
+      const existingMedicine = branchMedicines.find(
+        (medicine) => String(medicine.barcode ?? "").trim() === barcode
+      );
+
+      const medicineId = existingMedicine?.id || nextMedicineId();
+      const oldQty = existingMedicine?.qty || 0;
+      const purchaseQty = Number(item.qty);
+      const purchaseBuyPrice = Number(item.buyPrice);
+      const purchaseSellPrice = Number(item.price);
+      const newQty = oldQty + purchaseQty;
+
+      const medicine: Medicine = {
+        id: medicineId,
+        name_ar: nameAr,
+        name_en: nameEn,
+        barcode,
+        qty: newQty,
+        buyPrice: purchaseBuyPrice,
+        price: purchaseSellPrice,
+        expiry: item.expiry,
+        pharmacyId: params.pharmacyId,
+      };
+
+      const purchaseRecord: PurchaseRecord = {
+        id: nextPurchaseId(),
+        purchaseNumber: params.purchaseNumber,
+        medicineId,
+        medicineName_ar: medicine.name_ar,
+        medicineName_en: medicine.name_en,
+        barcode: medicine.barcode,
+        quantity: purchaseQty,
+        buyPrice: purchaseBuyPrice,
+        sellPrice: purchaseSellPrice,
+        totalCost: purchaseQty * purchaseBuyPrice,
+        supplierName: params.supplierName,
+        notes: params.notes,
+        pharmacyId: params.pharmacyId,
+        userId: params.userId,
+        userName: params.userName,
+        date: purchaseDate,
+        createdAt: nowIso,
+      };
+
+      try {
+        if (existingMedicine) {
+          await updateMedicine(medicineId, medicine, params.pharmacyId);
+          const local = branchMedicines.find((row) => row.id === medicineId);
+          if (local) {
+            local.qty = newQty;
+            local.buyPrice = purchaseBuyPrice;
+            local.price = purchaseSellPrice;
+            local.expiry = item.expiry;
+          }
+        } else {
+          await addMedicine(medicine, params.pharmacyId);
+          branchMedicines.push(medicine);
+        }
+
+        await createPurchase(purchaseRecord);
+        await addStockMovement({
+          id: nextMovementId(),
+          type: "purchase",
+          purchaseNumber: params.purchaseNumber,
+          medicineId,
+          medicineName_ar: medicine.name_ar,
+          medicineName_en: medicine.name_en,
+          barcode: medicine.barcode,
+          quantityChange: purchaseQty,
+          qtyBefore: oldQty,
+          qtyAfter: newQty,
+          supplierName: params.supplierName,
+          notes: params.notes,
+          pharmacyId: params.pharmacyId,
+          userId: params.userId,
+          userName: params.userName,
+          createdAt: nowIso,
+        });
+        savedCount += 1;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(formatPurchaseError(message));
+      }
+    }
+
+    if (savedCount === 0) {
+      throw new Error("تم حفظ أصناف هذا التوريد مسبقاً بنفس رقم التوريد");
+    }
+  });
+}
+
+export async function deletePurchaseBatch(
+  purchaseNumber: string,
+  pharmacyId: string,
+  userId?: string,
+  userName?: string
+) {
+  if (!purchaseNumber || !pharmacyId) {
+    throw new Error("Purchase number and pharmacy are required");
+  }
+
+  await runWithPharmacyScope(pharmacyId, async () => {
+    const { data: rows, error } = await supabase
+      .from("purchases")
+      .select("*")
+      .eq("purchase_number", purchaseNumber)
+      .eq("pharmacy_id", pharmacyId);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    if (!rows?.length) {
+      return;
+    }
+
+    const branchMedicines = await getMedicinesForPharmacy(pharmacyId);
+    const nextMovementId = await createIdAllocator("stock_movements");
+    const nowIso = new Date().toISOString();
+
+    for (const row of rows) {
+      const purchase = toCamelCase<PurchaseRecord>(row);
+      const barcode = String(purchase.barcode ?? "").trim();
+      const purchaseQty = Number(purchase.quantity) || 0;
+
+      const medicine =
+        branchMedicines.find((item) => String(item.barcode ?? "").trim() === barcode) ||
+        branchMedicines.find((item) => item.id === purchase.medicineId);
+
+      if (medicine && purchaseQty > 0) {
+        const qtyBefore = medicine.qty || 0;
+        const qtyAfter = Math.max(0, qtyBefore - purchaseQty);
+        await updateMedicine(medicine.id, { ...medicine, qty: qtyAfter }, pharmacyId);
+        medicine.qty = qtyAfter;
+
+        await addStockMovement({
+          id: nextMovementId(),
+          type: "purchase_delete",
+          purchaseNumber,
+          medicineId: medicine.id,
+          medicineName_ar: medicine.name_ar,
+          medicineName_en: medicine.name_en,
+          barcode: medicine.barcode,
+          quantityChange: -purchaseQty,
+          qtyBefore,
+          qtyAfter,
+          supplierName: purchase.supplierName,
+          notes: purchase.notes,
+          pharmacyId,
+          userId,
+          userName,
+          createdAt: nowIso,
+        });
+      }
+
+      const { error: deleteError } = await supabase.from("purchases").delete().eq("id", row.id);
+      if (deleteError) {
+        throw new Error(deleteError.message);
+      }
+    }
+  });
+}
+
+export async function replacePurchaseBatch(params: {
+  pharmacyId: string;
+  purchaseNumber: string;
+  supplierName?: string;
+  notes?: string;
+  userId?: string;
+  userName?: string;
+  items: PurchaseBatchItem[];
+}) {
+  await deletePurchaseBatch(
+    params.purchaseNumber,
+    params.pharmacyId,
+    params.userId,
+    params.userName
+  );
+  await savePurchaseBatch(params);
+}
+
 export function subscribeMedicines(callback: (medicines: Medicine[]) => void) {
   const channel = supabase
     .channel("realtime-medicines")
@@ -975,8 +1359,10 @@ export function subscribeMedicines(callback: (medicines: Medicine[]) => void) {
   };
 }
 
-export async function addMedicine(medicine: Medicine) {
-  const payload = prepareMedicinePayload(medicine);
+export async function addMedicine(medicine: Medicine, pharmacyId?: string) {
+  const payload = pharmacyId
+    ? prepareMedicinePayloadForPharmacy(medicine, pharmacyId)
+    : prepareMedicinePayload(medicine);
   const { error } = await supabase.from("medicines").insert([payload]);
 
   if (error) {
@@ -984,10 +1370,22 @@ export async function addMedicine(medicine: Medicine) {
   }
 }
 
-export async function updateMedicine(id: number, medicine: Partial<Medicine>) {
-  const payload = prepareMedicinePayload(medicine);
+export async function updateMedicine(
+  id: number,
+  medicine: Partial<Medicine>,
+  pharmacyId?: string
+) {
+  const payload = pharmacyId
+    ? prepareMedicinePayloadForPharmacy(medicine, pharmacyId)
+    : prepareMedicinePayload(medicine);
   delete payload.id;
-  const { error } = await supabase.from("medicines").update(payload).eq("id", id);
+
+  let query = supabase.from("medicines").update(payload).eq("id", id);
+  if (pharmacyId) {
+    query = query.eq("pharmacy_id", pharmacyId);
+  }
+
+  const { error } = await query;
 
   if (error) {
     throw new Error(error.message);
@@ -1432,6 +1830,62 @@ export function subscribePurchases(callback: (purchases: PurchaseRecord[]) => vo
   return subscribeTable<PurchaseRecord>("purchases", callback, "id", false, 100, undefined, true);
 }
 
+function normalizePharmacyCost(row: PharmacyCost): PharmacyCost {
+  const id = Number(row.id) || Date.now();
+  const costNumber = String(row.costNumber ?? "").trim();
+
+  return {
+    ...row,
+    id,
+    costNumber: costNumber || `COST-${id}`,
+    title: String(row.title ?? "").trim(),
+    category: String(row.category ?? "other"),
+    amount: Number(row.amount) || 0,
+    paymentMethod: String(row.paymentMethod ?? "cash"),
+    notes: String(row.notes ?? ""),
+  };
+}
+
+export async function getPharmacyCosts(): Promise<PharmacyCost[]> {
+  const rows = await getRows<PharmacyCost>("pharmacy_costs", "created_at", false, 500, undefined, true);
+  return rows.map(normalizePharmacyCost);
+}
+
+export function subscribePharmacyCosts(callback: (costs: PharmacyCost[]) => void) {
+  return subscribeTable<PharmacyCost>(
+    "pharmacy_costs",
+    (rows) => callback(rows.map(normalizePharmacyCost)),
+    "created_at",
+    false,
+    500,
+    undefined,
+    true
+  );
+}
+
+export async function savePharmacyCost(cost: PharmacyCost) {
+  const payload = stampPharmacy(toSnakeCase(cost));
+  const { error } = await supabase.from("pharmacy_costs").insert([payload]);
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function updatePharmacyCost(id: number, updates: Partial<PharmacyCost>) {
+  const payload = stampPharmacy(toSnakeCase(updates));
+  const { error } = await supabase.from("pharmacy_costs").update(payload).eq("id", id);
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function deletePharmacyCost(id: number) {
+  const { error } = await supabase.from("pharmacy_costs").delete().eq("id", id);
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 export async function getCustomerPayments(): Promise<CustomerPayment[]> {
   return getRows<CustomerPayment>("customer_payments", "id", false, 100, undefined, true);
 }
@@ -1442,6 +1896,33 @@ export function subscribeCustomerPayments(callback: (payments: CustomerPayment[]
 
 export async function getStockMovements(): Promise<StockMovement[]> {
   return getRows<StockMovement>("stock_movements", "created_at", false, 100, undefined, true);
+}
+
+export async function getStockMovementsForMedicine(
+  medicineId: number,
+  pharmacyId?: string
+): Promise<StockMovement[]> {
+  let query = supabase
+    .from("stock_movements")
+    .select("*")
+    .eq("medicine_id", medicineId)
+    .order("created_at", { ascending: false })
+    .limit(300);
+
+  if (pharmacyId) {
+    query = query.eq("pharmacy_id", pharmacyId);
+  } else {
+    query = applyPharmacyFilter(query);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("getStockMovementsForMedicine error:", error.message);
+    return [];
+  }
+
+  return (data || []).map((row) => toCamelCase<StockMovement>(row));
 }
 
 export function subscribeStockMovements(callback: (movements: StockMovement[]) => void) {
@@ -1615,7 +2096,9 @@ function buildLoginAccountRequestNumber() {
   return `ACC-${Date.now()}`;
 }
 
-export async function getAllLoginAccountRequests(): Promise<LoginAccountRequest[]> {
+export async function getAllLoginAccountRequests(options?: {
+  includePendingPasswords?: boolean;
+}): Promise<LoginAccountRequest[]> {
   const { data, error } = await supabase
     .from("login_account_requests")
     .select("*")
@@ -1628,7 +2111,9 @@ export async function getAllLoginAccountRequests(): Promise<LoginAccountRequest[
 
   return (data || []).map((row) => {
     const req = toCamelCase<LoginAccountRequest>(row);
-    delete req.password;
+    if (!options?.includePendingPasswords || req.status !== "pending") {
+      delete req.password;
+    }
     return req;
   });
 }
@@ -1687,12 +2172,36 @@ export async function getPendingLoginAccountRequestForEmployee(
   return req;
 }
 
-export function subscribeLoginAccountRequests(callback: (rows: LoginAccountRequest[]) => void) {
+export async function getPendingLoginAccountRequestForEmail(
+  pharmacyId: string,
+  email: string
+): Promise<LoginAccountRequest | null> {
+  const { data, error } = await supabase
+    .from("login_account_requests")
+    .select("*")
+    .eq("pharmacy_id", pharmacyId)
+    .eq("email", email.trim().toLowerCase())
+    .eq("status", "pending")
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  const req = toCamelCase<LoginAccountRequest>(data);
+  delete req.password;
+  return req;
+}
+
+export function subscribeLoginAccountRequests(
+  callback: (rows: LoginAccountRequest[]) => void,
+  options?: { includePendingPasswords?: boolean }
+) {
   const channel = supabase.channel("realtime-login-account-requests").on(
     "postgres_changes",
     { event: "*", schema: "public", table: "login_account_requests" },
     () => {
-      void getAllLoginAccountRequests().then(callback);
+      void getAllLoginAccountRequests(options).then(callback);
     }
   );
 
@@ -1705,28 +2214,35 @@ export function subscribeLoginAccountRequests(callback: (rows: LoginAccountReque
 export async function createLoginAccountRequest(input: {
   pharmacyId: string;
   pharmacyName: string;
-  employeeId: string;
-  employeeName: string;
+  employeeId?: string;
+  employeeName?: string;
   email: string;
-  username: string;
+  username?: string;
   password: string;
   role: UserRole;
   requestedBy?: string;
   requestedByName?: string;
 }): Promise<LoginAccountRequest> {
-  const existing = await getPendingLoginAccountRequestForEmployee(input.employeeId);
-  if (existing) {
+  const email = input.email.trim().toLowerCase();
+  const existingEmail = await getPendingLoginAccountRequestForEmail(input.pharmacyId, email);
+  if (existingEmail) {
     throw new Error("pending_login_request_exists");
+  }
+  if (input.employeeId) {
+    const existingEmployee = await getPendingLoginAccountRequestForEmployee(input.employeeId);
+    if (existingEmployee) {
+      throw new Error("pending_login_request_exists");
+    }
   }
 
   const payload = toSnakeCase({
     requestNumber: buildLoginAccountRequestNumber(),
     pharmacyId: input.pharmacyId,
     pharmacyName: input.pharmacyName,
-    employeeId: input.employeeId,
-    employeeName: input.employeeName,
-    email: input.email.trim().toLowerCase(),
-    username: input.username.trim(),
+    employeeId: input.employeeId || null,
+    employeeName: input.employeeName || null,
+    email,
+    username: (input.username || email.split("@")[0] || email).trim(),
     password: input.password,
     role: normalizeRole(input.role),
     status: "pending" as SubscriptionRequestStatus,
@@ -1771,7 +2287,8 @@ export async function updateLoginAccountRequestStatus(
   };
 
   if (updates.clearPassword) {
-    payload.password = null;
+    // Column may still be NOT NULL on older DBs — empty string satisfies the constraint.
+    payload.password = "";
   }
 
   const { error } = await supabase
@@ -1782,6 +2299,278 @@ export async function updateLoginAccountRequestStatus(
   if (error) {
     throw new Error(error.message);
   }
+}
+
+export async function getPharmacyLoginAccounts(pharmacyId: string): Promise<PharmacyLoginAccount[]> {
+  const { data, error } = await supabase
+    .from("pharmacy_login_accounts")
+    .select("*")
+    .eq("pharmacy_id", pharmacyId)
+    .order("email", { ascending: true });
+
+  if (error) {
+    console.error("getPharmacyLoginAccounts error:", error.message);
+    return [];
+  }
+
+  return (data || []).map((row) => normalizePharmacyLoginAccount(toCamelCase<PharmacyLoginAccount>(row)));
+}
+
+function normalizePharmacyLoginAccount(row: PharmacyLoginAccount): PharmacyLoginAccount {
+  return {
+    ...row,
+    role: normalizeRole(row.role),
+    email: row.email.trim().toLowerCase(),
+    status: row.status || "approved",
+  };
+}
+
+export async function getAllPharmacyLoginAccounts(options?: {
+  status?: PharmacyLoginAccount["status"];
+}): Promise<PharmacyLoginAccount[]> {
+  let query = supabase.from("pharmacy_login_accounts").select("*").order("created_at", {
+    ascending: false,
+  });
+  if (options?.status) {
+    query = query.eq("status", options.status);
+  }
+  const { data, error } = await query;
+  if (error) {
+    console.error("getAllPharmacyLoginAccounts error:", error.message);
+    return [];
+  }
+  return (data || []).map((row) => normalizePharmacyLoginAccount(toCamelCase<PharmacyLoginAccount>(row)));
+}
+
+export async function getPharmacyLoginAccountById(id: string): Promise<PharmacyLoginAccount | null> {
+  const { data, error } = await supabase
+    .from("pharmacy_login_accounts")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return normalizePharmacyLoginAccount(toCamelCase<PharmacyLoginAccount>(data));
+}
+
+export async function createPharmacyLoginAccount(input: {
+  pharmacyId: string;
+  email: string;
+  password: string;
+  role: UserRole;
+  employeeId?: string;
+  status?: PharmacyLoginAccount["status"];
+  requestedBy?: string;
+  requestedByName?: string;
+}): Promise<PharmacyLoginAccount> {
+  const status =
+    input.status ?? (isSuperAdmin(getCurrentAppUser()) ? "approved" : "pending");
+
+  const payload = stampPharmacy(
+    toSnakeCase({
+      id: crypto.randomUUID(),
+      pharmacyId: input.pharmacyId,
+      email: input.email.trim().toLowerCase(),
+      password: input.password,
+      role: normalizeRole(input.role),
+      employeeId: input.employeeId || null,
+      isActive: true,
+      status,
+      requestedBy: input.requestedBy,
+      requestedByName: input.requestedByName,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+  );
+
+  const { data, error } = await supabase
+    .from("pharmacy_login_accounts")
+    .insert([payload])
+    .select("*")
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return normalizePharmacyLoginAccount(toCamelCase<PharmacyLoginAccount>(data));
+}
+
+export async function approvePharmacyLoginAccount(
+  id: string,
+  reviewedBy?: string,
+  reviewedByName?: string
+): Promise<PharmacyLoginAccount | null> {
+  const account = await getPharmacyLoginAccountById(id);
+  if (!account || account.status !== "pending") {
+    throw new Error("account_not_pending");
+  }
+
+  const { data, error } = await supabase
+    .from("pharmacy_login_accounts")
+    .update({
+      status: "approved",
+      reviewed_by: reviewedBy,
+      reviewed_by_name: reviewedByName,
+      reviewed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const approved = normalizePharmacyLoginAccount(toCamelCase<PharmacyLoginAccount>(data));
+
+  await linkLoginRequestToUserAccount({
+    pharmacyId: approved.pharmacyId,
+    employeeId: approved.employeeId,
+    email: approved.email,
+    username: approved.email.split("@")[0],
+    role: approved.role,
+  } as LoginAccountRequest).catch(() => undefined);
+
+  return approved;
+}
+
+export async function rejectPharmacyLoginAccount(
+  id: string,
+  reviewedBy?: string,
+  reviewedByName?: string,
+  reviewNote?: string
+) {
+  const { error } = await supabase
+    .from("pharmacy_login_accounts")
+    .update({
+      status: "rejected",
+      reviewed_by: reviewedBy,
+      reviewed_by_name: reviewedByName,
+      review_note: reviewNote || null,
+      reviewed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      employee_id: null,
+    })
+    .eq("id", id)
+    .eq("status", "pending");
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function updatePharmacyLoginAccount(
+  id: string,
+  updates: Partial<Pick<PharmacyLoginAccount, "email" | "password" | "role" | "employeeId" | "isActive">>
+) {
+  const payload = toSnakeCase({
+    ...updates,
+    email: updates.email?.trim().toLowerCase(),
+    role: updates.role ? normalizeRole(updates.role) : undefined,
+    updatedAt: new Date().toISOString(),
+  });
+  if (updates.role === undefined) {
+    delete payload.role;
+  }
+
+  const { error } = await supabase.from("pharmacy_login_accounts").update(payload).eq("id", id);
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function deletePharmacyLoginAccount(id: string) {
+  const { error } = await supabase.from("pharmacy_login_accounts").delete().eq("id", id);
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function assignPharmacyLoginAccountToEmployee(
+  accountId: string | null,
+  employeeId: string | null,
+  pharmacyId: string
+) {
+  if (employeeId) {
+    await supabase
+      .from("pharmacy_login_accounts")
+      .update({ employee_id: null, updated_at: new Date().toISOString() })
+      .eq("pharmacy_id", pharmacyId)
+      .eq("employee_id", employeeId);
+  }
+
+  if (!accountId) return;
+
+  const { data: account, error: loadError } = await supabase
+    .from("pharmacy_login_accounts")
+    .select("*")
+    .eq("id", accountId)
+    .maybeSingle();
+
+  if (loadError || !account) {
+    throw new Error("login_account_not_found");
+  }
+
+  const catalogAccount = normalizePharmacyLoginAccount(toCamelCase<PharmacyLoginAccount>(account));
+  if (catalogAccount.status !== "approved") {
+    throw new Error("login_account_not_approved");
+  }
+
+  if (account.employee_id && account.employee_id !== employeeId) {
+    throw new Error("login_account_already_assigned");
+  }
+
+  const { error } = await supabase
+    .from("pharmacy_login_accounts")
+    .update({
+      employee_id: employeeId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", accountId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (employeeId) {
+    await linkLoginRequestToUserAccount({
+      pharmacyId,
+      employeeId,
+      email: catalogAccount.email,
+      username: catalogAccount.email.split("@")[0],
+      role: catalogAccount.role,
+    } as LoginAccountRequest).catch(() => undefined);
+  }
+}
+
+export async function createPharmacyLoginAccountFromRequest(
+  request: LoginAccountRequest,
+  password?: string
+): Promise<PharmacyLoginAccount> {
+  const existing = await supabase
+    .from("pharmacy_login_accounts")
+    .select("id")
+    .eq("pharmacy_id", request.pharmacyId)
+    .eq("email", request.email.trim().toLowerCase())
+    .maybeSingle();
+
+  if (existing.data?.id) {
+    const { data } = await supabase
+      .from("pharmacy_login_accounts")
+      .select("*")
+      .eq("id", existing.data.id)
+      .single();
+    return normalizePharmacyLoginAccount(toCamelCase<PharmacyLoginAccount>(data));
+  }
+
+  return createPharmacyLoginAccount({
+    pharmacyId: request.pharmacyId,
+    email: request.email,
+    password: password || request.password || "",
+    role: request.role,
+    employeeId: request.employeeId,
+  });
 }
 
 export async function createPharmacy(data: CreatePharmacyInput) {
@@ -2161,8 +2950,35 @@ export async function deleteCustomerPayment(paymentNumber: string) {
   }
 }
 
+function preparePurchasePayload(purchase: PurchaseRecord): Record<string, any> {
+  const medicineNameAr = purchase.medicineName_ar || "";
+  const medicineNameEn = purchase.medicineName_en || "";
+  const medicineName = medicineNameAr || medicineNameEn || "—";
+
+  return stampPharmacy({
+    id: purchase.id,
+    purchase_number: purchase.purchaseNumber,
+    medicine_id: purchase.medicineId,
+    medicine_name: medicineName,
+    medicine_name_ar: medicineNameAr,
+    medicine_name_en: medicineNameEn,
+    barcode: purchase.barcode || "",
+    quantity: purchase.quantity,
+    buy_price: purchase.buyPrice ?? 0,
+    sell_price: purchase.sellPrice ?? 0,
+    total_cost: purchase.totalCost ?? 0,
+    supplier_name: purchase.supplierName || "",
+    notes: purchase.notes || "",
+    pharmacy_id: purchase.pharmacyId,
+    user_id: purchase.userId || "",
+    user_name: purchase.userName || "",
+    date: purchase.date || new Date().toLocaleString(),
+    created_at: purchase.createdAt || new Date().toISOString(),
+  });
+}
+
 export async function createPurchase(purchase: PurchaseRecord) {
-  const payload = stampPharmacy(toSnakeCase(purchase));
+  const payload = preparePurchasePayload(purchase);
   const { error } = await supabase.from("purchases").insert([payload]);
   if (error) {
     throw new Error(error.message);
@@ -3233,6 +4049,123 @@ export async function linkUserToEmployee(uid: string, employeeId: string | null)
   }
 }
 
+export function resolveLinkedEmployeeFromData(
+  appUser: AppUser,
+  employees: Employee[],
+  accounts: SystemUser[],
+  loginRequests: LoginAccountRequest[],
+  catalogAccounts: PharmacyLoginAccount[] = []
+): Employee | null {
+  if (appUser.employeeId) {
+    const linked = employees.find((item) => item.id === appUser.employeeId && item.isActive);
+    if (linked) return linked;
+  }
+
+  const myAccount = accounts.find((item) => item.uid === appUser.uid);
+  if (myAccount?.employeeId) {
+    const linked = employees.find((item) => item.id === myAccount.employeeId && item.isActive);
+    if (linked) return linked;
+  }
+
+  const normalizedEmail = appUser.email.trim().toLowerCase();
+
+  for (const catalog of catalogAccounts) {
+    if (!catalog.isActive || catalog.status !== "approved" || !catalog.employeeId) continue;
+    if (catalog.email !== normalizedEmail) continue;
+    const linked = employees.find((item) => item.id === catalog.employeeId && item.isActive);
+    if (linked) return linked;
+  }
+
+  const approvedRequests = loginRequests
+    .filter((item) => item.status === "approved")
+    .sort((a, b) =>
+      String(b.reviewedAt || b.updatedAt || "").localeCompare(
+        String(a.reviewedAt || a.updatedAt || "")
+      )
+    );
+
+  for (const request of approvedRequests) {
+    if (request.email.trim().toLowerCase() !== normalizedEmail) continue;
+    if (!request.employeeId) continue;
+    const linked = employees.find((item) => item.id === request.employeeId && item.isActive);
+    if (linked) return linked;
+  }
+
+  const identity = (appUser.username || appUser.name || "").trim();
+  if (identity) {
+    for (const request of approvedRequests) {
+      if (request.username.trim() !== identity) continue;
+      if (!request.employeeId) continue;
+      const linked = employees.find((item) => item.id === request.employeeId && item.isActive);
+      if (linked) return linked;
+    }
+  }
+
+  return null;
+}
+
+export async function resolveLinkedEmployeeForAppUser(appUser: AppUser): Promise<Employee | null> {
+  const [employees, accounts, loginRequests, catalogAccounts] = await Promise.all([
+    getEmployees(),
+    getSystemUsers(appUser.pharmacyId),
+    getPharmacyLoginAccountRequests(appUser.pharmacyId),
+    getPharmacyLoginAccounts(appUser.pharmacyId),
+  ]);
+  return resolveLinkedEmployeeFromData(
+    appUser,
+    employees,
+    accounts,
+    loginRequests,
+    catalogAccounts
+  );
+}
+
+export async function ensureAppUserEmployeeLink(appUser: AppUser): Promise<AppUser> {
+  if (appUser.employeeId) return appUser;
+
+  const employee = await resolveLinkedEmployeeForAppUser(appUser);
+  if (!employee) return appUser;
+
+  try {
+    await linkUserToEmployee(appUser.uid, employee.id);
+    return { ...appUser, employeeId: employee.id };
+  } catch (error) {
+    console.warn("ensureAppUserEmployeeLink failed", error);
+    return appUser;
+  }
+}
+
+export async function linkLoginRequestToUserAccount(
+  request: LoginAccountRequest
+): Promise<boolean> {
+  const pharmacyId = request.pharmacyId;
+  const email = request.email.trim().toLowerCase();
+
+  const { data: byEmail } = await supabase
+    .from("users")
+    .select("uid")
+    .eq("pharmacy_id", pharmacyId)
+    .eq("email", email)
+    .maybeSingle();
+
+  let uid = byEmail?.uid as string | undefined;
+
+  if (!uid && request.username.trim()) {
+    const { data: byUsername } = await supabase
+      .from("users")
+      .select("uid")
+      .eq("pharmacy_id", pharmacyId)
+      .eq("username", request.username.trim())
+      .maybeSingle();
+    uid = byUsername?.uid as string | undefined;
+  }
+
+  if (!uid) return false;
+
+  await linkUserToEmployee(uid, request.employeeId);
+  return true;
+}
+
 export async function linkExistingAuthUser(params: {
   uid: string;
   employeeId: string;
@@ -3277,4 +4210,176 @@ export async function recordLastLogin(uid: string) {
   if (error) {
     console.error("recordLastLogin error:", error.message);
   }
+}
+
+function buildEmployeeRequestNumber() {
+  return `ER-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`;
+}
+
+export function listDaysBetween(start: string, end: string): string[] {
+  const s = new Date(`${start}T12:00:00`);
+  const e = new Date(`${end}T12:00:00`);
+  if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return [];
+  const days: string[] = [];
+  const cursor = new Date(s);
+  while (cursor.getTime() <= e.getTime()) {
+    days.push(cursor.toISOString().slice(0, 10));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return days;
+}
+
+export async function getEmployeeRequests(options?: {
+  userId?: string;
+  employeeId?: string;
+  status?: EmployeeRequestStatus;
+  fromDate?: string;
+  toDate?: string;
+}): Promise<EmployeeRequest[]> {
+  let query = applyPharmacyFilter(supabase.from("employee_requests").select("*")).order(
+    "created_at",
+    { ascending: false }
+  );
+
+  if (options?.userId) query = query.eq("user_id", options.userId);
+  if (options?.employeeId) query = query.eq("employee_id", options.employeeId);
+  if (options?.status) query = query.eq("status", options.status);
+  if (options?.fromDate) query = query.gte("work_date", options.fromDate);
+  if (options?.toDate) query = query.lte("work_date", options.toDate);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("getEmployeeRequests error:", error.message);
+    return [];
+  }
+  return (data || []).map((row) => toCamelCase<EmployeeRequest>(row));
+}
+
+export async function createEmployeeRequest(input: {
+  employeeId: string;
+  userId?: string;
+  employeeName: string;
+  requestType: EmployeeRequestType;
+  workDate: string;
+  endDate?: string;
+  requestedTime?: string;
+  reason?: string;
+}): Promise<EmployeeRequest> {
+  const payload = stampPharmacy(
+    toSnakeCase({
+      requestNumber: buildEmployeeRequestNumber(),
+      employeeId: input.employeeId,
+      userId: input.userId || "",
+      employeeName: input.employeeName,
+      requestType: input.requestType,
+      workDate: input.workDate,
+      endDate: input.endDate || null,
+      requestedTime: input.requestedTime || null,
+      reason: input.reason || "",
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+  );
+
+  const { data, error } = await supabase
+    .from("employee_requests")
+    .insert([payload])
+    .select("*")
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  return toCamelCase<EmployeeRequest>(data);
+}
+
+export async function reviewEmployeeRequest(
+  id: number,
+  status: Exclude<EmployeeRequestStatus, "pending">,
+  reviewer: { uid: string; name: string },
+  reviewNote?: string
+): Promise<EmployeeRequest> {
+  const { data: existing, error: loadError } = await applyPharmacyFilter(
+    supabase.from("employee_requests").select("*").eq("id", id)
+  ).maybeSingle();
+
+  if (loadError || !existing) {
+    throw new Error(loadError?.message || "request_not_found");
+  }
+
+  const request = toCamelCase<EmployeeRequest>(existing);
+  if (request.status !== "pending") {
+    throw new Error("request_already_reviewed");
+  }
+
+  const payload = toSnakeCase({
+    status,
+    reviewedBy: reviewer.uid,
+    reviewedByName: reviewer.name,
+    reviewNote: reviewNote || "",
+    reviewedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  const { data, error } = await applyPharmacyFilter(
+    supabase.from("employee_requests").update(payload).eq("id", id)
+  )
+    .select("*")
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const updated = toCamelCase<EmployeeRequest>(data);
+
+  if (status === "approved") {
+    if (updated.requestType === "leave") {
+      const end = updated.endDate || updated.workDate;
+      const days = listDaysBetween(updated.workDate, end);
+      for (const workDate of days) {
+        await upsertAttendanceRecord({
+          userId: updated.userId || updated.employeeId,
+          userName: updated.employeeName,
+          workDate,
+          status: "leave",
+          notes: updated.reason || (updated.requestNumber ? `إجازة ${updated.requestNumber}` : ""),
+        });
+      }
+    } else if (updated.requestType === "permission") {
+      const existingRecord = await getAttendanceForDay(
+        updated.userId || updated.employeeId,
+        updated.workDate
+      );
+      const permissionNote = updated.requestedTime
+        ? `إذن معتمد — انصراف ${updated.requestedTime}`
+        : "إذن معتمد";
+      await upsertAttendanceRecord({
+        ...existingRecord,
+        userId: updated.userId || updated.employeeId,
+        userName: updated.employeeName,
+        workDate: updated.workDate,
+        status: existingRecord?.status || "present",
+        notes: [existingRecord?.notes, permissionNote].filter(Boolean).join(" | "),
+      });
+    }
+  }
+
+  return updated;
+}
+
+export function hasApprovedPermissionForDate(
+  requests: EmployeeRequest[],
+  userId: string,
+  employeeId: string,
+  workDate: string
+): boolean {
+  return requests.some(
+    (req) =>
+      req.status === "approved" &&
+      req.requestType === "permission" &&
+      req.workDate === workDate &&
+      (req.userId === userId || req.employeeId === employeeId)
+  );
 }

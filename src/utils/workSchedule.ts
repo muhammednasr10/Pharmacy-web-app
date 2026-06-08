@@ -226,6 +226,27 @@ export type ResolvedWorkSchedule = WorkSchedule & {
   shiftLabelAr: string;
 };
 
+export function resolveScheduleForShiftId(
+  shiftId: ShiftId | string | null | undefined,
+  pharmacyShifts: PharmacyShift[],
+  fallbackShiftId: ShiftId = "A"
+): ResolvedWorkSchedule {
+  const normalized = normalizeShiftId(shiftId, fallbackShiftId);
+  const shiftTemplate =
+    pharmacyShifts.find((item) => item.id === normalized) ||
+    pharmacyShifts[0] ||
+    DEFAULT_PHARMACY_SHIFTS[0];
+
+  return {
+    dayStart: shiftTemplate.dayStart,
+    dayEnd: shiftTemplate.dayEnd,
+    breaks: shiftTemplate.breaks.map((item) => ({ ...item })),
+    shiftId: shiftTemplate.id,
+    shiftLabel: shiftTemplate.label,
+    shiftLabelAr: shiftTemplate.labelAr,
+  };
+}
+
 export function resolveWorkSchedule(
   employee: {
     useCustomWorkSchedule?: boolean;
@@ -264,30 +285,44 @@ export function resolveWorkSchedule(
   };
 }
 
-/** Returns true if check-in is after scheduled start + grace minutes. */
+/** Normalize check-in time onto the shift timeline; null if outside the shift window. */
+function normalizeCheckInMinutes(checkIn: Date, schedule: WorkSchedule): number | null {
+  const checkMinutes = checkIn.getHours() * 60 + checkIn.getMinutes();
+  const startMinutes = timeToMinutes(schedule.dayStart);
+  let endMinutes = timeToMinutes(schedule.dayEnd);
+  const overnightShift = endMinutes <= startMinutes;
+  if (overnightShift) endMinutes += 24 * 60;
+
+  let normalizedCheck = checkMinutes;
+  if (overnightShift && checkMinutes < startMinutes) {
+    normalizedCheck += 24 * 60;
+  }
+
+  const maxEarlyMinutes = 120;
+  if (normalizedCheck < startMinutes - maxEarlyMinutes) return null;
+  if (normalizedCheck > endMinutes) return null;
+
+  return normalizedCheck;
+}
+
+/** Returns true if check-in is after scheduled start + grace minutes (only within shift window). */
 export function isCheckInLate(checkInIso: string, schedule: WorkSchedule, graceMinutes = 15): boolean {
   const checkIn = new Date(checkInIso);
   if (Number.isNaN(checkIn.getTime())) return false;
 
-  const checkMinutes = checkIn.getHours() * 60 + checkIn.getMinutes();
   const startMinutes = timeToMinutes(schedule.dayStart);
-  let endMinutes = timeToMinutes(schedule.dayEnd);
-  if (endMinutes <= startMinutes) endMinutes += 24 * 60;
-
-  let normalizedCheck = checkMinutes;
-  if (endMinutes > 24 * 60 && checkMinutes < startMinutes) {
-    normalizedCheck += 24 * 60;
-  }
+  const normalizedCheck = normalizeCheckInMinutes(checkIn, schedule);
+  if (normalizedCheck === null) return false;
 
   return normalizedCheck > startMinutes + graceMinutes;
 }
 
-/** Returns true if check-out is before scheduled shift end. */
+/** Returns true if check-out is before scheduled shift end (with grace). */
 export function isCheckOutEarly(
   checkOutIso: string,
   schedule: WorkSchedule,
   workDate: string,
-  graceMinutes = 0
+  graceMinutes = DEFAULT_ALLOWED_LATE_MINUTES
 ): boolean {
   const checkOut = new Date(checkOutIso);
   if (Number.isNaN(checkOut.getTime())) return false;
@@ -319,6 +354,8 @@ export function isCheckOutEarly(
     return false;
   }
 
+  if (normalizedCheck > endMinutes) return false;
+
   return normalizedCheck < endMinutes - graceMinutes;
 }
 
@@ -327,16 +364,34 @@ export type AttendanceTimingFlags = {
   isEarlyLeave: boolean;
 };
 
+export function isEarlyLeaveApproved(
+  earlyLeaveOutcome: "permission" | "deduction" | undefined,
+  hasApprovedPermissionRequest: boolean
+): boolean {
+  if (hasApprovedPermissionRequest) return true;
+  return earlyLeaveOutcome !== "deduction";
+}
+
+export function resolveEarlyLeaveOutcome(
+  earlyLeaveOutcome: "permission" | "deduction" | undefined
+): "permission" | "deduction" {
+  return earlyLeaveOutcome === "deduction" ? "deduction" : "permission";
+}
+
 export function evaluateAttendanceTiming(
   workDate: string,
   checkInIso: string | undefined,
   checkOutIso: string | undefined,
   schedule: WorkSchedule,
-  allowedLateMinutes = DEFAULT_ALLOWED_LATE_MINUTES
+  allowedLateMinutes = DEFAULT_ALLOWED_LATE_MINUTES,
+  options?: { approvedEarlyLeave?: boolean }
 ): AttendanceTimingFlags {
   return {
     isLate: checkInIso ? isCheckInLate(checkInIso, schedule, allowedLateMinutes) : false,
-    isEarlyLeave: checkOutIso ? isCheckOutEarly(checkOutIso, schedule, workDate, 0) : false,
+    isEarlyLeave:
+      checkOutIso && !options?.approvedEarlyLeave
+        ? isCheckOutEarly(checkOutIso, schedule, workDate, allowedLateMinutes)
+        : false,
   };
 }
 

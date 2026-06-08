@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
 import DashboardCharts from "../components/DashboardCharts";
+import { getCostCategoryLabel } from "../utils/costCategories";
 
 type SellingMedicine = {
   medicineId: number;
@@ -11,6 +11,7 @@ type SellingMedicine = {
 
 type SalesPoint = { date: string; total: number };
 type PaymentSlice = { method: string; total: number };
+type CostSlice = { category: string; total: number };
 type QuickRange = "today" | "7days" | "month" | "year";
 
 type ReportsPageProps = {
@@ -27,6 +28,10 @@ type ReportsPageProps = {
   filteredReportDiscountTotal: number;
   reportUnitsSold: number;
   reportReturnsTotal: number;
+  reportCostsTotal: number;
+  reportCostsCount: number;
+  reportCostsByCategory: CostSlice[];
+  netProfitAfterCosts: number;
   topSellingMedicines: SellingMedicine[];
   reportPaymentTotals: Record<string, number>;
   reportPaymentBreakdown: PaymentSlice[];
@@ -34,11 +39,12 @@ type ReportsPageProps = {
   reportCashierTotals: Record<string, number>;
   getPaymentLabel: (method: string) => string;
   currency: string;
-  invoiceTable: ReactNode;
 };
 
 function formatMoney(value: number) {
-  return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return "0";
+  return amount.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
 export default function ReportsPage({
@@ -55,6 +61,10 @@ export default function ReportsPage({
   filteredReportDiscountTotal,
   reportUnitsSold,
   reportReturnsTotal,
+  reportCostsTotal,
+  reportCostsCount,
+  reportCostsByCategory,
+  netProfitAfterCosts,
   topSellingMedicines,
   reportPaymentTotals,
   reportPaymentBreakdown,
@@ -62,11 +72,7 @@ export default function ReportsPage({
   reportCashierTotals,
   getPaymentLabel,
   currency,
-  invoiceTable,
 }: ReportsPageProps) {
-  const avgInvoice = filteredReportInvoicesCount
-    ? filteredReportTotal / filteredReportInvoicesCount
-    : 0;
   const profitMargin = filteredReportTotal
     ? (filteredReportProfitTotal / filteredReportTotal) * 100
     : 0;
@@ -74,61 +80,63 @@ export default function ReportsPage({
 
   const cashierRows = Object.entries(reportCashierTotals).sort((a, b) => b[1] - a[1]);
   const maxCashier = Math.max(1, ...cashierRows.map(([, amount]) => amount));
+  const maxCostCategory = Math.max(1, ...reportCostsByCategory.map((item) => item.total));
 
-  const kpis = [
+  const heroCards = [
     {
       key: "sales",
       label: isArabic ? "إجمالي المبيعات" : "Total Sales",
       value: `${formatMoney(filteredReportTotal)} ${currency}`,
-      tone: "primary",
+      sub: isArabic ? `${filteredReportInvoicesCount} فاتورة` : `${filteredReportInvoicesCount} invoices`,
+      tone: "sales",
     },
     {
       key: "profit",
-      label: isArabic ? "صافي الربح" : "Net Profit",
+      label: isArabic ? "مجمل الربح" : "Gross Profit",
       value: `${formatMoney(filteredReportProfitTotal)} ${currency}`,
-      tone: "ok",
+      sub: `${profitMargin.toFixed(1)}% ${isArabic ? "هامش" : "margin"}`,
+      tone: "profit",
     },
     {
-      key: "margin",
-      label: isArabic ? "هامش الربح" : "Profit Margin",
-      value: `${profitMargin.toFixed(1)}%`,
-      tone: "ok",
+      key: "costs",
+      label: isArabic ? "التكاليف التشغيلية" : "Operating Costs",
+      value: `${formatMoney(reportCostsTotal)} ${currency}`,
+      sub: isArabic ? `${reportCostsCount} بند` : `${reportCostsCount} entries`,
+      tone: "costs",
     },
     {
-      key: "invoices",
-      label: isArabic ? "عدد الفواتير" : "Invoices",
-      value: String(filteredReportInvoicesCount),
-      tone: "neutral",
+      key: "net",
+      label: isArabic ? "صافي الربح بعد التكاليف" : "Net Profit After Costs",
+      value: `${formatMoney(netProfitAfterCosts)} ${currency}`,
+      sub: isArabic ? "بعد خصم التكاليف التشغيلية" : "After operating costs",
+      tone: netProfitAfterCosts >= 0 ? "net" : "net-negative",
+    },
+  ];
+
+  const detailKpis = [
+    {
+      key: "net-sales",
+      label: isArabic ? "صافي المبيعات" : "Net Sales",
+      value: `${formatMoney(netSales)} ${currency}`,
+      tone: "primary",
     },
     {
-      key: "avg",
-      label: isArabic ? "متوسط الفاتورة" : "Average Invoice",
-      value: `${formatMoney(avgInvoice)} ${currency}`,
-      tone: "neutral",
+      key: "returns",
+      label: isArabic ? "قيمة المرتجعات" : "Returns",
+      value: `${formatMoney(reportReturnsTotal)} ${currency}`,
+      tone: "danger",
+    },
+    {
+      key: "discount",
+      label: isArabic ? "إجمالي الخصومات" : "Discounts",
+      value: `${formatMoney(filteredReportDiscountTotal)} ${currency}`,
+      tone: "warn",
     },
     {
       key: "units",
       label: isArabic ? "وحدات مباعة" : "Units Sold",
       value: String(reportUnitsSold),
       tone: "neutral",
-    },
-    {
-      key: "discount",
-      label: isArabic ? "إجمالي الخصومات" : "Total Discounts",
-      value: `${formatMoney(filteredReportDiscountTotal)} ${currency}`,
-      tone: "warn",
-    },
-    {
-      key: "returns",
-      label: isArabic ? "قيمة المرتجعات" : "Returns Value",
-      value: `${formatMoney(reportReturnsTotal)} ${currency}`,
-      tone: "danger",
-    },
-    {
-      key: "net",
-      label: isArabic ? "صافي المبيعات" : "Net Sales",
-      value: `${formatMoney(netSales)} ${currency}`,
-      tone: "primary",
     },
   ];
 
@@ -141,8 +149,21 @@ export default function ReportsPage({
 
   return (
     <section className="card reportsPage reportsDashboard">
-      <div className="cardHeader">
-        <h2>{isArabic ? "لوحة التقارير" : "Reports Dashboard"}</h2>
+      <div className="cardHeader reportsPageHeader">
+        <div>
+          <h2>{isArabic ? "التقارير المالية" : "Financial Reports"}</h2>
+          <p className="returnsSectionHint">
+            {isArabic
+              ? "ملخص المبيعات والأرباح والتكاليف للفترة المحددة"
+              : "Sales, profit, and costs summary for the selected period"}
+          </p>
+        </div>
+        <div className="reportsPeriodBadge">
+          <span>{t.fromDate}</span>
+          <strong>{reportFrom || "—"}</strong>
+          <span>{t.toDate}</span>
+          <strong>{reportTo || "—"}</strong>
+        </div>
       </div>
 
       <div className="reportControls">
@@ -167,8 +188,18 @@ export default function ReportsPage({
         </div>
       </div>
 
-      <div className="reportKpiGrid">
-        {kpis.map((kpi) => (
+      <div className="reportHeroGrid">
+        {heroCards.map((card) => (
+          <div className={`reportHeroCard tone-${card.tone}`} key={card.key}>
+            <span className="reportHeroLabel">{card.label}</span>
+            <strong className="reportHeroValue">{card.value}</strong>
+            <span className="reportHeroSub">{card.sub}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="reportKpiGrid reportDetailKpiGrid">
+        {detailKpis.map((kpi) => (
           <div className={`reportKpiCard tone-${kpi.tone}`} key={kpi.key}>
             <span className="reportKpiLabel">{kpi.label}</span>
             <strong className="reportKpiValue">{kpi.value}</strong>
@@ -195,6 +226,32 @@ export default function ReportsPage({
               </strong>
             </div>
           ))}
+        </div>
+
+        <div className="reportBox">
+          <h3>{isArabic ? "التكاليف حسب التصنيف" : "Costs by Category"}</h3>
+          {reportCostsByCategory.length === 0 ? (
+            <p className="empty">{isArabic ? "لا توجد تكاليف في الفترة" : "No costs in this period"}</p>
+          ) : (
+            <div className="cashierBars">
+              {reportCostsByCategory.map((item) => {
+                const pct = Math.round((item.total / maxCostCategory) * 100);
+                return (
+                  <div className="cashierBarRow" key={item.category}>
+                    <div className="cashierBarTop">
+                      <span>{getCostCategoryLabel(item.category, isArabic)}</span>
+                      <strong>
+                        {formatMoney(item.total)} {currency}
+                      </strong>
+                    </div>
+                    <div className="barTrack barTrackCosts">
+                      <div className="barFill barFillCosts" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="reportBox">
@@ -255,8 +312,6 @@ export default function ReportsPage({
           )}
         </div>
       </div>
-
-      {invoiceTable}
     </section>
   );
 }

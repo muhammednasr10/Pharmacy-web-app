@@ -65,11 +65,13 @@ export function getRoleLabel(role: UserRole | string, isArabic: boolean): string
 export const allowedPagesByRole: Record<UserRole, Page[]> = {
   super_admin: [
     "dashboard",
+    "employeePortal",
     "inventory",
     "pos",
     "invoices",
     "returns",
     "purchases",
+    "costs",
     "customers",
     "reports",
     "stockMovements",
@@ -80,11 +82,13 @@ export const allowedPagesByRole: Record<UserRole, Page[]> = {
   ],
   pharmacy_admin: [
     "dashboard",
+    "employeePortal",
     "inventory",
     "pos",
     "invoices",
     "returns",
     "purchases",
+    "costs",
     "customers",
     "reports",
     "stockMovements",
@@ -92,13 +96,15 @@ export const allowedPagesByRole: Record<UserRole, Page[]> = {
     "users",
     "settings",
   ],
-  cashier: ["pos", "invoices", "returns", "customers"],
-  inventory: ["inventory", "purchases", "stockMovements"],
+  cashier: ["dashboard", "employeePortal", "pos", "invoices", "returns", "customers"],
+  inventory: ["dashboard", "employeePortal", "inventory", "purchases", "stockMovements"],
   accountant: [
     "dashboard",
+    "employeePortal",
     "invoices",
     "returns",
     "customers",
+    "costs",
     "reports",
     "stockMovements",
     "activityLogs",
@@ -117,6 +123,58 @@ export const pharmacyAdminRoleOptions: UserRole[] = [
   "inventory",
   "accountant",
 ];
+
+/** Roles available when creating pharmacy login accounts. */
+export const loginAccountRoleOptions: UserRole[] = [
+  "pharmacy_admin",
+  "cashier",
+  "accountant",
+  "inventory",
+];
+
+export const defaultLoginAccountDrafts: Record<
+  (typeof loginAccountRoleOptions)[number],
+  { email: string; password: string }
+> = {
+  pharmacy_admin: { email: "manager@pharmacy.com", password: "1234567" },
+  cashier: { email: "cashier@pharmacy.com", password: "1234567" },
+  accountant: { email: "acc@pharmacy.com", password: "1234567" },
+  inventory: { email: "inv@pharmacy.com", password: "1234567" },
+};
+
+/** Roles assignable to pharmacy employees (stored in employees.job_title). */
+export const employeeJobRoleOptions: UserRole[] = pharmacyAdminRoleOptions;
+
+export function parseLoginAccountRole(value?: string | null): UserRole {
+  if (!value?.trim()) return "cashier";
+  const normalized = normalizeRole(value.trim());
+  if (loginAccountRoleOptions.includes(normalized)) return normalized;
+  return "cashier";
+}
+
+export function getDefaultLoginAccountDraft(role: UserRole): { email: string; password: string } {
+  return defaultLoginAccountDrafts[parseLoginAccountRole(role)];
+}
+
+export function parseEmployeeJobRole(value?: string | null): UserRole {
+  if (!value?.trim()) return "cashier";
+  const normalized = normalizeRole(value.trim());
+  if (employeeJobRoleOptions.includes(normalized)) return normalized;
+  return "cashier";
+}
+
+export function isStoredEmployeeJobRole(value?: string | null): boolean {
+  if (!value?.trim()) return false;
+  return employeeJobRoleOptions.includes(normalizeRole(value.trim()));
+}
+
+export function getEmployeeJobRoleLabel(value: string | undefined | null, isArabic: boolean): string {
+  if (!value?.trim()) return "—";
+  if (isStoredEmployeeJobRole(value)) {
+    return getRoleLabel(parseEmployeeJobRole(value), isArabic);
+  }
+  return value.trim();
+}
 
 export const superAdminRoleOptions: UserRole[] = [
   "super_admin",
@@ -153,15 +211,15 @@ export const rolePermissionMatrix: RolePermissionRow[] = [
     role: "cashier",
     labelAr: "كاشير",
     labelEn: "Cashier",
-    summaryAr: "شاشة البيع والفواتير والمرتجعات والعملاء فقط. لا يرى سعر الشراء ولا الإعدادات.",
-    summaryEn: "POS, invoices, returns, customers only. No buy prices or settings.",
+    summaryAr: "لوحة التحكم ونقطة البيع والفواتير والمرتجعات والعملاء.",
+    summaryEn: "Dashboard, POS, invoices, returns, and customers.",
   },
   {
     role: "inventory",
     labelAr: "مسؤول مخزن",
     labelEn: "Inventory Manager",
-    summaryAr: "إدارة الأدوية والمخزون والمشتريات وحركات المخزون. لا يدخل شاشة البيع.",
-    summaryEn: "Medicines, stock, purchases, movements. No POS access.",
+    summaryAr: "لوحة التحكم وإدارة المخزون والمشتريات وحركات المخزون.",
+    summaryEn: "Dashboard, inventory, purchases, and stock movements.",
   },
   {
     role: "accountant",

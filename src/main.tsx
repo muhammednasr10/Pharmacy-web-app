@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { supabaseConfigError } from "./services/supabaseClient";
 import "./styles.css";
 
@@ -53,7 +54,9 @@ if (supabaseConfigError) {
 } else {
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
-      <App />
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
     </React.StrictMode>
   );
 }

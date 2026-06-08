@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { ActivityLog, AppUser, SubscriptionRequest } from "../types";
 import DeveloperCredit from "../components/DeveloperCredit";
+import PayrollSettingsPanel from "../components/PayrollSettingsPanel";
 import SubscriptionPaymentInstructions from "../components/SubscriptionPaymentInstructions";
 import {
   getPlanAmount,
@@ -24,10 +25,11 @@ type SettingsForm = {
   expiringSoonDays: number;
 };
 
-type SettingsTab = "pharmacy" | "invoice" | "inventory" | "subscription";
+type SettingsTab = "pharmacy" | "invoice" | "inventory" | "payroll" | "subscription";
 
 type SettingsPageProps = {
   isArabic: boolean;
+  pharmacyId: string;
   t: Record<string, string>;
   settingsForm: SettingsForm;
   setSettingsForm: Dispatch<SetStateAction<SettingsForm>>;
@@ -50,6 +52,7 @@ type SettingsPageProps = {
 
 export default function SettingsPage({
   isArabic,
+  pharmacyId,
   t,
   settingsForm,
   setSettingsForm,
@@ -224,6 +227,7 @@ export default function SettingsPage({
     { id: "pharmacy", ar: "بيانات الصيدلية", en: "Pharmacy" },
     { id: "invoice", ar: "بيانات الفاتورة", en: "Invoice" },
     { id: "inventory", ar: "انتهاء المخزون", en: "Inventory Alerts" },
+    { id: "payroll", ar: "إعدادات المرتبات", en: "Payroll" },
     { id: "subscription", ar: "الاشتراك والترخيص", en: "Subscription" },
   ];
 
@@ -321,40 +325,52 @@ export default function SettingsPage({
             </p>
           </div>
 
-          <label>{isArabic ? "اسم الصيدلية" : "Pharmacy Name"}</label>
-          <input
-            value={settingsForm.name}
-            onChange={(e) => setSettingsForm({ ...settingsForm, name: e.target.value })}
-            placeholder={isArabic ? "اسم الصيدلية" : "Pharmacy name"}
-          />
+          <div className="settingsFieldsGrid">
+            <div className="settingsField">
+              <label>{isArabic ? "اسم الصيدلية" : "Pharmacy Name"}</label>
+              <input
+                value={settingsForm.name}
+                onChange={(e) => setSettingsForm({ ...settingsForm, name: e.target.value })}
+                placeholder={isArabic ? "اسم الصيدلية" : "Pharmacy name"}
+              />
+            </div>
 
-          <label>{isArabic ? "اسم الصيدلية بالإنجليزي" : "English Name"}</label>
-          <input
-            value={settingsForm.name_en}
-            onChange={(e) => setSettingsForm({ ...settingsForm, name_en: e.target.value })}
-            placeholder={isArabic ? "الاسم بالإنجليزي" : "English name"}
-          />
+            <div className="settingsField">
+              <label>{isArabic ? "اسم الصيدلية بالإنجليزي" : "English Name"}</label>
+              <input
+                value={settingsForm.name_en}
+                onChange={(e) => setSettingsForm({ ...settingsForm, name_en: e.target.value })}
+                placeholder={isArabic ? "الاسم بالإنجليزي" : "English name"}
+              />
+            </div>
 
-          <label>{isArabic ? "رقم الهاتف" : "Phone"}</label>
-          <input
-            value={settingsForm.phone}
-            onChange={(e) => setSettingsForm({ ...settingsForm, phone: e.target.value })}
-            placeholder={isArabic ? "رقم الهاتف" : "Phone"}
-          />
+            <div className="settingsField">
+              <label>{isArabic ? "رقم الهاتف" : "Phone"}</label>
+              <input
+                value={settingsForm.phone}
+                onChange={(e) => setSettingsForm({ ...settingsForm, phone: e.target.value })}
+                placeholder={isArabic ? "رقم الهاتف" : "Phone"}
+              />
+            </div>
 
-          <label>{isArabic ? "العنوان" : "Address"}</label>
-          <input
-            value={settingsForm.address}
-            onChange={(e) => setSettingsForm({ ...settingsForm, address: e.target.value })}
-            placeholder={isArabic ? "العنوان" : "Address"}
-          />
+            <div className="settingsField">
+              <label>{isArabic ? "العنوان" : "Address"}</label>
+              <input
+                value={settingsForm.address}
+                onChange={(e) => setSettingsForm({ ...settingsForm, address: e.target.value })}
+                placeholder={isArabic ? "العنوان" : "Address"}
+              />
+            </div>
 
-          <label>{isArabic ? "العملة" : "Currency"}</label>
-          <input
-            value={settingsForm.currency}
-            onChange={(e) => setSettingsForm({ ...settingsForm, currency: e.target.value })}
-            placeholder={isArabic ? "ج.م" : "EGP"}
-          />
+            <div className="settingsField">
+              <label>{isArabic ? "العملة" : "Currency"}</label>
+              <input
+                value={settingsForm.currency}
+                onChange={(e) => setSettingsForm({ ...settingsForm, currency: e.target.value })}
+                placeholder={isArabic ? "ج.م" : "EGP"}
+              />
+            </div>
+          </div>
 
           {renderSaveActions(true)}
 
@@ -362,7 +378,9 @@ export default function SettingsPage({
             <h3>{isArabic ? "عن المطوّر" : "About the Developer"}</h3>
             <p>{isArabic ? "الدعم الفني والتطوير" : "Technical support & development"}</p>
           </div>
-          <DeveloperCredit isArabic={isArabic} variant="inline" />
+          <div className="settingsFieldFull">
+            <DeveloperCredit isArabic={isArabic} variant="inline" />
+          </div>
         </div>
       )}
 
@@ -377,12 +395,14 @@ export default function SettingsPage({
             </p>
           </div>
 
-          <label>{isArabic ? "نص أسفل الفاتورة" : "Invoice Footer"}</label>
-          <textarea
-            value={settingsForm.invoiceFooter}
-            onChange={(e) => setSettingsForm({ ...settingsForm, invoiceFooter: e.target.value })}
-            placeholder={isArabic ? "شكراً لزيارتكم" : "Thank you"}
-          />
+          <div className="settingsField settingsFieldFull">
+            <label>{isArabic ? "نص أسفل الفاتورة" : "Invoice Footer"}</label>
+            <textarea
+              value={settingsForm.invoiceFooter}
+              onChange={(e) => setSettingsForm({ ...settingsForm, invoiceFooter: e.target.value })}
+              placeholder={isArabic ? "شكراً لزيارتكم" : "Thank you"}
+            />
+          </div>
 
           {renderSaveActions()}
         </div>
@@ -400,47 +420,51 @@ export default function SettingsPage({
           </div>
 
           {isAdmin ? (
-            <>
-              <label>{isArabic ? "حد الكمية الناقصة" : "Low Stock Threshold"}</label>
-              <input
-                type="number"
-                min="0"
-                value={settingsForm.lowStockThreshold}
-                onChange={(e) =>
-                  setSettingsForm({
-                    ...settingsForm,
-                    lowStockThreshold: e.target.value === "" ? 0 : Number(e.target.value),
-                  })
-                }
-                placeholder={isArabic ? "مثال: 20" : "e.g. 20"}
-              />
-              <p className="settingsFieldHint">
-                {isArabic
-                  ? "أي دواء كميته أقل من أو تساوي هذا الرقم يظهر في كارت «أدوية ناقصة»"
-                  : "Medicines with qty at or below this value appear in the low stock card"}
-              </p>
+            <div className="settingsFieldsGrid">
+              <div className="settingsField">
+                <label>{isArabic ? "حد الكمية الناقصة" : "Low Stock Threshold"}</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={settingsForm.lowStockThreshold}
+                  onChange={(e) =>
+                    setSettingsForm({
+                      ...settingsForm,
+                      lowStockThreshold: e.target.value === "" ? 0 : Number(e.target.value),
+                    })
+                  }
+                  placeholder={isArabic ? "مثال: 20" : "e.g. 20"}
+                />
+                <p className="settingsFieldHint">
+                  {isArabic
+                    ? "أي دواء كميته أقل من أو تساوي هذا الرقم يظهر في كارت «أدوية ناقصة»"
+                    : "Medicines with qty at or below this value appear in the low stock card"}
+                </p>
+              </div>
 
-              <label>{isArabic ? "أيام قرب انتهاء الصلاحية" : "Expiring Soon (Days)"}</label>
-              <input
-                type="number"
-                min="1"
-                value={settingsForm.expiringSoonDays}
-                onChange={(e) =>
-                  setSettingsForm({
-                    ...settingsForm,
-                    expiringSoonDays: e.target.value === "" ? 1 : Number(e.target.value),
-                  })
-                }
-                placeholder={isArabic ? "مثال: 30" : "e.g. 30"}
-              />
-              <p className="settingsFieldHint">
-                {isArabic
-                  ? "الأدوية التي تنتهي صلاحيتها خلال هذا العدد من الأيام تظهر في كارت «قرب انتهاء الصلاحية»"
-                  : "Medicines expiring within this many days appear in the expiring soon card"}
-              </p>
+              <div className="settingsField">
+                <label>{isArabic ? "أيام قرب انتهاء الصلاحية" : "Expiring Soon (Days)"}</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={settingsForm.expiringSoonDays}
+                  onChange={(e) =>
+                    setSettingsForm({
+                      ...settingsForm,
+                      expiringSoonDays: e.target.value === "" ? 1 : Number(e.target.value),
+                    })
+                  }
+                  placeholder={isArabic ? "مثال: 30" : "e.g. 30"}
+                />
+                <p className="settingsFieldHint">
+                  {isArabic
+                    ? "الأدوية التي تنتهي صلاحيتها خلال هذا العدد من الأيام تظهر في كارت «قرب انتهاء الصلاحية»"
+                    : "Medicines expiring within this many days appear in the expiring soon card"}
+                </p>
+              </div>
 
               {renderSaveActions()}
-            </>
+            </div>
           ) : (
             <p className="empty">
               {isArabic
@@ -449,6 +473,10 @@ export default function SettingsPage({
             </p>
           )}
         </div>
+      )}
+
+      {activeTab === "payroll" && (
+        <PayrollSettingsPanel isArabic={isArabic} pharmacyId={pharmacyId} canEdit={isAdmin} />
       )}
 
       {activeTab === "subscription" && (

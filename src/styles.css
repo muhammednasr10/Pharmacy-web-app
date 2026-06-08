@@ -1202,6 +1202,79 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
 .instantReturnError { color: #b42318; font-size: 13px; margin: 0; }
 
 .inventoryOnlyPage, .posOnlyPage, .invoicesPage, .reportsPage { margin-top: 22px; }
+.posBarcodeBlock {
+  margin-bottom: 16px;
+}
+
+.posBarcodeLabel {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #344054;
+  margin-bottom: 8px;
+}
+
+.posBarcodeRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(180deg, #f0fdf4 0%, #fff 100%);
+  border: 2px solid #86efac;
+  border-radius: 14px;
+  padding: 10px 14px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+}
+
+.posBarcodeIcon {
+  font-size: 1.35rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.posBarcodeInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #101828;
+  padding: 4px 0;
+}
+
+.posBarcodeInput::placeholder {
+  color: #98a2b3;
+  font-weight: 500;
+}
+
+.posBarcodeInput:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.posBarcodeClearBtn {
+  flex-shrink: 0;
+  border: none;
+  background: #eaecf0;
+  color: #475467;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.posBarcodeClearBtn:hover {
+  background: #d0d5dd;
+}
+
+.posBarcodeBlock .posMessage {
+  margin-top: 10px;
+  margin-bottom: 0;
+}
+
 .posSplit { display: grid; grid-template-columns: 1.4fr .8fr; gap: 18px; }
 .posPanel { border: 1px solid #eaecf0; border-radius: 16px; padding: 16px; background: #f9fafb; }
 
@@ -1834,6 +1907,35 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
   border: 1px solid #b9e6fe;
 }
 
+.hrAttendanceFlagDeduction {
+  background: #fef3f2;
+  color: #b42318;
+  border: 1px solid #fecdca;
+}
+
+.hrAttendanceFlagClickable {
+  cursor: pointer;
+  font: inherit;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.hrAttendanceFlagClickable:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.hrAttendanceFlagClickable:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.hrAttendanceFlagClickable:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.hrAttendanceHoursStatDeduction {
+  color: #b42318;
+}
+
 .hrQuickActions {
   background: #f9fafb;
   border: 1px solid #eaecf0;
@@ -2189,6 +2291,10 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
   border-top: 1px solid #eaecf0;
 }
 
+.payrollSettingsPanel .hrPayrollSettingsGrid {
+  margin-top: 4px;
+}
+
 .hrPayrollSettingsSection h4 {
   margin: 0 0 0.35rem;
   font-size: 14px;
@@ -2362,6 +2468,28 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
 .hrAttendanceTable .col-shift {
   min-width: 88px;
   white-space: nowrap;
+}
+
+.hrAttendanceTable .col-shift-actual {
+  min-width: 108px;
+}
+
+.hrShiftBadgePlanned {
+  background: #f2f4f7;
+  color: #344054;
+}
+
+.hrShiftBadgeActual {
+  background: #eff8ff;
+  color: #175cd3;
+}
+
+.hrActualShiftSelect {
+  min-width: 96px;
+  max-width: 120px;
+  margin-inline: auto;
+  font-size: 12px;
+  padding: 4px 6px;
 }
 
 .posPageHeader {
@@ -2685,6 +2813,174 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
   filter: brightness(0.95);
 }
 
+.loginRequestModal {
+  width: min(420px, calc(100% - 2rem));
+  padding: 20px 22px 22px;
+}
+
+.loginRequestModal .modalHeader {
+  margin-bottom: 0;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #eaecf0;
+}
+
+.loginRequestEmployeeName {
+  margin: 14px 0 18px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #05693b;
+}
+
+.loginRequestForm {
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-bottom: 0;
+}
+
+.loginRequestModal .modalActions {
+  margin-top: 20px;
+}
+
+.staffAccountsToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.catalogAccountsTable {
+  width: 100%;
+}
+
+.catalogAccountsTable th,
+.catalogAccountsTable td {
+  padding: 10px 14px;
+  vertical-align: middle;
+}
+
+.catalogAccountsTable tbody tr:nth-child(even) {
+  background: #f9fafb;
+}
+
+.catalogAccountsTable .catalogRoleCell {
+  font-weight: 600;
+  color: #05693b;
+  white-space: nowrap;
+}
+
+.catalogAccountsTable .catalogEmailCell {
+  font-size: 14px;
+  color: #344054;
+}
+
+.catalogAccountsTable .catalogPasswordCode {
+  display: inline-block;
+  background: #f2f4f7;
+  border: 1px solid #eaecf0;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 13px;
+  color: #475467;
+}
+
+.catalogAccountsTable .catalogEmptyCell {
+  color: #98a2b3;
+}
+
+.catalogAccountsTable .catalogEmployeeSelect {
+  min-width: 170px;
+  max-width: 220px;
+  margin-inline: auto;
+  font-size: 13px;
+  padding: 7px 10px;
+}
+
+.catalogAccountsTable .catalogEmployeeSelect:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.catalogAccountsTable .hrActionsCell {
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.catalogAccountForm {
+  margin-top: 16px;
+}
+
+.catalogRoleBadge {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 6px 14px;
+  background: #ecfdf3;
+  color: #05693b;
+  border: 1px solid #abefc6;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.catalogAccountModalActions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-start;
+}
+
+.catalogAccountModalActions .completeBtn,
+.catalogAccountModalActions .editBtn {
+  min-width: 100px;
+}
+
+.employeeLoginSelect {
+  min-width: 180px;
+  max-width: 220px;
+  font-size: 13px;
+  margin-inline: auto;
+  display: block;
+}
+
+/* Staff / employees section — center all table cells */
+.staffPage .tableWrap th,
+.staffPage .tableWrap td {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.staffEmployeesTable thead th,
+.staffEmployeesTable tbody td {
+  text-align: center;
+}
+
+.staffPage .hrActionsCell {
+  justify-content: center;
+}
+
+.staffPage .staffEmployeesActions {
+  align-items: center;
+}
+
+.staffPage .staffEmployeesActionBtn {
+  max-width: 92px;
+  margin-inline: auto;
+}
+
+.staffPage .hrAttendanceTable thead th,
+.staffPage .hrAttendanceTable tbody td,
+.staffPage .hrPayrollTable thead th,
+.staffPage .hrPayrollTable tbody td {
+  text-align: center;
+}
+
+.staffPage .hrAttendanceDayCompact {
+  justify-content: center;
+}
+
+.staffPage .tableWrap .badge {
+  display: inline-block;
+}
+
 .settingsTabsNav {
   display: flex;
   flex-wrap: wrap;
@@ -2692,6 +2988,8 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
   margin-bottom: 18px;
   padding-bottom: 14px;
   border-bottom: 1px solid #eaecf0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .staffPageTabsBar {
@@ -3714,36 +4012,45 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
 }
 
 .settingsForm {
-  display: grid;
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   width: 100%;
   max-width: none;
 }
 
+.settingsFieldsGrid {
+  display: grid;
+  gap: 14px;
+  width: 100%;
+}
+
 @media (min-width: 900px) {
-  .settingsForm {
+  .settingsFieldsGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 18px;
   }
-
-  .settingsSectionTitle,
-  .settingsLogoBlock,
-  .settingsActions,
-  .settingsFieldHint,
-  .settingsForm textarea,
-  .settingsTabPanel > .empty,
-  .subscriptionTab {
-    grid-column: 1 / -1;
-  }
 }
 
-.settingsForm label {
-  font-weight: bold;
+.settingsField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.settingsFieldFull {
+  width: 100%;
+}
+
+.settingsField label {
+  font-weight: 800;
   color: #344054;
   font-size: 14px;
 }
 
-.settingsForm input,
+.settingsField input,
+.settingsField textarea,
 .settingsForm textarea {
   width: 100%;
   border: 1px solid #d0d5dd;
@@ -3754,14 +4061,26 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
   font-family: inherit;
 }
 
+.settingsField textarea,
 .settingsForm textarea {
   min-height: 100px;
   resize: vertical;
 }
 
-.settingsForm input:focus,
+.settingsField input:focus,
+.settingsField textarea:focus,
 .settingsForm textarea:focus {
   border-color: #007b49;
+}
+
+.settingsField .settingsFieldHint {
+  margin: 0;
+}
+
+@media (min-width: 900px) {
+  .settingsFieldsGrid > .settingsActions {
+    grid-column: 1 / -1;
+  }
 }
 .stockMovementsPage {
   margin-top: 22px;
@@ -4342,9 +4661,10 @@ button:disabled {
   cursor: pointer;
 }
 
-.settingsForm label {
+.settingsLogoBlock label {
   font-weight: 800;
   color: #344054;
+  font-size: 14px;
 }
 .subscriptionStatusCard {
   display: grid;
@@ -4488,6 +4808,130 @@ button:disabled {
 }
 
 /* ===== Reports dashboard ===== */
+.reportsPageHeader {
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.reportsPeriodBadge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #f9fafb;
+  border: 1px solid #eaecf0;
+  font-size: 13px;
+  color: #667085;
+}
+
+.reportsPeriodBadge strong {
+  color: #101828;
+}
+
+.reportHeroGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.reportHeroCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 16px;
+  border-radius: 16px;
+  border: 1px solid #eaecf0;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
+}
+
+.reportHeroLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: #667085;
+}
+
+.reportHeroValue {
+  font-size: 26px;
+  line-height: 1.15;
+  color: #101828;
+}
+
+.reportHeroSub {
+  font-size: 12px;
+  color: #98a2b3;
+  font-weight: 600;
+}
+
+.reportHeroCard.tone-sales {
+  border-top: 4px solid #05693b;
+}
+
+.reportHeroCard.tone-profit {
+  border-top: 4px solid #12b76a;
+}
+
+.reportHeroCard.tone-costs {
+  border-top: 4px solid #f79009;
+}
+
+.reportHeroCard.tone-net {
+  border-top: 4px solid #2e90fa;
+}
+
+.reportHeroCard.tone-net-negative {
+  border-top: 4px solid #f04438;
+}
+
+.reportHeroCard.tone-net-negative .reportHeroValue {
+  color: #b42318;
+}
+
+.reportDetailKpiGrid {
+  margin-bottom: 22px;
+}
+
+.barTrackCosts {
+  background: #fff4e5;
+}
+
+.barFillCosts {
+  background: linear-gradient(90deg, #f79009, #f04438);
+}
+
+@media (max-width: 1100px) {
+  .reportHeroGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .reportHeroGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.errorBoundaryCard {
+  max-width: 720px;
+  margin: 40px auto;
+  text-align: center;
+}
+
+.errorBoundaryMessage {
+  margin: 16px 0;
+  padding: 12px;
+  border-radius: 10px;
+  background: #fef3f2;
+  border: 1px solid #fecdca;
+  color: #b42318;
+  text-align: start;
+  white-space: pre-wrap;
+  overflow: auto;
+}
+
 .reportControls {
   display: flex;
   flex-wrap: wrap;
@@ -4569,6 +5013,14 @@ button:disabled {
 }
 
 /* ===== Dashboard modules ===== */
+.dashboardIntro {
+  margin-bottom: 18px;
+}
+
+.dashboardIntro h2 {
+  margin: 0 0 6px;
+}
+
 .moduleGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
@@ -5190,8 +5642,391 @@ button:disabled {
 }
 
 .purchaseModal {
-  max-width: min(760px, 96vw);
+  max-width: min(920px, 96vw);
   width: 100%;
+}
+
+.purchaseViewModal {
+  max-width: min(980px, 96vw);
+  width: 100%;
+}
+
+.purchaseMetaGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.purchaseMetaField {
+  display: grid;
+  gap: 6px;
+}
+
+.purchaseMetaFieldWide {
+  grid-column: 1 / -1;
+}
+
+.purchaseMetaField label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #344054;
+}
+
+.purchaseMetaField input,
+.purchaseMetaField select {
+  width: 100%;
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fff;
+}
+
+.purchaseNumberReadonly {
+  background: #f9fafb !important;
+  color: #027a48;
+  font-weight: 700;
+}
+
+.purchaseNumberTag {
+  color: #027a48;
+}
+
+.purchaseItemsSection {
+  border-top: 1px solid #eaecf0;
+  padding-top: 16px;
+  margin-bottom: 12px;
+}
+
+.purchaseItemsSection h3,
+.purchaseDraftTableWrap h3 {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+
+.medicineEntryGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.medicineEntryField {
+  display: grid;
+  gap: 6px;
+}
+
+.medicineEntryField label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #344054;
+}
+
+.medicineEntryField input {
+  width: 100%;
+}
+
+.medicineLookupStatus {
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  border: 1px solid transparent;
+}
+
+.medicineLookupStatus.isExisting {
+  background: #ecfdf3;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.medicineLookupStatus.isNew {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+.medicineLookupField {
+  position: relative;
+}
+
+.medicineLookupSuggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow: auto;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid #d0d5dd;
+  background: #fff;
+  box-shadow: 0 12px 24px rgba(16, 24, 40, 0.12);
+}
+
+.medicineLookupSuggestion {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  text-align: start;
+  cursor: pointer;
+}
+
+.medicineLookupSuggestion:hover,
+.medicineLookupSuggestion:focus-visible {
+  background: #f2f4f7;
+  outline: none;
+}
+
+.medicineLookupSuggestion strong {
+  font-size: 14px;
+  color: #101828;
+}
+
+.medicineLookupSuggestion span {
+  font-size: 12px;
+  color: #667085;
+}
+
+.stockQtyBtn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 999px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stockQtyBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.stockQtyBtn:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.medicineStockDetailModal {
+  max-width: 920px;
+  width: min(96vw, 920px);
+}
+
+.medicineStockCurrentQty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #eff6ff, #f8fafc);
+  border: 1px solid #dbeafe;
+}
+
+.medicineStockCurrentQty span {
+  color: #475467;
+  font-size: 14px;
+}
+
+.medicineStockCurrentQty strong {
+  font-size: 28px;
+  color: #1d4ed8;
+}
+
+.medicineStockSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.medicineStockSummaryCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #eaecf0;
+  background: #fff;
+}
+
+.medicineStockSummaryCard span {
+  font-size: 13px;
+  color: #667085;
+}
+
+.medicineStockSummaryCard strong {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.medicineStockSummaryCard.isIn {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.medicineStockSummaryCard.isIn strong {
+  color: #15803d;
+}
+
+.medicineStockSummaryCard.isOut {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.medicineStockSummaryCard.isOut strong {
+  color: #b91c1c;
+}
+
+.medicineStockTotalsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  border-radius: 10px;
+  background: #f9fafb;
+  border: 1px solid #eaecf0;
+  font-size: 14px;
+}
+
+.medicineStockTotalsRow .stockInTotal {
+  color: #15803d;
+}
+
+.medicineStockTotalsRow .stockOutTotal {
+  color: #b91c1c;
+}
+
+.medicineStockHistoryTitle {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+
+.medicineStockHistoryTable {
+  max-height: 320px;
+  overflow: auto;
+}
+
+.costsPage .costsSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.costsSummaryCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #eaecf0;
+  background: #f9fafb;
+}
+
+.costsSummaryCard span {
+  font-size: 13px;
+  color: #667085;
+}
+
+.costsSummaryCard strong {
+  font-size: 22px;
+  color: #b42318;
+}
+
+.costModal {
+  max-width: 720px;
+}
+
+@media (max-width: 720px) {
+  .costsPage .costsSummaryGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .medicineStockSummaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.purchaseAddItemActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.purchaseAddItemBtn {
+  margin-top: 0;
+}
+
+.purchaseDraftTableWrap {
+  margin-bottom: 16px;
+}
+
+.purchaseViewSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 20px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f9fafb;
+  border: 1px solid #eaecf0;
+}
+
+.purchaseBranchHint {
+  color: #667085;
+  font-size: 13px;
+}
+
+.purchasesHistoryHeader {
+  margin-top: 8px;
+}
+
+.purchasesInventoryHeader {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid #eaecf0;
+}
+
+.purchaseRowActions {
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  gap: 6px;
+}
+
+.purchaseRowActions .smallBtn,
+.purchaseRowActions .editBtn,
+.purchaseRowActions .deleteSmallBtn {
+  padding: 6px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.purchaseFiltersBar select {
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  min-width: 160px;
+}
+
+@media (max-width: 720px) {
+  .purchaseMetaGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .purchaseModalForm {
@@ -5360,4 +6195,66 @@ button:disabled {
   .saasAddBtn {
     width: 100%;
   }
+}
+
+.employeePortalPage .employeePortalTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 1rem 1rem;
+}
+
+.employeePortalPage .employeePortalTabs button {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.employeePortalPage .employeePortalTabs button.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+.employeePortalTodayGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.employeePortalLabel {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.employeePortalActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.employeePortalSection {
+  margin-top: 12px;
+}
+
+.employeePortalForm {
+  display: grid;
+  gap: 12px;
+  max-width: 420px;
+}
+
+.employeePortalForm label {
+  display: grid;
+  gap: 6px;
+}
+
+.hrRequestActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }

@@ -52,7 +52,7 @@ function SalesTrendChart({ isArabic, currency, salesTrend }: { isArabic: boolean
               const h = Math.round((point.total / maxVal) * chartH);
               const x = index * slot + (slot - barW) / 2;
               const y = chartH - h;
-              const day = point.date.slice(8, 10);
+              const day = String(point.date || "").slice(8, 10);
               const showLabel = index % labelStep === 0;
               return (
                 <g key={point.date}>

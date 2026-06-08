@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import type { AppUser, LoginAccountRequest, PharmacySettings, SubscriptionRequest, UserRole } from "../types";
+import { useEffect, useMemo, useState } from "react";
+import type { AppUser, PharmacyLoginAccount, PharmacySettings, SubscriptionRequest, UserRole } from "../types";
 import { computeSubscriptionEndDate } from "../config/subscription";
 import { getRoleLabel, superAdminRoleOptions } from "../utils/roles";
 
@@ -42,9 +42,9 @@ type SuperAdminPageProps = {
   subscriptionRequests: SubscriptionRequest[];
   onApproveSubscriptionRequest: (requestId: number) => Promise<boolean>;
   onRejectSubscriptionRequest: (requestId: number, note?: string) => Promise<boolean>;
-  loginAccountRequests: LoginAccountRequest[];
-  onApproveLoginAccountRequest: (requestId: number) => Promise<boolean>;
-  onRejectLoginAccountRequest: (requestId: number, note?: string) => Promise<boolean>;
+  pendingPharmacyLoginAccounts: PharmacyLoginAccount[];
+  onApprovePharmacyLoginAccount: (accountId: string) => Promise<boolean>;
+  onRejectPharmacyLoginAccount: (accountId: string, note?: string) => Promise<boolean>;
   onRefreshAdminRequests: () => Promise<void>;
 };
 
@@ -73,9 +73,9 @@ export default function SuperAdminPage({
   subscriptionRequests,
   onApproveSubscriptionRequest,
   onRejectSubscriptionRequest,
-  loginAccountRequests,
-  onApproveLoginAccountRequest,
-  onRejectLoginAccountRequest,
+  pendingPharmacyLoginAccounts,
+  onApprovePharmacyLoginAccount,
+  onRejectPharmacyLoginAccount,
   onRefreshAdminRequests,
 }: SuperAdminPageProps) {
   useEffect(() => {
@@ -95,9 +95,13 @@ export default function SuperAdminPage({
   const activeCount = pharmacies.filter(isPharmacyActive).length;
   const suspendedCount = pharmacies.length - activeCount;
   const pendingRequests = subscriptionRequests.filter((r) => r.status === "pending");
-  const pendingLoginRequests = loginAccountRequests.filter((r) => r.status === "pending");
+  const pharmacyNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    pharmacies.forEach((p) => map.set(p.id, p.name));
+    return map;
+  }, [pharmacies]);
   const [requestActionId, setRequestActionId] = useState<number | null>(null);
-  const [loginRequestActionId, setLoginRequestActionId] = useState<number | null>(null);
+  const [loginRequestActionId, setLoginRequestActionId] = useState<string | null>(null);
   const [requestUpdating, setRequestUpdating] = useState(false);
 
   async function handleApproveRequest(requestId: number) {
@@ -126,26 +130,26 @@ export default function SuperAdminPage({
     }
   }
 
-  async function handleApproveLoginRequest(requestId: number) {
-    setLoginRequestActionId(requestId);
+  async function handleApproveLoginRequest(accountId: string) {
+    setLoginRequestActionId(accountId);
     setRequestUpdating(true);
     try {
-      await onApproveLoginAccountRequest(requestId);
+      await onApprovePharmacyLoginAccount(accountId);
     } finally {
       setRequestUpdating(false);
       setLoginRequestActionId(null);
     }
   }
 
-  async function handleRejectLoginRequest(requestId: number) {
+  async function handleRejectLoginRequest(accountId: string) {
     const note = window.prompt(
       isArabic ? "سبب الرفض (اختياري):" : "Rejection reason (optional):"
     );
     if (note === null) return;
-    setLoginRequestActionId(requestId);
+    setLoginRequestActionId(accountId);
     setRequestUpdating(true);
     try {
-      await onRejectLoginAccountRequest(requestId, note || undefined);
+      await onRejectPharmacyLoginAccount(accountId, note || undefined);
     } finally {
       setRequestUpdating(false);
       setLoginRequestActionId(null);
@@ -325,35 +329,33 @@ export default function SuperAdminPage({
       <section className="saasRequestsPanel">
         <div className="saasPageHeader">
           <div>
-            <h3>{isArabic ? "طلبات حسابات الدخول" : "Login account requests"}</h3>
+            <h3>{isArabic ? "اعتماد حسابات الدخول" : "Login account approvals"}</h3>
             <p className="pageHint">
               {isArabic
-                ? "طلبات مديري الصيدليات لإنشاء حسابات دخول للموظفين"
-                : "Pharmacy admins request new employee login accounts"}
+                ? "المدير أضاف حسابات — أنشئها في Supabase إن لزم، ثم اعتمد أو ارفض."
+                : "Admins added accounts — create them in Supabase if needed, then approve or reject."}
             </p>
           </div>
-          <span className={`saasRequestsCount${pendingLoginRequests.length ? " active" : ""}`}>
-            {pendingLoginRequests.length} {isArabic ? "قيد المراجعة" : "pending"}
+          <span className={`saasRequestsCount${pendingPharmacyLoginAccounts.length ? " active" : ""}`}>
+            {pendingPharmacyLoginAccounts.length} {isArabic ? "قيد المراجعة" : "pending"}
           </span>
           <button type="button" className="printBtn" onClick={() => void onRefreshAdminRequests()}>
             {isArabic ? "تحديث" : "Refresh"}
           </button>
         </div>
 
-        {pendingLoginRequests.length === 0 ? (
+        {pendingPharmacyLoginAccounts.length === 0 ? (
           <p className="empty">
-            {isArabic ? "لا توجد طلبات حسابات دخول" : "No pending login account requests"}
+            {isArabic ? "لا توجد حسابات بانتظار الاعتماد" : "No login accounts awaiting approval"}
           </p>
         ) : (
           <div className="tableWrap">
             <table className="dataTable saasRequestsTable">
               <thead>
                 <tr>
-                  <th>{isArabic ? "رقم الطلب" : "Request #"}</th>
                   <th>{isArabic ? "الصيدلية" : "Pharmacy"}</th>
-                  <th>{isArabic ? "الموظف" : "Employee"}</th>
                   <th>{isArabic ? "الإيميل" : "Email"}</th>
-                  <th>{isArabic ? "المستخدم" : "Username"}</th>
+                  <th>{isArabic ? "كلمة المرور" : "Password"}</th>
                   <th>{isArabic ? "الدور" : "Role"}</th>
                   <th>{isArabic ? "مقدم الطلب" : "Requested by"}</th>
                   <th>{isArabic ? "التاريخ" : "Date"}</th>
@@ -361,37 +363,35 @@ export default function SuperAdminPage({
                 </tr>
               </thead>
               <tbody>
-                {pendingLoginRequests.map((request) => (
-                  <tr key={request.id}>
+                {pendingPharmacyLoginAccounts.map((account) => (
+                  <tr key={account.id}>
+                    <td>
+                      <strong>{pharmacyNameById.get(account.pharmacyId) || account.pharmacyId}</strong>
+                    </td>
+                    <td dir="ltr">{account.email}</td>
                     <td dir="ltr">
-                      <code>{request.requestNumber}</code>
+                      <code>{account.password || "—"}</code>
                     </td>
+                    <td>{getRoleLabel(account.role, isArabic)}</td>
+                    <td>{account.requestedByName || "—"}</td>
                     <td>
-                      <strong>{request.pharmacyName || request.pharmacyId}</strong>
-                    </td>
-                    <td>{request.employeeName}</td>
-                    <td dir="ltr">{request.email}</td>
-                    <td dir="ltr">{request.username}</td>
-                    <td>{getRoleLabel(request.role, isArabic)}</td>
-                    <td>{request.requestedByName || "—"}</td>
-                    <td>
-                      {request.createdAt ? new Date(request.createdAt).toLocaleString() : "—"}
+                      {account.createdAt ? new Date(account.createdAt).toLocaleString() : "—"}
                     </td>
                     <td>
                       <div className="saasActions">
                         <button
                           type="button"
                           className="smallBtn"
-                          disabled={requestUpdating && loginRequestActionId === request.id}
-                          onClick={() => void handleApproveLoginRequest(request.id)}
+                          disabled={requestUpdating && loginRequestActionId === account.id}
+                          onClick={() => void handleApproveLoginRequest(account.id)}
                         >
                           {isArabic ? "اعتماد" : "Approve"}
                         </button>
                         <button
                           type="button"
                           className="dangerBtn"
-                          disabled={requestUpdating && loginRequestActionId === request.id}
-                          onClick={() => void handleRejectLoginRequest(request.id)}
+                          disabled={requestUpdating && loginRequestActionId === account.id}
+                          onClick={() => void handleRejectLoginRequest(account.id)}
                         >
                           {isArabic ? "رفض" : "Reject"}
                         </button>

@@ -1,8 +1,10 @@
 import type { Medicine, CartItem, PaymentMethod } from "../types";
 import MedicineTable from "../components/MedicineTable";
+import PosBarcodeInput from "../components/PosBarcodeInput";
 import PosCart from "../components/PosCart";
 
 type PosPageProps = {
+  medicines: Medicine[];
   filteredMedicines: Medicine[];
   t: Record<string, string>;
   isArabic: boolean;
@@ -43,6 +45,7 @@ type PosPageProps = {
 };
 
 export default function PosPage({
+  medicines,
   filteredMedicines,
   t,
   isArabic,
@@ -89,6 +92,13 @@ export default function PosPage({
           <span className="posShiftBadge">{workShiftLabel}</span>
         )}
       </div>
+      <PosBarcodeInput
+        medicines={medicines}
+        isArabic={isArabic}
+        onAddToCart={onAddToCart}
+        disabled={!canUsePOS || isSubscriptionExpired}
+      />
+
       <div className="posSplit">
         <div>
           <MedicineTable

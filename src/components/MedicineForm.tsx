@@ -1,8 +1,10 @@
-import type { NewMedicineForm } from "../types";
+import type { Medicine, NewMedicineForm } from "../types";
+import MedicineEntryGrid from "./MedicineEntryGrid";
 
 type MedicineFormProps = {
   newMedicine: NewMedicineForm;
   editingMedicineId: number | null;
+  medicines?: Medicine[];
   isArabic: boolean;
   t: Record<string, string>;
   onFormChange: (form: NewMedicineForm) => void;
@@ -12,11 +14,13 @@ type MedicineFormProps = {
   disabled: boolean;
   showCancel?: boolean;
   hideTitle?: boolean;
+  lookupResetKey?: string | number;
 };
 
 export default function MedicineForm({
   newMedicine,
   editingMedicineId,
+  medicines = [],
   isArabic,
   t,
   onFormChange,
@@ -26,65 +30,21 @@ export default function MedicineForm({
   showCancel = false,
   hideTitle = false,
   isSaving = false,
+  lookupResetKey,
 }: MedicineFormProps) {
   return (
     <div className="medicineForm">
       {!hideTitle && <h3>{editingMedicineId ? t.editMedicine : t.addMedicine}</h3>}
-      <div className="formGrid">
-        <input
-          value={newMedicine.name_ar}
-          onChange={(e) => onFormChange({ ...newMedicine, name_ar: e.target.value })}
-          placeholder={isArabic ? "اسم الدواء بالعربي" : "Arabic name"}
-        />
-        <input
-          value={newMedicine.name_en}
-          onChange={(e) => onFormChange({ ...newMedicine, name_en: e.target.value })}
-          placeholder={isArabic ? "اسم الدواء بالإنجليزي" : "English name"}
-        />
-        <input
-          value={newMedicine.barcode}
-          onChange={(e) => onFormChange({ ...newMedicine, barcode: e.target.value })}
-          placeholder={t.barcode}
-        />
-        <input
-          type="number"
-          value={newMedicine.qty || ""}
-          onChange={(e) =>
-            onFormChange({
-              ...newMedicine,
-              qty: e.target.value === "" ? 0 : Number(e.target.value),
-            })
-          }
-          placeholder={t.qty}
-        />
-        <input
-          type="number"
-          value={newMedicine.buyPrice || ""}
-          onChange={(e) =>
-            onFormChange({
-              ...newMedicine,
-              buyPrice: e.target.value === "" ? 0 : Number(e.target.value),
-            })
-          }
-          placeholder={isArabic ? "سعر الشراء" : "Buy price"}
-        />
-        <input
-          type="number"
-          value={newMedicine.price || ""}
-          onChange={(e) =>
-            onFormChange({
-              ...newMedicine,
-              price: e.target.value === "" ? 0 : Number(e.target.value),
-            })
-          }
-          placeholder={isArabic ? "سعر البيع" : "Sell price"}
-        />
-        <input
-          type="date"
-          value={newMedicine.expiry}
-          onChange={(e) => onFormChange({ ...newMedicine, expiry: e.target.value })}
-        />
-      </div>
+      <MedicineEntryGrid
+        medicines={medicines}
+        value={newMedicine}
+        onChange={onFormChange}
+        isArabic={isArabic}
+        t={t}
+        disabled={disabled || isSaving}
+        excludeMedicineId={editingMedicineId}
+        resetKey={lookupResetKey ?? editingMedicineId ?? "new"}
+      />
       <div className="medicineFormActions">
         <button
           type="button"

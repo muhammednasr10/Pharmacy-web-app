@@ -70,6 +70,7 @@ export type Page =
   | "invoices"
   | "returns"
   | "purchases"
+  | "costs"
   | "customers"
   | "reports"
   | "stockMovements"
@@ -78,7 +79,8 @@ export type Page =
   | "tenants"
   | "branches"
   | "settings"
-  | "hr";
+  | "hr"
+  | "employeePortal";
 
 export type PaymentMethod = "cash" | "visa" | "wallet" | "credit";
 
@@ -185,6 +187,21 @@ export type CustomerDebt = {
   invoicesCount: number;
   lastInvoiceDate: string;
   invoices: Invoice[];
+};
+
+export type PharmacyCost = {
+  id: number;
+  costNumber: string;
+  title: string;
+  category: string;
+  amount: number;
+  paymentMethod: PaymentMethod | string;
+  notes?: string;
+  pharmacyId?: string;
+  userId?: string;
+  userName?: string;
+  date?: string;
+  createdAt?: string;
 };
 
 export type CustomerPayment = {
@@ -329,8 +346,8 @@ export type LoginAccountRequest = {
   requestNumber: string;
   pharmacyId: string;
   pharmacyName?: string;
-  employeeId: string;
-  employeeName: string;
+  employeeId?: string;
+  employeeName?: string;
   email: string;
   username: string;
   password?: string;
@@ -344,6 +361,27 @@ export type LoginAccountRequest = {
   createdAt?: string;
   updatedAt?: string;
   reviewedAt?: string;
+};
+
+export type PharmacyLoginAccountStatus = "pending" | "approved" | "rejected";
+
+export type PharmacyLoginAccount = {
+  id: string;
+  pharmacyId: string;
+  email: string;
+  password?: string;
+  role: UserRole;
+  employeeId?: string;
+  isActive: boolean;
+  status: PharmacyLoginAccountStatus;
+  requestedBy?: string;
+  requestedByName?: string;
+  reviewedBy?: string;
+  reviewedByName?: string;
+  reviewNote?: string;
+  reviewedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type SubscriptionRequest = {
@@ -397,6 +435,8 @@ export type EmployeeProfile = {
   updatedAt?: string;
 };
 
+export type EarlyLeaveOutcome = "permission" | "deduction";
+
 export type AttendanceRecord = {
   id: number;
   pharmacyId?: string;
@@ -407,6 +447,7 @@ export type AttendanceRecord = {
   checkOut?: string;
   status: AttendanceStatus;
   shiftId?: ShiftId;
+  earlyLeaveOutcome?: EarlyLeaveOutcome;
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -449,3 +490,28 @@ export type PayrollAdditionField =
   | "commission";
 
 export type PayrollEditableField = PayrollAdditionField | "deductions" | "taxes" | "insurance";
+
+export type EmployeeRequestType = "leave" | "permission";
+
+export type EmployeeRequestStatus = "pending" | "approved" | "rejected";
+
+export type EmployeeRequest = {
+  id: number;
+  pharmacyId?: string;
+  requestNumber: string;
+  employeeId: string;
+  userId?: string;
+  employeeName: string;
+  requestType: EmployeeRequestType;
+  workDate: string;
+  endDate?: string;
+  requestedTime?: string;
+  reason?: string;
+  status: EmployeeRequestStatus;
+  reviewedBy?: string;
+  reviewedByName?: string;
+  reviewNote?: string;
+  reviewedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};

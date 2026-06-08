@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { NewMedicineForm, Medicine } from "../types";
 import MedicineForm from "../components/MedicineForm";
 import MedicineTable from "../components/MedicineTable";
+import MedicineStockDetailModal from "../components/MedicineStockDetailModal";
 
 type InventoryPageProps = {
   medicines: Medicine[];
@@ -17,13 +18,11 @@ type InventoryPageProps = {
   disabled: boolean;
   exportInventoryCSV: () => void;
   isSubscriptionExpired: boolean;
-  canUsePOS: boolean;
   canManageInventory: boolean;
   canDeleteMedicine: boolean;
-  onAddToCart: (medicine: Medicine) => void;
-  addToCartLabel?: string;
   onEditMedicine: (medicine: Medicine) => void;
   onDeleteMedicine: (medicine: Medicine) => void;
+  pharmacyId: string;
   lowStockThreshold: number;
   expiringSoonDays: number;
 };
@@ -42,18 +41,17 @@ export default function InventoryPage({
   disabled,
   exportInventoryCSV,
   isSubscriptionExpired,
-  canUsePOS,
   canManageInventory,
   canDeleteMedicine,
-  onAddToCart,
-  addToCartLabel,
   onEditMedicine,
   onDeleteMedicine,
+  pharmacyId,
   lowStockThreshold,
   expiringSoonDays,
 }: InventoryPageProps) {
   const [showMedicineForm, setShowMedicineForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [stockDetailMedicine, setStockDetailMedicine] = useState<Medicine | null>(null);
 
   useEffect(() => {
     if (editingMedicineId) {
@@ -145,16 +143,24 @@ export default function InventoryPage({
         currency={currency}
         showColumnFilters
         showManagementActions={true}
-        canUsePOS={canUsePOS}
+        canUsePOS={false}
         canManageInventory={canManageInventory}
         canDeleteMedicine={canDeleteMedicine}
-        onAddToCart={onAddToCart}
-        addToCartLabel={addToCartLabel}
         onEditMedicine={handleEditMedicine}
         onDeleteMedicine={onDeleteMedicine}
+        onViewStockDetail={setStockDetailMedicine}
         lowStockThreshold={lowStockThreshold}
         expiringSoonDays={expiringSoonDays}
       />
+
+      {stockDetailMedicine && (
+        <MedicineStockDetailModal
+          medicine={stockDetailMedicine}
+          pharmacyId={pharmacyId}
+          isArabic={isArabic}
+          onClose={() => setStockDetailMedicine(null)}
+        />
+      )}
 
       {showMedicineForm && canManageInventory && (
         <div className="modalOverlay" onClick={closeForm}>
@@ -179,6 +185,7 @@ export default function InventoryPage({
             <MedicineForm
               newMedicine={newMedicine}
               editingMedicineId={editingMedicineId}
+              medicines={medicines}
               isArabic={isArabic}
               t={t}
               onFormChange={onFormChange}
@@ -188,6 +195,7 @@ export default function InventoryPage({
               isSaving={isSaving}
               showCancel
               hideTitle
+              lookupResetKey={editingMedicineId ?? "new"}
             />
           </div>
         </div>

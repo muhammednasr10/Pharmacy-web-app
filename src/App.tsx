@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { jsPDF } from "jspdf";
 import * as pharmacyService from "./services/pharmacyService";
 import "./styles.css";
@@ -27,6 +27,9 @@ import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
 import EmployeesUsersPage from "./pages/EmployeesUsersPage";
 import SuperAdminPage from "./pages/SuperAdminPage";
+import PurchasesPage from "./pages/PurchasesPage";
+import CostsPage from "./pages/CostsPage";
+import EmployeePortalPage from "./pages/EmployeePortalPage";
 import {
   getAllowedPages,
   getRoleLabel as getRoleLabelUtil,
@@ -57,6 +60,7 @@ import type {
   NewMedicineForm,
   Page,
   PaymentMethod,
+  PharmacyCost,
   PharmacySettings,
   PurchaseRecord,
   HeldInvoice,
@@ -64,7 +68,7 @@ import type {
   ReturnRecord,
   StockMovement,
   SubscriptionRequest,
-  LoginAccountRequest,
+  PharmacyLoginAccount,
   SystemUser,
   UserRole,
 } from "./types";
@@ -310,25 +314,15 @@ function App() {
   const [invoiceToDate, setInvoiceToDate] = useState("");
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [subscriptionRequests, setSubscriptionRequests] = useState<SubscriptionRequest[]>([]);
-  const [loginAccountRequests, setLoginAccountRequests] = useState<LoginAccountRequest[]>([]);
+  const [pendingPharmacyLoginAccounts, setPendingPharmacyLoginAccounts] = useState<
+    PharmacyLoginAccount[]
+  >([]);
   const [newMedicine, setNewMedicine] = useState<NewMedicineForm>(emptyMedicineForm);
-  const emptyPurchaseForm = {
-    barcode: "",
-    name_ar: "",
-    name_en: "",
-    qty: 0,
-    buyPrice: 0,
-    price: 0,
-    expiry: "",
-    supplierName: "",
-    notes: "",
-  };
-  const [purchaseForm, setPurchaseForm] = useState(emptyPurchaseForm);
-  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [editingMedicineId, setEditingMedicineId] = useState<number | null>(null);
   const [reportFrom, setReportFrom] = useState(formatDateInput(new Date()));
   const [reportTo, setReportTo] = useState(formatDateInput(new Date()));
   const [customerPayments, setCustomerPayments] = useState<CustomerPayment[]>([]);
+  const [pharmacyCosts, setPharmacyCosts] = useState<PharmacyCost[]>([]);
   const [paymentCustomerName, setPaymentCustomerName] = useState("");
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [paymentMethodForDebt, setPaymentMethodForDebt] = useState<PaymentMethod>("cash");
@@ -338,9 +332,6 @@ function App() {
   const t = translations[lang];
   const isArabic = lang === "ar";
   const [user, setUser] = useState<{ uid: string; email?: string } | null>(null);
-  const [purchaseSearch, setPurchaseSearch] = useState("");
-  const [purchaseFromDate, setPurchaseFromDate] = useState("");
-  const [purchaseToDate, setPurchaseToDate] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
   const [customerDebtFilter, setCustomerDebtFilter] = useState<"all" | "debt" | "paid">("all");
   const [paymentSearch, setPaymentSearch] = useState("");
@@ -468,7 +459,6 @@ function App() {
       setSelectedReturn(null);
       setSelectedCustomer(null);
       setReturnInvoice(null);
-      setShowPurchaseModal(false);
       setShowCustomerPaymentModal(false);
       setUserModal(null);
       setEditUserDraft(null);
@@ -478,22 +468,31 @@ function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  useEffect(() => {
+  const allowedPages = useMemo(
+    () => (appUser ? getAllowedPages(appUser) : []),
+    [appUser]
+  );
+
+  const displayPage = useMemo((): Page => {
+    if (!appUser) return activePage;
+    if (activePage === "hr") return "users";
+    if (allowedPages.includes(activePage)) return activePage;
+    return allowedPages[0] || "dashboard";
+  }, [appUser, activePage, allowedPages]);
+
+  useLayoutEffect(() => {
     if (!appUser) return;
-    const pages = getAllowedPages(appUser);
-    if (activePage === "hr") {
-      setActivePage("users");
-      return;
+    if (displayPage !== activePage) {
+      setActivePage(displayPage);
     }
-    if (!pages.includes(activePage)) {
-      setActivePage(pages[0] || "dashboard");
-    }
-  }, [appUser, activePage]);
+  }, [appUser, displayPage, activePage]);
 
   const refreshAdminRequestsStable = useCallback(async () => {
     if (!isSuperAdmin(appUser)) return;
     setSubscriptionRequests(await pharmacyService.getAllSubscriptionRequests());
-    setLoginAccountRequests(await pharmacyService.getAllLoginAccountRequests());
+    setPendingPharmacyLoginAccounts(
+      await pharmacyService.getAllPharmacyLoginAccounts({ status: "pending" })
+    );
   }, [appUser?.uid]);
 
   useEffect(() => {
@@ -581,8 +580,9 @@ useEffect(() => {
         }
       }
 
-      pharmacyService.setCurrentAppUser(data);
-      setAppUser(data);
+      const linkedUser = await pharmacyService.ensureAppUserEmployeeLink(data);
+      pharmacyService.setCurrentAppUser(linkedUser);
+      setAppUser(linkedUser);
       void pharmacyService.recordLastLogin(data.uid);
 
       if (isSuperAdmin(data)) {
@@ -693,11 +693,19 @@ useEffect(() => {
       setReturns(await pharmacyService.getReturns());
       setPurchases(await pharmacyService.getPurchases());
       setCustomerPayments(await pharmacyService.getCustomerPayments());
+      try {
+        setPharmacyCosts(await pharmacyService.getPharmacyCosts());
+      } catch (costsError) {
+        console.error("Load pharmacy costs error:", costsError);
+        setPharmacyCosts([]);
+      }
       setStockMovements(await pharmacyService.getStockMovements());
       setActivityLogs(await pharmacyService.getActivityLogs());
       setSubscriptionRequests(await pharmacyService.getAllSubscriptionRequests());
       if (isSuperAdmin(user)) {
-        setLoginAccountRequests(await pharmacyService.getAllLoginAccountRequests());
+        setPendingPharmacyLoginAccounts(
+          await pharmacyService.getAllPharmacyLoginAccounts({ status: "pending" })
+        );
       }
       try {
         setHeldInvoices(await pharmacyService.getHeldInvoices(branchId));
@@ -743,12 +751,10 @@ useEffect(() => {
     cleanup.push(pharmacyService.subscribeReturns(setReturns));
     cleanup.push(pharmacyService.subscribePurchases(setPurchases));
     cleanup.push(pharmacyService.subscribeCustomerPayments(setCustomerPayments));
+    cleanup.push(pharmacyService.subscribePharmacyCosts(setPharmacyCosts));
     cleanup.push(pharmacyService.subscribeStockMovements(setStockMovements));
     cleanup.push(pharmacyService.subscribeActivityLogs(setActivityLogs));
     cleanup.push(pharmacyService.subscribeSubscriptionRequests(setSubscriptionRequests));
-    if (isSuperAdmin(currentAppUser)) {
-      cleanup.push(pharmacyService.subscribeLoginAccountRequests(setLoginAccountRequests));
-    }
     cleanup.push(pharmacyService.subscribeHeldInvoices(setHeldInvoices, branchId));
 
     if (isPharmacyAdmin(currentAppUser)) {
@@ -1238,6 +1244,35 @@ const topSellingMedicines = Object.values(
     })
     .reduce((sum, record: any) => sum + safeNumber(record.total), 0);
 
+  const filteredReportCosts = pharmacyCosts.filter((cost) => {
+    const date = new Date(cost.createdAt || cost.date || 0);
+    const from = new Date(`${reportFrom}T00:00:00`);
+    const to = new Date(`${reportTo}T23:59:59`);
+    return date >= from && date <= to;
+  });
+
+  const reportCostsTotal = filteredReportCosts.reduce(
+    (sum, cost) => sum + safeNumber(cost.amount),
+    0
+  );
+
+  const reportCostsCount = filteredReportCosts.length;
+
+  const reportCostsByCategory = Object.entries(
+    filteredReportCosts.reduce(
+      (result, cost) => {
+        const key = cost.category || "other";
+        result[key] = (result[key] || 0) + safeNumber(cost.amount);
+        return result;
+      },
+      {} as Record<string, number>
+    )
+  )
+    .map(([category, total]) => ({ category, total }))
+    .sort((a, b) => b.total - a.total);
+
+  const netProfitAfterCosts = filteredReportProfitTotal - reportCostsTotal;
+
   function applyReportQuickRange(preset: "today" | "7days" | "month" | "year") {
     const today = new Date();
     let from = new Date();
@@ -1392,101 +1427,90 @@ const topSellingMedicines = Object.values(
     }
   }
 
-  async function handleApproveLoginAccountRequest(requestId: number): Promise<boolean> {
+  async function handleApprovePharmacyLoginAccount(accountId: string): Promise<boolean> {
     if (!isSuperAdmin(appUser)) return false;
 
-    const request = await pharmacyService.getLoginAccountRequestById(requestId);
-    if (!request || request.status !== "pending" || !request.password) {
-      alert(isArabic ? "الطلب غير موجود أو تمت معالجته" : "Request not found or already processed");
+    const account = await pharmacyService.getPharmacyLoginAccountById(accountId);
+    if (!account || account.status !== "pending") {
+      alert(isArabic ? "الحساب غير موجود أو تمت معالجته" : "Account not found or already processed");
       return false;
     }
 
-    try {
-      const uid = await pharmacyService.createSystemUser({
-        name: request.employeeName,
-        email: request.email,
-        password: request.password,
-        role: request.role,
-        pharmacyId: request.pharmacyId,
-        employeeId: request.employeeId,
-        username: request.username,
-      });
+    const confirmed = window.confirm(
+      isArabic
+        ? `اعتماد حساب ${account.email}؟\n\nتأكد من إنشاء الحساب في Supabase إن لزم.`
+        : `Approve account ${account.email}?\n\nEnsure the account exists in Supabase if needed.`
+    );
+    if (!confirmed) return false;
 
-      await pharmacyService.updateLoginAccountRequestStatus(requestId, {
-        status: "approved",
-        reviewedBy: appUser?.uid,
-        reviewedByName: appUser?.name,
-        clearPassword: true,
-      });
+    try {
+      await pharmacyService.approvePharmacyLoginAccount(accountId, appUser?.uid, appUser?.name);
 
       await addActivityLog({
         type: "login_account_request_approved",
-        title: isArabic ? "اعتماد طلب حساب دخول" : "Login account approved",
-        description: isArabic
-          ? `تم إنشاء حساب ${request.username} للموظف ${request.employeeName}`
-          : `Created account ${request.username} for ${request.employeeName}`,
-        referenceType: "login_account_request",
-        referenceId: String(requestId),
-        pharmacyId: request.pharmacyId,
+        title: isArabic ? "اعتماد حساب دخول" : "Login account approved",
+        description: isArabic ? `تم اعتماد ${account.email}` : `Approved ${account.email}`,
+        referenceType: "pharmacy_login_account",
+        referenceId: accountId,
+        pharmacyId: account.pharmacyId,
       });
 
-      setLoginAccountRequests(await pharmacyService.getAllLoginAccountRequests());
-      if (isPharmacyAdmin(appUser) || isSuperAdmin(appUser)) {
-        setSystemUsers(await pharmacyService.getAllSystemUsers());
-      }
-      alert(
-        isArabic
-          ? `تم اعتماد الطلب وإنشاء الحساب (${request.username})`
-          : `Request approved. Account created (${request.username})`
+      setPendingPharmacyLoginAccounts(
+        await pharmacyService.getAllPharmacyLoginAccounts({ status: "pending" })
       );
+      alert(isArabic ? "تم اعتماد الحساب" : "Account approved");
       return true;
     } catch (error) {
       console.error(error);
       const message = error instanceof Error ? error.message : "";
       alert(
         isArabic
-          ? `تعذر اعتماد الطلب${message ? `: ${formatUserCreationError(message)}` : ""}`
+          ? `تعذر الاعتماد${message ? `: ${message}` : ""}`
           : `Could not approve${message ? `: ${message}` : ""}`
       );
       return false;
     }
   }
 
-  async function handleRejectLoginAccountRequest(
-    requestId: number,
+  async function handleRejectPharmacyLoginAccount(
+    accountId: string,
     note?: string
   ): Promise<boolean> {
     if (!isSuperAdmin(appUser)) return false;
 
-    const request = loginAccountRequests.find((item) => item.id === requestId);
-    if (!request || request.status !== "pending") return false;
+    const account = pendingPharmacyLoginAccounts.find((item) => item.id === accountId);
+    if (!account || account.status !== "pending") return false;
 
     try {
-      await pharmacyService.updateLoginAccountRequestStatus(requestId, {
-        status: "rejected",
-        reviewedBy: appUser?.uid,
-        reviewedByName: appUser?.name,
-        reviewNote: note,
-        clearPassword: true,
-      });
+      await pharmacyService.rejectPharmacyLoginAccount(
+        accountId,
+        appUser?.uid,
+        appUser?.name,
+        note
+      );
 
       await addActivityLog({
         type: "login_account_request_rejected",
-        title: isArabic ? "رفض طلب حساب دخول" : "Login account rejected",
-        description: isArabic
-          ? `تم رفض طلب ${request.requestNumber} — ${request.employeeName}`
-          : `Rejected ${request.requestNumber} — ${request.employeeName}`,
-        referenceType: "login_account_request",
-        referenceId: String(requestId),
-        pharmacyId: request.pharmacyId,
+        title: isArabic ? "رفض حساب دخول" : "Login account rejected",
+        description: isArabic ? `تم رفض ${account.email}` : `Rejected ${account.email}`,
+        referenceType: "pharmacy_login_account",
+        referenceId: accountId,
+        pharmacyId: account.pharmacyId,
       });
 
-      setLoginAccountRequests(await pharmacyService.getAllLoginAccountRequests());
-      alert(isArabic ? "تم رفض الطلب" : "Request rejected");
+      setPendingPharmacyLoginAccounts(
+        await pharmacyService.getAllPharmacyLoginAccounts({ status: "pending" })
+      );
+      alert(isArabic ? "تم رفض الحساب" : "Account rejected");
       return true;
     } catch (error) {
       console.error(error);
-      alert(isArabic ? "تعذر رفض الطلب" : "Could not reject request");
+      const message = error instanceof Error ? error.message : "";
+      alert(
+        isArabic
+          ? `تعذر الرفض${message ? `: ${message}` : ""}`
+          : `Could not reject${message ? `: ${message}` : ""}`
+      );
       return false;
     }
   }
@@ -1657,6 +1681,9 @@ function getActivityTypeLabel(type: string) {
   if (type === "sale") return isArabic ? "بيع" : "Sale";
   if (type === "return") return isArabic ? "مرتجع" : "Return";
   if (type === "purchase") return isArabic ? "توريد" : "Purchase";
+  if (type === "cost_create") return isArabic ? "تسجيل تكلفة" : "Cost Recorded";
+  if (type === "cost_update") return isArabic ? "تعديل تكلفة" : "Cost Updated";
+  if (type === "cost_delete") return isArabic ? "حذف تكلفة" : "Cost Deleted";
   if (type === "customer_payment") return isArabic ? "تحصيل عميل" : "Customer Payment";
   if (type === "delete_customer_payment") return isArabic ? "حذف تحصيل" : "Delete Payment";
   if (type === "medicine_create") return isArabic ? "إضافة دواء" : "Medicine Create";
@@ -1694,6 +1721,10 @@ function canManageInventory() {
 
 function canUsePurchases() {
   return hasRole(["pharmacy_admin", "super_admin", "inventory"]);
+}
+
+function canManageCosts() {
+  return hasRole(["pharmacy_admin", "super_admin", "accountant"]);
 }
 
 function canViewReports() {
@@ -1780,21 +1811,6 @@ function getPharmacyId() {
       return [...oldCart, { ...medicine, cartQty: 1 }];
     });
     return true;
-  }
-
-  function addToCartFromInventory(medicine: Medicine) {
-    if (!canUsePOS()) {
-      alert(isArabic ? "ليس لديك صلاحية للبيع" : "You do not have permission to sell");
-      return;
-    }
-    if (!canUseSystemActions()) {
-      showSubscriptionExpiredAlert();
-      return;
-    }
-    const added = addToCart(medicine);
-    if (added) {
-      setActivePage("pos");
-    }
   }
 
   function changeQty(id: number, delta: number) {
@@ -2517,6 +2533,19 @@ async function handleDeleteHeldInvoice(held: HeldInvoice) {
 
 async function refreshMedicinesFromDb() {
   setMedicines(await pharmacyService.getMedicines());
+}
+
+async function refreshPurchasesFromDb() {
+  setPurchases(await pharmacyService.getPurchases());
+}
+
+async function refreshPharmacyCostsFromDb() {
+  try {
+    setPharmacyCosts(await pharmacyService.getPharmacyCosts());
+  } catch (error) {
+    console.error("Refresh pharmacy costs error:", error);
+    setPharmacyCosts([]);
+  }
 }
 
 async function handleInstantReturnSuccess(result: {
@@ -3327,118 +3356,6 @@ async function removeSystemUser(uid: string, userName: string) {
         ? "تعذر حذف المستخدم"
         : "Could not delete user"
     );
-  }
-}
-
-async function savePurchase() {
-   if (!canUseSystemActions()) {
-    showSubscriptionExpiredAlert();
-    return;
-  }
-  if (!canUsePurchases()) {
-    alert(isArabic ? "ليس لديك صلاحية للمشتريات" : "You do not have permission for purchases");
-    return;
-  }
-
-  if (
-    !purchaseForm.barcode ||
-    !purchaseForm.name_ar ||
-    !purchaseForm.name_en ||
-    !purchaseForm.expiry ||
-    purchaseForm.qty <= 0 ||
-    purchaseForm.buyPrice < 0 ||
-    purchaseForm.price <= 0
-  ) {
-    alert(isArabic ? "من فضلك أكمل بيانات التوريد" : "Please complete purchase data");
-    return;
-  }
-
-  try {
-    const existingMedicine = medicines.find(
-      (medicine) => medicine.barcode === purchaseForm.barcode
-    );
-
-    const medicineId = existingMedicine?.id || Date.now();
-    const oldQty = existingMedicine?.qty || 0;
-    const newQty = oldQty + Number(purchaseForm.qty);
-    const purchaseId = Date.now();
-    const purchaseNumber = `PUR-${purchaseId}`;
-    const purchaseQty = Number(purchaseForm.qty);
-    const purchaseBuyPrice = Number(purchaseForm.buyPrice);
-    const purchaseSellPrice = Number(purchaseForm.price);
-
-    const medicine: Medicine = {
-      id: medicineId,
-      name_ar: purchaseForm.name_ar,
-      name_en: purchaseForm.name_en,
-      barcode: purchaseForm.barcode,
-      qty: newQty,
-      buyPrice: Number(purchaseForm.buyPrice),
-      price: Number(purchaseForm.price),
-      expiry: purchaseForm.expiry,
-    };
-
-    const purchaseRecord: PurchaseRecord = {
-      id: purchaseId,
-      purchaseNumber,
-      medicineId,
-      medicineName_ar: medicine.name_ar,
-      medicineName_en: medicine.name_en,
-      barcode: medicine.barcode,
-      quantity: purchaseQty,
-      buyPrice: purchaseBuyPrice,
-      sellPrice: purchaseSellPrice,
-      totalCost: purchaseQty * purchaseBuyPrice,
-      supplierName: purchaseForm.supplierName,
-      notes: purchaseForm.notes,
-      pharmacyId: getPharmacyId(),
-      userId: user?.uid || "",
-      userName: appUser?.name || "",
-      date: new Date().toLocaleString(),
-      createdAt: new Date().toISOString(),
-    };
-
-    if (existingMedicine) {
-      await pharmacyService.updateMedicine(medicineId, medicine);
-    } else {
-      await pharmacyService.addMedicine(medicine);
-    }
-
-    await pharmacyService.createPurchase(purchaseRecord);
-    await pharmacyService.addStockMovement({
-      type: "purchase",
-      purchaseNumber,
-      medicineId,
-      medicineName_ar: medicine.name_ar,
-      medicineName_en: medicine.name_en,
-      barcode: medicine.barcode,
-      quantityChange: Number(purchaseForm.qty),
-      qtyBefore: oldQty,
-      qtyAfter: newQty,
-      supplierName: purchaseForm.supplierName,
-      notes: purchaseForm.notes,
-      pharmacyId: getPharmacyId(),
-      userId: user?.uid || "",
-      userName: appUser?.name || "",
-      createdAt: new Date().toISOString(),
-    });
-    await addActivityLog({
-  type: "purchase",
-  title: isArabic ? "تسجيل توريد" : "Purchase Created",
-  description: isArabic
-    ? `تم تسجيل توريد رقم ${purchaseNumber} للصنف ${medicine.name_ar} بكمية ${purchaseQty}`
-    : `Purchase ${purchaseNumber} created for ${medicine.name_en} with quantity ${purchaseQty}`,
-  referenceType: "purchase",
-  referenceId: purchaseNumber,
-});
-    alert(isArabic ? "تم تسجيل التوريد بنجاح" : "Purchase saved successfully");
-
-    setPurchaseForm(emptyPurchaseForm);
-    setShowPurchaseModal(false);
-    await refreshMedicinesFromDb();
-  } catch (error) {
-    console.error("Purchase error:", error);
-    alert(isArabic ? "حدث خطأ أثناء تسجيل التوريد" : "An error occurred while saving purchase");
   }
 }
 
@@ -4316,67 +4233,6 @@ function exportStockMovementsCSV() {
   downloadCSV(`stock-movements-${formatDateInput(new Date())}.csv`, rows);
 }
 
-const filteredPurchases = purchases.filter((purchase: any) => {
-  const searchValue = purchaseSearch.trim().toLowerCase();
-
-  const matchesSearch =
-    !searchValue ||
-    String(purchase.purchaseNumber || "").toLowerCase().includes(searchValue) ||
-    String(purchase.medicineName_ar || "").toLowerCase().includes(searchValue) ||
-    String(purchase.medicineName_en || "").toLowerCase().includes(searchValue) ||
-    String(purchase.barcode || "").toLowerCase().includes(searchValue) ||
-    String(purchase.supplierName || "").toLowerCase().includes(searchValue) ||
-    String(purchase.userName || "").toLowerCase().includes(searchValue);
-
-  const purchaseDate = new Date(purchase.createdAt || purchase.date);
-  const fromDate = purchaseFromDate
-    ? new Date(`${purchaseFromDate}T00:00:00`)
-    : null;
-  const toDate = purchaseToDate
-    ? new Date(`${purchaseToDate}T23:59:59`)
-    : null;
-
-  const matchesFrom = !fromDate || purchaseDate >= fromDate;
-  const matchesTo = !toDate || purchaseDate <= toDate;
-
-  return matchesSearch && matchesFrom && matchesTo;
-});
-
-function exportPurchasesCSV() {
-  const rows = [
-    [
-      isArabic ? "رقم التوريد" : "Purchase No.",
-      isArabic ? "اسم الدواء عربي" : "Arabic Medicine Name",
-      isArabic ? "اسم الدواء إنجليزي" : "English Medicine Name",
-      isArabic ? "الباركود" : "Barcode",
-      isArabic ? "الكمية" : "Qty",
-      isArabic ? "سعر الشراء" : "Buy Price",
-      isArabic ? "سعر البيع" : "Sell Price",
-      isArabic ? "إجمالي التكلفة" : "Total Cost",
-      isArabic ? "المورد" : "Supplier",
-      isArabic ? "ملاحظات" : "Notes",
-      isArabic ? "المستخدم" : "User",
-      isArabic ? "التاريخ" : "Date",
-    ],
-    ...filteredPurchases.map((purchase: any) => [
-      purchase.purchaseNumber || `#${purchase.id}`,
-      purchase.medicineName_ar || "-",
-      purchase.medicineName_en || "-",
-      barcodeCSV(purchase.barcode),
-      safeNumber(purchase.quantity),
-      safeNumber(purchase.buyPrice).toFixed(2),
-      safeNumber(purchase.sellPrice).toFixed(2),
-      safeNumber(purchase.totalCost).toFixed(2),
-      purchase.supplierName || "-",
-      purchase.notes || "-",
-      purchase.userName || "-",
-      purchase.date || "-",
-    ]),
-  ];
-
-  downloadCSV(`purchases-${formatDateInput(new Date())}.csv`, rows);
-}
-
 function exportCustomersCSV() {
   const rows = [
     [
@@ -4399,282 +4255,6 @@ function exportCustomersCSV() {
 
   downloadCSV(`customers-debts-${formatDateInput(new Date())}.csv`, rows);
 }
-
-function openPurchaseModal() {
-  setPurchaseForm(emptyPurchaseForm);
-  setShowPurchaseModal(true);
-}
-
-function renderPurchaseFormFields() {
-  return (
-    <div className="formGrid">
-      <input
-        value={purchaseForm.barcode}
-        onChange={(e) => {
-          const barcode = e.target.value;
-          const found = medicines.find((medicine) => medicine.barcode === barcode);
-
-          setPurchaseForm({
-            ...purchaseForm,
-            barcode,
-            name_ar: found?.name_ar || purchaseForm.name_ar,
-            name_en: found?.name_en || purchaseForm.name_en,
-            buyPrice: found?.buyPrice || purchaseForm.buyPrice,
-            price: found?.price || purchaseForm.price,
-            expiry: found?.expiry || purchaseForm.expiry,
-          });
-        }}
-        placeholder={t.barcode}
-      />
-
-      <input
-        value={purchaseForm.name_ar}
-        onChange={(e) => setPurchaseForm({ ...purchaseForm, name_ar: e.target.value })}
-        placeholder={isArabic ? "اسم الدواء بالعربي" : "Arabic medicine name"}
-      />
-
-      <input
-        value={purchaseForm.name_en}
-        onChange={(e) => setPurchaseForm({ ...purchaseForm, name_en: e.target.value })}
-        placeholder={isArabic ? "اسم الدواء بالإنجليزي" : "English medicine name"}
-      />
-
-      <input
-        type="number"
-        value={purchaseForm.qty || ""}
-        onChange={(e) =>
-          setPurchaseForm({
-            ...purchaseForm,
-            qty: e.target.value === "" ? 0 : Number(e.target.value),
-          })
-        }
-        placeholder={isArabic ? "كمية التوريد" : "Purchase quantity"}
-      />
-
-      <input
-        type="number"
-        value={purchaseForm.buyPrice || ""}
-        onChange={(e) =>
-          setPurchaseForm({
-            ...purchaseForm,
-            buyPrice: e.target.value === "" ? 0 : Number(e.target.value),
-          })
-        }
-        placeholder={isArabic ? "سعر الشراء" : "Buy price"}
-      />
-
-      <input
-        type="number"
-        value={purchaseForm.price || ""}
-        onChange={(e) =>
-          setPurchaseForm({
-            ...purchaseForm,
-            price: e.target.value === "" ? 0 : Number(e.target.value),
-          })
-        }
-        placeholder={isArabic ? "سعر البيع" : "Sell price"}
-      />
-
-      <input
-        type="date"
-        value={purchaseForm.expiry}
-        onChange={(e) => setPurchaseForm({ ...purchaseForm, expiry: e.target.value })}
-      />
-
-      <input
-        value={purchaseForm.supplierName}
-        onChange={(e) => setPurchaseForm({ ...purchaseForm, supplierName: e.target.value })}
-        placeholder={isArabic ? "اسم المورد" : "Supplier name"}
-      />
-
-      <input
-        value={purchaseForm.notes}
-        onChange={(e) => setPurchaseForm({ ...purchaseForm, notes: e.target.value })}
-        placeholder={isArabic ? "ملاحظات" : "Notes"}
-      />
-    </div>
-  );
-}
-
-function renderPurchasesPage() {
-  return (
-    <section className="card purchasesPage">
-      <div className="cardHeader returnsPageActions">
-        <div>
-          <h2>{isArabic ? "المشتريات / توريد المخزون" : "Purchases / Stock Supply"}</h2>
-          <p className="returnsSectionHint">
-            {isArabic
-              ? "سجل التوريدات والمخزون الحالي"
-              : "Purchase history and current inventory"}
-          </p>
-        </div>
-        {canUsePurchases() && (
-          <div className="returnsHeaderBtns">
-            <button
-              type="button"
-              className="printFullBtn"
-              onClick={openPurchaseModal}
-              disabled={isSubscriptionExpired}
-            >
-              {isArabic ? "تسجيل توريد جديد" : "New Purchase"}
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div className="cardHeader" style={{ marginTop: 22 }}>
-        <h2>{isArabic ? "المخزون الحالي" : "Current Inventory"}</h2>
-
-        <button className="printBtn" onClick={exportInventoryCSV}>
-          <span aria-hidden="true">⬇️</span>
-          <span>{isArabic ? "تصدير Excel" : "Export Excel"}</span>
-        </button>
-      </div>
-
-      {renderInventoryTable(false)}
-<div className="cardHeader" style={{ marginTop: 22 }}>
-  <h2>{isArabic ? "سجل المشتريات" : "Purchases History"}</h2>
-
-  <button className="printBtn" onClick={exportPurchasesCSV}>
-    <span aria-hidden="true">⬇️</span>
-    <span>{isArabic ? "تصدير Excel" : "Export Excel"}</span>
-  </button>
-</div>
-
-<div className="filtersBar">
-  <input
-    value={purchaseSearch}
-    onChange={(e) => setPurchaseSearch(e.target.value)}
-    placeholder={
-      isArabic
-        ? "بحث بالدواء أو الباركود أو المورد أو رقم التوريد"
-        : "Search medicine, barcode, supplier, or purchase no."
-    }
-  />
-
-  <input
-    type="date"
-    value={purchaseFromDate}
-    onChange={(e) => setPurchaseFromDate(e.target.value)}
-  />
-
-  <input
-    type="date"
-    value={purchaseToDate}
-    onChange={(e) => setPurchaseToDate(e.target.value)}
-  />
-
-  <button
-    className="clearCartBtn"
-    onClick={() => {
-      setPurchaseSearch("");
-      setPurchaseFromDate("");
-      setPurchaseToDate("");
-    }}
-  >
-    {isArabic ? "مسح الفلاتر" : "Clear filters"}
-  </button>
-</div>
-
-{filteredPurchases.length === 0 ? (
-  <p className="empty">
-    {isArabic ? "لا توجد مشتريات حتى الآن" : "No purchases yet"}
-  </p>
-) : (
-  <div className="tableWrap">
-    <table>
-      <thead>
-        <tr>
-          <th>{isArabic ? "رقم التوريد" : "Purchase No."}</th>
-          <th>{t.medicine}</th>
-          <th>{t.barcode}</th>
-          <th>{t.qty}</th>
-          <th>{isArabic ? "سعر الشراء" : "Buy Price"}</th>
-          <th>{isArabic ? "سعر البيع" : "Sell Price"}</th>
-          <th>{isArabic ? "الإجمالي" : "Total Cost"}</th>
-          <th>{isArabic ? "المورد" : "Supplier"}</th>
-          <th>{isArabic ? "المستخدم" : "User"}</th>
-          <th>{t.date}</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        {filteredPurchases.map((purchase) => (
-          <tr key={purchase.id}>
-            <td>{purchase.purchaseNumber}</td>
-            <td>
-              {isArabic
-                ? purchase.medicineName_ar
-                : purchase.medicineName_en}
-            </td>
-            <td>{purchase.barcode}</td>
-            <td>{purchase.quantity}</td>
-            <td>
-              {safeNumber(purchase.buyPrice).toFixed(2)} {t.currency}
-            </td>
-            <td>
-              {safeNumber(purchase.sellPrice).toFixed(2)} {t.currency}
-            </td>
-            <td>
-              {safeNumber(purchase.totalCost).toFixed(2)} {t.currency}
-            </td>
-            <td>{purchase.supplierName || "-"}</td>
-            <td>{purchase.userName || "-"}</td>
-            <td>{purchase.date || "-"}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-)}
-      {showPurchaseModal && (
-        <div className="modalOverlay" onClick={() => setShowPurchaseModal(false)}>
-          <div className="invoiceModal purchaseModal" onClick={(e) => e.stopPropagation()}>
-            <div className="modalHeader">
-              <div>
-                <h2>{isArabic ? "تسجيل توريد جديد" : "New Purchase"}</h2>
-                <p>
-                  {isArabic
-                    ? "أدخل بيانات الصنف والكمية لإضافتها للمخزون"
-                    : "Enter item details and quantity to add to stock"}
-                </p>
-              </div>
-              <button
-                type="button"
-                className="closeBtn"
-                onClick={() => setShowPurchaseModal(false)}
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="medicineForm purchaseModalForm">
-              {renderPurchaseFormFields()}
-            </div>
-
-            <div className="modalActions">
-              <button
-                type="button"
-                className="addMedicineBtn"
-                onClick={() => void savePurchase()}
-                disabled={isSubscriptionExpired}
-              >
-                {isArabic ? "حفظ التوريد" : "Save Purchase"}
-              </button>
-              <button
-                type="button"
-                className="completeBtn"
-                onClick={() => setShowPurchaseModal(false)}
-              >
-                {t.close}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </section>
-  );
-}  
 
 function renderMedicineForm() {
     return (
@@ -6812,8 +6392,6 @@ if (!user) {
     />
   );
 }
-const allowedPages = getAllowedPages(appUser);
-
 if (!appUser) {
   return (
     <LoginPage
@@ -6875,7 +6453,7 @@ if (!appUser) {
           />
 
           <AppNavBar
-            activePage={activePage}
+            activePage={displayPage}
             allowedPages={allowedPages}
             isArabic={isArabic}
             t={t}
@@ -6883,10 +6461,11 @@ if (!appUser) {
           />
         </div>
 
-        {activePage === "dashboard" && (
+        {displayPage === "dashboard" && (
           <DashboardPage
             isArabic={isArabic}
             t={t}
+            allowedPages={allowedPages}
             lowStockCount={lowStockCount}
             expiredCount={expiredCount}
             expiringCount={expiringCount}
@@ -6928,7 +6507,7 @@ if (!appUser) {
           />
         )}
 
-        {activePage === "inventory" && (
+        {displayPage === "inventory" && (
           <InventoryPage
             medicines={medicines}
             newMedicine={newMedicine}
@@ -6943,22 +6522,58 @@ if (!appUser) {
             disabled={isSubscriptionExpired}
             exportInventoryCSV={exportInventoryCSV}
             isSubscriptionExpired={isSubscriptionExpired}
-            canUsePOS={canUsePOS()}
             canManageInventory={canManageInventory()}
             canDeleteMedicine={canDeleteMedicine()}
-            onAddToCart={addToCartFromInventory}
-            addToCartLabel={isArabic ? "إضافة للبيع" : "Add to sale"}
             onEditMedicine={startEditMedicine}
             onDeleteMedicine={deleteMedicine}
+            pharmacyId={getPharmacyId()}
             lowStockThreshold={lowStockThreshold}
             expiringSoonDays={expiringSoonDays}
           />
         )}
 
-        {activePage === "purchases" && canOpenPage("purchases") && renderPurchasesPage()}
+        {displayPage === "purchases" && canOpenPage("purchases") && (
+          <PurchasesPage
+            purchases={purchases}
+            branches={branches}
+            defaultBranchId={getPharmacyId()}
+            isArabic={isArabic}
+            t={t}
+            currency={t.currency}
+            canUsePurchases={canUsePurchases()}
+            isSubscriptionExpired={isSubscriptionExpired}
+            userId={user?.uid}
+            userName={appUser?.name}
+            onActivityLog={addActivityLog}
+            onRefreshMedicines={refreshMedicinesFromDb}
+            onRefreshPurchases={refreshPurchasesFromDb}
+            safeNumber={safeNumber}
+            barcodeCSV={barcodeCSV}
+            downloadCSV={downloadCSV}
+          />
+        )}
 
-        {activePage === "pos" && (
+        {displayPage === "costs" && canOpenPage("costs") && (
+          <CostsPage
+            costs={pharmacyCosts}
+            isArabic={isArabic}
+            t={t}
+            currency={t.currency}
+            pharmacyId={getPharmacyId()}
+            canManageCosts={canManageCosts()}
+            isSubscriptionExpired={isSubscriptionExpired}
+            userId={user?.uid}
+            userName={appUser?.name}
+            onActivityLog={addActivityLog}
+            safeNumber={safeNumber}
+            downloadCSV={downloadCSV}
+            onRefreshCosts={refreshPharmacyCostsFromDb}
+          />
+        )}
+
+        {displayPage === "pos" && (
           <PosPage
+            medicines={medicines}
             filteredMedicines={filteredMedicines}
             t={t}
             isArabic={isArabic}
@@ -6999,7 +6614,7 @@ if (!appUser) {
           />
         )}
 
-        {activePage === "invoices" && (
+        {displayPage === "invoices" && (
           <InvoicesPage
             filteredInvoicesList={filteredInvoicesList}
             invoiceSearch={invoiceSearch}
@@ -7021,7 +6636,7 @@ if (!appUser) {
             currency={t.currency}
           />
         )}
-        {activePage === "returns" && canOpenPage("returns") && (
+        {displayPage === "returns" && canOpenPage("returns") && (
           <ReturnsPage
             returns={returns}
             filteredInvoicesList={filteredInvoicesList}
@@ -7053,19 +6668,19 @@ if (!appUser) {
             safeNumber={safeNumber}
           />
         )}
-        {activePage === "customers" &&
+        {displayPage === "customers" &&
           canOpenPage("customers") &&
           renderCustomersPage()}
 
-        {activePage === "stockMovements" &&
+        {displayPage === "stockMovements" &&
           canOpenPage("stockMovements") &&
           renderStockMovementsTable()}
           
-          {activePage === "activityLogs" &&
+          {displayPage === "activityLogs" &&
           canOpenPage("activityLogs") &&
           renderActivityLogsPage()}
 
-        {activePage === "reports" && canOpenPage("reports") && (
+        {displayPage === "reports" && canOpenPage("reports") && (
           <ReportsPage
             isArabic={isArabic}
             t={t}
@@ -7080,6 +6695,10 @@ if (!appUser) {
             filteredReportDiscountTotal={filteredReportDiscountTotal}
             reportUnitsSold={reportUnitsSold}
             reportReturnsTotal={reportReturnsTotal}
+            reportCostsTotal={reportCostsTotal}
+            reportCostsCount={reportCostsCount}
+            reportCostsByCategory={reportCostsByCategory}
+            netProfitAfterCosts={netProfitAfterCosts}
             topSellingMedicines={topSellingMedicines}
             reportPaymentTotals={reportPaymentTotals}
             reportPaymentBreakdown={reportPaymentBreakdown}
@@ -7087,30 +6706,9 @@ if (!appUser) {
             reportCashierTotals={reportCashierTotals}
             getPaymentLabel={getPaymentLabel}
             currency={t.currency}
-            invoiceTable={
-              <InvoiceTable
-                filteredInvoices={filteredInvoicesList}
-                t={t}
-                isArabic={isArabic}
-                invoiceSearch={invoiceSearch}
-                invoicePaymentFilter={invoicePaymentFilter}
-                invoiceFromDate={invoiceFromDate}
-                invoiceToDate={invoiceToDate}
-                setInvoiceSearch={setInvoiceSearch}
-                setInvoicePaymentFilter={setInvoicePaymentFilter}
-                setInvoiceFromDate={setInvoiceFromDate}
-                setInvoiceToDate={setInvoiceToDate}
-                onViewInvoice={setSelectedInvoice}
-                onReturnInvoice={openReturnModal}
-                onPrintInvoice={printSavedInvoice}
-                canUseReturns={canUseReturns()}
-                exportInvoicesCSV={exportInvoicesCSV}
-                getPaymentLabel={getPaymentLabel}
-              />
-            }
           />
         )}
-        {activePage === "users" && canOpenPage("users") && (
+        {displayPage === "users" && canOpenPage("users") && (
           <EmployeesUsersPage
             isArabic={isArabic}
             appUser={appUser}
@@ -7121,7 +6719,14 @@ if (!appUser) {
             onActivityLog={addActivityLog}
           />
         )}
-        {activePage === "tenants" && canOpenPage("tenants") && (
+        {displayPage === "employeePortal" && canOpenPage("employeePortal") && (
+          <EmployeePortalPage
+            isArabic={isArabic}
+            appUser={appUser}
+            pharmacyId={getPharmacyId()}
+          />
+        )}
+        {displayPage === "tenants" && canOpenPage("tenants") && (
           <SuperAdminPage
             isArabic={isArabic}
             pharmacies={branches}
@@ -7146,16 +6751,17 @@ if (!appUser) {
             subscriptionRequests={subscriptionRequests}
             onApproveSubscriptionRequest={handleApproveSubscriptionRequest}
             onRejectSubscriptionRequest={handleRejectSubscriptionRequest}
-            loginAccountRequests={loginAccountRequests}
-            onApproveLoginAccountRequest={handleApproveLoginAccountRequest}
-            onRejectLoginAccountRequest={handleRejectLoginAccountRequest}
+            pendingPharmacyLoginAccounts={pendingPharmacyLoginAccounts}
+            onApprovePharmacyLoginAccount={handleApprovePharmacyLoginAccount}
+            onRejectPharmacyLoginAccount={handleRejectPharmacyLoginAccount}
             onRefreshAdminRequests={refreshAdminRequestsStable}
           />
         )}
-        {activePage === "branches" && canOpenPage("branches") && renderBranchesPage()}
-        {activePage === "settings" && canOpenPage("settings") && (
+        {displayPage === "branches" && canOpenPage("branches") && renderBranchesPage()}
+        {displayPage === "settings" && canOpenPage("settings") && (
           <SettingsPage
             isArabic={isArabic}
+            pharmacyId={getPharmacyId()}
             t={t}
             settingsForm={settingsForm}
             setSettingsForm={setSettingsForm}
@@ -7175,7 +6781,7 @@ if (!appUser) {
       </main>
 
       <Sidebar
-        activePage={activePage}
+        activePage={displayPage}
         allowedPages={allowedPages}
         isArabic={isArabic}
         t={t}

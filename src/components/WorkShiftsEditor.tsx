@@ -99,8 +99,8 @@ export default function WorkShiftsEditor({
             />
             <span className="workScheduleHint">
               {isArabic
-                ? `بعد ${activeShift.allowedLateMinutes ?? 15} دقيقة من بداية الشيفت (${activeShift.dayStart}) يُسجَّل «حضور (تأخير)».`
-                : `Check-in after ${activeShift.allowedLateMinutes ?? 15} min from shift start (${activeShift.dayStart}) marks as present (late).`}
+                ? `بعد ${activeShift.allowedLateMinutes ?? 15} دقيقة من بداية الشيفت (${activeShift.dayStart}) يُسجَّل «تأخير». نفس المدة تُستخدم كسماح قبل نهاية الشيفت (${activeShift.dayEnd}) حتى لا يُحسب «إذن».`
+                : `Check-in after ${activeShift.allowedLateMinutes ?? 15} min from shift start (${activeShift.dayStart}) marks late. Same grace applies before shift end (${activeShift.dayEnd}) for early leave.`}
             </span>
           </label>
         </div>

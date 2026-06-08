@@ -1,17 +1,20 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { AppUser, AttendanceRecord, AttendanceStatus, Employee, PayrollRecord, ShiftId, SystemUser } from "../types";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { AppUser, AttendanceRecord, AttendanceStatus, EarlyLeaveOutcome, Employee, EmployeeRequest, PayrollRecord, ShiftId, SystemUser } from "../types";
 import * as pharmacyService from "../services/pharmacyService";
-import WorkShiftsEditor from "../components/WorkShiftsEditor";
 import {
   computeWorkHoursFromSchedule,
   evaluateAttendanceTiming,
+  isEarlyLeaveApproved,
+  resolveEarlyLeaveOutcome,
   getShiftDisplayName,
   isCheckInLate,
   resolveAllowedLateMinutes,
+  resolveScheduleForShiftId,
   resolveWorkSchedule,
+  SHIFT_IDS,
 } from "../utils/workSchedule";
 
-type HrTab = "attendance" | "payroll";
+type HrTab = "attendance" | "payroll" | "requests";
 
 type HrStaffRow = {
   employeeId: string;
@@ -41,6 +44,7 @@ type AttendanceLogDraft = {
   status: AttendanceStatus | "";
   checkInTime: string;
   checkOutTime: string;
+  actualShiftId: ShiftId;
   recordId?: number;
 };
 
@@ -61,7 +65,7 @@ function formatMoney(value: number) {
 }
 
 function formatTime(iso: string | undefined, isArabic: boolean) {
-  if (!iso) return "—";
+  if (!iso) return "â€”";
   return new Date(iso).toLocaleTimeString(isArabic ? "ar-EG" : "en-GB", {
     hour: "2-digit",
     minute: "2-digit",
@@ -75,12 +79,12 @@ function calcWorkedHours(checkIn?: string, checkOut?: string): number | null {
 function formatHoursWithMinutes(hours: number, isArabic: boolean) {
   const minutes = Math.round(hours * 60);
   const hoursText = Number.isInteger(hours) ? String(hours) : hours.toFixed(1);
-  return isArabic ? `${hoursText} (${minutes} دقيقة)` : `${hoursText} (${minutes} min)`;
+  return isArabic ? `${hoursText} (${minutes} Ø¯Ù‚ÙŠÙ‚Ø©)` : `${hoursText} (${minutes} min)`;
 }
 
 function formatActualHours(checkIn?: string, checkOut?: string, isArabic = false) {
   const hours = calcWorkedHours(checkIn, checkOut);
-  if (hours === null) return "—";
+  if (hours === null) return "â€”";
   return formatHoursWithMinutes(hours, isArabic);
 }
 
@@ -95,7 +99,7 @@ function formatTimeWithOvernight(
   isArabic: boolean,
   spansNextDay = false
 ) {
-  if (!iso) return "—";
+  if (!iso) return "â€”";
   const time = new Date(iso).toLocaleTimeString(isArabic ? "ar-EG" : "en-GB", {
     hour: "2-digit",
     minute: "2-digit",
@@ -157,14 +161,14 @@ function listDaysInMonth(start: string, end: string) {
 function formatTotalWorked(minutes: number, isArabic: boolean) {
   const hours = minutes / 60;
   const hoursText = Number.isInteger(hours) ? String(hours) : hours.toFixed(1);
-  return isArabic ? `${hoursText} ساعة (${minutes} دقيقة)` : `${hoursText} hrs (${minutes} min)`;
+  return isArabic ? `${hoursText} Ø³Ø§Ø¹Ø© (${minutes} Ø¯Ù‚ÙŠÙ‚Ø©)` : `${hoursText} hrs (${minutes} min)`;
 }
 
 function formatWorkMinutes(minutes: number, isArabic: boolean) {
   if (!minutes) return "0";
   const hours = minutes / 60;
   const hoursText = Number.isInteger(hours) ? String(hours) : hours.toFixed(1);
-  return isArabic ? `${hoursText} (${minutes} د)` : `${hoursText} (${minutes}m)`;
+  return isArabic ? `${hoursText} (${minutes} Ø¯)` : `${hoursText} (${minutes}m)`;
 }
 
 function countPeriodDays(start: string, end: string) {
@@ -176,11 +180,11 @@ function countPeriodDays(start: string, end: string) {
 
 function statusLabel(status: AttendanceStatus | string, isArabic: boolean) {
   const map: Record<string, { ar: string; en: string }> = {
-    present: { ar: "حاضر", en: "Present" },
-    absent: { ar: "غائب", en: "Absent" },
-    late: { ar: "حضور (تأخير)", en: "Present (late)" },
-    leave: { ar: "إجازة", en: "Leave" },
-    sick: { ar: "مرضي", en: "Sick leave" },
+    present: { ar: "Ø­Ø§Ø¶Ø±", en: "Present" },
+    absent: { ar: "ØºØ§Ø¦Ø¨", en: "Absent" },
+    late: { ar: "Ø­Ø¶ÙˆØ± (ØªØ£Ø®ÙŠØ±)", en: "Present (late)" },
+    leave: { ar: "Ø¥Ø¬Ø§Ø²Ø©", en: "Leave" },
+    sick: { ar: "Ù…Ø±Ø¶ÙŠ", en: "Sick leave" },
   };
   const item = map[status] || map.present;
   return isArabic ? item.ar : item.en;
@@ -189,37 +193,78 @@ function statusLabel(status: AttendanceStatus | string, isArabic: boolean) {
 function attendanceStatusBadge(
   status: AttendanceStatus | string | undefined,
   isArabic: boolean,
-  timing?: { isLate: boolean; isEarlyLeave: boolean }
+  timing?: { isLate: boolean; isEarlyLeave: boolean },
+  earlyLeave?: {
+    rawEarlyLeave: boolean;
+    effectiveOutcome: EarlyLeaveOutcome;
+    canToggle?: boolean;
+    resolving?: boolean;
+    onToggle?: (outcome: EarlyLeaveOutcome) => void;
+  }
 ) {
   if (!status) {
     return (
       <span className="hrAttendanceStatus hrAttendanceStatusEmpty">
-        {isArabic ? "لم يسجل" : "Not recorded"}
+        {isArabic ? "Ù„Ù… ÙŠØ³Ø¬Ù„" : "Not recorded"}
       </span>
     );
   }
 
+  const hasEarlyLeaveUi = Boolean(earlyLeave?.rawEarlyLeave);
   const isWorkAttendance =
     status === "present" ||
     status === "late" ||
-    (timing && (timing.isLate || timing.isEarlyLeave));
+    (timing && timing.isLate) ||
+    hasEarlyLeaveUi;
 
-  if (isWorkAttendance && (status === "present" || status === "late" || timing)) {
+  if (isWorkAttendance && (status === "present" || status === "late" || timing || hasEarlyLeaveUi)) {
+    const earlyLeaveIsPermission = earlyLeave?.effectiveOutcome !== "deduction";
+    const earlyLeaveLabel = earlyLeaveIsPermission
+      ? isArabic
+        ? "Ø¥Ø°Ù†"
+        : "Permission"
+      : isArabic
+        ? "Ø®ØµÙ…"
+        : "Deduction";
+    const earlyLeaveClass = earlyLeaveIsPermission
+      ? "hrAttendanceFlagPermission"
+      : "hrAttendanceFlagDeduction";
+    const toggleTitle = earlyLeave?.canToggle
+      ? earlyLeaveIsPermission
+        ? isArabic
+          ? "Ø§Ø¶ØºØ· Ù„Ù„ØªØ­ÙˆÙŠÙ„ Ø¥Ù„Ù‰ Ø®ØµÙ…"
+          : "Click to mark as deduction"
+        : isArabic
+          ? "Ø§Ø¶ØºØ· Ù„Ù„ØªØ­ÙˆÙŠÙ„ Ø¥Ù„Ù‰ Ø¥Ø°Ù†"
+          : "Click to mark as permission"
+      : undefined;
+
     return (
       <span className="hrAttendanceStatusWrap">
         <span className="hrAttendanceStatus hrAttendanceStatus-present">
-          {isArabic ? "حاضر" : "Present"}
+          {isArabic ? "Ø­Ø§Ø¶Ø±" : "Present"}
         </span>
         {timing?.isLate && (
           <span className="hrAttendanceFlag hrAttendanceFlagLate">
-            {isArabic ? "تأخير" : "Late"}
+            {isArabic ? "ØªØ£Ø®ÙŠØ±" : "Late"}
           </span>
         )}
-        {timing?.isEarlyLeave && (
-          <span className="hrAttendanceFlag hrAttendanceFlagPermission">
-            {isArabic ? "إذن" : "Early leave"}
-          </span>
-        )}
+        {hasEarlyLeaveUi &&
+          (earlyLeave?.canToggle ? (
+            <button
+              type="button"
+              className={`hrAttendanceFlag ${earlyLeaveClass} hrAttendanceFlagClickable`}
+              title={toggleTitle}
+              disabled={earlyLeave.resolving}
+              onClick={() =>
+                earlyLeave.onToggle?.(earlyLeaveIsPermission ? "deduction" : "permission")
+              }
+            >
+              {earlyLeaveLabel}
+            </button>
+          ) : (
+            <span className={`hrAttendanceFlag ${earlyLeaveClass}`}>{earlyLeaveLabel}</span>
+          ))}
       </span>
     );
   }
@@ -231,8 +276,12 @@ function attendanceStatusBadge(
   );
 }
 
+function isShiftOnlyPresetRecord(record?: AttendanceRecord) {
+  return Boolean(record?.shiftId && !record.checkIn && !record.checkOut);
+}
+
 function isAttendanceWorkDay(record?: AttendanceRecord) {
-  if (!record) return false;
+  if (!record || isShiftOnlyPresetRecord(record)) return false;
   if (record.status === "present" || record.status === "late") return true;
   if (["absent", "leave", "sick"].includes(record.status)) return false;
   return Boolean(record.checkIn || record.checkOut);
@@ -264,6 +313,7 @@ export default function HrPage({
   const [attendanceMonth, setAttendanceMonth] = useState(currentMonthValue);
   const [attendanceEmployeeFilter, setAttendanceEmployeeFilter] = useState("");
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [employeeRequests, setEmployeeRequests] = useState<EmployeeRequest[]>([]);
   const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>([]);
   const [staffRows, setStaffRows] = useState<HrStaffRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -281,7 +331,6 @@ export default function HrPage({
     record: PayrollRecord;
     breakdown: pharmacyService.AttendanceDeductionBreakdown;
   } | null>(null);
-  const [payrollSettingsOpen, setPayrollSettingsOpen] = useState(false);
 
   const monthDefault = useMemo(() => monthBounds(), []);
   const [periodStart, setPeriodStart] = useState(monthDefault.start);
@@ -298,7 +347,6 @@ export default function HrPage({
   payrollConfigRef.current = payrollConfig;
 
   const canManage = hasRole(["pharmacy_admin", "super_admin", "accountant"]);
-  const canConfigurePayroll = hasRole(["pharmacy_admin", "super_admin"]);
   const canEditAttendanceLog = hasRole(["pharmacy_admin", "super_admin"]);
   const activeEmployees = useMemo(
     () => staffRows.filter((row) => row.name),
@@ -355,6 +403,25 @@ export default function HrPage({
     }
   }, [attendanceMonth, loadStaff]);
 
+  const loadEmployeeRequests = useCallback(async () => {
+    try {
+      const pending = await pharmacyService.getEmployeeRequests({ status: "pending" });
+      const { start, end } = monthBoundsFromDate(monthAnchorDate(attendanceMonth));
+      const monthRows = await pharmacyService.getEmployeeRequests({ fromDate: start, toDate: end });
+      const byId = new Map<number, EmployeeRequest>();
+      for (const row of [...pending, ...monthRows]) {
+        byId.set(row.id, row);
+      }
+      setEmployeeRequests(
+        [...byId.values()].sort((a, b) =>
+          String(b.createdAt || "").localeCompare(String(a.createdAt || ""))
+        )
+      );
+    } catch {
+      setEmployeeRequests([]);
+    }
+  }, [attendanceMonth]);
+
   const loadPayroll = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -406,30 +473,20 @@ export default function HrPage({
   useEffect(() => {
     if (activeTab === "attendance") {
       void loadAttendance();
+      void loadEmployeeRequests();
+    } else if (activeTab === "requests") {
+      void loadEmployeeRequests();
     } else {
       void loadPayroll();
     }
-  }, [activeTab, loadAttendance, loadPayroll]);
+  }, [activeTab, loadAttendance, loadPayroll, loadEmployeeRequests]);
 
   useEffect(() => {
     if (!pharmacyId) return;
     void pharmacyService.loadPayrollSettings(pharmacyId).then(setPayrollConfig);
   }, [pharmacyId, activeTab]);
 
-  const myStaffRow = useMemo(
-    () =>
-      staffRows.find(
-        (row) =>
-          row.attendanceKey === appUser?.uid || row.employeeId === appUser?.employeeId
-      ),
-    [staffRows, appUser]
-  );
-
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
-
-  const todayRecordForCurrentUser = attendanceRecords.find(
-    (r) => r.userId === myStaffRow?.attendanceKey && r.workDate === todayIso
-  );
 
   async function handleCheckIn(userId: string, userName: string, workDate = todayIso) {
     setBusyAction(`in-${userId}`);
@@ -452,10 +509,10 @@ export default function HrPage({
       alert(
         code === "already_checked_in"
           ? isArabic
-            ? "تم تسجيل الحضور مسبقاً"
+            ? "ØªÙ… ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø­Ø¶ÙˆØ± Ù…Ø³Ø¨Ù‚Ø§Ù‹"
             : "Already checked in"
           : isArabic
-          ? "تعذر تسجيل الحضور"
+          ? "ØªØ¹Ø°Ø± ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø­Ø¶ÙˆØ±"
           : "Could not check in"
       );
     } finally {
@@ -473,14 +530,14 @@ export default function HrPage({
       alert(
         code === "check_in_required"
           ? isArabic
-            ? "سجّل الحضور أولاً"
+            ? "Ø³Ø¬Ù‘Ù„ Ø§Ù„Ø­Ø¶ÙˆØ± Ø£ÙˆÙ„Ø§Ù‹"
             : "Check in first"
           : code === "already_checked_out"
           ? isArabic
-            ? "تم تسجيل الانصراف مسبقاً"
+            ? "ØªÙ… ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø§Ù†ØµØ±Ø§Ù Ù…Ø³Ø¨Ù‚Ø§Ù‹"
             : "Already checked out"
           : isArabic
-          ? "تعذر تسجيل الانصراف"
+          ? "ØªØ¹Ø°Ø± ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø§Ù†ØµØ±Ø§Ù"
           : "Could not check out"
       );
     } finally {
@@ -499,7 +556,7 @@ export default function HrPage({
       await pharmacyService.setAttendanceStatus(userId, userName, workDate, status);
       await loadAttendance();
     } catch {
-      alert(isArabic ? "تعذر تحديث الحالة" : "Could not update status");
+      alert(isArabic ? "ØªØ¹Ø°Ø± ØªØ­Ø¯ÙŠØ« Ø§Ù„Ø­Ø§Ù„Ø©" : "Could not update status");
     } finally {
       setBusyAction("");
     }
@@ -510,7 +567,7 @@ export default function HrPage({
 
     const input = window.prompt(
       isArabic
-        ? `الراتب الأساسي لـ ${record.userName} (${currency}):`
+        ? `Ø§Ù„Ø±Ø§ØªØ¨ Ø§Ù„Ø£Ø³Ø§Ø³ÙŠ Ù„Ù€ ${record.userName} (${currency}):`
         : `Base salary for ${record.userName} (${currency}):`,
       String(record.baseSalary)
     );
@@ -518,14 +575,14 @@ export default function HrPage({
 
     const newSalary = Number(input);
     if (!Number.isFinite(newSalary) || newSalary < 0) {
-      alert(isArabic ? "قيمة غير صالحة" : "Invalid value");
+      alert(isArabic ? "Ù‚ÙŠÙ…Ø© ØºÙŠØ± ØµØ§Ù„Ø­Ø©" : "Invalid value");
       return;
     }
     if (newSalary === record.baseSalary) return;
 
     const confirmed = window.confirm(
       isArabic
-        ? `تأكيد تغيير الراتب الأساسي من ${formatMoney(record.baseSalary)} إلى ${formatMoney(newSalary)} ${currency}؟`
+        ? `ØªØ£ÙƒÙŠØ¯ ØªØºÙŠÙŠØ± Ø§Ù„Ø±Ø§ØªØ¨ Ø§Ù„Ø£Ø³Ø§Ø³ÙŠ Ù…Ù† ${formatMoney(record.baseSalary)} Ø¥Ù„Ù‰ ${formatMoney(newSalary)} ${currency}ØŸ`
         : `Change base salary from ${formatMoney(record.baseSalary)} to ${formatMoney(newSalary)} ${currency}?`
     );
     if (!confirmed) return;
@@ -571,60 +628,7 @@ export default function HrPage({
       await loadStaff();
       await loadPayroll();
     } catch {
-      alert(isArabic ? "تعذر تحديث الراتب الأساسي" : "Could not update base salary");
-    } finally {
-      setBusyAction("");
-    }
-  }
-
-  async function savePayrollConfig() {
-    if (!pharmacyId) return;
-    setBusyAction("payroll-config");
-    try {
-      await pharmacyService.updatePharmacySettings(pharmacyId, {
-        payrollPayDay: Math.min(31, Math.max(1, Number(payrollConfig.payDay) || pharmacyService.PAYROLL_DEFAULTS.payDay)),
-        payrollSickDeductionPercent: Math.min(
-          100,
-          Math.max(0, Number(payrollConfig.sickDeductionPercent) || pharmacyService.PAYROLL_DEFAULTS.sickDeductionPercent)
-        ),
-        payrollAbsentDeductionPercent: Math.min(
-          100,
-          Math.max(0, Number(payrollConfig.absentDeductionPercent) || pharmacyService.PAYROLL_DEFAULTS.absentDeductionPercent)
-        ),
-        payrollMaxLeaveDays: Math.max(
-          0,
-          Math.floor(Number(payrollConfig.maxLeaveDays) || pharmacyService.PAYROLL_DEFAULTS.maxLeaveDays)
-        ),
-        payrollStandardWorkHours: Math.max(
-          0,
-          Number(payrollConfig.standardWorkHours) || pharmacyService.PAYROLL_DEFAULTS.standardWorkHours
-        ),
-        payrollOvertimePercent: Math.max(
-          0,
-          Number(payrollConfig.overtimePercent) || pharmacyService.PAYROLL_DEFAULTS.overtimePercent
-        ),
-        payrollDefaultTaxes: Math.min(
-          100,
-          Math.max(0, Number(payrollConfig.defaultTaxes) || pharmacyService.PAYROLL_DEFAULTS.defaultTaxes)
-        ),
-        payrollDefaultInsurance: Math.min(
-          100,
-          Math.max(0, Number(payrollConfig.defaultInsurance) || pharmacyService.PAYROLL_DEFAULTS.defaultInsurance)
-        ),
-        payrollWorkDayStart: payrollConfig.workShifts.find((item) => item.id === "A")?.dayStart || payrollConfig.workDayStart,
-        payrollWorkDayEnd: payrollConfig.workShifts.find((item) => item.id === "A")?.dayEnd || payrollConfig.workDayEnd,
-        payrollWorkBreaks: payrollConfig.workShifts.find((item) => item.id === "A")?.breaks || payrollConfig.workBreaks,
-        workShifts: payrollConfig.workShifts,
-        defaultShiftId: payrollConfig.defaultShiftId,
-      });
-      const saved = await pharmacyService.loadPayrollSettings(pharmacyId);
-      setPayrollConfig(saved);
-      payrollConfigRef.current = saved;
-      await loadPayroll();
-      setPayrollSettingsOpen(false);
-      alert(isArabic ? "تم حفظ إعدادات المرتبات" : "Payroll settings saved");
-    } catch {
-      alert(isArabic ? "تعذر حفظ الإعدادات" : "Could not save settings");
+      alert(isArabic ? "ØªØ¹Ø°Ø± ØªØ­Ø¯ÙŠØ« Ø§Ù„Ø±Ø§ØªØ¨ Ø§Ù„Ø£Ø³Ø§Ø³ÙŠ" : "Could not update base salary");
     } finally {
       setBusyAction("");
     }
@@ -770,6 +774,11 @@ export default function HrPage({
   }
 
   function beginAttendanceLogEdit(workDate: string, emp: HrStaffRow, record?: AttendanceRecord) {
+    const plannedSchedule = resolveWorkSchedule(
+      emp,
+      payrollConfig.workShifts,
+      payrollConfig.defaultShiftId
+    );
     setAttendanceLogEdit({
       userId: emp.attendanceKey,
       userName: emp.name,
@@ -777,13 +786,85 @@ export default function HrPage({
       status: record?.status ?? "",
       checkInTime: isoToTimeInput(record?.checkIn),
       checkOutTime: isoToTimeInput(record?.checkOut),
+      actualShiftId: record?.shiftId || plannedSchedule.shiftId,
       recordId: record?.id,
     });
   }
 
+  async function updateActualShiftOnly(
+    emp: HrStaffRow,
+    workDate: string,
+    record: AttendanceRecord | undefined,
+    actualShiftId: ShiftId,
+    plannedShiftId: ShiftId
+  ) {
+    if (!record && actualShiftId === plannedShiftId) return;
+
+    setBusyAction(`shift-${emp.attendanceKey}-${workDate}`);
+    try {
+      if (!record) {
+        await pharmacyService.upsertAttendanceRecord({
+          userId: emp.attendanceKey,
+          userName: emp.name,
+          workDate,
+          shiftId: actualShiftId,
+          status: "absent",
+        });
+      } else if (
+        isShiftOnlyPresetRecord(record) &&
+        actualShiftId === plannedShiftId
+      ) {
+        await pharmacyService.deleteAttendanceRecord(record.id);
+      } else {
+        await pharmacyService.upsertAttendanceRecord({
+          id: record.id,
+          userId: emp.attendanceKey,
+          userName: emp.name,
+          workDate,
+          status: record.status,
+          checkIn: record.checkIn,
+          checkOut: record.checkOut,
+          shiftId: actualShiftId,
+        });
+      }
+      await loadAttendance();
+    } catch {
+      alert(isArabic ? "ØªØ¹Ø°Ø± ØªØ­Ø¯ÙŠØ« Ø§Ù„Ø´ÙŠÙØª Ø§Ù„ÙØ¹Ù„ÙŠ" : "Could not update actual shift");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  async function setEarlyLeaveOutcome(
+    emp: HrStaffRow,
+    workDate: string,
+    record: AttendanceRecord,
+    outcome: EarlyLeaveOutcome
+  ) {
+    setBusyAction(`early-${emp.attendanceKey}-${workDate}`);
+    try {
+      await pharmacyService.upsertAttendanceRecord({
+        id: record.id,
+        userId: emp.attendanceKey,
+        userName: emp.name,
+        workDate,
+        status: record.status,
+        checkIn: record.checkIn,
+        checkOut: record.checkOut,
+        shiftId: record.shiftId,
+        earlyLeaveOutcome: outcome,
+      });
+      await loadAttendance();
+    } catch {
+      alert(isArabic ? "ØªØ¹Ø°Ø± Ø­ÙØ¸ Ù‚Ø±Ø§Ø± Ø§Ù„Ø§Ù†ØµØ±Ø§Ù Ø§Ù„Ù…Ø¨ÙƒØ±" : "Could not save early leave decision");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
   async function saveAttendanceLogEdit() {
     if (!attendanceLogEdit) return;
-    const { userId, userName, workDate, status, checkInTime, checkOutTime, recordId } =
+    const { userId, userName, workDate, status, checkInTime, checkOutTime, actualShiftId, recordId } =
       attendanceLogEdit;
     setBusyAction(`attendance-log-${userId}-${workDate}`);
     try {
@@ -799,14 +880,18 @@ export default function HrPage({
         const checkOut = clearsTimes
           ? undefined
           : pharmacyService.buildAttendanceCheckOutIso(workDate, checkInTime, checkOutTime);
-        const staff = staffRows.find((row) => row.attendanceKey === userId);
-        const schedule = staff
-          ? resolveWorkSchedule(staff, payrollConfig.workShifts, payrollConfig.defaultShiftId)
-          : null;
+        const actualSchedule = resolveScheduleForShiftId(
+          actualShiftId,
+          payrollConfig.workShifts,
+          payrollConfig.defaultShiftId
+        );
         let finalStatus = status;
-        if (checkIn && schedule && (status === "present" || status === "late")) {
-          const graceMinutes = resolveAllowedLateMinutes(schedule.shiftId, payrollConfig.workShifts);
-          finalStatus = isCheckInLate(checkIn, schedule, graceMinutes) ? "late" : "present";
+        if (checkIn && (status === "present" || status === "late")) {
+          const graceMinutes = resolveAllowedLateMinutes(
+            actualSchedule.shiftId,
+            payrollConfig.workShifts
+          );
+          finalStatus = isCheckInLate(checkIn, actualSchedule, graceMinutes) ? "late" : "present";
         }
         await pharmacyService.upsertAttendanceRecord({
           id: recordId,
@@ -816,13 +901,13 @@ export default function HrPage({
           status: finalStatus,
           checkIn,
           checkOut,
-          shiftId: schedule?.shiftId,
+          shiftId: actualSchedule.shiftId,
         });
       }
       await loadAttendance();
       setAttendanceLogEdit(null);
     } catch {
-      alert(isArabic ? "تعذر حفظ سجل الحضور" : "Could not save attendance record");
+      alert(isArabic ? "ØªØ¹Ø°Ø± Ø­ÙØ¸ Ø³Ø¬Ù„ Ø§Ù„Ø­Ø¶ÙˆØ±" : "Could not save attendance record");
     } finally {
       setBusyAction("");
     }
@@ -877,25 +962,59 @@ export default function HrPage({
     let overtimeMinutes = 0;
     let lateCount = 0;
     let permissionCount = 0;
+    let earlyLeaveDeductionCount = 0;
 
     for (const { emp, workDate, record } of attendanceTableRows) {
       if (!record || !isAttendanceWorkDay(record)) continue;
 
-      const schedule = resolveWorkSchedule(
+      const plannedSchedule = resolveWorkSchedule(
         emp,
         payrollConfig.workShifts,
         payrollConfig.defaultShiftId
       );
-      const graceMinutes = resolveAllowedLateMinutes(schedule.shiftId, payrollConfig.workShifts);
+      const actualSchedule = resolveScheduleForShiftId(
+        record.shiftId || plannedSchedule.shiftId,
+        payrollConfig.workShifts,
+        payrollConfig.defaultShiftId
+      );
+      const graceMinutes = resolveAllowedLateMinutes(
+        actualSchedule.shiftId,
+        payrollConfig.workShifts
+      );
+      const hasApprovedPermission = pharmacyService.hasApprovedPermissionForDate(
+        employeeRequests,
+        emp.attendanceKey,
+        emp.employeeId,
+        workDate
+      );
+      const approvedEarlyLeave = isEarlyLeaveApproved(
+        record.earlyLeaveOutcome,
+        hasApprovedPermission
+      );
+      const rawEarlyLeave = evaluateAttendanceTiming(
+        workDate,
+        record.checkIn,
+        record.checkOut,
+        actualSchedule,
+        graceMinutes,
+        { approvedEarlyLeave: false }
+      ).isEarlyLeave;
       const timing = evaluateAttendanceTiming(
         workDate,
         record.checkIn,
         record.checkOut,
-        schedule,
-        graceMinutes
+        actualSchedule,
+        graceMinutes,
+        { approvedEarlyLeave }
       );
       if (timing.isLate) lateCount += 1;
-      if (timing.isEarlyLeave) permissionCount += 1;
+      if (rawEarlyLeave) {
+        if (record.earlyLeaveOutcome === "deduction") {
+          earlyLeaveDeductionCount += 1;
+        } else {
+          permissionCount += 1;
+        }
+      }
     }
 
     for (const emp of filteredAttendanceEmployees) {
@@ -921,7 +1040,7 @@ export default function HrPage({
       overtimeMinutes += split.overtimeMinutes;
     }
 
-    return { regularMinutes, overtimeMinutes, lateCount, permissionCount };
+    return { regularMinutes, overtimeMinutes, lateCount, permissionCount, earlyLeaveDeductionCount };
   }, [
     attendanceTableRows,
     attendanceRecords,
@@ -929,17 +1048,19 @@ export default function HrPage({
     payrollConfig.workShifts,
     payrollConfig.defaultShiftId,
     payrollConfig.standardWorkHours,
+    employeeRequests,
   ]);
 
   const showEmployeeColumn = !attendanceEmployeeFilter;
   const showAttendanceActions = canManage || canEditAttendanceLog;
 
   const attendanceTableColSpan =
-    6 + (showEmployeeColumn ? 1 : 0) + (showAttendanceActions ? 1 : 0);
+    7 + (showEmployeeColumn ? 1 : 0) + (showAttendanceActions ? 1 : 0);
 
   const tabs: { id: HrTab; ar: string; en: string }[] = [
-    { id: "attendance", ar: "الحضور والانصراف", en: "Attendance" },
-    { id: "payroll", ar: "حساب المرتبات", en: "Payroll" },
+    { id: "attendance", ar: "Ø§Ù„Ø­Ø¶ÙˆØ± ÙˆØ§Ù„Ø§Ù†ØµØ±Ø§Ù", en: "Attendance" },
+    { id: "requests", ar: "Ø·Ù„Ø¨Ø§Øª Ø§Ù„Ù…ÙˆØ¸ÙÙŠÙ†", en: "Employee requests" },
+    { id: "payroll", ar: "Ø­Ø³Ø§Ø¨ Ø§Ù„Ù…Ø±ØªØ¨Ø§Øª", en: "Payroll" },
   ];
 
   const payrollRows = useMemo(() => {
@@ -988,7 +1109,7 @@ export default function HrPage({
     amount: number,
     percent: number
   ) {
-    const dayWord = isArabic ? (days === 1 ? "يوم" : "أيام") : days === 1 ? "day" : "days";
+    const dayWord = isArabic ? (days === 1 ? "ÙŠÙˆÙ…" : "Ø£ÙŠØ§Ù…") : days === 1 ? "day" : "days";
     return (
       <div className="hrDeductionLine">
         <span>
@@ -998,11 +1119,49 @@ export default function HrPage({
           = {formatMoney(amount)} {currency}
           <small>
             {" "}
-            ({isArabic ? "خصم" : "deduct"} {percent}%)
+            ({isArabic ? "Ø®ØµÙ…" : "deduct"} {percent}%)
           </small>
         </span>
       </div>
     );
+  }
+
+  async function reviewRequest(
+    request: EmployeeRequest,
+    status: "approved" | "rejected",
+    reviewNote = ""
+  ) {
+    if (!appUser) return;
+    setBusyAction(`request-${request.id}`);
+    try {
+      await pharmacyService.reviewEmployeeRequest(
+        request.id,
+        status,
+        { uid: appUser.uid, name: appUser.name || appUser.email || appUser.uid },
+        reviewNote
+      );
+      await loadEmployeeRequests();
+      if (activeTab === "attendance") {
+        await loadAttendance();
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : isArabic ? "ØªØ¹Ø°Ø± Ù…Ø±Ø§Ø¬Ø¹Ø© Ø§Ù„Ø·Ù„Ø¨" : "Review failed");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  function requestTypeLabel(type: string) {
+    if (type === "leave") return isArabic ? "Ø¥Ø¬Ø§Ø²Ø©" : "Leave";
+    if (type === "permission") return isArabic ? "Ø¥Ø°Ù† Ø§Ù†ØµØ±Ø§Ù" : "Permission";
+    return type;
+  }
+
+  function requestStatusLabel(status: string) {
+    if (status === "pending") return isArabic ? "Ù‚ÙŠØ¯ Ø§Ù„Ù…Ø±Ø§Ø¬Ø¹Ø©" : "Pending";
+    if (status === "approved") return isArabic ? "Ù…ÙˆØ§ÙÙ‚" : "Approved";
+    if (status === "rejected") return isArabic ? "Ù…Ø±ÙÙˆØ¶" : "Rejected";
+    return status;
   }
 
   const panelContent = (
@@ -1010,59 +1169,17 @@ export default function HrPage({
       {error && (
         <p className="errorText" style={{ padding: "0 1rem" }}>
           {isArabic
-            ? "تأكد من تنفيذ ملف SQL في Supabase (supabase/attendance-payroll.sql)"
+            ? "ØªØ£ÙƒØ¯ Ù…Ù† ØªÙ†ÙÙŠØ° Ù…Ù„Ù SQL ÙÙŠ Supabase (supabase/attendance-payroll.sql)"
             : "Run supabase/attendance-payroll.sql in Supabase if tables are missing"}
         </p>
       )}
 
       {activeTab === "attendance" && (
         <div className="settingsTabPanel">
-          {appUser && myStaffRow && (
-            <div className="hrQuickActions cardInner">
-              <h3>{isArabic ? "تسجيلي اليوم" : "My attendance today"}</h3>
-              <div className="hrQuickRow">
-                <span>
-                  {isArabic ? "الحالة:" : "Status:"}{" "}
-                  <strong>
-                    {todayRecordForCurrentUser
-                      ? statusLabel(todayRecordForCurrentUser.status, isArabic)
-                      : isArabic
-                      ? "لم يسجل"
-                      : "Not recorded"}
-                  </strong>
-                </span>
-                <span>
-                  {isArabic ? "حضور:" : "In:"}{" "}
-                  {formatTime(todayRecordForCurrentUser?.checkIn, isArabic)}
-                </span>
-                <span>
-                  {isArabic ? "انصراف:" : "Out:"}{" "}
-                  {formatTime(todayRecordForCurrentUser?.checkOut, isArabic)}
-                </span>
-                <button
-                  type="button"
-                  className="completeBtn"
-                  disabled={!!busyAction || !!todayRecordForCurrentUser?.checkIn}
-                  onClick={() => void handleCheckIn(myStaffRow.attendanceKey, myStaffRow.name)}
-                >
-                  {isArabic ? "تسجيل حضور" : "Check in"}
-                </button>
-                <button
-                  type="button"
-                  className="printBtn"
-                  disabled={!!busyAction || !todayRecordForCurrentUser?.checkIn || !!todayRecordForCurrentUser?.checkOut}
-                  onClick={() => void handleCheckOut(myStaffRow.attendanceKey, myStaffRow.name)}
-                >
-                  {isArabic ? "تسجيل انصراف" : "Check out"}
-                </button>
-              </div>
-            </div>
-          )}
-
           <div className="hrFilters hrAttendanceFilters">
             <div className="hrFiltersFields">
               <label>
-                {isArabic ? "الشهر" : "Month"}
+                {isArabic ? "Ø§Ù„Ø´Ù‡Ø±" : "Month"}
                 <input
                   type="month"
                   className="tableInput hrMonthInput"
@@ -1071,13 +1188,13 @@ export default function HrPage({
                 />
               </label>
               <label>
-                {isArabic ? "الموظف" : "Employee"}
+                {isArabic ? "Ø§Ù„Ù…ÙˆØ¸Ù" : "Employee"}
                 <select
                   className="tableInput"
                   value={attendanceEmployeeFilter}
                   onChange={(e) => setAttendanceEmployeeFilter(e.target.value)}
                 >
-                  <option value="">{isArabic ? "كل الموظفين" : "All employees"}</option>
+                  <option value="">{isArabic ? "ÙƒÙ„ Ø§Ù„Ù…ÙˆØ¸ÙÙŠÙ†" : "All employees"}</option>
                   {activeEmployees.map((emp) => (
                     <option key={emp.employeeId} value={emp.attendanceKey}>
                       {emp.name}
@@ -1088,20 +1205,24 @@ export default function HrPage({
             </div>
             <div className="hrAttendanceHoursStats">
               <span className="hrAttendanceHoursStat">
-                <strong>{isArabic ? "الساعات الأساسية:" : "Regular hours:"}</strong>{" "}
+                <strong>{isArabic ? "Ø§Ù„Ø³Ø§Ø¹Ø§Øª Ø§Ù„Ø£Ø³Ø§Ø³ÙŠØ©:" : "Regular hours:"}</strong>{" "}
                 {formatTotalWorked(attendanceHoursSummary.regularMinutes, isArabic)}
               </span>
               <span className="hrAttendanceHoursStat hrAttendanceHoursStatOvertime">
-                <strong>{isArabic ? "الساعات الإضافية:" : "Overtime hours:"}</strong>{" "}
+                <strong>{isArabic ? "Ø§Ù„Ø³Ø§Ø¹Ø§Øª Ø§Ù„Ø¥Ø¶Ø§ÙÙŠØ©:" : "Overtime hours:"}</strong>{" "}
                 {formatTotalWorked(attendanceHoursSummary.overtimeMinutes, isArabic)}
               </span>
               <span className="hrAttendanceHoursStat hrAttendanceHoursStatLate">
-                <strong>{isArabic ? "عدد التأخيرات:" : "Late count:"}</strong>{" "}
+                <strong>{isArabic ? "Ø¹Ø¯Ø¯ Ø§Ù„ØªØ£Ø®ÙŠØ±Ø§Øª:" : "Late count:"}</strong>{" "}
                 {attendanceHoursSummary.lateCount}
               </span>
               <span className="hrAttendanceHoursStat hrAttendanceHoursStatPermission">
-                <strong>{isArabic ? "عدد الأذونات:" : "Early leave count:"}</strong>{" "}
+                <strong>{isArabic ? "Ø¹Ø¯Ø¯ Ø§Ù„Ø£Ø°ÙˆÙ†Ø§Øª:" : "Early leave count:"}</strong>{" "}
                 {attendanceHoursSummary.permissionCount}
+              </span>
+              <span className="hrAttendanceHoursStat hrAttendanceHoursStatDeduction">
+                <strong>{isArabic ? "Ø®ØµÙ… Ø§Ù†ØµØ±Ø§Ù Ù…Ø¨ÙƒØ±:" : "Early leave deductions:"}</strong>{" "}
+                {attendanceHoursSummary.earlyLeaveDeductionCount}
               </span>
             </div>
           </div>
@@ -1110,17 +1231,18 @@ export default function HrPage({
             <table className="hrAttendanceTable">
               <thead>
                 <tr>
-                  <th className="col-date">{isArabic ? "التاريخ" : "Date"}</th>
+                  <th className="col-date">{isArabic ? "Ø§Ù„ØªØ§Ø±ÙŠØ®" : "Date"}</th>
                   {showEmployeeColumn && (
-                    <th className="col-name">{isArabic ? "الموظف" : "Employee"}</th>
+                    <th className="col-name">{isArabic ? "Ø§Ù„Ù…ÙˆØ¸Ù" : "Employee"}</th>
                   )}
-                  <th className="col-shift">{isArabic ? "الشيفت" : "Shift"}</th>
-                  <th className="col-status">{isArabic ? "الحالة" : "Status"}</th>
-                  <th className="col-time">{isArabic ? "حضور" : "Check in"}</th>
-                  <th className="col-time">{isArabic ? "انصراف" : "Check out"}</th>
-                  <th className="col-hours">{isArabic ? "ساعات فعلية" : "Actual hours"}</th>
+                  <th className="col-shift">{isArabic ? "Ø§Ù„Ø´ÙŠÙØª Ø§Ù„Ù…Ø®Ø·Ø·" : "Planned shift"}</th>
+                  <th className="col-shift col-shift-actual">{isArabic ? "Ø§Ù„Ø´ÙŠÙØª Ø§Ù„ÙØ¹Ù„ÙŠ" : "Actual shift"}</th>
+                  <th className="col-status">{isArabic ? "Ø§Ù„Ø­Ø§Ù„Ø©" : "Status"}</th>
+                  <th className="col-time">{isArabic ? "Ø­Ø¶ÙˆØ±" : "Check in"}</th>
+                  <th className="col-time">{isArabic ? "Ø§Ù†ØµØ±Ø§Ù" : "Check out"}</th>
+                  <th className="col-hours">{isArabic ? "Ø³Ø§Ø¹Ø§Øª ÙØ¹Ù„ÙŠØ©" : "Actual hours"}</th>
                   {showAttendanceActions && (
-                    <th className="col-actions">{isArabic ? "إجراءات" : "Actions"}</th>
+                    <th className="col-actions">{isArabic ? "Ø¥Ø¬Ø±Ø§Ø¡Ø§Øª" : "Actions"}</th>
                   )}
                 </tr>
               </thead>
@@ -1128,13 +1250,13 @@ export default function HrPage({
                 {loading ? (
                   <tr>
                     <td colSpan={attendanceTableColSpan} className="empty">
-                      {isArabic ? "جاري التحميل..." : "Loading..."}
+                      {isArabic ? "Ø¬Ø§Ø±ÙŠ Ø§Ù„ØªØ­Ù…ÙŠÙ„..." : "Loading..."}
                     </td>
                   </tr>
                 ) : attendanceTableRows.length === 0 ? (
                   <tr>
                     <td colSpan={attendanceTableColSpan} className="empty">
-                      {isArabic ? "لا يوجد سجلات" : "No records"}
+                      {isArabic ? "Ù„Ø§ ÙŠÙˆØ¬Ø¯ Ø³Ø¬Ù„Ø§Øª" : "No records"}
                     </td>
                   </tr>
                 ) : (
@@ -1164,22 +1286,51 @@ export default function HrPage({
                       pharmacyService.isOvernightTimePair(draft.checkInTime, draft.checkOutTime);
                     const isToday = workDate === todayIso;
                     const dateCell = formatAttendanceDateCell(workDate, isArabic);
-                    const employeeSchedule = resolveWorkSchedule(
+                    const plannedSchedule = resolveWorkSchedule(
                       emp,
                       payrollConfig.workShifts,
                       payrollConfig.defaultShiftId
                     );
+                    const actualShiftId =
+                      isEditing && draft
+                        ? draft.actualShiftId
+                        : record?.shiftId || plannedSchedule.shiftId;
+                    const actualSchedule = resolveScheduleForShiftId(
+                      actualShiftId,
+                      payrollConfig.workShifts,
+                      payrollConfig.defaultShiftId
+                    );
                     const graceMinutes = resolveAllowedLateMinutes(
-                      employeeSchedule.shiftId,
+                      actualSchedule.shiftId,
                       payrollConfig.workShifts
                     );
+                    const hasApprovedPermission = pharmacyService.hasApprovedPermissionForDate(
+                      employeeRequests,
+                      emp.attendanceKey,
+                      emp.employeeId,
+                      workDate
+                    );
+                    const approvedEarlyLeave = isEarlyLeaveApproved(
+                      record?.earlyLeaveOutcome,
+                      hasApprovedPermission
+                    );
+                    const rawEarlyLeave = evaluateAttendanceTiming(
+                      workDate,
+                      previewCheckIn ?? record?.checkIn,
+                      previewCheckOut ?? record?.checkOut,
+                      actualSchedule,
+                      graceMinutes,
+                      { approvedEarlyLeave: false }
+                    ).isEarlyLeave;
                     const attendanceTiming = evaluateAttendanceTiming(
                       workDate,
                       previewCheckIn ?? record?.checkIn,
                       previewCheckOut ?? record?.checkOut,
-                      employeeSchedule,
-                      graceMinutes
+                      actualSchedule,
+                      graceMinutes,
+                      { approvedEarlyLeave }
                     );
+                    const earlyLeaveBusyKey = `early-${emp.attendanceKey}-${workDate}`;
 
                     return (
                       <tr
@@ -1193,12 +1344,70 @@ export default function HrPage({
                         </td>
                         {showEmployeeColumn && <td className="col-name">{emp.name}</td>}
                         <td className="col-shift">
-                          <span className="hrShiftBadge">
-                            {getShiftDisplayName(employeeSchedule.shiftId, payrollConfig.workShifts, isArabic)}
+                          <span className="hrShiftBadge hrShiftBadgePlanned">
+                            {getShiftDisplayName(
+                              plannedSchedule.shiftId,
+                              payrollConfig.workShifts,
+                              isArabic
+                            )}
                           </span>
                           <small className="hrShiftWindow">
-                            {employeeSchedule.dayStart}–{employeeSchedule.dayEnd}
+                            {plannedSchedule.dayStart}â€“{plannedSchedule.dayEnd}
                           </small>
+                        </td>
+                        <td className="col-shift col-shift-actual">
+                          {isEditing && draft ? (
+                            <select
+                              className="tableInput hrAttendanceLogInput hrActualShiftSelect"
+                              value={draft.actualShiftId}
+                              onChange={(e) =>
+                                setAttendanceLogEdit({
+                                  ...draft,
+                                  actualShiftId: e.target.value as ShiftId,
+                                })
+                              }
+                            >
+                              {SHIFT_IDS.map((shiftId) => (
+                                <option key={shiftId} value={shiftId}>
+                                  {getShiftDisplayName(shiftId, payrollConfig.workShifts, isArabic)}
+                                </option>
+                              ))}
+                            </select>
+                          ) : canEditAttendanceLog ? (
+                            <select
+                              className="tableInput hrActualShiftSelect"
+                              value={actualShiftId}
+                              disabled={!!busyAction}
+                              onChange={(e) =>
+                                void updateActualShiftOnly(
+                                  emp,
+                                  workDate,
+                                  record,
+                                  e.target.value as ShiftId,
+                                  plannedSchedule.shiftId
+                                )
+                              }
+                            >
+                              {SHIFT_IDS.map((shiftId) => (
+                                <option key={shiftId} value={shiftId}>
+                                  {getShiftDisplayName(shiftId, payrollConfig.workShifts, isArabic)}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <>
+                              <span className="hrShiftBadge hrShiftBadgeActual">
+                                {getShiftDisplayName(
+                                  actualSchedule.shiftId,
+                                  payrollConfig.workShifts,
+                                  isArabic
+                                )}
+                              </span>
+                              <small className="hrShiftWindow">
+                                {actualSchedule.dayStart}â€“{actualSchedule.dayEnd}
+                              </small>
+                            </>
+                          )}
                         </td>
                         <td className="col-status">
                           {isEditing && draft ? (
@@ -1218,19 +1427,34 @@ export default function HrPage({
                                 })
                               }
                             >
-                              <option value="">{isArabic ? "لم يسجل" : "Not recorded"}</option>
-                              <option value="present">{isArabic ? "حاضر" : "Present"}</option>
-                              <option value="late">{isArabic ? "حضور (تأخير)" : "Present (late)"}</option>
-                              <option value="absent">{isArabic ? "غائب" : "Absent"}</option>
-                              <option value="leave">{isArabic ? "إجازة" : "Leave"}</option>
-                              <option value="sick">{isArabic ? "مرضي" : "Sick leave"}</option>
+                              <option value="">{isArabic ? "Ù„Ù… ÙŠØ³Ø¬Ù„" : "Not recorded"}</option>
+                              <option value="present">{isArabic ? "Ø­Ø§Ø¶Ø±" : "Present"}</option>
+                              <option value="late">{isArabic ? "Ø­Ø¶ÙˆØ± (ØªØ£Ø®ÙŠØ±)" : "Present (late)"}</option>
+                              <option value="absent">{isArabic ? "ØºØ§Ø¦Ø¨" : "Absent"}</option>
+                              <option value="leave">{isArabic ? "Ø¥Ø¬Ø§Ø²Ø©" : "Leave"}</option>
+                              <option value="sick">{isArabic ? "Ù…Ø±Ø¶ÙŠ" : "Sick leave"}</option>
                             </select>
                           ) : (
                             attendanceStatusBadge(
-                              record?.status,
+                              isShiftOnlyPresetRecord(record) ? undefined : record?.status,
                               isArabic,
                               isAttendanceWorkDay(record)
                                 ? attendanceTiming
+                                : undefined,
+                              isAttendanceWorkDay(record) && rawEarlyLeave
+                                ? {
+                                    rawEarlyLeave: true,
+                                    effectiveOutcome: resolveEarlyLeaveOutcome(
+                                      record?.earlyLeaveOutcome
+                                    ),
+                                    canToggle: canEditAttendanceLog,
+                                    resolving: busyAction === earlyLeaveBusyKey,
+                                    onToggle: (outcome) => {
+                                      if (record) {
+                                        void setEarlyLeaveOutcome(emp, workDate, record, outcome);
+                                      }
+                                    },
+                                  }
                                 : undefined
                             )
                           )}
@@ -1264,7 +1488,7 @@ export default function HrPage({
                               />
                               {overnightPreview && (
                                 <small className="hrOvernightHint">
-                                  {isArabic ? "اليوم التالي" : "Next day"}
+                                  {isArabic ? "Ø§Ù„ÙŠÙˆÙ… Ø§Ù„ØªØ§Ù„ÙŠ" : "Next day"}
                                 </small>
                               )}
                             </div>
@@ -1292,7 +1516,7 @@ export default function HrPage({
                                     disabled={!!busyAction}
                                     onClick={() => void saveAttendanceLogEdit()}
                                   >
-                                    {isArabic ? "حفظ" : "Save"}
+                                    {isArabic ? "Ø­ÙØ¸" : "Save"}
                                   </button>
                                   <button
                                     type="button"
@@ -1300,7 +1524,7 @@ export default function HrPage({
                                     disabled={!!busyAction}
                                     onClick={() => setAttendanceLogEdit(null)}
                                   >
-                                    {isArabic ? "إلغاء" : "Cancel"}
+                                    {isArabic ? "Ø¥Ù„ØºØ§Ø¡" : "Cancel"}
                                   </button>
                                 </div>
                               ) : (
@@ -1315,7 +1539,7 @@ export default function HrPage({
                                           void handleCheckIn(emp.attendanceKey, emp.name, workDate)
                                         }
                                       >
-                                        {isArabic ? "حضور" : "In"}
+                                        {isArabic ? "Ø­Ø¶ÙˆØ±" : "In"}
                                       </button>
                                       <button
                                         type="button"
@@ -1325,7 +1549,7 @@ export default function HrPage({
                                           void handleCheckOut(emp.attendanceKey, emp.name, workDate)
                                         }
                                       >
-                                        {isArabic ? "انصراف" : "Out"}
+                                        {isArabic ? "Ø§Ù†ØµØ±Ø§Ù" : "Out"}
                                       </button>
                                       <button
                                         type="button"
@@ -1340,7 +1564,7 @@ export default function HrPage({
                                           )
                                         }
                                       >
-                                        {isArabic ? "غائب" : "Absent"}
+                                        {isArabic ? "ØºØ§Ø¦Ø¨" : "Absent"}
                                       </button>
                                       <button
                                         type="button"
@@ -1355,7 +1579,7 @@ export default function HrPage({
                                           )
                                         }
                                       >
-                                        {isArabic ? "إجازة" : "Leave"}
+                                        {isArabic ? "Ø¥Ø¬Ø§Ø²Ø©" : "Leave"}
                                       </button>
                                       <button
                                         type="button"
@@ -1370,7 +1594,7 @@ export default function HrPage({
                                           )
                                         }
                                       >
-                                        {isArabic ? "مرضي" : "Sick"}
+                                        {isArabic ? "Ù…Ø±Ø¶ÙŠ" : "Sick"}
                                       </button>
                                     </div>
                                   )}
@@ -1381,11 +1605,11 @@ export default function HrPage({
                                       disabled={!!busyAction || !!attendanceLogEdit}
                                       onClick={() => beginAttendanceLogEdit(workDate, emp, record)}
                                     >
-                                      {isArabic ? "تعديل" : "Edit"}
+                                      {isArabic ? "ØªØ¹Ø¯ÙŠÙ„" : "Edit"}
                                     </button>
                                   )}
                                   {!isToday && !canEditAttendanceLog && (
-                                    <span className="hrAttendanceActionsEmpty">—</span>
+                                    <span className="hrAttendanceActionsEmpty">â€”</span>
                                   )}
                                 </>
                               )}
@@ -1402,10 +1626,105 @@ export default function HrPage({
           {canEditAttendanceLog && (
             <p className="returnsSectionHint">
               {isArabic
-                ? "يمكن للمدير تعديل أي يوم. إذا كان الانصراف قبل الحضور (مثل 11 م → 7 ص)، يُحسب تلقائياً كوردية ليلية."
-                : "Admins can edit any day. If check-out is earlier than check-in (e.g. 11 PM → 7 AM), it is treated as an overnight shift."}
+                ? "ÙŠÙ…ÙƒÙ† Ù„Ù„Ù…Ø¯ÙŠØ± ØªØ¹Ø¯ÙŠÙ„ Ø£ÙŠ ÙŠÙˆÙ…. Ø¥Ø°Ø§ ÙƒØ§Ù† Ø§Ù„Ø§Ù†ØµØ±Ø§Ù Ù‚Ø¨Ù„ Ø§Ù„Ø­Ø¶ÙˆØ± (Ù…Ø«Ù„ 11 Ù… â†’ 7 Øµ)ØŒ ÙŠÙØ­Ø³Ø¨ ØªÙ„Ù‚Ø§Ø¦ÙŠØ§Ù‹ ÙƒÙˆØ±Ø¯ÙŠØ© Ù„ÙŠÙ„ÙŠØ©."
+                : "Admins can edit any day. If check-out is earlier than check-in (e.g. 11 PM â†’ 7 AM), it is treated as an overnight shift."}
             </p>
           )}
+        </div>
+      )}
+
+      {activeTab === "requests" && (
+        <div className="settingsTabPanel">
+          <p className="returnsSectionHint">
+            {isArabic
+              ? "Ù…Ø±Ø§Ø¬Ø¹Ø© Ø·Ù„Ø¨Ø§Øª Ø§Ù„Ø¥Ø¬Ø§Ø²Ø© ÙˆØ§Ù„Ø¥Ø°Ù† Ù…Ù† Ø§Ù„Ù…ÙˆØ¸ÙÙŠÙ†. Ø§Ù„Ù…ÙˆØ§ÙÙ‚Ø© Ø¹Ù„Ù‰ Ø§Ù„Ø¥Ø¬Ø§Ø²Ø© ØªÙØ³Ø¬Ù‘Ù„ Ø£ÙŠØ§Ù… Â«Ø¥Ø¬Ø§Ø²Ø©Â» ØªÙ„Ù‚Ø§Ø¦ÙŠØ§Ù‹."
+              : "Review employee leave and permission requests. Approving leave marks those days as leave automatically."}
+          </p>
+          <div className="tableWrap">
+            <table className="dataTable">
+              <thead>
+                <tr>
+                  <th>{isArabic ? "Ø§Ù„Ù…ÙˆØ¸Ù" : "Employee"}</th>
+                  <th>{isArabic ? "Ø§Ù„Ù†ÙˆØ¹" : "Type"}</th>
+                  <th>{isArabic ? "Ø§Ù„ØªØ§Ø±ÙŠØ®" : "Date"}</th>
+                  <th>{isArabic ? "Ø§Ù„ØªÙØ§ØµÙŠÙ„" : "Details"}</th>
+                  <th>{isArabic ? "Ø§Ù„Ø­Ø§Ù„Ø©" : "Status"}</th>
+                  {canManage && <th>{isArabic ? "Ø¥Ø¬Ø±Ø§Ø¡Ø§Øª" : "Actions"}</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={canManage ? 6 : 5} className="empty">
+                      {isArabic ? "Ø¬Ø§Ø±ÙŠ Ø§Ù„ØªØ­Ù…ÙŠÙ„..." : "Loading..."}
+                    </td>
+                  </tr>
+                ) : employeeRequests.length === 0 ? (
+                  <tr>
+                    <td colSpan={canManage ? 6 : 5} className="empty">
+                      {isArabic ? "Ù„Ø§ ØªÙˆØ¬Ø¯ Ø·Ù„Ø¨Ø§Øª" : "No requests"}
+                    </td>
+                  </tr>
+                ) : (
+                  employeeRequests.map((req) => (
+                    <tr key={req.id}>
+                      <td>{req.employeeName}</td>
+                      <td>{requestTypeLabel(req.requestType)}</td>
+                      <td>
+                        {req.requestType === "leave" && req.endDate && req.endDate !== req.workDate
+                          ? `${req.workDate} â†’ ${req.endDate}`
+                          : req.workDate}
+                      </td>
+                      <td>
+                        {req.requestType === "permission" && req.requestedTime
+                          ? `${isArabic ? "Ø§Ù†ØµØ±Ø§Ù" : "Leave at"} ${req.requestedTime}`
+                          : req.reason || "â€”"}
+                      </td>
+                      <td>
+                        <span
+                          className={`badge ${req.status === "pending" ? "warn" : req.status === "approved" ? "ok" : "danger"}`}
+                        >
+                          {requestStatusLabel(req.status)}
+                        </span>
+                      </td>
+                      {canManage && (
+                        <td>
+                          {req.status === "pending" ? (
+                            <div className="hrRequestActions">
+                              <button
+                                type="button"
+                                className="completeBtn smallBtn"
+                                disabled={!!busyAction}
+                                onClick={() => void reviewRequest(req, "approved")}
+                              >
+                                {isArabic ? "Ù…ÙˆØ§ÙÙ‚Ø©" : "Approve"}
+                              </button>
+                              <button
+                                type="button"
+                                className="deleteBtn smallBtn"
+                                disabled={!!busyAction}
+                                onClick={() => {
+                                  const note = window.prompt(
+                                    isArabic ? "Ø³Ø¨Ø¨ Ø§Ù„Ø±ÙØ¶ (Ø§Ø®ØªÙŠØ§Ø±ÙŠ)" : "Rejection reason (optional)"
+                                  );
+                                  if (note === null) return;
+                                  void reviewRequest(req, "rejected", note);
+                                }}
+                              >
+                                {isArabic ? "Ø±ÙØ¶" : "Reject"}
+                              </button>
+                            </div>
+                          ) : (
+                            "â€”"
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -1414,7 +1733,7 @@ export default function HrPage({
           <div className="hrPayrollToolbar">
             <div className="hrFilters">
               <label>
-                {isArabic ? "من" : "From"}
+                {isArabic ? "Ù…Ù†" : "From"}
                 <input
                   type="date"
                   className="tableInput"
@@ -1423,7 +1742,7 @@ export default function HrPage({
                 />
               </label>
               <label>
-                {isArabic ? "إلى" : "To"}
+                {isArabic ? "Ø¥Ù„Ù‰" : "To"}
                 <input
                   type="date"
                   className="tableInput"
@@ -1432,23 +1751,14 @@ export default function HrPage({
                 />
               </label>
               <button type="button" className="printBtn" onClick={() => void loadPayroll()} disabled={loading}>
-                {isArabic ? "تحديث" : "Refresh"}
+                {isArabic ? "ØªØ­Ø¯ÙŠØ«" : "Refresh"}
               </button>
             </div>
-            {canManage && (
-              <button
-                type="button"
-                className="printBtn hrPayrollSettingsBtn"
-                onClick={() => setPayrollSettingsOpen(true)}
-              >
-                {isArabic ? "إعدادات المرتبات" : "Payroll settings"}
-              </button>
-            )}
           </div>
 
           <div className="hrPayrollSummary">
             <span>
-              {isArabic ? "إجمالي الصافي:" : "Total net:"}{" "}
+              {isArabic ? "Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„ØµØ§ÙÙŠ:" : "Total net:"}{" "}
               <strong>
                 {formatMoney(totalNetPay)} {currency}
               </strong>
@@ -1459,25 +1769,25 @@ export default function HrPage({
             <table className="hrPayrollTable">
               <thead>
                 <tr>
-                  <th className="col-name">{isArabic ? "الموظف" : "Employee"}</th>
-                  <th className="col-attendance">{isArabic ? "أيام الفترة" : "Period days"}</th>
-                  <th className="col-attendance">{isArabic ? "ساعات العمل" : "Work hours"}</th>
-                  <th className="col-attendance">{isArabic ? "حضور" : "Present"}</th>
-                  <th className="col-attendance">{isArabic ? "غياب" : "Absent"}</th>
-                  <th className="col-attendance">{isArabic ? "مرضي" : "Sick"}</th>
-                  <th className="col-attendance">{isArabic ? "إجازات" : "Leave"}</th>
-                  <th className="col-money">{isArabic ? "الأساسي" : "Base"}</th>
-                  <th className="col-money">{isArabic ? "المستحق" : "Earned"}</th>
-                  <th className="col-money">{isArabic ? "زيادات" : "Additions"}</th>
-                  <th className="col-money">{isArabic ? "خصومات" : "Deductions"}</th>
-                  <th className="col-money">{isArabic ? "الصافي" : "Net"}</th>
+                  <th className="col-name">{isArabic ? "Ø§Ù„Ù…ÙˆØ¸Ù" : "Employee"}</th>
+                  <th className="col-attendance">{isArabic ? "Ø£ÙŠØ§Ù… Ø§Ù„ÙØªØ±Ø©" : "Period days"}</th>
+                  <th className="col-attendance">{isArabic ? "Ø³Ø§Ø¹Ø§Øª Ø§Ù„Ø¹Ù…Ù„" : "Work hours"}</th>
+                  <th className="col-attendance">{isArabic ? "Ø­Ø¶ÙˆØ±" : "Present"}</th>
+                  <th className="col-attendance">{isArabic ? "ØºÙŠØ§Ø¨" : "Absent"}</th>
+                  <th className="col-attendance">{isArabic ? "Ù…Ø±Ø¶ÙŠ" : "Sick"}</th>
+                  <th className="col-attendance">{isArabic ? "Ø¥Ø¬Ø§Ø²Ø§Øª" : "Leave"}</th>
+                  <th className="col-money">{isArabic ? "Ø§Ù„Ø£Ø³Ø§Ø³ÙŠ" : "Base"}</th>
+                  <th className="col-money">{isArabic ? "Ø§Ù„Ù…Ø³ØªØ­Ù‚" : "Earned"}</th>
+                  <th className="col-money">{isArabic ? "Ø²ÙŠØ§Ø¯Ø§Øª" : "Additions"}</th>
+                  <th className="col-money">{isArabic ? "Ø®ØµÙˆÙ…Ø§Øª" : "Deductions"}</th>
+                  <th className="col-money">{isArabic ? "Ø§Ù„ØµØ§ÙÙŠ" : "Net"}</th>
                 </tr>
               </thead>
               <tbody>
                 {payrollRows.length === 0 ? (
                   <tr>
                     <td colSpan={12} className="empty">
-                      {isArabic ? "لا يوجد موظفون" : "No employees"}
+                      {isArabic ? "Ù„Ø§ ÙŠÙˆØ¬Ø¯ Ù…ÙˆØ¸ÙÙˆÙ†" : "No employees"}
                     </td>
                   </tr>
                 ) : (
@@ -1498,7 +1808,7 @@ export default function HrPage({
                           title={
                             rec.id && canManage && rec.status === "draft"
                               ? isArabic
-                                ? "تعديل الراتب الأساسي"
+                                ? "ØªØ¹Ø¯ÙŠÙ„ Ø§Ù„Ø±Ø§ØªØ¨ Ø§Ù„Ø£Ø³Ø§Ø³ÙŠ"
                                 : "Edit base salary"
                               : undefined
                           }
@@ -1518,7 +1828,7 @@ export default function HrPage({
                           title={
                             rec.id
                               ? isArabic
-                                ? "عرض تفاصيل الزيادات"
+                                ? "Ø¹Ø±Ø¶ ØªÙØ§ØµÙŠÙ„ Ø§Ù„Ø²ÙŠØ§Ø¯Ø§Øª"
                                 : "View additions breakdown"
                               : undefined
                           }
@@ -1535,7 +1845,7 @@ export default function HrPage({
                           title={
                             rec.id
                               ? isArabic
-                                ? "عرض تفاصيل الخصومات"
+                                ? "Ø¹Ø±Ø¶ ØªÙØ§ØµÙŠÙ„ Ø§Ù„Ø®ØµÙˆÙ…Ø§Øª"
                                 : "View deductions breakdown"
                               : undefined
                           }
@@ -1558,230 +1868,14 @@ export default function HrPage({
 
           <p className="returnsSectionHint hrPayrollHint">
             {isArabic
-              ? "المستحق = ساعات عادية × مرتب الساعة. الإضافي (فوق ساعات العمل اليومية) يظهر في «حوافز» ضمن الزيادات."
-              : "Earned = regular hours × hourly rate. Overtime (above daily work hours) appears in incentives under additions."}
+              ? "Ø§Ù„Ù…Ø³ØªØ­Ù‚ = Ø³Ø§Ø¹Ø§Øª Ø¹Ø§Ø¯ÙŠØ© Ã— Ù…Ø±ØªØ¨ Ø§Ù„Ø³Ø§Ø¹Ø©. Ø§Ù„Ø¥Ø¶Ø§ÙÙŠ (ÙÙˆÙ‚ Ø³Ø§Ø¹Ø§Øª Ø§Ù„Ø¹Ù…Ù„ Ø§Ù„ÙŠÙˆÙ…ÙŠØ©) ÙŠØ¸Ù‡Ø± ÙÙŠ Â«Ø­ÙˆØ§ÙØ²Â» Ø¶Ù…Ù† Ø§Ù„Ø²ÙŠØ§Ø¯Ø§Øª."
+              : "Earned = regular hours Ã— hourly rate. Overtime (above daily work hours) appears in incentives under additions."}
           </p>
         </div>
       )}
     </>
   );
 
-  const payrollSettingsModalView = payrollSettingsOpen && (
-    <div className="modalOverlay" onClick={() => setPayrollSettingsOpen(false)}>
-      <div
-        className="invoiceModal userModal hrPayrollSettingsModal"
-        onClick={(e) => e.stopPropagation()}
-        dir={isArabic ? "rtl" : "ltr"}
-      >
-        <div className="modalHeader">
-          <div>
-            <h3>{isArabic ? "إعدادات المرتبات" : "Payroll settings"}</h3>
-            <p className="returnsSectionHint">
-              {isArabic
-                ? "يُطبَّق على حساب المرتبات لجميع الموظفين."
-                : "Applied to payroll calculation for all employees."}
-            </p>
-          </div>
-          <button type="button" className="deleteSmallBtn" onClick={() => setPayrollSettingsOpen(false)}>
-            {isArabic ? "إغلاق" : "Close"}
-          </button>
-        </div>
-
-        <div className="hrPayrollSettingsGrid">
-          <label>
-            {isArabic ? "يوم القبض (من كل شهر)" : "Pay day (of month)"}
-            <select
-              className="tableInput"
-              value={payrollConfig.payDay}
-              disabled={!canConfigurePayroll}
-              onChange={(e) =>
-                setPayrollConfig({ ...payrollConfig, payDay: Number(e.target.value) })
-              }
-            >
-              {Array.from({ length: 31 }, (_, index) => index + 1).map((day) => (
-                <option key={day} value={day}>
-                  {day}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            {isArabic ? "خصم المرضى %" : "Sick leave deduction %"}
-            <input
-              type="number"
-              min={0}
-              max={100}
-              step={1}
-              className="tableInput"
-              value={payrollConfig.sickDeductionPercent}
-              disabled={!canConfigurePayroll}
-              onChange={(e) =>
-                setPayrollConfig({
-                  ...payrollConfig,
-                  sickDeductionPercent: Number(e.target.value) || 0,
-                })
-              }
-            />
-          </label>
-          <label>
-            {isArabic ? "خصم الغياب %" : "Absence deduction %"}
-            <input
-              type="number"
-              min={0}
-              max={100}
-              step={1}
-              className="tableInput"
-              value={payrollConfig.absentDeductionPercent}
-              disabled={!canConfigurePayroll}
-              onChange={(e) =>
-                setPayrollConfig({
-                  ...payrollConfig,
-                  absentDeductionPercent: Number(e.target.value) || 0,
-                })
-              }
-            />
-          </label>
-          <label>
-            {isArabic ? "الحد الأقصى للإجازات (أيام)" : "Max leave days"}
-            <input
-              type="number"
-              min={0}
-              step={1}
-              className="tableInput"
-              value={payrollConfig.maxLeaveDays}
-              disabled={!canConfigurePayroll}
-              onChange={(e) =>
-                setPayrollConfig({
-                  ...payrollConfig,
-                  maxLeaveDays: Math.max(0, Math.floor(Number(e.target.value) || 0)),
-                })
-              }
-            />
-          </label>
-          <label>
-            {isArabic ? "ساعات العمل (يومياً)" : "Work hours (per day)"}
-            <input
-              type="number"
-              min={0}
-              step={0.5}
-              className="tableInput"
-              value={payrollConfig.standardWorkHours}
-              disabled={!canConfigurePayroll}
-              onChange={(e) =>
-                setPayrollConfig({
-                  ...payrollConfig,
-                  standardWorkHours: Math.max(0, Number(e.target.value) || 0),
-                })
-              }
-            />
-          </label>
-          <label>
-            {isArabic ? "نسبة الإضافي %" : "Overtime rate %"}
-            <input
-              type="number"
-              min={0}
-              step={1}
-              className="tableInput"
-              value={payrollConfig.overtimePercent}
-              disabled={!canConfigurePayroll}
-              onChange={(e) =>
-                setPayrollConfig({
-                  ...payrollConfig,
-                  overtimePercent: Math.max(0, Number(e.target.value) || 0),
-                })
-              }
-            />
-          </label>
-          <label>
-            {isArabic ? "ضرائب %" : "Taxes %"}
-            <input
-              type="number"
-              min={0}
-              max={100}
-              step={1}
-              className="tableInput"
-              value={payrollConfig.defaultTaxes}
-              disabled={!canConfigurePayroll}
-              onChange={(e) =>
-                setPayrollConfig({
-                  ...payrollConfig,
-                  defaultTaxes: Math.min(100, Math.max(0, Number(e.target.value) || 0)),
-                })
-              }
-            />
-          </label>
-          <label>
-            {isArabic ? "تأمينات %" : "Insurance %"}
-            <input
-              type="number"
-              min={0}
-              max={100}
-              step={1}
-              className="tableInput"
-              value={payrollConfig.defaultInsurance}
-              disabled={!canConfigurePayroll}
-              onChange={(e) =>
-                setPayrollConfig({
-                  ...payrollConfig,
-                  defaultInsurance: Math.min(100, Math.max(0, Number(e.target.value) || 0)),
-                })
-              }
-            />
-          </label>
-        </div>
-
-        <div className="hrPayrollSettingsSection">
-          <h4>{isArabic ? "مواعيد الشيفتات (أ / ب / ج)" : "Shift schedules (A / B / C)"}</h4>
-          <p className="returnsSectionHint">
-            {isArabic
-              ? "حدّد مواعيد كل شيفت. يُربط الموظف بشيفت ويُستخدم في الحضور والمبيعات."
-              : "Configure each shift. Employees are assigned to a shift for attendance and sales."}
-          </p>
-          <WorkShiftsEditor
-            isArabic={isArabic}
-            disabled={!canConfigurePayroll}
-            shifts={payrollConfig.workShifts}
-            defaultShiftId={payrollConfig.defaultShiftId}
-            onShiftsChange={(workShifts) => {
-              const shiftA = workShifts.find((item) => item.id === "A") || workShifts[0];
-              setPayrollConfig({
-                ...payrollConfig,
-                workShifts,
-                workDayStart: shiftA.dayStart,
-                workDayEnd: shiftA.dayEnd,
-                workBreaks: shiftA.breaks,
-              });
-            }}
-            onDefaultShiftChange={(defaultShiftId) =>
-              setPayrollConfig({ ...payrollConfig, defaultShiftId })
-            }
-          />
-        </div>
-
-        <p className="returnsSectionHint">
-          {isArabic
-            ? `يُصرف الراتب في اليوم ${payrollConfig.payDay}. الإجازات حتى ${payrollConfig.maxLeaveDays} يوم/فترة. الساعات حتى ${payrollConfig.standardWorkHours} س/يوم = مستحق؛ الزيادة تُحسب إضافي بنسبة ${payrollConfig.overtimePercent}%.`
-            : `Pay day ${payrollConfig.payDay}. Up to ${payrollConfig.maxLeaveDays} leave day(s)/period. Hours up to ${payrollConfig.standardWorkHours}h/day = earned; extra hours paid at ${payrollConfig.overtimePercent}% of hourly rate in additions.`}
-        </p>
-
-        <div className="modalActions">
-          {canConfigurePayroll && (
-            <button
-              type="button"
-              className="completeBtn"
-              disabled={!!busyAction}
-              onClick={() => void savePayrollConfig()}
-            >
-              {isArabic ? "حفظ الإعدادات" : "Save settings"}
-            </button>
-          )}
-          <button type="button" className="editBtn" onClick={() => setPayrollSettingsOpen(false)}>
-            {isArabic ? "إغلاق" : "Close"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 
   const additionsModalView = additionsModal && (
     <div className="modalOverlay" onClick={() => setAdditionsModal(null)}>
@@ -1794,24 +1888,24 @@ export default function HrPage({
           <div>
             <h3>
               {isArabic
-                ? `زيادات — ${additionsModal.record.userName}`
-                : `Additions — ${additionsModal.record.userName}`}
+                ? `Ø²ÙŠØ§Ø¯Ø§Øª â€” ${additionsModal.record.userName}`
+                : `Additions â€” ${additionsModal.record.userName}`}
             </h3>
             {additionsModal.commissionRate > 0 && (
               <p className="returnsSectionHint">
-                {isArabic ? "نسبة العمولة في ملف الموظف:" : "Employee commission rate:"}{" "}
+                {isArabic ? "Ù†Ø³Ø¨Ø© Ø§Ù„Ø¹Ù…ÙˆÙ„Ø© ÙÙŠ Ù…Ù„Ù Ø§Ù„Ù…ÙˆØ¸Ù:" : "Employee commission rate:"}{" "}
                 {additionsModal.commissionRate}%
               </p>
             )}
           </div>
           <button type="button" className="deleteSmallBtn" onClick={() => setAdditionsModal(null)}>
-            {isArabic ? "إغلاق" : "Close"}
+            {isArabic ? "Ø¥ØºÙ„Ø§Ù‚" : "Close"}
           </button>
         </div>
 
         <div className="hrAdditionsForm">
           <label>
-            {isArabic ? "علاوات خاصة" : "Special allowances"}
+            {isArabic ? "Ø¹Ù„Ø§ÙˆØ§Øª Ø®Ø§ØµØ©" : "Special allowances"}
             <input
               type="number"
               min={0}
@@ -1832,7 +1926,7 @@ export default function HrPage({
             />
           </label>
           <label>
-            {isArabic ? "مكافآت" : "Bonuses"}
+            {isArabic ? "Ù…ÙƒØ§ÙØ¢Øª" : "Bonuses"}
             <input
               type="number"
               min={0}
@@ -1853,7 +1947,7 @@ export default function HrPage({
             />
           </label>
           <label>
-            {isArabic ? "حوافز (إضافي)" : "Incentives (overtime)"}
+            {isArabic ? "Ø­ÙˆØ§ÙØ² (Ø¥Ø¶Ø§ÙÙŠ)" : "Incentives (overtime)"}
             <input
               type="number"
               min={0}
@@ -1865,12 +1959,12 @@ export default function HrPage({
             />
             <small className="returnsSectionHint">
               {isArabic
-                ? `${formatWorkMinutes(additionsModal.overtimeMinutes, true)} إضافية × ${additionsModal.overtimePercent}% من مرتب الساعة = ${formatMoney(additionsModal.draft.incentives)} ${currency}`
-                : `${formatWorkMinutes(additionsModal.overtimeMinutes, false)} overtime × ${additionsModal.overtimePercent}% of hourly rate = ${formatMoney(additionsModal.draft.incentives)} ${currency}`}
+                ? `${formatWorkMinutes(additionsModal.overtimeMinutes, true)} Ø¥Ø¶Ø§ÙÙŠØ© Ã— ${additionsModal.overtimePercent}% Ù…Ù† Ù…Ø±ØªØ¨ Ø§Ù„Ø³Ø§Ø¹Ø© = ${formatMoney(additionsModal.draft.incentives)} ${currency}`
+                : `${formatWorkMinutes(additionsModal.overtimeMinutes, false)} overtime Ã— ${additionsModal.overtimePercent}% of hourly rate = ${formatMoney(additionsModal.draft.incentives)} ${currency}`}
             </small>
           </label>
           <label>
-            {isArabic ? "عمولة" : "Commission"}
+            {isArabic ? "Ø¹Ù…ÙˆÙ„Ø©" : "Commission"}
             <input
               type="number"
               min={0}
@@ -1888,7 +1982,7 @@ export default function HrPage({
         </div>
 
         <div className="hrAdditionsTotal cardInner">
-          <strong>{isArabic ? "إجمالي الزيادات:" : "Total additions:"}</strong>{" "}
+          <strong>{isArabic ? "Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ø²ÙŠØ§Ø¯Ø§Øª:" : "Total additions:"}</strong>{" "}
           {formatMoney(
             pharmacyService.sumPayrollAdditions({
               ...additionsModal.record,
@@ -1906,11 +2000,11 @@ export default function HrPage({
               disabled={!!busyAction}
               onClick={() => void savePayrollAdditions()}
             >
-              {isArabic ? "حفظ" : "Save"}
+              {isArabic ? "Ø­ÙØ¸" : "Save"}
             </button>
           )}
           <button type="button" className="editBtn" onClick={() => setAdditionsModal(null)}>
-            {isArabic ? "إغلاق" : "Close"}
+            {isArabic ? "Ø¥ØºÙ„Ø§Ù‚" : "Close"}
           </button>
         </div>
       </div>
@@ -1928,23 +2022,23 @@ export default function HrPage({
           <div>
             <h3>
               {isArabic
-                ? `خصومات — ${deductionsModal.record.userName}`
-                : `Deductions — ${deductionsModal.record.userName}`}
+                ? `Ø®ØµÙˆÙ…Ø§Øª â€” ${deductionsModal.record.userName}`
+                : `Deductions â€” ${deductionsModal.record.userName}`}
             </h3>
             <p className="returnsSectionHint">
-              {isArabic ? "اليومية = الراتب الأساسي ÷ 30" : "Daily rate = base salary ÷ 30"} (
+              {isArabic ? "Ø§Ù„ÙŠÙˆÙ…ÙŠØ© = Ø§Ù„Ø±Ø§ØªØ¨ Ø§Ù„Ø£Ø³Ø§Ø³ÙŠ Ã· 30" : "Daily rate = base salary Ã· 30"} (
               {formatMoney(deductionsModal.breakdown.dailyRate)} {currency})
             </p>
           </div>
           <button type="button" className="deleteSmallBtn" onClick={() => setDeductionsModal(null)}>
-            {isArabic ? "إغلاق" : "Close"}
+            {isArabic ? "Ø¥ØºÙ„Ø§Ù‚" : "Close"}
           </button>
         </div>
 
         <div className="hrDeductionsSection cardInner">
-          <h4>{isArabic ? "خصومات الحضور" : "Attendance deductions"}</h4>
+          <h4>{isArabic ? "Ø®ØµÙˆÙ…Ø§Øª Ø§Ù„Ø­Ø¶ÙˆØ±" : "Attendance deductions"}</h4>
           {renderAttendanceDeductionLine(
-            "غياب",
+            "ØºÙŠØ§Ø¨",
             "Absence",
             deductionsModal.breakdown.absentDays,
             deductionsModal.breakdown.absentAmount,
@@ -1952,11 +2046,11 @@ export default function HrPage({
           )}
           <p className="returnsSectionHint">
             {isArabic
-              ? "يشمل أي إجازة فوق الحد المسموح — تُحسب كغياب."
+              ? "ÙŠØ´Ù…Ù„ Ø£ÙŠ Ø¥Ø¬Ø§Ø²Ø© ÙÙˆÙ‚ Ø§Ù„Ø­Ø¯ Ø§Ù„Ù…Ø³Ù…ÙˆØ­ â€” ØªÙØ­Ø³Ø¨ ÙƒØºÙŠØ§Ø¨."
               : "Includes leave days above the allowed maximum, counted as absence."}
           </p>
           {renderAttendanceDeductionLine(
-            "مرضي",
+            "Ù…Ø±Ø¶ÙŠ",
             "Sick leave",
             deductionsModal.breakdown.sickDays,
             deductionsModal.breakdown.sickAmount,
@@ -1964,65 +2058,65 @@ export default function HrPage({
           )}
           <div className="hrDeductionLine">
             <span>
-              {isArabic ? "إجازات (ضمن الحد):" : "Leave (within limit):"}{" "}
+              {isArabic ? "Ø¥Ø¬Ø§Ø²Ø§Øª (Ø¶Ù…Ù† Ø§Ù„Ø­Ø¯):" : "Leave (within limit):"}{" "}
               <strong>{deductionsModal.breakdown.leaveDays}</strong>{" "}
               {isArabic
                 ? deductionsModal.breakdown.leaveDays === 1
-                  ? "يوم"
-                  : "أيام"
+                  ? "ÙŠÙˆÙ…"
+                  : "Ø£ÙŠØ§Ù…"
                 : deductionsModal.breakdown.leaveDays === 1
                 ? "day"
                 : "days"}
             </span>
             <span>
               = {formatMoney(0)} {currency}
-              <small> ({isArabic ? "بدون خصم" : "no deduction"})</small>
+              <small> ({isArabic ? "Ø¨Ø¯ÙˆÙ† Ø®ØµÙ…" : "no deduction"})</small>
             </span>
           </div>
           <div className="hrDeductionSubtotal">
-            <strong>{isArabic ? "إجمالي خصومات الحضور:" : "Attendance total:"}</strong>{" "}
+            <strong>{isArabic ? "Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø®ØµÙˆÙ…Ø§Øª Ø§Ù„Ø­Ø¶ÙˆØ±:" : "Attendance total:"}</strong>{" "}
             {formatMoney(deductionsModal.breakdown.attendanceTotal)} {currency}
           </div>
         </div>
 
         <div className="hrDeductionsSection cardInner">
-          <h4>{isArabic ? "ضرائب وتأمينات" : "Taxes & insurance"}</h4>
+          <h4>{isArabic ? "Ø¶Ø±Ø§Ø¦Ø¨ ÙˆØªØ£Ù…ÙŠÙ†Ø§Øª" : "Taxes & insurance"}</h4>
           <div className="hrDeductionLine">
-            <span>{isArabic ? "ضرائب" : "Taxes"}</span>
+            <span>{isArabic ? "Ø¶Ø±Ø§Ø¦Ø¨" : "Taxes"}</span>
             <span>
               {formatMoney(deductionsModal.record.taxes ?? 0)} {currency}
               <small>
                 {" "}
-                ({payrollConfig.defaultTaxes}% {isArabic ? "من المستحق + الزيادات" : "of earned + additions"})
+                ({payrollConfig.defaultTaxes}% {isArabic ? "Ù…Ù† Ø§Ù„Ù…Ø³ØªØ­Ù‚ + Ø§Ù„Ø²ÙŠØ§Ø¯Ø§Øª" : "of earned + additions"})
               </small>
             </span>
           </div>
           <div className="hrDeductionLine">
-            <span>{isArabic ? "تأمينات" : "Insurance"}</span>
+            <span>{isArabic ? "ØªØ£Ù…ÙŠÙ†Ø§Øª" : "Insurance"}</span>
             <span>
               {formatMoney(deductionsModal.record.insurance ?? 0)} {currency}
               <small>
                 {" "}
-                ({payrollConfig.defaultInsurance}% {isArabic ? "من المستحق + الزيادات" : "of earned + additions"})
+                ({payrollConfig.defaultInsurance}% {isArabic ? "Ù…Ù† Ø§Ù„Ù…Ø³ØªØ­Ù‚ + Ø§Ù„Ø²ÙŠØ§Ø¯Ø§Øª" : "of earned + additions"})
               </small>
             </span>
           </div>
           <p className="returnsSectionHint">
             {isArabic
-              ? "تُعدّل النسب من إعدادات المرتبات."
-              : "Percentages are configured in payroll settings."}
+              ? "ØªÙØ¹Ø¯Ù‘Ù„ Ø§Ù„Ù†Ø³Ø¨ Ù…Ù† Ø§Ù„Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª â† Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª Ø§Ù„Ù…Ø±ØªØ¨Ø§Øª."
+              : "Percentages are configured in Settings â†’ Payroll."}
           </p>
         </div>
 
         <div className="hrDeductionsTotal cardInner">
-          <strong>{isArabic ? "إجمالي الخصومات:" : "Total deductions:"}</strong>{" "}
+          <strong>{isArabic ? "Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ø®ØµÙˆÙ…Ø§Øª:" : "Total deductions:"}</strong>{" "}
           {formatMoney(pharmacyService.sumPayrollDeductions(deductionsModal.record))}{" "}
           {currency}
         </div>
 
         <div className="modalActions">
           <button type="button" className="editBtn" onClick={() => setDeductionsModal(null)}>
-            {isArabic ? "إغلاق" : "Close"}
+            {isArabic ? "Ø¥ØºÙ„Ø§Ù‚" : "Close"}
           </button>
         </div>
       </div>
@@ -2033,7 +2127,6 @@ export default function HrPage({
     return (
       <>
         {panelContent}
-        {payrollSettingsModalView}
         {additionsModalView}
         {deductionsModalView}
       </>
@@ -2045,16 +2138,16 @@ export default function HrPage({
     <section className="card settingsPage hrPage">
       <div className="cardHeader">
         <div>
-          <h2>{isArabic ? "الموظفين والمرتبات" : "Employees & Payroll"}</h2>
+          <h2>{isArabic ? "Ø§Ù„Ù…ÙˆØ¸ÙÙŠÙ† ÙˆØ§Ù„Ù…Ø±ØªØ¨Ø§Øª" : "Employees & Payroll"}</h2>
           <p className="returnsSectionHint">
             {isArabic
-              ? "تسجيل حضور وانصراف الموظفين وحساب المرتبات الشهرية"
+              ? "ØªØ³Ø¬ÙŠÙ„ Ø­Ø¶ÙˆØ± ÙˆØ§Ù†ØµØ±Ø§Ù Ø§Ù„Ù…ÙˆØ¸ÙÙŠÙ† ÙˆØ­Ø³Ø§Ø¨ Ø§Ù„Ù…Ø±ØªØ¨Ø§Øª Ø§Ù„Ø´Ù‡Ø±ÙŠØ©"
               : "Track attendance and calculate monthly payroll"}
           </p>
         </div>
       </div>
 
-      <nav className="settingsTabsNav" aria-label={isArabic ? "أقسام الموظفين" : "HR sections"}>
+      <nav className="settingsTabsNav" aria-label={isArabic ? "Ø£Ù‚Ø³Ø§Ù… Ø§Ù„Ù…ÙˆØ¸ÙÙŠÙ†" : "HR sections"}>
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -2069,7 +2162,6 @@ export default function HrPage({
 
       {panelContent}
     </section>
-    {payrollSettingsModalView}
     {additionsModalView}
     {deductionsModalView}
   </>

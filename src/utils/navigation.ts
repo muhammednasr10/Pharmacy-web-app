@@ -7,6 +7,7 @@ export const pageIcons: Record<Page, string> = {
   invoices: "🧾",
   returns: "↩️",
   purchases: "📦",
+  costs: "💸",
   customers: "👥",
   reports: "📊",
   stockMovements: "🔄",
@@ -16,6 +17,7 @@ export const pageIcons: Record<Page, string> = {
   tenants: "🏪",
   settings: "⚙️",
   hr: "👔",
+  employeePortal: "🕐",
 };
 
 export type NavItem = { page: Page; label: string };
@@ -39,6 +41,8 @@ export function buildNavigationItems(
         return { page, label: isArabic ? "المرتجعات" : "Returns" };
       case "purchases":
         return { page, label: isArabic ? "المشتريات" : "Purchases" };
+      case "costs":
+        return { page, label: isArabic ? "التكاليف" : "Costs" };
       case "customers":
         return { page, label: isArabic ? "العملاء" : "Customers" };
       case "reports":
@@ -55,6 +59,8 @@ export function buildNavigationItems(
         return { page, label: isArabic ? "الصيدليات (SaaS)" : "Pharmacies (SaaS)" };
       case "settings":
         return { page, label: isArabic ? "الإعدادات" : "Settings" };
+      case "employeePortal":
+        return { page, label: isArabic ? "حضوري" : "My Attendance" };
       default:
         return { page, label: page };
     }

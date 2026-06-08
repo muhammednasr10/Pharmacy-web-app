@@ -17,10 +17,11 @@ type MedicineTableProps = {
   canUsePOS: boolean;
   canManageInventory: boolean;
   canDeleteMedicine: boolean;
-  onAddToCart: (medicine: Medicine) => void;
+  onAddToCart?: (medicine: Medicine) => void;
   addToCartLabel?: string;
   onEditMedicine: (medicine: Medicine) => void;
   onDeleteMedicine: (medicine: Medicine) => void;
+  onViewStockDetail?: (medicine: Medicine) => void;
   lowStockThreshold?: number;
   expiringSoonDays?: number;
 };
@@ -48,6 +49,7 @@ export default function MedicineTable({
   addToCartLabel,
   onEditMedicine,
   onDeleteMedicine,
+  onViewStockDetail,
   lowStockThreshold = DEFAULT_LOW_STOCK_THRESHOLD,
   expiringSoonDays = DEFAULT_EXPIRING_SOON_DAYS,
 }: MedicineTableProps) {
@@ -348,9 +350,32 @@ export default function MedicineTable({
                   <td>{isArabic ? medicine.name_ar : medicine.name_en}</td>
                   <td>{medicine.barcode}</td>
                   <td>
-                    <span className={medicine.qty <= lowStockThreshold ? "badge danger" : "badge ok"}>
-                      {medicine.qty}
-                    </span>
+                    {onViewStockDetail ? (
+                      <button
+                        type="button"
+                        className="stockQtyBtn"
+                        onClick={() => onViewStockDetail(medicine)}
+                        title={
+                          isArabic ? "عرض تفاصيل حركة الكمية" : "View stock movement details"
+                        }
+                      >
+                        <span
+                          className={
+                            medicine.qty <= lowStockThreshold ? "badge danger" : "badge ok"
+                          }
+                        >
+                          {medicine.qty}
+                        </span>
+                      </button>
+                    ) : (
+                      <span
+                        className={
+                          medicine.qty <= lowStockThreshold ? "badge danger" : "badge ok"
+                        }
+                      >
+                        {medicine.qty}
+                      </span>
+                    )}
                   </td>
                   <td>{medicine.expiry}</td>
                   <td>
@@ -364,7 +389,7 @@ export default function MedicineTable({
                   </td>
                   <td>
                     <div className="actionButtons">
-                      {canUsePOS && (
+                      {canUsePOS && onAddToCart && (
                         <button
                           type="button"
                           className="smallBtn"
