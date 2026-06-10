@@ -17,26 +17,57 @@ function loadDotEnv() {
   }
 }
 
+const isVercel = Boolean(process.env.VERCEL);
 const dotEnv = loadDotEnv();
 const url = (process.env.VITE_SUPABASE_URL ?? dotEnv.VITE_SUPABASE_URL ?? "").trim();
 const key = (process.env.VITE_SUPABASE_ANON_KEY ?? dotEnv.VITE_SUPABASE_ANON_KEY ?? "").trim();
 
-if (!url || !key) {
-  console.error("\n[BUILD FAILED] Missing Supabase environment variables.");
-  console.error("Required: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY");
-  console.error("On Vercel: Project → Settings → Environment Variables → add both → Redeploy.\n");
+function fail(message) {
+  console.error(`\n[BUILD FAILED] ${message}\n`);
   process.exit(1);
+}
+
+if (!url || !key) {
+  const base =
+    "Missing Supabase environment variables. Required: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY.";
+  if (isVercel) {
+    fail(
+      `${base}\n` +
+        "Vercel → Project → Settings → Environment Variables:\n" +
+        "  1. Add both variables for Production AND Preview.\n" +
+        "  2. Use values from Supabase → Settings → API (Project URL + anon public key).\n" +
+        "  3. Redeploy from Deployments → Redeploy (env vars apply on the next build only)."
+    );
+  }
+  fail(
+    `${base}\n` +
+      "Local: copy .env.example to .env and fill in your Supabase credentials.\n" +
+      "Vercel: add the same variables in Project Settings → Environment Variables."
+  );
+}
+
+if (/^["']|["']$/.test(url) || /^["']|["']$/.test(key)) {
+  fail("Remove surrounding quotes from environment variable values in Vercel or .env.");
 }
 
 if (/aBcDe/i.test(url)) {
-  console.error("\n[BUILD FAILED] VITE_SUPABASE_URL is still the placeholder aBcDe.supabase.co.");
-  console.error("Use your real Project URL from Supabase → Settings → API.\n");
-  process.exit(1);
+  fail("VITE_SUPABASE_URL is still the placeholder aBcDe.supabase.co. Use your real Project URL.");
+}
+
+if (!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(url)) {
+  console.warn(
+    "[env] VITE_SUPABASE_URL does not look like a standard Supabase URL — verify it in Supabase → Settings → API."
+  );
 }
 
 if (/service_role/i.test(key)) {
-  console.error("\n[BUILD FAILED] VITE_SUPABASE_ANON_KEY must be the anon/publishable key, not service_role.\n");
-  process.exit(1);
+  fail("VITE_SUPABASE_ANON_KEY must be the anon/publishable key, not service_role.");
 }
 
-console.log("[env] Supabase variables present — build can continue.");
+if (key.length < 40) {
+  fail("VITE_SUPABASE_ANON_KEY looks too short — paste the full anon key from Supabase.");
+}
+
+console.log(
+  `[env] Supabase variables present${isVercel ? ` (Vercel ${process.env.VERCEL_ENV || "build"})` : ""} — build can continue.`
+);

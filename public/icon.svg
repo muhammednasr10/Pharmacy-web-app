@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Focus Pharmacy">
+  <rect width="512" height="512" rx="112" fill="#0d9488"/>
+  <rect x="228" y="96" width="56" height="320" rx="20" fill="#ffffff"/>
+  <rect x="96" y="228" width="320" height="56" rx="20" fill="#ffffff"/>
+  <circle cx="400" cy="128" r="44" fill="#fbbf24"/>
+  <text x="400" y="142" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="42" font-weight="700" fill="#0f172a">F</text>
+</svg>

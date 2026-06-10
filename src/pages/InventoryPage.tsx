@@ -1,16 +1,35 @@
-import { useEffect, useState } from "react";
-import type { NewMedicineForm, Medicine } from "../types";
+import { useEffect, useMemo, useState } from "react";
+import type { BranchStockTransfer, NewMedicineForm, Medicine } from "../types";
 import MedicineForm from "../components/MedicineForm";
 import MedicineTable from "../components/MedicineTable";
 import MedicineStockDetailModal from "../components/MedicineStockDetailModal";
+import BranchTransferModal from "../components/BranchTransferModal";
+import ReorderSuggestionsModal from "../components/ReorderSuggestionsModal";
+import StockCountModal from "../components/StockCountModal";
+import TierUpgradeNotice from "../components/TierUpgradeNotice";
+import { saveReorderPurchaseDraft, type ReorderPurchaseDraft } from "../utils/reorderSuggestions";
+import type { PharmacySettings } from "../types";
+import type { StockCountSession } from "../utils/stockCount";
 
 type InventoryPageProps = {
   medicines: Medicine[];
+  branches: PharmacySettings[];
   newMedicine: NewMedicineForm;
   editingMedicineId: number | null;
   isArabic: boolean;
   t: Record<string, string>;
   currency: string;
+  showBranchColumn?: boolean;
+  getBranchLabel?: (branchId: string | undefined) => string;
+  canTransferStock?: boolean;
+  transferUpgradeNotice?: string | null;
+  onOpenSubscriptionSettings?: () => void;
+  onTransferComplete?: () => void | Promise<void>;
+  onPrintTransfer?: (records: BranchStockTransfer[]) => void;
+  onApplyStockCount?: (session: StockCountSession) => Promise<void>;
+  onOpenPurchasesWithReorder?: () => void;
+  userId?: string;
+  userName?: string;
   onFormChange: (value: NewMedicineForm) => void;
   onSave: () => boolean | Promise<boolean>;
   onCancel: () => void;
@@ -25,15 +44,29 @@ type InventoryPageProps = {
   pharmacyId: string;
   lowStockThreshold: number;
   expiringSoonDays: number;
+  branchAwareAlerts?: boolean;
+  fallbackSettings?: PharmacySettings | null;
 };
 
 export default function InventoryPage({
   medicines,
+  branches,
   newMedicine,
   editingMedicineId,
   isArabic,
   t,
   currency,
+  showBranchColumn = false,
+  getBranchLabel,
+  canTransferStock = false,
+  transferUpgradeNotice = null,
+  onOpenSubscriptionSettings,
+  onTransferComplete,
+  onPrintTransfer,
+  onApplyStockCount,
+  onOpenPurchasesWithReorder,
+  userId,
+  userName,
   onFormChange,
   onSave,
   onCancel,
@@ -48,10 +81,26 @@ export default function InventoryPage({
   pharmacyId,
   lowStockThreshold,
   expiringSoonDays,
+  branchAwareAlerts = false,
+  fallbackSettings = null,
 }: InventoryPageProps) {
   const [showMedicineForm, setShowMedicineForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [stockDetailMedicine, setStockDetailMedicine] = useState<Medicine | null>(null);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showStockCountModal, setShowStockCountModal] = useState(false);
+  const [showReorderModal, setShowReorderModal] = useState(false);
+
+  const branchMedicines = useMemo(
+    () =>
+      medicines.filter(
+        (medicine) =>
+          !pharmacyId ||
+          medicine.pharmacyId === pharmacyId ||
+          (!medicine.pharmacyId && pharmacyId === "main")
+      ),
+    [medicines, pharmacyId]
+  );
 
   useEffect(() => {
     if (editingMedicineId) {
@@ -124,6 +173,21 @@ export default function InventoryPage({
           </p>
         </div>
         <div className="inventoryHeaderActions">
+          {canTransferStock && branches.length > 1 && (
+            <button type="button" className="editBtn" onClick={() => setShowTransferModal(true)}>
+              {isArabic ? "⇄ نقل بين الفروع" : "⇄ Branch transfer"}
+            </button>
+          )}
+          {canManageInventory && !isSubscriptionExpired && onOpenPurchasesWithReorder && (
+            <button type="button" className="editBtn" onClick={() => setShowReorderModal(true)}>
+              {isArabic ? "🛒 اقتراح توريد" : "🛒 Reorder"}
+            </button>
+          )}
+          {canManageInventory && !isSubscriptionExpired && onApplyStockCount && (
+            <button type="button" className="editBtn" onClick={() => setShowStockCountModal(true)}>
+              {isArabic ? "📋 جرد مخزون" : "📋 Stock count"}
+            </button>
+          )}
           {canManageInventory && !isSubscriptionExpired && (
             <button type="button" className="addMedicineBtn" onClick={openAddForm}>
               {isArabic ? "+ إضافة دواء جديد" : "+ Add New Medicine"}
@@ -136,12 +200,22 @@ export default function InventoryPage({
         </div>
       </div>
 
+      {transferUpgradeNotice && onOpenSubscriptionSettings && (
+        <TierUpgradeNotice
+          isArabic={isArabic}
+          message={transferUpgradeNotice}
+          onAction={onOpenSubscriptionSettings}
+        />
+      )}
+
       <MedicineTable
         medicines={medicines}
         t={t}
         isArabic={isArabic}
         currency={currency}
         showColumnFilters
+        showBranchColumn={showBranchColumn}
+        getBranchLabel={getBranchLabel}
         showManagementActions={true}
         canUsePOS={false}
         canManageInventory={canManageInventory}
@@ -151,7 +225,56 @@ export default function InventoryPage({
         onViewStockDetail={setStockDetailMedicine}
         lowStockThreshold={lowStockThreshold}
         expiringSoonDays={expiringSoonDays}
+        branchAwareAlerts={branchAwareAlerts}
+        branches={branches}
+        fallbackSettings={fallbackSettings}
       />
+
+      {showReorderModal && onOpenPurchasesWithReorder && (
+        <ReorderSuggestionsModal
+          isArabic={isArabic}
+          open={showReorderModal}
+          onClose={() => setShowReorderModal(false)}
+          medicines={medicines}
+          branches={branches}
+          defaultBranchId={pharmacyId}
+          allowBranchPicker={showBranchColumn && branches.length > 1}
+          fallbackSettings={fallbackSettings}
+          onApplyDraft={(draft: ReorderPurchaseDraft) => {
+            saveReorderPurchaseDraft(draft);
+            setShowReorderModal(false);
+            onOpenPurchasesWithReorder();
+          }}
+        />
+      )}
+
+      {showStockCountModal && onApplyStockCount && (
+        <StockCountModal
+          isArabic={isArabic}
+          pharmacyId={pharmacyId}
+          medicines={branchMedicines}
+          userId={userId}
+          userName={userName}
+          disabled={disabled}
+          onClose={() => setShowStockCountModal(false)}
+          onApply={onApplyStockCount}
+        />
+      )}
+
+      {showTransferModal && (
+        <BranchTransferModal
+          branches={branches}
+          defaultFromBranchId={pharmacyId}
+          isArabic={isArabic}
+          userId={userId}
+          userName={userName}
+          onClose={() => setShowTransferModal(false)}
+          onComplete={async () => {
+            if (onTransferComplete) await onTransferComplete();
+          }}
+          onPrintTransfer={onPrintTransfer}
+        />
+      )}
 
       {stockDetailMedicine && (
         <MedicineStockDetailModal

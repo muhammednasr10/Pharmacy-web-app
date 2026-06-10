@@ -4,6 +4,8 @@ type InvoiceTableProps = {
   filteredInvoices: Invoice[];
   t: Record<string, string>;
   isArabic: boolean;
+  showBranchColumn?: boolean;
+  getBranchLabel?: (branchId: string | undefined) => string;
   invoiceSearch: string;
   invoicePaymentFilter: "all" | PaymentMethod;
   invoiceFromDate: string;
@@ -25,6 +27,8 @@ export default function InvoiceTable({
   filteredInvoices,
   t,
   isArabic,
+  showBranchColumn = false,
+  getBranchLabel,
   invoiceSearch,
   invoicePaymentFilter,
   invoiceFromDate,
@@ -96,6 +100,7 @@ export default function InvoiceTable({
           <table>
             <thead>
               <tr>
+                {showBranchColumn && <th>{isArabic ? "الفرع" : "Branch"}</th>}
                 <th>{t.invoiceNo}</th>
                 <th>{t.date}</th>
                 <th>{t.paymentMethod}</th>
@@ -109,7 +114,10 @@ export default function InvoiceTable({
             </thead>
             <tbody>
               {filteredInvoices.map((invoice) => (
-                <tr key={invoice.id}>
+                <tr key={`${invoice.pharmacyId || "main"}-${invoice.id}`}>
+                  {showBranchColumn && (
+                    <td>{getBranchLabel ? getBranchLabel(invoice.pharmacyId) : invoice.pharmacyId || "—"}</td>
+                  )}
                   <td>
                     {embedded ? (
                       <span className="invoiceDocBadge">

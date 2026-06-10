@@ -380,6 +380,31 @@ button, input, select { font-family: inherit; }
   line-height: 1;
 }
 
+.appNavBarBadge,
+.sidebarNavBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #f04438;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.appNavBarItem.active .appNavBarBadge {
+  background: #fff;
+  color: #05693b;
+}
+
+.sidebarNavBadge {
+  margin-inline-start: auto;
+}
+
 .appNavBarLabel {
   white-space: nowrap;
 }
@@ -1192,6 +1217,10 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
 .posActionBtn.holdBtn { background: #fff7ed; color: #c2410c; border-color: #fdba74; }
 .posModalWide { width: min(960px, 100%); }
 .heldInvoiceActions { display: flex; flex-wrap: wrap; gap: 6px; }
+.instantReturnBarcodeBlock {
+  margin-bottom: 4px;
+}
+
 .instantReturnForm { display: grid; gap: 8px; margin-top: 8px; }
 .instantReturnForm input, .instantReturnForm select { width: 100%; padding: 10px 12px; border: 1px solid #d0d5dd; border-radius: 10px; }
 .instantReturnResults { display: grid; gap: 8px; max-height: 180px; overflow: auto; }
@@ -1200,6 +1229,176 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
 .instantReturnSelectedInvoice { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 6px; }
 .instantReturnHint { color: #667085; font-size: 13px; margin: 0; }
 .instantReturnError { color: #b42318; font-size: 13px; margin: 0; }
+
+.stockCountModal {
+  width: min(920px, 100%);
+  max-height: min(90vh, 900px);
+  overflow: auto;
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+
+.stockCountHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.stockCountSummaryRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #eaecf0;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.stockCountScanBlock,
+.stockCountSearchBlock {
+  display: grid;
+  gap: 8px;
+}
+
+.stockCountSearchResults {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.stockCountSearchResults button {
+  width: 100%;
+  text-align: start;
+  border: 1px solid #eaecf0;
+  background: #f9fafb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  display: grid;
+  gap: 4px;
+}
+
+.stockCountSearchResults button:hover {
+  background: #f3f4f6;
+}
+
+.stockCountTableWrap {
+  max-height: 280px;
+  overflow: auto;
+  border: 1px solid #eaecf0;
+  border-radius: 12px;
+}
+
+.stockCountTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.stockCountTable th,
+.stockCountTable td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f2f4f7;
+  text-align: start;
+}
+
+.stockCountTable th {
+  background: #f9fafb;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.stockCountQtyInput {
+  width: 72px;
+  padding: 6px 8px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+}
+
+.stockCountNotes {
+  width: 100%;
+  min-height: 72px;
+  padding: 10px 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+  resize: vertical;
+}
+
+.stockCountActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.stockCountMessage {
+  margin: 0;
+  font-size: 13px;
+  color: #067647;
+}
+
+.stockCountMessage.error {
+  color: #b42318;
+}
+
+.reorderSuggestionsModal {
+  width: min(960px, 100%);
+  max-height: min(90vh, 900px);
+  overflow: auto;
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+
+.reorderBranchPicker {
+  display: grid;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.reorderBranchPicker select {
+  padding: 10px 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+}
+
+.reorderSuggestionsTable input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+.dashboardReorderBtn {
+  margin-top: 10px;
+  width: 100%;
+}
+
+.branchScopeBanner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #eff8ff;
+  border: 1px solid #b2ddff;
+  color: #175cd3;
+  font-size: 13px;
+}
+
+.branchScopeBanner strong {
+  font-size: 13px;
+}
 
 .inventoryOnlyPage, .posOnlyPage, .invoicesPage, .reportsPage { margin-top: 22px; }
 .posBarcodeBlock {
@@ -1268,6 +1467,93 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
 
 .posBarcodeClearBtn:hover {
   background: #d0d5dd;
+}
+
+.posBarcodeCameraBtn {
+  flex-shrink: 0;
+  border: none;
+  background: #dcfce7;
+  color: #166534;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.posBarcodeCameraBtn:hover:not(:disabled) {
+  background: #bbf7d0;
+}
+
+.posBarcodeCameraBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.barcodeScannerOverlay {
+  z-index: 1200;
+}
+
+.barcodeScannerModal {
+  width: min(92vw, 420px);
+  background: #fff;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 24px 48px rgba(16, 24, 40, 0.18);
+}
+
+.barcodeScannerHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 10px;
+}
+
+.barcodeScannerHeader h3 {
+  margin: 0 0 4px;
+  color: #101828;
+}
+
+.barcodeScannerViewport {
+  position: relative;
+  background: #000;
+  aspect-ratio: 3 / 4;
+}
+
+.barcodeScannerVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.barcodeScannerFrame {
+  position: absolute;
+  inset: 18% 10%;
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  border-radius: 14px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.barcodeScannerStatus {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(16, 24, 40, 0.78);
+  color: #fff;
+  font-size: 13px;
+  text-align: center;
+  max-width: calc(100% - 24px);
+}
+
+.barcodeScannerStatus.error {
+  background: rgba(180, 35, 24, 0.9);
 }
 
 .posBarcodeBlock .posMessage {
@@ -2511,6 +2797,76 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
   white-space: nowrap;
 }
 
+.cashierShiftPanel {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid #e4e7ec;
+  border-radius: 12px;
+  background: #f9fafb;
+}
+
+.cashierShiftPanelEmpty,
+.cashierShiftPanelActive {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cashierShiftPanelMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  font-size: 13px;
+}
+
+.cashierShiftPanelActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cashierShiftCloseGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 1rem;
+}
+
+.cashierShiftCloseGrid > div {
+  padding: 10px;
+  border-radius: 10px;
+  background: #f2f4f7;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cashierShiftCloseGrid span {
+  font-size: 12px;
+  color: #667085;
+}
+
+.cashierShiftCloseHighlight {
+  background: #ecfdf3 !important;
+  border: 1px solid #abefc6;
+}
+
+.cashierShiftsReportCard {
+  margin-top: 1rem;
+}
+
+.textDanger {
+  color: #d92d20;
+  font-weight: 600;
+}
+
+.textSuccess {
+  color: #039855;
+  font-weight: 600;
+}
+
 .hrPayrollSettingsGrid {
   display: flex;
   flex-direction: column;
@@ -2824,6 +3180,33 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
   border-bottom: 1px solid #eaecf0;
 }
 
+.catalogAccountModalHeader {
+  align-items: center;
+}
+
+.catalogAccountModalTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.catalogAccountModalTitle h2 {
+  font-size: 18px;
+}
+
+.catalogRoleBadge {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 5px 12px;
+  background: #ecfdf3;
+  color: #05693b;
+  border: 1px solid #abefc6;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .loginRequestEmployeeName {
   margin: 14px 0 18px;
   font-size: 16px;
@@ -2849,8 +3232,40 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
   margin-bottom: 16px;
 }
 
+.catalogAccountsTableWrap {
+  overflow-x: auto;
+  width: 100%;
+}
+
+.catalogAccountsTableWrap .catalogAccountsTable {
+  min-width: 720px;
+}
+
+.staffPage .catalogAccountsTableWrap th,
+.staffPage .catalogAccountsTableWrap td {
+  text-align: center;
+}
+
+.staffPage .catalogAccountActionsCell {
+  text-align: center;
+}
+
 .catalogAccountsTable {
   width: 100%;
+  table-layout: fixed;
+}
+
+.catalogAccountsTable .catalogRoleCell {
+  width: 14%;
+  font-weight: 600;
+  color: #05693b;
+  white-space: nowrap;
+}
+
+.catalogAccountsTable .catalogEmailCell {
+  width: 22%;
+  font-size: 14px;
+  color: #344054;
 }
 
 .catalogAccountsTable th,
@@ -2863,15 +3278,18 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
   background: #f9fafb;
 }
 
-.catalogAccountsTable .catalogRoleCell {
-  font-weight: 600;
-  color: #05693b;
-  white-space: nowrap;
+.catalogAccountsTable .catalogPasswordCell {
+  width: 14%;
 }
 
-.catalogAccountsTable .catalogEmailCell {
-  font-size: 14px;
-  color: #344054;
+.catalogAccountsTable .catalogEmployeeCell {
+  width: 24%;
+}
+
+.catalogAccountsTable .catalogWorkflowActionsHead,
+.catalogAccountActionsCell {
+  width: 26%;
+  min-width: 0;
 }
 
 .catalogAccountsTable .catalogPasswordCode {
@@ -2889,8 +3307,9 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
 }
 
 .catalogAccountsTable .catalogEmployeeSelect {
-  min-width: 170px;
-  max-width: 220px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   margin-inline: auto;
   font-size: 13px;
   padding: 7px 10px;
@@ -2906,31 +3325,183 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
   white-space: nowrap;
 }
 
-.catalogAccountForm {
-  margin-top: 16px;
+.catalogStatusCell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
 }
 
-.catalogRoleBadge {
-  display: inline-flex;
-  align-self: flex-start;
-  padding: 6px 14px;
-  background: #ecfdf3;
-  color: #05693b;
-  border: 1px solid #abefc6;
-  border-radius: 999px;
-  font-size: 14px;
+.catalogEditPendingBadge {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.catalogLinkCell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.catalogLinkPendingBadge {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.catalogLinkRequestBtn,
+.catalogLinkActionBtn {
+  width: 100%;
+  max-width: 118px;
+  padding: 6px 8px;
+  font-size: 11px;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.catalogLinkActionBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.catalogLinkToolbarHint {
+  margin: 0;
+  flex: 1 1 220px;
+  font-size: 13px;
+  color: #475467;
+  line-height: 1.45;
+}
+
+.catalogLinkHint {
+  display: block;
+  font-size: 12px;
+  color: #667085;
+  line-height: 1.35;
+}
+
+.catalogLinkHint.danger {
+  color: #b42318;
+}
+
+.catalogAccountActionsCell {
+  vertical-align: middle;
+  padding: 8px 6px;
+  white-space: nowrap;
+}
+
+.catalogAccountsTable thead .catalogWorkflowActionsHead {
+  background: #f9fafb;
+}
+
+.catalogAccountsTable tbody tr:hover .catalogAccountActionsCell {
+  background: #fcfcfd;
+}
+
+.catalogWorkflowBtn {
   font-weight: 700;
+}
+
+.catalogAccountActions {
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.catalogAccountActionBtn {
+  flex: 0 1 auto;
+  min-width: 0;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+  border-radius: 7px;
+  cursor: pointer;
+  font-family: inherit;
+  margin: 0;
+}
+
+.catalogAccountActions .editBtn.catalogAccountActionBtn {
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+}
+
+.catalogAccountActions .dangerBtn.catalogAccountActionBtn {
+  background: #fef3f2;
+  color: #b42318;
+  border: 1px solid #fecdca;
+  padding: 6px 8px;
+}
+
+.catalogAccountActions .smallBtn.catalogAccountActionBtn {
+  border: 0;
+}
+
+.catalogUnlinkBtn {
+  background: #fff;
+  color: #b42318;
+  border: 1px solid #fda29b;
+}
+
+.catalogUnlinkBtn:hover:not(:disabled) {
+  background: #fef3f2;
+}
+
+.catalogUnlinkBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.catalogAccountFormFields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.loginRequestModal .catalogAccountFormFields .settingsField label {
+  font-weight: 700;
+  font-size: 14px;
+  color: #344054;
+}
+
+.loginRequestModal .catalogAccountFormFields .settingsField input {
+  width: 100%;
+  border: 1px solid #d0d5dd;
+  border-radius: 12px;
+  padding: 12px 14px;
+  outline: none;
+  background: white;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.loginRequestModal .catalogAccountFormFields .settingsField input:focus {
+  border-color: #007b49;
 }
 
 .catalogAccountModalActions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   justify-content: flex-start;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #eaecf0;
 }
 
 .catalogAccountModalActions .completeBtn,
 .catalogAccountModalActions .editBtn {
-  min-width: 100px;
+  min-width: 110px;
 }
 
 .employeeLoginSelect {
@@ -2958,12 +3529,7 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
 }
 
 .staffPage .staffEmployeesActions {
-  align-items: center;
-}
-
-.staffPage .staffEmployeesActionBtn {
-  max-width: 92px;
-  margin-inline: auto;
+  align-items: stretch;
 }
 
 .staffPage .hrAttendanceTable thead th,
@@ -3094,14 +3660,13 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
 }
 
 .staffEmployeesTable .col-actions {
-  min-width: 92px;
-  max-width: 104px;
-  width: 104px;
+  min-width: 148px;
+  width: 148px;
   vertical-align: middle;
   background: #fff;
   position: sticky;
   z-index: 1;
-  padding: 0.3rem 0.4rem;
+  padding: 0.35rem 0.5rem;
 }
 
 [dir="ltr"] .staffEmployeesTable .col-actions {
@@ -3125,20 +3690,50 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
 
 .staffEmployeesActions {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 4px;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   width: 100%;
 }
 
 .staffEmployeesActionBtn {
-  width: 100%;
+  flex: 1 1 auto;
   min-width: 0;
-  padding: 0.18rem 0.35rem;
-  font-size: 11px;
-  line-height: 1.25;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
   text-align: center;
   white-space: nowrap;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.staffEmployeesActions .staffEmployeesActionBtn.editBtn {
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+}
+
+.staffEmployeesActions .staffEmployeesActionBtn.dangerBtn {
+  background: #fef3f2;
+  color: #b42318;
+  border: 1px solid #fecdca;
+  padding: 6px 10px;
+}
+
+.staffEmployeesActions .staffEmployeesActionBtn.smallBtn {
+  background: #007b49;
+  color: #fff;
+  border: 0;
+  padding: 6px 10px;
 }
 
 .employeePhotoField .employeePhotoUploadRow {
@@ -3364,6 +3959,11 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
   color: #b42318;
 }
 
+.subscriptionStatusPill.trial {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
 .subscriptionHeroDays {
   min-width: 140px;
   display: flex;
@@ -3451,6 +4051,58 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
   border-radius: 20px;
   padding: 20px 22px;
   box-shadow: 0 8px 24px rgba(0, 123, 73, 0.08);
+}
+
+.subscriptionTierFeaturesCard {
+  margin-top: 16px;
+}
+
+.subscriptionTierFeatureList {
+  margin: 12px 0 8px;
+  padding-inline-start: 1.25rem;
+  color: #344054;
+  line-height: 1.7;
+}
+
+.subscriptionTierUpgradeCard {
+  margin-bottom: 16px;
+  border: 1px solid #c7d7fe;
+  background: linear-gradient(180deg, #f5f8ff 0%, #ffffff 120px);
+}
+
+.subscriptionTierUpgradeHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.subscriptionTierUpgradeHeader h3 {
+  margin: 0 0 4px;
+  color: #1d2939;
+}
+
+.tierUpgradeNotice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid #c7d7fe;
+  border-radius: 12px;
+  background: #f5f8ff;
+  color: #344054;
+}
+
+.tierUpgradeNotice p {
+  margin: 0;
+  flex: 1;
+  min-width: 200px;
+  line-height: 1.5;
 }
 
 .subscriptionPanelHeader h3 {
@@ -4043,6 +4695,28 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
   width: 100%;
 }
 
+.settingsSectionTitle--compact {
+  margin-top: 8px;
+}
+
+.settingsSectionTitle--compact h3 {
+  margin-bottom: 4px;
+}
+
+.settingsCheckboxLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.expiryNotifyActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .settingsField label {
   font-weight: 800;
   color: #344054;
@@ -4464,6 +5138,12 @@ th { color: #667085; font-weight: bold; background: #f9fafb; }
   color: #b42318;
 }
 
+.subscriptionAlert.info {
+  background: #eff8ff;
+  border: 1px solid #b2ddff;
+  color: #175cd3;
+}
+
 .subscriptionAlert span {
   font-size: 13px;
   font-weight: 600;
@@ -4811,6 +5491,20 @@ button:disabled {
 .reportsPageHeader {
   align-items: flex-start;
   gap: 16px;
+}
+
+.reportsHeaderActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.reportExportActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .reportsPeriodBadge {
@@ -5264,6 +5958,166 @@ button:disabled {
   font-size: 11px;
 }
 
+.branchTransfersTitle {
+  margin: 20px 0 10px;
+  font-size: 16px;
+  color: #344054;
+}
+
+.branchTransferModal {
+  max-width: 640px;
+  width: min(96vw, 640px);
+}
+
+.branchTransferBarcodeBlock {
+  margin-bottom: 4px;
+}
+
+.branchTransferPickRow {
+  display: grid;
+  grid-template-columns: 1fr 88px auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.branchTransferAddBtn {
+  white-space: nowrap;
+  padding-inline: 12px;
+}
+
+.branchTransferDraftWrap {
+  margin-top: 14px;
+}
+
+.branchTransferDraftWrap h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #344054;
+}
+
+.branchTransferQtyInput {
+  width: 72px;
+  padding: 6px 8px;
+}
+
+.branchTransferItemsCell {
+  text-align: start;
+}
+
+.branchTransferItemsList {
+  margin: 6px 0 0;
+  padding-inline-start: 18px;
+  font-size: 12px;
+  color: #475467;
+  line-height: 1.45;
+}
+
+.branchTransferItemsList li + li {
+  margin-top: 2px;
+}
+
+.branchReportBreakdown {
+  margin-top: 18px;
+}
+
+.branchReportTotalsRow td {
+  background: #f9fafb;
+  font-weight: 700;
+}
+
+.dashboardBranchBreakdown {
+  margin-top: 16px;
+}
+
+.branchInventoryAlertBreakdown {
+  margin-top: 16px;
+}
+
+.branchInventoryAlertRow--active td {
+  background: #fffaeb;
+}
+
+.branchInventoryAlertLink {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #175cd3;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.miniListBranchTag {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #eff8ff;
+  color: #175cd3;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.mutedCell {
+  color: #98a2b3;
+}
+
+.branchTransferPrintBtn {
+  padding: 4px 10px;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.branchTransferApprovalField {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.branchTransferApprovalField input {
+  margin-top: 4px;
+}
+
+.branchTransferStatusBadge {
+  display: inline-block;
+  margin-inline-start: 8px;
+  vertical-align: middle;
+}
+
+.branchPendingTransfersTitle {
+  margin-top: 28px;
+}
+
+.dashboardPendingTransfers {
+  margin-top: 20px;
+}
+
+.dashboardPendingTransfers .cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.branchHrSummaryCard {
+  margin: 0 1rem 16px;
+}
+
+.branchHrSummaryCard tr.branchSummaryRowActive td {
+  background: rgba(59, 130, 246, 0.08);
+  font-weight: 600;
+}
+
+.staffBranchFilterBar {
+  margin-bottom: 12px;
+}
+
+.branchesPage .cardHeader .actionButtons {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 @media (max-width: 640px) {
   .topbarBranchChip select {
     max-width: 110px;
@@ -5338,6 +6192,90 @@ button:disabled {
 .saasStatCard.green { border-top-color: #12b76a; }
 .saasStatCard.red { border-top-color: #f04438; }
 .saasStatCard.blue { border-top-color: #2e90fa; }
+.saasStatCard.warn { border-top-color: #f79009; }
+
+.saasStatSub {
+  display: block;
+  margin-top: 6px;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.saasStatsDashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #eaecf0;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f9fafb 0%, #fff 100%);
+}
+
+.saasStatsPrimary,
+.saasStatsSecondary {
+  margin: 0;
+}
+
+.saasTierStatsRow h4,
+.saasRecentRevenue h4 {
+  margin: 0 0 10px;
+  font-size: 15px;
+  color: #344054;
+}
+
+.saasTierStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.saasTierStatCard {
+  border: 1px solid #eaecf0;
+  border-radius: 14px;
+  padding: 14px;
+  background: #fff;
+}
+
+.saasTierStatCard.basic { border-top: 4px solid #667085; }
+.saasTierStatCard.professional { border-top: 4px solid #2e90fa; }
+.saasTierStatCard.premium { border-top: 4px solid #7a5af8; }
+
+.saasTierStatTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.saasTierStatTop span {
+  font-size: 12px;
+  color: #667085;
+}
+
+.saasTierStatCounts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.saasTierStatCounts div {
+  background: #f9fafb;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.saasTierStatCounts span {
+  display: block;
+  font-size: 12px;
+  color: #667085;
+}
+
+.saasTierStatCounts strong {
+  font-size: 22px;
+  color: #101828;
+}
 
 .saasTable th,
 .saasTable td,
@@ -5367,6 +6305,159 @@ button:disabled {
   padding: 4px 8px;
   border-radius: 8px;
   font-size: 12px;
+}
+
+.saasBranchLimitCell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 120px;
+}
+
+.saasBranchUsed {
+  font-weight: 700;
+  color: #344054;
+}
+
+.saasBranchLimitEditor {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.saasBranchLimitInput {
+  width: 64px;
+  padding: 4px 6px;
+  text-align: center;
+}
+
+.saasTierPackages {
+  margin: 20px 0;
+}
+
+.saasTierGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.saasTierCard {
+  border: 1px solid #e4e7ec;
+  border-radius: 14px;
+  padding: 16px;
+  background: #fff;
+}
+
+.saasTierCard.basic {
+  border-top: 4px solid #98a2b3;
+}
+
+.saasTierCard.professional {
+  border-top: 4px solid #2e90fa;
+}
+
+.saasTierCard.premium {
+  border-top: 4px solid #f79009;
+}
+
+.saasTierCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.saasTierCard p {
+  margin: 0 0 10px;
+  color: #475467;
+  font-size: 0.92rem;
+}
+
+.saasTierCard ul {
+  margin: 0;
+  padding-inline-start: 18px;
+  color: #344054;
+  font-size: 0.88rem;
+}
+
+.saasTierBadge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.saasTierBadge.basic {
+  background: #f2f4f7;
+  color: #475467;
+}
+
+.saasTierBadge.professional {
+  background: #eff8ff;
+  color: #175cd3;
+}
+
+.saasTierBadge.premium {
+  background: #fffaeb;
+  color: #b54708;
+}
+
+.saasTierCell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 130px;
+}
+
+.saasTierSelect {
+  min-width: 120px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid #d0d5dd;
+}
+
+.saasTierPickGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.saasTierPickCard {
+  border: 1px solid #d0d5dd;
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
+  cursor: pointer;
+  text-align: center;
+}
+
+.saasTierPickCard.selected {
+  border-color: #12b76a;
+  box-shadow: 0 0 0 2px rgba(18, 183, 106, 0.15);
+}
+
+.saasTierPickCard strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.saasManageTierField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+@media (max-width: 900px) {
+  .saasTierGrid,
+  .saasTierPickGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .saasSub {
@@ -5516,7 +6607,8 @@ button:disabled {
 
 @media (max-width: 950px) {
   .saasStats,
-  .saasInfoGrid {
+  .saasInfoGrid,
+  .saasTierStatsGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -5704,6 +6796,10 @@ button:disabled {
   font-size: 15px;
 }
 
+.purchaseScannerHint {
+  margin: 0 0 10px;
+}
+
 .medicineEntryGrid {
   display: flex;
   flex-direction: column;
@@ -5723,6 +6819,17 @@ button:disabled {
 
 .medicineEntryField input {
   width: 100%;
+}
+
+.medicineBarcodeInputRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.medicineBarcodeInputRow input {
+  flex: 1;
+  min-width: 0;
 }
 
 .medicineLookupStatus {
@@ -6257,4 +7364,211 @@ button:disabled {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.attendanceScannerPanel {
+  margin: 0 0 1rem;
+  padding: 1rem;
+  border: 1px solid #e4e7ec;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.attendanceScannerHeader {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.attendanceScannerHeader h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+
+.attendanceScanModeBtns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.attendanceScanFeedback {
+  margin-top: 10px;
+}
+
+.attendanceBarcodeBlock {
+  margin-bottom: 0;
+}
+
+.employeeAttendanceBadgeModal {
+  width: min(420px, 92vw);
+  background: #fff;
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.employeeAttendanceBadgeCard {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  text-align: center;
+  padding: 1rem;
+  border: 1px dashed #d0d5dd;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.employeeAttendanceBadgeCard h4 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.employeeBadgeBranch {
+  margin: 0;
+  color: #667085;
+  font-size: 0.85rem;
+}
+
+.employeeBadgeCode {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.employeeBadgeQr {
+  width: 220px;
+  height: 220px;
+  object-fit: contain;
+}
+
+.employeeBadgeHint {
+  margin: 0;
+  color: #667085;
+  font-size: 0.85rem;
+}
+
+.offlinePosBanner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+}
+
+.offlinePosBanner.isOffline {
+  background: #fff7ed;
+  border-color: #fdba74;
+  color: #9a3412;
+}
+
+.offlinePosBanner.isOnline {
+  background: #ecfeff;
+  border-color: #67e8f9;
+  color: #155e75;
+}
+
+.offlinePosBannerMain strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 15px;
+}
+
+.offlinePosBannerMain p,
+.offlinePosBannerMeta {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.offlinePosBannerMeta {
+  min-width: 180px;
+}
+
+.offlinePosBannerMeta strong {
+  display: block;
+  margin-top: 4px;
+}
+
+.paymentOfflineHint {
+  margin: 6px 0 0;
+  font-size: 12px;
+}
+
+.sqlMigrationsPage .sqlMigrationSummary strong.sqlMigrationOk {
+  color: #15803d;
+}
+
+.sqlMigrationsPage .sqlMigrationSummary strong.sqlMigrationMissing {
+  color: #b91c1c;
+}
+
+.sqlMigrationAlert {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.sqlMigrationGroup {
+  margin-top: 20px;
+}
+
+.sqlMigrationGroupTitle {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+
+.sqlMigrationFile {
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.sqlMigrationNote {
+  font-size: 13px;
+  color: #64748b;
+  max-width: 280px;
+}
+
+.sqlMigrationRowMissing {
+  background: #fff7f7;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #employee-attendance-badge-print,
+  #employee-attendance-badge-print * {
+    visibility: visible;
+  }
+
+  #employee-attendance-badge-print {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    width: 80mm;
+    border: none;
+    box-shadow: none;
+  }
+
+  .employeeBadgeOverlay,
+  .modalOverlay {
+    position: static;
+    background: transparent;
+  }
+
+  .employeeAttendanceBadgeModal .modalHeader,
+  .employeeAttendanceBadgeModal .modalActions {
+    display: none;
+  }
 }

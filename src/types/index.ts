@@ -3,6 +3,7 @@ export type Lang = "ar" | "en";
 export type UserRole =
   | "super_admin"
   | "pharmacy_admin"
+  | "branch_manager"
   | "cashier"
   | "inventory"
   | "accountant";
@@ -77,6 +78,7 @@ export type Page =
   | "activityLogs"
   | "users"
   | "tenants"
+  | "sqlMigrations"
   | "branches"
   | "settings"
   | "hr"
@@ -99,6 +101,8 @@ export type Medicine = {
 
 export type PharmacySettings = {
   id: string;
+  organizationId?: string;
+  maxBranches?: number;
   name: string;
   name_en: string;
   phone: string;
@@ -107,6 +111,7 @@ export type PharmacySettings = {
   isActive?: boolean;
   invoiceFooter?: string;
   subscriptionPlan?: string;
+  subscriptionTier?: string;
   subscriptionStatus?: string;
   subscriptionStartedAt?: string;
   subscriptionEndsAt?: string;
@@ -114,6 +119,9 @@ export type PharmacySettings = {
   logoBase64?: string;
   lowStockThreshold?: number;
   expiringSoonDays?: number;
+  expiryNotifyEnabled?: boolean;
+  expiryNotifyPhone?: string;
+  expiryNotifyEmail?: string;
   payrollPayDay?: number;
   payrollSickDeductionPercent?: number;
   payrollAbsentDeductionPercent?: number;
@@ -166,6 +174,7 @@ export type Invoice = {
   cashierId?: string;
   cashierName?: string;
   shiftId?: ShiftId;
+  cashierShiftId?: number;
   pharmacyId?: string;
   totalCost?: number;
   totalProfit?: number;
@@ -230,6 +239,51 @@ export type ReturnItem = {
   buyPrice?: number;
   costTotal?: number;
   profit?: number;
+};
+
+export type CashierShiftStatus = "open" | "closed";
+
+export type CashierShift = {
+  id: number;
+  shiftNumber: string;
+  pharmacyId: string;
+  cashierId: string;
+  cashierName?: string;
+  workShiftId?: string;
+  status: CashierShiftStatus;
+  openingCash: number;
+  expectedCash?: number;
+  actualCash?: number;
+  cashVariance?: number;
+  totalSales: number;
+  cashSales: number;
+  visaSales: number;
+  walletSales: number;
+  creditSales: number;
+  returnsTotal: number;
+  customerPaymentsCash: number;
+  customerPaymentsOther: number;
+  invoiceCount: number;
+  notes?: string;
+  openedAt: string;
+  closedAt?: string;
+  closedById?: string;
+  closedByName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type CashierShiftSummary = {
+  totalSales: number;
+  cashSales: number;
+  visaSales: number;
+  walletSales: number;
+  creditSales: number;
+  returnsTotal: number;
+  customerPaymentsCash: number;
+  customerPaymentsOther: number;
+  invoiceCount: number;
+  expectedCash: number;
 };
 
 export type ReturnRecord = {
@@ -318,11 +372,37 @@ export type StockMovement = {
   invoiceNumber?: string;
   returnNumber?: string;
   purchaseNumber?: string;
+  transferNumber?: string;
   supplierName?: string;
   notes?: string;
   pharmacyId?: string;
   userId?: string;
   userName?: string;
+  createdAt?: string;
+};
+
+export type BranchStockTransferStatus = "pending" | "completed" | "rejected";
+
+export type BranchStockTransfer = {
+  id: string;
+  organizationId?: string;
+  transferNumber: string;
+  fromPharmacyId: string;
+  toPharmacyId: string;
+  medicineId: number;
+  targetMedicineId?: number;
+  barcode?: string;
+  medicineName_ar?: string;
+  medicineName_en?: string;
+  quantity: number;
+  status?: BranchStockTransferStatus;
+  notes?: string;
+  userId?: string;
+  userName?: string;
+  reviewedBy?: string;
+  reviewedByName?: string;
+  reviewedAt?: string;
+  rejectionReason?: string;
   createdAt?: string;
 };
 
@@ -382,6 +462,17 @@ export type PharmacyLoginAccount = {
   reviewedAt?: string;
   createdAt?: string;
   updatedAt?: string;
+  editPending?: boolean;
+  pendingEmail?: string;
+  pendingPassword?: string;
+  pendingRole?: UserRole;
+  editRequestedBy?: string;
+  editRequestedByName?: string;
+  editRequestedAt?: string;
+  linkRequestPending?: boolean;
+  linkRequestedBy?: string;
+  linkRequestedByName?: string;
+  linkRequestedAt?: string;
 };
 
 export type SubscriptionRequest = {
@@ -410,6 +501,10 @@ export type CreatePharmacyInput = {
   name_en?: string;
   phone?: string;
   address?: string;
+  currency?: string;
+  organizationId?: string;
+  maxBranches?: number;
+  subscriptionTier?: string;
   subscriptionPlan?: string;
   subscriptionStatus?: string;
 };

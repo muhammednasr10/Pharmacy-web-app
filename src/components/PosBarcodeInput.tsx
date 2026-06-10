@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Medicine } from "../types";
+import { findMedicineByBarcode } from "../utils/medicineLookup";
+import { playBarcodeBeep } from "../utils/barcodeBeep";
+import { useHardwareBarcodeScanner } from "../utils/useHardwareBarcodeScanner";
+import BarcodeCameraScanner, { canUseBarcodeCameraScanner } from "./BarcodeCameraScanner";
 
 type PosBarcodeInputProps = {
   medicines: Medicine[];
@@ -7,12 +11,6 @@ type PosBarcodeInputProps = {
   onAddToCart: (medicine: Medicine) => void;
   disabled?: boolean;
 };
-
-function findMedicineByBarcode(medicines: Medicine[], raw: string) {
-  const code = raw.trim();
-  if (!code) return undefined;
-  return medicines.find((medicine) => medicine.barcode.trim() === code);
-}
 
 export default function PosBarcodeInput({
   medicines,
@@ -23,7 +21,9 @@ export default function PosBarcodeInput({
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState("");
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const messageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cameraSupported = canUseBarcodeCameraScanner();
 
   const focusInput = useCallback(() => {
     if (disabled) return;
@@ -45,13 +45,15 @@ export default function PosBarcodeInput({
       if (found) {
         onAddToCart(found);
         setValue("");
+        playBarcodeBeep(true);
         showMessage(
-          isArabic ? `تمت إضافة ${found.name_ar} للسلة` : `${found.name_en} added to cart`
+          isArabic ? `تمت إضافة ${found.name_ar} للسلة` : `${found.name_en || found.name_ar} added to cart`
         );
         focusInput();
         return true;
       }
 
+      playBarcodeBeep(false);
       showMessage(
         isArabic ? "الباركود غير موجود في المخزون" : "Barcode not found in inventory",
         true
@@ -66,47 +68,13 @@ export default function PosBarcodeInput({
     return () => {
       if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
     };
-  }, [focusInput]);
+  }, [focusInput, medicines]);
 
-  useEffect(() => {
-    if (disabled) return;
-
-    let buffer = "";
-    let lastKeyTime = 0;
-    const scanGapMs = 80;
-
-    function onKeyDown(event: KeyboardEvent) {
-      const target = event.target as HTMLElement | null;
-      const tag = target?.tagName || "";
-      const isEditable =
-        tag === "INPUT" ||
-        tag === "TEXTAREA" ||
-        tag === "SELECT" ||
-        target?.isContentEditable;
-
-      if (target === inputRef.current) return;
-      if (isEditable) return;
-
-      if (event.key === "Enter") {
-        if (buffer.length >= 4) {
-          event.preventDefault();
-          processBarcode(buffer);
-          buffer = "";
-        }
-        return;
-      }
-
-      if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
-        const now = Date.now();
-        if (now - lastKeyTime > scanGapMs) buffer = "";
-        lastKeyTime = now;
-        buffer += event.key;
-      }
-    }
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [disabled, processBarcode]);
+  useHardwareBarcodeScanner({
+    disabled,
+    onScan: processBarcode,
+    ignoreInputRef: inputRef,
+  });
 
   function handleChange(nextValue: string) {
     setValue(nextValue);
@@ -120,6 +88,26 @@ export default function PosBarcodeInput({
     if (event.key !== "Enter") return;
     event.preventDefault();
     processBarcode(value);
+  }
+
+  function handleCameraDetected(code: string) {
+    setCameraOpen(false);
+    processBarcode(code);
+    focusInput();
+  }
+
+  function openCameraScanner() {
+    if (disabled) return;
+    if (!cameraSupported) {
+      showMessage(
+        isArabic
+          ? "مسح الكاميرا غير مدعوم هنا — استخدم Chrome على الجوال"
+          : "Camera scan is not supported here — use Chrome on mobile",
+        true
+      );
+      return;
+    }
+    setCameraOpen(true);
   }
 
   return (
@@ -150,6 +138,18 @@ export default function PosBarcodeInput({
               : "Scan barcode or type and press Enter"
           }
         />
+        {cameraSupported && (
+          <button
+            type="button"
+            className="posBarcodeCameraBtn"
+            disabled={disabled}
+            onClick={openCameraScanner}
+            aria-label={isArabic ? "مسح بالكاميرا" : "Scan with camera"}
+            title={isArabic ? "مسح بالكاميرا" : "Scan with camera"}
+          >
+            📷
+          </button>
+        )}
         {value && (
           <button
             type="button"
@@ -166,6 +166,16 @@ export default function PosBarcodeInput({
       </div>
       {message && (
         <div className={`posMessage ${message.error ? "error" : ""}`}>{message.text}</div>
+      )}
+      {cameraOpen && (
+        <BarcodeCameraScanner
+          isArabic={isArabic}
+          onDetected={handleCameraDetected}
+          onClose={() => {
+            setCameraOpen(false);
+            focusInput();
+          }}
+        />
       )}
     </div>
   );

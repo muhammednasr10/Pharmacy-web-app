@@ -1,6 +1,8 @@
 import type { SubscriptionRequest } from "../types";
 import { subscriptionPaymentInfo } from "../config/subscription";
+import { getSubscriptionTierLabel } from "../config/subscriptionTiers";
 import { whatsappLink } from "../branding";
+import { parseTierUpgradePlan } from "../utils/subscriptionFeatures";
 
 type SubscriptionPaymentInstructionsProps = {
   isArabic: boolean;
@@ -13,9 +15,23 @@ export default function SubscriptionPaymentInstructions({
   request,
   onClose,
 }: SubscriptionPaymentInstructionsProps) {
-  const whatsappMessage = isArabic
-    ? `مرحباً، أرسلت تحويل InstaPay لطلب تجديد الاشتراك.\nرقم الطلب: ${request.requestNumber}\nالصيدلية: ${request.pharmacyName || request.pharmacyId}\nالمبلغ: ${request.amount} ${request.currency || subscriptionPaymentInfo.currency}\nعدد الأيام: ${request.days}`
-    : `Hello, I sent an InstaPay transfer for subscription renewal.\nRequest: ${request.requestNumber}\nPharmacy: ${request.pharmacyName || request.pharmacyId}\nAmount: ${request.amount} ${request.currency || subscriptionPaymentInfo.currency}\nDays: ${request.days}`;
+  const targetTier = parseTierUpgradePlan(request.plan);
+  const isTierUpgrade = Boolean(targetTier);
+  const requestTypeLabel = isTierUpgrade
+    ? isArabic
+      ? `ترقية إلى ${getSubscriptionTierLabel(targetTier!, true)}`
+      : `Upgrade to ${getSubscriptionTierLabel(targetTier!, false)}`
+    : isArabic
+      ? "تجديد اشتراك"
+      : "Subscription renewal";
+
+  const whatsappMessage = isTierUpgrade
+    ? isArabic
+      ? `مرحباً، أرسلت تحويل InstaPay لطلب ترقية الباقة.\nرقم الطلب: ${request.requestNumber}\nالصيدلية: ${request.pharmacyName || request.pharmacyId}\nالترقية: ${getSubscriptionTierLabel(targetTier!, true)}\nالمبلغ: ${request.amount} ${request.currency || subscriptionPaymentInfo.currency}`
+      : `Hello, I sent an InstaPay transfer for a package upgrade.\nRequest: ${request.requestNumber}\nPharmacy: ${request.pharmacyName || request.pharmacyId}\nUpgrade: ${getSubscriptionTierLabel(targetTier!, false)}\nAmount: ${request.amount} ${request.currency || subscriptionPaymentInfo.currency}`
+    : isArabic
+      ? `مرحباً، أرسلت تحويل InstaPay لطلب تجديد الاشتراك.\nرقم الطلب: ${request.requestNumber}\nالصيدلية: ${request.pharmacyName || request.pharmacyId}\nالمبلغ: ${request.amount} ${request.currency || subscriptionPaymentInfo.currency}\nعدد الأيام: ${request.days}`
+      : `Hello, I sent an InstaPay transfer for subscription renewal.\nRequest: ${request.requestNumber}\nPharmacy: ${request.pharmacyName || request.pharmacyId}\nAmount: ${request.amount} ${request.currency || subscriptionPaymentInfo.currency}\nDays: ${request.days}`;
 
   return (
     <section className="subscriptionPaymentCard">
@@ -24,8 +40,8 @@ export default function SubscriptionPaymentInstructions({
           <h3>{isArabic ? "تعليمات الدفع عبر InstaPay" : "InstaPay Payment Instructions"}</h3>
           <p>
             {isArabic
-              ? "بعد إتمام التحويل، أرسل إيصال الدفع على واتساب لتفعيل الاشتراك"
-              : "After payment, send the receipt on WhatsApp to activate your subscription"}
+              ? "بعد إتمام التحويل، أرسل إيصال الدفع على واتساب لتفعيل الطلب"
+              : "After payment, send the receipt on WhatsApp to activate your request"}
           </p>
         </div>
         {onClose ? (
@@ -41,17 +57,23 @@ export default function SubscriptionPaymentInstructions({
           <strong dir="ltr">{request.requestNumber}</strong>
         </div>
         <div>
+          <span>{isArabic ? "نوع الطلب" : "Request type"}</span>
+          <strong>{requestTypeLabel}</strong>
+        </div>
+        <div>
           <span>{isArabic ? "المبلغ المطلوب" : "Amount due"}</span>
           <strong>
             {request.amount} {request.currency || subscriptionPaymentInfo.currency}
           </strong>
         </div>
-        <div>
-          <span>{isArabic ? "مدة التجديد" : "Renewal period"}</span>
-          <strong>
-            {request.days} {isArabic ? "يوم" : "days"}
-          </strong>
-        </div>
+        {!isTierUpgrade && (
+          <div>
+            <span>{isArabic ? "مدة التجديد" : "Renewal period"}</span>
+            <strong>
+              {request.days} {isArabic ? "يوم" : "days"}
+            </strong>
+          </div>
+        )}
       </div>
 
       <ol className="subscriptionPaymentSteps">
@@ -96,8 +118,12 @@ export default function SubscriptionPaymentInstructions({
         </a>
         <p className="settingsFieldHint">
           {isArabic
-            ? "سيتم مراجعة طلبك وتفعيل الاشتراك بعد تأكيد الدفع"
-            : "Your request will be reviewed and activated after payment confirmation"}
+            ? isTierUpgrade
+              ? "سيتم مراجعة طلب الترقية وتفعيل الباقة الجديدة بعد تأكيد الدفع"
+              : "سيتم مراجعة طلبك وتفعيل الاشتراك بعد تأكيد الدفع"
+            : isTierUpgrade
+              ? "Your upgrade request will be reviewed and the new package activated after payment confirmation"
+              : "Your request will be reviewed and activated after payment confirmation"}
         </p>
       </div>
     </section>

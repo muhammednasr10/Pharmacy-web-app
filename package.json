@@ -10,8 +10,12 @@
     "build:gh-pages": "vite build --base /Pharmacy-web-app/",
     "preview": "vite preview --host 0.0.0.0",
     "check:supabase": "node scripts/check-supabase.mjs",
+    "verify:env": "node scripts/verify-env.mjs",
     "predeploy": "npm run build:gh-pages",
     "deploy": "gh-pages -d dist"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "dependencies": {
     "@supabase/supabase-js": "latest",
@@ -19,12 +23,15 @@
     "@types/react-dom": "latest",
     "@vitejs/plugin-react": "latest",
     "jspdf": "latest",
+    "qrcode": "^1.5.4",
     "react": "latest",
     "react-dom": "latest",
     "typescript": "latest",
     "vite": "latest"
   },
   "devDependencies": {
-    "gh-pages": "^6.3.0"
+    "@types/qrcode": "^1.5.6",
+    "gh-pages": "^6.3.0",
+    "vite-plugin-pwa": "^1.3.0"
   }
 }

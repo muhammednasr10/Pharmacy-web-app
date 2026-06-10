@@ -1,5 +1,18 @@
 import { useMemo } from "react";
-import type { Medicine, Page } from "../types";
+import type { BranchInventoryAlertRow } from "../utils/inventoryAlerts";
+import type { BranchReportRow } from "../utils/branchReports";
+import type { BranchStockTransfer, Medicine, Page } from "../types";
+import type { TierUpgradePrompt } from "../utils/subscriptionFeatures";
+
+type PendingBranchTransferGroup = {
+  transferNumber: string;
+  items: BranchStockTransfer[];
+  fromPharmacyId?: string;
+  toPharmacyId?: string;
+  createdAt?: string;
+  status: string;
+  totalQty: number;
+};
 
 type DashboardPageProps = {
   isArabic: boolean;
@@ -24,13 +37,26 @@ type DashboardPageProps = {
   subscriptionDaysLeft: number | null;
   isSubscriptionExpired: boolean;
   isSubscriptionExpiringSoon: boolean;
+  isTrialSubscription?: boolean;
   hasAdminRole: boolean;
+  showBranchBreakdown?: boolean;
+  dashboardBranchRows?: BranchReportRow[];
+  showOrgInventoryAlerts?: boolean;
+  branchInventoryAlertRows?: BranchInventoryAlertRow[];
+  showBranchInAlertLists?: boolean;
+  getBranchLabel?: (branchId: string | undefined) => string;
+  onOpenBranchInventory?: (branchId: string) => void;
   onOpenSubscriptionSettings: () => void;
   onOpenPOS: () => void;
   onOpenPurchases: () => void;
+  onOpenReorderSuggestions?: () => void;
   onOpenInventory: (filter: "all" | "low" | "expiring" | "expired") => void;
   onOpenCustomerPayments: () => void;
   onNavigate: (page: Page) => void;
+  pendingBranchTransferGroups?: PendingBranchTransferGroup[];
+  onApproveBranchTransfer?: (transferNumber: string) => void | Promise<void>;
+  onRejectBranchTransfer?: (transferNumber: string) => void | Promise<void>;
+  tierUpgradePrompt?: TierUpgradePrompt | null;
 };
 
 type ModuleCard = {
@@ -80,13 +106,26 @@ export default function DashboardPage({
   subscriptionDaysLeft,
   isSubscriptionExpired,
   isSubscriptionExpiringSoon,
+  isTrialSubscription = false,
   hasAdminRole,
+  showBranchBreakdown = false,
+  dashboardBranchRows = [],
+  showOrgInventoryAlerts = false,
+  branchInventoryAlertRows = [],
+  showBranchInAlertLists = false,
+  getBranchLabel,
+  onOpenBranchInventory,
   onOpenSubscriptionSettings,
   onOpenPOS,
   onOpenPurchases,
+  onOpenReorderSuggestions,
   onOpenInventory,
   onOpenCustomerPayments,
   onNavigate,
+  pendingBranchTransferGroups = [],
+  onApproveBranchTransfer,
+  onRejectBranchTransfer,
+  tierUpgradePrompt,
 }: DashboardPageProps) {
   const canAccess = (page: Page) => allowedPages.includes(page);
 
@@ -299,6 +338,30 @@ export default function DashboardPage({
         </p>
       </section>
 
+      {tierUpgradePrompt && (
+        <section className="card subscriptionTierUpgradeCard">
+          <div className="subscriptionTierUpgradeHeader">
+            <div>
+              <h3>{tierUpgradePrompt.title}</h3>
+              <p className="returnsSectionHint">{tierUpgradePrompt.summary}</p>
+            </div>
+            <button type="button" className="completeBtn" onClick={onOpenSubscriptionSettings}>
+              {tierUpgradePrompt.ctaLabel}
+            </button>
+          </div>
+          <ul className="subscriptionTierFeatureList">
+            {tierUpgradePrompt.features.map((feature) => (
+              <li key={feature}>{feature}</li>
+            ))}
+          </ul>
+          <p className="returnsSectionHint">
+            {isArabic
+              ? "يمكنك إرسال طلب ترقية مباشرة من قسم الاشتراك في الإعدادات."
+              : "You can submit an upgrade request directly from Subscription in Settings."}
+          </p>
+        </section>
+      )}
+
       {modules.length > 0 ? (
         <section className="moduleGrid">
           {modules.map((mod) => (
@@ -323,34 +386,171 @@ export default function DashboardPage({
         </section>
       )}
 
-      {(isSubscriptionExpired || isSubscriptionExpiringSoon) && (
+      {showOrgInventoryAlerts && branchInventoryAlertRows.length > 0 && (
+        <section className="card branchReportBreakdown branchInventoryAlertBreakdown">
+          <div className="cardHeader">
+            <div>
+              <h3>{isArabic ? "تنبيهات المخزون حسب الفرع" : "Inventory alerts by branch"}</h3>
+              <p className="returnsSectionHint">
+                {isArabic
+                  ? "ملخص النواقص والصلاحيات لكل فرع — اضغط على الفرع لعرض التفاصيل"
+                  : "Low stock and expiry summary per branch — click a branch for details"}
+              </p>
+            </div>
+          </div>
+          <div className="tableWrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>{isArabic ? "الفرع" : "Branch"}</th>
+                  <th>{isArabic ? "نواقص" : "Low stock"}</th>
+                  <th>{isArabic ? "نفدت" : "Out of stock"}</th>
+                  <th>{isArabic ? "قرب الانتهاء" : "Expiring"}</th>
+                  <th>{isArabic ? "منتهية" : "Expired"}</th>
+                  <th>{isArabic ? "إجمالي" : "Total"}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {branchInventoryAlertRows.map((row) => (
+                  <tr
+                    key={row.branchId}
+                    className={row.totalAlertCount > 0 ? "branchInventoryAlertRow--active" : ""}
+                  >
+                    <td>
+                      {onOpenBranchInventory ? (
+                        <button
+                          type="button"
+                          className="branchInventoryAlertLink"
+                          onClick={() => onOpenBranchInventory(row.branchId)}
+                        >
+                          {row.branchLabel}
+                        </button>
+                      ) : (
+                        row.branchLabel
+                      )}
+                    </td>
+                    <td>
+                      <span className={row.lowStockCount > 0 ? "alertCountTag warn" : "mutedCell"}>
+                        {row.lowStockCount}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={row.outOfStockCount > 0 ? "alertCountTag danger" : "mutedCell"}>
+                        {row.outOfStockCount}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={row.expiringCount > 0 ? "alertCountTag warn" : "mutedCell"}>
+                        {row.expiringCount}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={row.expiredCount > 0 ? "alertCountTag danger" : "mutedCell"}>
+                        {row.expiredCount}
+                      </span>
+                    </td>
+                    <td>
+                      <strong>{row.totalAlertCount}</strong>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {showBranchBreakdown && dashboardBranchRows.length > 1 && (
+        <section className="card branchReportBreakdown dashboardBranchBreakdown">
+          <h3>{isArabic ? "مبيعات الفروع — الفترة الحالية" : "Branch sales — current period"}</h3>
+          <div className="tableWrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>{isArabic ? "الفرع" : "Branch"}</th>
+                  <th>{isArabic ? "فواتير" : "Inv."}</th>
+                  <th>{isArabic ? "مبيعات" : "Sales"}</th>
+                  <th>{isArabic ? "ربح" : "Profit"}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dashboardBranchRows.map((row) => (
+                  <tr key={row.branchId}>
+                    <td>{row.branchLabel}</td>
+                    <td>{row.invoiceCount}</td>
+                    <td>
+                      {formatMoney(row.salesTotal)} {t.currency}
+                    </td>
+                    <td>
+                      {formatMoney(row.profitTotal)} {t.currency}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {canAccess("reports") && (
+            <button type="button" className="smallBtn" onClick={() => onNavigate("reports")}>
+              {isArabic ? "التقرير المفصّل" : "Full report"}
+            </button>
+          )}
+        </section>
+      )}
+
+      {(isTrialSubscription || isSubscriptionExpired || isSubscriptionExpiringSoon) && (
         <section
           className={
-            isSubscriptionExpired ? "subscriptionAlert danger" : "subscriptionAlert warning"
+            isSubscriptionExpired
+              ? "subscriptionAlert danger"
+              : isSubscriptionExpiringSoon
+                ? "subscriptionAlert warning"
+                : "subscriptionAlert info"
           }
         >
           <strong>
             {isSubscriptionExpired
               ? isArabic
-                ? "الاشتراك منتهي"
-                : "Subscription Expired"
-              : isArabic
-                ? "الاشتراك قرب ينتهي"
-                : "Subscription Expiring Soon"}
+                ? isTrialSubscription
+                  ? "انتهت الفترة التجريبية"
+                  : "الاشتراك منتهي"
+                : isTrialSubscription
+                  ? "Trial Ended"
+                  : "Subscription Expired"
+              : isTrialSubscription
+                ? isArabic
+                  ? "فترة تجريبية نشطة"
+                  : "Active Free Trial"
+                : isArabic
+                  ? "الاشتراك قرب ينتهي"
+                  : "Subscription Expiring Soon"}
           </strong>
           <span>
             {isSubscriptionExpired
               ? isArabic
-                ? "يرجى تجديد الاشتراك لاستمرار استخدام النظام."
-                : "Please renew the subscription to continue using the system."
-              : isArabic
-                ? `متبقي ${subscriptionDaysLeft} يوم على انتهاء الاشتراك.`
-                : `${subscriptionDaysLeft} days left until subscription ends.`}
+                ? isTrialSubscription
+                  ? "انتهت التجربة المجانية. اشترك للاستمرار في استخدام النظام."
+                  : "يرجى تجديد الاشتراك لاستمرار استخدام النظام."
+                : isTrialSubscription
+                  ? "Your free trial has ended. Subscribe to keep using the system."
+                  : "Please renew the subscription to continue using the system."
+              : isTrialSubscription
+                ? isArabic
+                  ? `متبقي ${subscriptionDaysLeft} يوم على نهاية التجربة المجانية.`
+                  : `${subscriptionDaysLeft} days left in your free trial.`
+                : isArabic
+                  ? `متبقي ${subscriptionDaysLeft} يوم على انتهاء الاشتراك.`
+                  : `${subscriptionDaysLeft} days left until subscription ends.`}
           </span>
           {hasAdminRole && canAccess("settings") && (
             <div className="renewActions">
               <button type="button" className="renewBtn" onClick={onOpenSubscriptionSettings}>
-                {isArabic ? "طلب تجديد اشتراك" : "Request renewal"}
+                {isArabic
+                  ? isTrialSubscription && !isSubscriptionExpired
+                    ? "الاشتراك بعد التجربة"
+                    : "طلب تجديد اشتراك"
+                  : isTrialSubscription && !isSubscriptionExpired
+                    ? "Subscribe after trial"
+                    : "Request renewal"}
               </button>
             </div>
           )}
@@ -373,6 +573,62 @@ export default function DashboardPage({
         </section>
       )}
 
+      {pendingBranchTransferGroups.length > 0 && onApproveBranchTransfer && onRejectBranchTransfer && (
+        <section className="card dashboardPendingTransfers">
+          <div className="cardHeader">
+            <h2>{isArabic ? "طلبات نقل بانتظار الاعتماد" : "Pending transfer approvals"}</h2>
+            <span className="badge warn">{pendingBranchTransferGroups.length}</span>
+          </div>
+          <div className="tableWrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>{isArabic ? "الرقم" : "No."}</th>
+                  <th>{isArabic ? "من" : "From"}</th>
+                  <th>{isArabic ? "إلى" : "To"}</th>
+                  <th>{isArabic ? "الأصناف" : "Items"}</th>
+                  <th>{isArabic ? "الكمية" : "Qty"}</th>
+                  <th>{t.date}</th>
+                  <th>{t.action}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingBranchTransferGroups.map((group) => (
+                  <tr key={group.transferNumber}>
+                    <td>{group.transferNumber}</td>
+                    <td>{getBranchLabel ? getBranchLabel(group.fromPharmacyId) : group.fromPharmacyId}</td>
+                    <td>{getBranchLabel ? getBranchLabel(group.toPharmacyId) : group.toPharmacyId}</td>
+                    <td>{group.items.length}</td>
+                    <td>{group.totalQty}</td>
+                    <td>
+                      {group.createdAt ? new Date(group.createdAt).toLocaleString() : "—"}
+                    </td>
+                    <td>
+                      <div className="actionButtons">
+                        <button
+                          type="button"
+                          className="smallBtn"
+                          onClick={() => void onApproveBranchTransfer(group.transferNumber)}
+                        >
+                          {isArabic ? "اعتماد" : "Approve"}
+                        </button>
+                        <button
+                          type="button"
+                          className="deleteSmallBtn"
+                          onClick={() => void onRejectBranchTransfer(group.transferNumber)}
+                        >
+                          {isArabic ? "رفض" : "Reject"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
       {showInventoryAlerts && (
         <section className="alertsGrid">
           <div className="card alertCard clickableCard" onClick={() => onOpenInventory("low")}>
@@ -383,14 +639,36 @@ export default function DashboardPage({
             {lowStockMedicines.length === 0 ? (
               <p className="empty">{isArabic ? "لا توجد نواقص حالياً" : "No low stock medicines"}</p>
             ) : (
-              <div className="miniList">
-                {lowStockMedicines.slice(0, 5).map((medicine) => (
-                  <div className="miniListItem" key={medicine.id}>
-                    <span>{isArabic ? medicine.name_ar : medicine.name_en}</span>
-                    <strong>{medicine.qty}</strong>
-                  </div>
-                ))}
-              </div>
+              <>
+                <div className="miniList">
+                  {lowStockMedicines.slice(0, 5).map((medicine) => (
+                    <div className="miniListItem" key={medicine.id}>
+                      <span>
+                        {showBranchInAlertLists && getBranchLabel && medicine.pharmacyId ? (
+                          <>
+                            <span className="miniListBranchTag">{getBranchLabel(medicine.pharmacyId)}</span>
+                            {" · "}
+                          </>
+                        ) : null}
+                        {isArabic ? medicine.name_ar : medicine.name_en}
+                      </span>
+                      <strong>{medicine.qty}</strong>
+                    </div>
+                  ))}
+                </div>
+                {onOpenReorderSuggestions && (
+                  <button
+                    type="button"
+                    className="alertFooterBtn dashboardReorderBtn"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onOpenReorderSuggestions();
+                    }}
+                  >
+                    {isArabic ? "اقتراح توريد من النواقص" : "Reorder from low stock"}
+                  </button>
+                )}
+              </>
             )}
           </div>
 
@@ -407,7 +685,15 @@ export default function DashboardPage({
               <div className="miniList">
                 {expiringSoonMedicines.slice(0, 5).map((medicine) => (
                   <div className="miniListItem" key={medicine.id}>
-                    <span>{isArabic ? medicine.name_ar : medicine.name_en}</span>
+                    <span>
+                      {showBranchInAlertLists && getBranchLabel && medicine.pharmacyId ? (
+                        <>
+                          <span className="miniListBranchTag">{getBranchLabel(medicine.pharmacyId)}</span>
+                          {" · "}
+                        </>
+                      ) : null}
+                      {isArabic ? medicine.name_ar : medicine.name_en}
+                    </span>
                     <strong>{medicine.expiry}</strong>
                   </div>
                 ))}
@@ -426,7 +712,15 @@ export default function DashboardPage({
               <div className="miniList">
                 {expiredMedicines.slice(0, 5).map((medicine) => (
                   <div className="miniListItem dangerText" key={medicine.id}>
-                    <span>{isArabic ? medicine.name_ar : medicine.name_en}</span>
+                    <span>
+                      {showBranchInAlertLists && getBranchLabel && medicine.pharmacyId ? (
+                        <>
+                          <span className="miniListBranchTag">{getBranchLabel(medicine.pharmacyId)}</span>
+                          {" · "}
+                        </>
+                      ) : null}
+                      {isArabic ? medicine.name_ar : medicine.name_en}
+                    </span>
                     <strong>{medicine.expiry}</strong>
                   </div>
                 ))}

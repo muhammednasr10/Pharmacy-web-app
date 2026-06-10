@@ -1,7 +1,9 @@
-import type { Medicine, CartItem, PaymentMethod } from "../types";
+import type { AppUser, CashierShift, Medicine, CartItem, PaymentMethod, PharmacySettings } from "../types";
 import MedicineTable from "../components/MedicineTable";
 import PosBarcodeInput from "../components/PosBarcodeInput";
 import PosCart from "../components/PosCart";
+import CashierShiftPanel from "../components/CashierShiftPanel";
+import OfflinePosBanner from "../components/OfflinePosBanner";
 
 type PosPageProps = {
   medicines: Medicine[];
@@ -42,6 +44,16 @@ type PosPageProps = {
   lowStockThreshold: number;
   expiringSoonDays: number;
   workShiftLabel?: string;
+  pharmacyId: string;
+  appUser: AppUser | null;
+  activeCashierShift: CashierShift | null;
+  pharmacySettings?: PharmacySettings | null;
+  workShiftId?: string;
+  onCashierShiftChange: (shift: CashierShift | null) => void;
+  isOnline?: boolean;
+  pendingOfflineSalesCount?: number;
+  offlineMedicinesCacheAt?: string | null;
+  isSyncingOfflineSales?: boolean;
 };
 
 export default function PosPage({
@@ -83,20 +95,48 @@ export default function PosPage({
   lowStockThreshold,
   expiringSoonDays,
   workShiftLabel,
+  pharmacyId,
+  appUser,
+  activeCashierShift,
+  pharmacySettings,
+  workShiftId,
+  onCashierShiftChange,
+  isOnline = true,
+  pendingOfflineSalesCount = 0,
+  offlineMedicinesCacheAt = null,
+  isSyncingOfflineSales = false,
 }: PosPageProps) {
   return (
     <section className="card posOnlyPage">
+      <OfflinePosBanner
+        isArabic={isArabic}
+        isOnline={isOnline}
+        pendingCount={pendingOfflineSalesCount}
+        cacheUpdatedAt={offlineMedicinesCacheAt}
+        isSyncing={isSyncingOfflineSales}
+      />
       <div className="cardHeader posPageHeader">
         <h2>{t.pos}</h2>
         {workShiftLabel && (
           <span className="posShiftBadge">{workShiftLabel}</span>
         )}
       </div>
+      <CashierShiftPanel
+        isArabic={isArabic}
+        currency={currency}
+        pharmacyId={pharmacyId}
+        appUser={appUser}
+        activeShift={activeCashierShift}
+        pharmacySettings={pharmacySettings}
+        workShiftId={workShiftId}
+        onShiftChange={onCashierShiftChange}
+        getPaymentLabel={getPaymentLabel}
+      />
       <PosBarcodeInput
         medicines={medicines}
         isArabic={isArabic}
         onAddToCart={onAddToCart}
-        disabled={!canUsePOS || isSubscriptionExpired}
+        disabled={!canUsePOS || isSubscriptionExpired || !isOnline && medicines.length === 0}
       />
 
       <div className="posSplit">
@@ -145,6 +185,7 @@ export default function PosPage({
           onHoldInvoice={onHoldInvoice}
           onOpenHeldInvoices={onOpenHeldInvoices}
           onOpenInstantReturn={onOpenInstantReturn}
+          isOnline={isOnline}
         />
       </div>
     </section>

@@ -7,6 +7,7 @@ type AppNavBarProps = {
   allowedPages: Page[];
   isArabic: boolean;
   t: Record<string, string>;
+  pageBadges?: Partial<Record<Page, number>>;
   onSelectPage: (page: Page) => void;
 };
 
@@ -15,6 +16,7 @@ export default function AppNavBar({
   allowedPages,
   isArabic,
   t,
+  pageBadges,
   onSelectPage,
 }: AppNavBarProps) {
   const trackRef = useRef<HTMLDivElement>(null);
@@ -42,6 +44,9 @@ export default function AppNavBar({
               {pageIcons[item.page] || "•"}
             </span>
             <span className="appNavBarLabel">{item.label}</span>
+            {pageBadges?.[item.page] ? (
+              <span className="appNavBarBadge">{pageBadges[item.page]}</span>
+            ) : null}
           </button>
         ))}
       </div>

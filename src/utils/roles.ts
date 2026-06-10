@@ -6,6 +6,7 @@ export function normalizeRole(role: string): UserRole {
   if (role === "manager") return "accountant";
   if (
     role === "super_admin" ||
+    role === "branch_manager" ||
     role === "cashier" ||
     role === "inventory" ||
     role === "accountant"
@@ -23,12 +24,104 @@ export function isSuperAdmin(appUser: AppUser | null | undefined): boolean {
   return appUser?.role === "super_admin";
 }
 
-export function isPharmacyAdmin(appUser: AppUser | null | undefined): boolean {
+/** Organization-wide manager — all branches in the group. */
+export function isOrgPharmacyAdmin(appUser: AppUser | null | undefined): boolean {
   return appUser?.role === "pharmacy_admin" || isSuperAdmin(appUser);
 }
 
+/** Single-branch manager. */
+export function isBranchManager(appUser: AppUser | null | undefined): boolean {
+  return appUser?.role === "branch_manager";
+}
+
+export function isAccountant(appUser: AppUser | null | undefined): boolean {
+  return appUser?.role === "accountant";
+}
+
+/** Any pharmacy manager (org or branch). */
+export function isPharmacyManager(appUser: AppUser | null | undefined): boolean {
+  return isOrgPharmacyAdmin(appUser) || isBranchManager(appUser);
+}
+
+/** @deprecated use isOrgPharmacyAdmin — kept for existing imports */
+export function isPharmacyAdmin(appUser: AppUser | null | undefined): boolean {
+  return isOrgPharmacyAdmin(appUser);
+}
+
+/** Org admin or accountant can switch branches or view all at once (accountant: read-only). */
+export function canSwitchOrganizationBranches(
+  appUser: AppUser | null | undefined,
+  branchCount: number
+): boolean {
+  if (branchCount <= 1) return false;
+  return isOrgPharmacyAdmin(appUser) || isAccountant(appUser);
+}
+
+export function canViewBranchBreakdownReports(
+  appUser: AppUser | null | undefined,
+  branchCount: number
+): boolean {
+  return (isOrgPharmacyAdmin(appUser) || isAccountant(appUser)) && branchCount > 1;
+}
+
 export function canManageUsers(appUser: AppUser | null | undefined): boolean {
-  return isPharmacyAdmin(appUser);
+  return isPharmacyManager(appUser);
+}
+
+/** Org-wide settings: subscription, alert rules, payroll, backup. */
+export function canEditOrgWideSettings(appUser: AppUser | null | undefined): boolean {
+  return isOrgPharmacyAdmin(appUser) || isSuperAdmin(appUser);
+}
+
+/** Branch contact + invoice footer for own branch. */
+export function canEditBranchSettings(appUser: AppUser | null | undefined): boolean {
+  return isPharmacyManager(appUser) || isSuperAdmin(appUser);
+}
+
+export function canDeleteMedicines(appUser: AppUser | null | undefined): boolean {
+  return isOrgPharmacyAdmin(appUser) || isSuperAdmin(appUser);
+}
+
+export function canDeleteReturns(appUser: AppUser | null | undefined): boolean {
+  return isOrgPharmacyAdmin(appUser) || isSuperAdmin(appUser);
+}
+
+export function canDeletePurchases(appUser: AppUser | null | undefined): boolean {
+  return isOrgPharmacyAdmin(appUser) || isSuperAdmin(appUser);
+}
+
+export function canDeleteCustomerPayments(appUser: AppUser | null | undefined): boolean {
+  return isOrgPharmacyAdmin(appUser) || isSuperAdmin(appUser);
+}
+
+export function canRequestSubscription(appUser: AppUser | null | undefined): boolean {
+  return isOrgPharmacyAdmin(appUser) || isSuperAdmin(appUser);
+}
+
+export function canExportPharmacyBackup(appUser: AppUser | null | undefined): boolean {
+  return isOrgPharmacyAdmin(appUser) || isSuperAdmin(appUser);
+}
+
+export function canViewOrgActivityLogs(appUser: AppUser | null | undefined): boolean {
+  return isOrgPharmacyAdmin(appUser) || isSuperAdmin(appUser) || isAccountant(appUser);
+}
+
+export function canManageOrgBranches(appUser: AppUser | null | undefined): boolean {
+  return isOrgPharmacyAdmin(appUser);
+}
+
+/** Can approve or reject pending branch stock transfers (incoming at own branch for branch managers). */
+export function canReviewPendingBranchTransfers(appUser: AppUser | null | undefined): boolean {
+  return isOrgPharmacyAdmin(appUser) || isBranchManager(appUser);
+}
+
+export function canApproveBranchStockTransfer(
+  appUser: AppUser | null | undefined,
+  toPharmacyId: string
+): boolean {
+  if (!appUser) return false;
+  if (isOrgPharmacyAdmin(appUser)) return true;
+  return isBranchManager(appUser) && appUser.pharmacyId === toPharmacyId;
 }
 
 export function canManageTenants(appUser: AppUser | null | undefined): boolean {
@@ -45,7 +138,8 @@ export function getRoleLabel(role: UserRole | string, isArabic: boolean): string
   if (!isArabic) {
     const en: Record<UserRole, string> = {
       super_admin: "System Owner",
-      pharmacy_admin: "Pharmacy Admin",
+      pharmacy_admin: "General Manager",
+      branch_manager: "Branch Manager",
       cashier: "Cashier",
       inventory: "Inventory Manager",
       accountant: "Accountant",
@@ -54,13 +148,30 @@ export function getRoleLabel(role: UserRole | string, isArabic: boolean): string
   }
   const labels: Record<UserRole, string> = {
     super_admin: "مالك النظام",
-    pharmacy_admin: "مدير الصيدلية",
+    pharmacy_admin: "مدير عام",
+    branch_manager: "مدير فرع",
     cashier: "كاشير",
     inventory: "مسؤول مخزن",
     accountant: "محاسب",
   };
   return labels[normalized] || normalized;
 }
+
+const branchManagerPages: Page[] = [
+  "dashboard",
+  "employeePortal",
+  "inventory",
+  "pos",
+  "invoices",
+  "returns",
+  "purchases",
+  "costs",
+  "customers",
+  "reports",
+  "stockMovements",
+  "users",
+  "settings",
+];
 
 export const allowedPagesByRole: Record<UserRole, Page[]> = {
   super_admin: [
@@ -78,24 +189,12 @@ export const allowedPagesByRole: Record<UserRole, Page[]> = {
     "activityLogs",
     "users",
     "tenants",
+    "sqlMigrations",
     "settings",
+    "branches",
   ],
-  pharmacy_admin: [
-    "dashboard",
-    "employeePortal",
-    "inventory",
-    "pos",
-    "invoices",
-    "returns",
-    "purchases",
-    "costs",
-    "customers",
-    "reports",
-    "stockMovements",
-    "activityLogs",
-    "users",
-    "settings",
-  ],
+  pharmacy_admin: [...branchManagerPages, "branches", "sqlMigrations"],
+  branch_manager: branchManagerPages,
   cashier: ["dashboard", "employeePortal", "pos", "invoices", "returns", "customers"],
   inventory: ["dashboard", "employeePortal", "inventory", "purchases", "stockMovements"],
   accountant: [
@@ -119,6 +218,7 @@ export function getAllowedPages(appUser: AppUser | null): Page[] {
 
 export const pharmacyAdminRoleOptions: UserRole[] = [
   "pharmacy_admin",
+  "branch_manager",
   "cashier",
   "inventory",
   "accountant",
@@ -127,16 +227,28 @@ export const pharmacyAdminRoleOptions: UserRole[] = [
 /** Roles available when creating pharmacy login accounts. */
 export const loginAccountRoleOptions: UserRole[] = [
   "pharmacy_admin",
+  "branch_manager",
   "cashier",
   "accountant",
   "inventory",
 ];
+
+export function loginAccountRoleOptionsFor(appUser: AppUser | null | undefined): UserRole[] {
+  if (isOrgPharmacyAdmin(appUser) || isSuperAdmin(appUser)) {
+    return loginAccountRoleOptions;
+  }
+  if (isBranchManager(appUser)) {
+    return loginAccountRoleOptions.filter((role) => role !== "pharmacy_admin");
+  }
+  return loginAccountRoleOptions;
+}
 
 export const defaultLoginAccountDrafts: Record<
   (typeof loginAccountRoleOptions)[number],
   { email: string; password: string }
 > = {
   pharmacy_admin: { email: "manager@pharmacy.com", password: "1234567" },
+  branch_manager: { email: "branch@pharmacy.com", password: "1234567" },
   cashier: { email: "cashier@pharmacy.com", password: "1234567" },
   accountant: { email: "acc@pharmacy.com", password: "1234567" },
   inventory: { email: "inv@pharmacy.com", password: "1234567" },
@@ -153,7 +265,8 @@ export function parseLoginAccountRole(value?: string | null): UserRole {
 }
 
 export function getDefaultLoginAccountDraft(role: UserRole): { email: string; password: string } {
-  return defaultLoginAccountDrafts[parseLoginAccountRole(role)];
+  const parsed = parseLoginAccountRole(role);
+  return defaultLoginAccountDrafts[parsed as (typeof loginAccountRoleOptions)[number]];
 }
 
 export function parseEmployeeJobRole(value?: string | null): UserRole {
@@ -179,6 +292,7 @@ export function getEmployeeJobRoleLabel(value: string | undefined | null, isArab
 export const superAdminRoleOptions: UserRole[] = [
   "super_admin",
   "pharmacy_admin",
+  "branch_manager",
   "cashier",
   "inventory",
   "accountant",
@@ -202,10 +316,19 @@ export const rolePermissionMatrix: RolePermissionRow[] = [
   },
   {
     role: "pharmacy_admin",
-    labelAr: "مدير الصيدلية",
-    labelEn: "Pharmacy Admin",
-    summaryAr: "يدير كل شيء داخل صيدليته: موظفين، مستخدمين، مخزون، مبيعات، تقارير، إعدادات.",
-    summaryEn: "Full control within own pharmacy: staff, users, inventory, sales, reports, settings.",
+    labelAr: "مدير عام",
+    labelEn: "General Manager",
+    summaryAr: "يدير كل فروع المجموعة: تقارير مجمّعة، HR مركزي، نقل مخزون (فوري أو باعتماد)، تنبيهات نواقص، وكل الفروع أو فرع واحد.",
+    summaryEn: "Manages all organization branches: consolidated reports, central HR, transfers (immediate or approval), low-stock alerts, all or one branch.",
+  },
+  {
+    role: "branch_manager",
+    labelAr: "مدير فرع",
+    labelEn: "Branch Manager",
+    summaryAr:
+      "فرعه فقط: تشغيل يومي (مبيعات، مخزون، توريد، موظفين). لا يحذف أدوية/مرتجعات/توريدات، لا إعدادات اشتراك أو تنبيهات منظمة، لا سجل نشاط المنظمة.",
+    summaryEn:
+      "Own branch daily ops (sales, inventory, purchases, staff). Cannot delete medicines/returns/purchases, org subscription/alert rules, or org activity logs.",
   },
   {
     role: "cashier",
@@ -225,8 +348,8 @@ export const rolePermissionMatrix: RolePermissionRow[] = [
     role: "accountant",
     labelAr: "محاسب",
     labelEn: "Accountant",
-    summaryAr: "التقارير والفواتير والمرتجعات والعملاء وسجل النشاط والحضور والمرتبات. لا يعدل المخزون.",
-    summaryEn: "Reports, invoices, returns, customers, activity logs, attendance and payroll. No inventory edits.",
+    summaryAr: "التقارير والفواتير والمرتجعات والعملاء — يمكنه عرض كل الفروع للقراءة فقط ومقارنة التقارير.",
+    summaryEn: "Reports, invoices, returns, customers — can view all branches read-only and compare branch reports.",
   },
 ];
 

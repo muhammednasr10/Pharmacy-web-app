@@ -27,6 +27,8 @@ type ReturnsPageProps = {
   canUseReturns: boolean;
   canDeleteReturn: boolean;
   deletingReturnId: number | string | null;
+  showBranchColumn?: boolean;
+  getBranchLabel?: (branchId: string | undefined) => string;
   t: Record<string, string>;
   isArabic: boolean;
   currency: string;
@@ -64,6 +66,8 @@ export default function ReturnsPage({
   canUseReturns,
   canDeleteReturn,
   deletingReturnId,
+  showBranchColumn = false,
+  getBranchLabel,
   t,
   isArabic,
   currency,
@@ -251,6 +255,7 @@ export default function ReturnsPage({
             <table className="returnsTable">
               <thead>
                 <tr>
+                  {showBranchColumn && <th>{isArabic ? "الفرع" : "Branch"}</th>}
                   <th>{isArabic ? "النوع" : "Type"}</th>
                   <th>{isArabic ? "رقم المرتجع" : "Return No."}</th>
                   <th>{isArabic ? "الفاتورة الأصلية" : "Original Invoice"}</th>
@@ -265,6 +270,13 @@ export default function ReturnsPage({
               <tbody>
                 {filteredReturns.map((record) => (
                   <tr key={record.id}>
+                    {showBranchColumn && (
+                      <td>
+                        {getBranchLabel
+                          ? getBranchLabel(record.pharmacyId)
+                          : record.pharmacyId || "—"}
+                      </td>
+                    )}
                     <td>
                       <span
                         className={

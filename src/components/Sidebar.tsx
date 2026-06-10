@@ -13,6 +13,7 @@ type SidebarProps = {
   isOpen: boolean;
   onCloseMenu: () => void;
   onSelectPage: (page: Page) => void;
+  pageBadges?: Partial<Record<Page, number>>;
 };
 
 export default function Sidebar({
@@ -26,6 +27,7 @@ export default function Sidebar({
   isOpen,
   onCloseMenu,
   onSelectPage,
+  pageBadges,
 }: SidebarProps) {
   const navigation = buildNavigationItems(allowedPages, isArabic, t);
 
@@ -78,6 +80,9 @@ export default function Sidebar({
               >
                 <span className="sidebarIcon">{pageIcons[item.page] || "•"}</span>
                 <span className="sidebarLabel">{item.label}</span>
+                {pageBadges?.[item.page] ? (
+                  <span className="sidebarNavBadge">{pageBadges[item.page]}</span>
+                ) : null}
               </button>
             ))}
           </nav>

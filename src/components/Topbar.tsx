@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { AppUser } from "../types";
-import { isPharmacyAdmin, isSuperAdmin, getRoleLabel } from "../utils/roles";
+import {
+  canSwitchOrganizationBranches,
+  getRoleLabel,
+  isSuperAdmin,
+} from "../utils/roles";
+import { ALL_BRANCHES_ID } from "../constants/branches";
 
 export type AlertKind = "expired" | "low" | "expiring";
 
@@ -37,6 +42,7 @@ type TopbarProps = {
   branches: BranchOption[];
   activeBranchId: string | null;
   onSwitchBranch: (id: string) => void;
+  allowBranchSwitch?: boolean;
 };
 
 const KIND_META: Record<AlertKind, { dot: string; ar: string; en: string }> = {
@@ -64,6 +70,7 @@ export default function Topbar({
   branches,
   activeBranchId,
   onSwitchBranch,
+  allowBranchSwitch,
 }: TopbarProps) {
   const [alertsOpen, setAlertsOpen] = useState(false);
   const alertRef = useRef<HTMLDivElement>(null);
@@ -85,9 +92,11 @@ export default function Topbar({
   };
 
   const userInitial = (appUser?.name || "?").trim().charAt(0) || "?";
+  const canSwitchBranches =
+    allowBranchSwitch ?? canSwitchOrganizationBranches(appUser, branches.length);
   const showBranchSwitch =
-    (isSuperAdmin(appUser) || (isPharmacyAdmin(appUser) && branches.length > 1)) &&
-    branches.length > 0;
+    (isSuperAdmin(appUser) || canSwitchBranches) && branches.length > 0;
+  const branchSelectValue = activeBranchId || appUser?.pharmacyId || branches[0]?.id || "";
 
   return (
     <header className="topbar">
@@ -189,10 +198,15 @@ export default function Topbar({
                     <path d="M9 20v-6h6v6" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
                   </svg>
                   <select
-                    value={activeBranchId || ""}
+                    value={branchSelectValue}
                     onChange={(e) => onSwitchBranch(e.target.value)}
                     aria-label={isArabic ? "الفرع النشط" : "Active branch"}
                   >
+                    {canSwitchBranches && (
+                      <option value={ALL_BRANCHES_ID}>
+                        {isArabic ? "كل الفروع" : "All branches"}
+                      </option>
+                    )}
                     {branches.map((branch) => (
                       <option key={branch.id} value={branch.id}>
                         {(isArabic ? branch.name : branch.name_en) || branch.name}

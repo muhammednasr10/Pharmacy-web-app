@@ -29,6 +29,7 @@ type PosCartProps = {
   onHoldInvoice: () => void;
   onOpenHeldInvoices: () => void;
   onOpenInstantReturn: () => void;
+  isOnline?: boolean;
 };
 
 export default function PosCart({
@@ -59,6 +60,7 @@ export default function PosCart({
   onHoldInvoice,
   onOpenHeldInvoices,
   onOpenInstantReturn,
+  isOnline = true,
 }: PosCartProps) {
   return (
     <div className="posPanel">
@@ -108,6 +110,7 @@ export default function PosCart({
         onPaymentMethodChange={onPaymentMethodChange}
         onCustomerNameChange={onCustomerNameChange}
         getPaymentLabel={getPaymentLabel}
+        disableCredit={!isOnline}
       />
       <div className="subtotalLine">
         <span>{t.subtotal}</span>
@@ -123,7 +126,7 @@ export default function PosCart({
             className="posActionBtn holdBtn"
             type="button"
             onClick={onHoldInvoice}
-            disabled={isHolding || isSubscriptionExpired}
+            disabled={isHolding || isSubscriptionExpired || !isOnline}
           >
             {isHolding
               ? isArabic
@@ -134,11 +137,21 @@ export default function PosCart({
               : "Hold Invoice"}
           </button>
         )}
-        <button className="posActionBtn" type="button" onClick={onOpenHeldInvoices}>
+        <button
+          className="posActionBtn"
+          type="button"
+          onClick={onOpenHeldInvoices}
+          disabled={!isOnline}
+        >
           {isArabic ? "الفواتير المعلقة" : "Held Invoices"}
           {heldInvoicesCount > 0 ? ` (${heldInvoicesCount})` : ""}
         </button>
-        <button className="posActionBtn" type="button" onClick={onOpenInstantReturn}>
+        <button
+          className="posActionBtn"
+          type="button"
+          onClick={onOpenInstantReturn}
+          disabled={!isOnline}
+        >
           {isArabic ? "مرتجع سريع" : "Quick Return"}
         </button>
       </div>

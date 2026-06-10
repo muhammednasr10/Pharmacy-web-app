@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Medicine } from "../types";
 import {
   findMedicineByBarcode,
@@ -9,6 +9,9 @@ import {
   searchMedicines,
   type MedicineEntryValues,
 } from "../utils/medicineLookup";
+import { playBarcodeBeep } from "../utils/barcodeBeep";
+import { useHardwareBarcodeScanner } from "../utils/useHardwareBarcodeScanner";
+import BarcodeCameraScanner, { canUseBarcodeCameraScanner } from "./BarcodeCameraScanner";
 
 type MedicineEntryGridProps = {
   medicines: Medicine[];
@@ -20,6 +23,8 @@ type MedicineEntryGridProps = {
   excludeMedicineId?: number | null;
   qtyPlaceholder?: string;
   resetKey?: string | number;
+  showBarcodeCamera?: boolean;
+  enableHardwareScanner?: boolean;
 };
 
 type ActiveField = "barcode" | "name_ar" | "name_en" | null;
@@ -34,10 +39,15 @@ export default function MedicineEntryGrid({
   excludeMedicineId = null,
   qtyPlaceholder,
   resetKey = 0,
+  showBarcodeCamera = true,
+  enableHardwareScanner = true,
 }: MedicineEntryGridProps) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const barcodeInputRef = useRef<HTMLInputElement>(null);
   const [activeField, setActiveField] = useState<ActiveField>(null);
   const [matchedMedicine, setMatchedMedicine] = useState<Medicine | null>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const cameraSupported = canUseBarcodeCameraScanner();
 
   const catalog = useMemo(
     () => medicines.filter((medicine) => medicine.id !== excludeMedicineId),
@@ -88,6 +98,44 @@ export default function MedicineEntryGrid({
     setMatchedMedicine(medicine);
     onChange(medicineToEntryValues(medicine, value));
     setActiveField(null);
+  }
+
+  const processScannedBarcode = useCallback(
+    (raw: string) => {
+      const clean = raw.trim();
+      if (!clean) return;
+
+      const byBarcode = findMedicineByBarcode(catalog, clean);
+      if (byBarcode) {
+        playBarcodeBeep(true);
+        setMatchedMedicine(byBarcode);
+        onChange(medicineToEntryValues(byBarcode, value));
+        setActiveField(null);
+        return;
+      }
+
+      playBarcodeBeep(false);
+      onChange({ ...value, barcode: clean });
+      setActiveField("barcode");
+    },
+    [catalog, onChange, value]
+  );
+
+  useHardwareBarcodeScanner({
+    disabled: disabled || !enableHardwareScanner,
+    onScan: processScannedBarcode,
+    ignoreInputRef: barcodeInputRef,
+    allowScanWhileEditing: true,
+  });
+
+  function handleCameraBarcode(code: string) {
+    setCameraOpen(false);
+    processScannedBarcode(code);
+  }
+
+  function openCameraScanner() {
+    if (disabled || !showBarcodeCamera || !cameraSupported) return;
+    setCameraOpen(true);
   }
 
   function tryAutoMatch(nextValue: MedicineEntryValues, field: ActiveField) {
@@ -154,14 +202,34 @@ export default function MedicineEntryGrid({
       <div className="formGrid medicineEntryGridFields">
         <div className="medicineEntryField medicineLookupField">
           <label>{t.barcode}</label>
-          <input
-            value={value.barcode}
-            onChange={(e) => updateField("barcode", e.target.value)}
-            onFocus={() => setActiveField("barcode")}
-            placeholder={t.barcode}
-            disabled={disabled}
-            autoComplete="off"
-          />
+          <div className="medicineBarcodeInputRow">
+            <input
+              ref={barcodeInputRef}
+              value={value.barcode}
+              onChange={(e) => updateField("barcode", e.target.value)}
+              onFocus={() => setActiveField("barcode")}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                processScannedBarcode(value.barcode);
+              }}
+              placeholder={t.barcode}
+              disabled={disabled}
+              autoComplete="off"
+            />
+            {showBarcodeCamera && cameraSupported && (
+              <button
+                type="button"
+                className="posBarcodeCameraBtn"
+                disabled={disabled}
+                onClick={openCameraScanner}
+                aria-label={isArabic ? "مسح بالكاميرا" : "Scan with camera"}
+                title={isArabic ? "مسح بالكاميرا" : "Scan with camera"}
+              >
+                📷
+              </button>
+            )}
+          </div>
           {activeField === "barcode" && suggestions.length > 0 && (
             <div className="medicineLookupSuggestions" role="listbox">
               {suggestions.map((medicine) => (
@@ -294,6 +362,14 @@ export default function MedicineEntryGrid({
           />
         </div>
       </div>
+
+      {cameraOpen && (
+        <BarcodeCameraScanner
+          isArabic={isArabic}
+          onDetected={handleCameraBarcode}
+          onClose={() => setCameraOpen(false)}
+        />
+      )}
     </div>
   );
 }

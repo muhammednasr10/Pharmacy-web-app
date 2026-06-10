@@ -1,7 +1,26 @@
 import { developerInfo } from "../branding";
 import { formatDateInput } from "../utils/date";
+import type { SubscriptionTier } from "./subscriptionTiers";
 
-export type SubscriptionPlanKey = "monthly" | "quarterly" | "yearly" | "custom";
+export type SubscriptionPlanKey = "monthly" | "quarterly" | "yearly" | "custom" | "trial";
+
+/** Free trial length for new pharmacy signups */
+export const TRIAL_SUBSCRIPTION_DAYS = 14;
+
+export function isTrialSubscriptionStatus(status?: string | null) {
+  return status === "trial";
+}
+
+export function isActiveSubscriptionStatus(status?: string | null) {
+  if (!status) return true;
+  return status === "active" || status === "trial";
+}
+
+export function computeTrialEndDate(from = new Date()) {
+  const end = new Date(from);
+  end.setDate(end.getDate() + TRIAL_SUBSCRIPTION_DAYS);
+  return formatDateInput(end);
+}
 
 export const subscriptionPaymentInfo = {
   instapayAccount: developerInfo.phone,
@@ -14,6 +33,38 @@ export const subscriptionPlanPricing = {
   quarterly: { days: 90, amount: 1350, labelAr: "ربع سنوي", labelEn: "Quarterly" },
   yearly: { days: 365, amount: 4800, labelAr: "سنوي", labelEn: "Yearly" },
 } as const;
+
+/** One-time upgrade fees (EGP) — charged on top of active subscription. */
+export const tierUpgradePricing = {
+  professional: {
+    amount: 800,
+    labelAr: "ترقية إلى باقة احترافي",
+    labelEn: "Upgrade to Professional",
+  },
+  premium: {
+    amount: 1500,
+    labelAr: "ترقية إلى باقة فاخر",
+    labelEn: "Upgrade to Premium",
+  },
+} as const;
+
+export function getTierUpgradeAmount(targetTier: SubscriptionTier): number {
+  if (targetTier === "professional") return tierUpgradePricing.professional.amount;
+  if (targetTier === "premium") return tierUpgradePricing.premium.amount;
+  return 0;
+}
+
+export function getTierUpgradePricingLabel(targetTier: SubscriptionTier, isArabic: boolean): string {
+  if (targetTier === "professional") {
+    return isArabic
+      ? tierUpgradePricing.professional.labelAr
+      : tierUpgradePricing.professional.labelEn;
+  }
+  if (targetTier === "premium") {
+    return isArabic ? tierUpgradePricing.premium.labelAr : tierUpgradePricing.premium.labelEn;
+  }
+  return isArabic ? "ترقية باقة" : "Package upgrade";
+}
 
 const DAILY_RATE = subscriptionPlanPricing.monthly.amount / subscriptionPlanPricing.monthly.days;
 

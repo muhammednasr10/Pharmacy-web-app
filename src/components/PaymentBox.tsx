@@ -10,6 +10,7 @@ type PaymentBoxProps = {
   onPaymentMethodChange: (method: PaymentMethod) => void;
   onCustomerNameChange: (value: string) => void;
   getPaymentLabel: (method: string) => string;
+  disableCredit?: boolean;
 };
 
 export default function PaymentBox({
@@ -22,6 +23,7 @@ export default function PaymentBox({
   onPaymentMethodChange,
   onCustomerNameChange,
   getPaymentLabel,
+  disableCredit = false,
 }: PaymentBoxProps) {
   return (
     <div className="paymentBox">
@@ -41,8 +43,15 @@ export default function PaymentBox({
         <option value="cash">{getPaymentLabel("cash")}</option>
         <option value="visa">{getPaymentLabel("visa")}</option>
         <option value="wallet">{getPaymentLabel("wallet")}</option>
-        <option value="credit">{getPaymentLabel("credit")}</option>
+        {!disableCredit && <option value="credit">{getPaymentLabel("credit")}</option>}
       </select>
+      {disableCredit && (
+        <p className="mutedText paymentOfflineHint">
+          {isArabic
+            ? "البيع الآجل غير متاح بدون اتصال"
+            : "Credit sales are unavailable offline"}
+        </p>
+      )}
       {paymentMethod === "credit" && (
         <>
           <label>{isArabic ? "اسم العميل" : "Customer Name"}</label>

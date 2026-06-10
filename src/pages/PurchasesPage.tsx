@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import MedicineEntryGrid from "../components/MedicineEntryGrid";
+import ReorderSuggestionsModal from "../components/ReorderSuggestionsModal";
 import type { Medicine, PharmacySettings, PurchaseRecord } from "../types";
 import * as pharmacyService from "../services/pharmacyService";
+import {
+  consumeReorderModalFlag,
+  consumeReorderPurchaseDraft,
+  type ReorderPurchaseDraft,
+} from "../utils/reorderSuggestions";
 
 type PurchaseLineDraft = {
   key: string;
@@ -31,10 +37,12 @@ type PurchasesPageProps = {
   purchases: PurchaseRecord[];
   branches: PharmacySettings[];
   defaultBranchId: string;
+  showBranchColumn?: boolean;
   isArabic: boolean;
   t: Record<string, string>;
   currency: string;
   canUsePurchases: boolean;
+  canDeletePurchase?: boolean;
   isSubscriptionExpired: boolean;
   userId?: string;
   userName?: string;
@@ -47,6 +55,8 @@ type PurchasesPageProps = {
   }) => Promise<void>;
   onRefreshMedicines: () => Promise<void>;
   onRefreshPurchases: () => Promise<void>;
+  medicines?: Medicine[];
+  fallbackSettings?: PharmacySettings | null;
   safeNumber: (value: unknown) => number;
   barcodeCSV: (value: unknown) => string;
   downloadCSV: (filename: string, rows: string[][]) => void;
@@ -109,16 +119,20 @@ export default function PurchasesPage({
   purchases,
   branches,
   defaultBranchId,
+  showBranchColumn = false,
   isArabic,
   t,
   currency,
   canUsePurchases,
+  canDeletePurchase = false,
   isSubscriptionExpired,
   userId,
   userName,
   onActivityLog,
   onRefreshMedicines,
   onRefreshPurchases,
+  medicines = [],
+  fallbackSettings = null,
   safeNumber,
   barcodeCSV,
   downloadCSV,
@@ -142,6 +156,7 @@ export default function PurchasesPage({
   const [editingDraftKey, setEditingDraftKey] = useState<string | null>(null);
   const [itemLookupResetKey, setItemLookupResetKey] = useState(0);
   const [deletingPurchaseNumber, setDeletingPurchaseNumber] = useState<string | null>(null);
+  const [showReorderModal, setShowReorderModal] = useState(false);
 
   const branchOptions = useMemo(() => {
     if (branches.length > 0) return branches;
@@ -157,6 +172,40 @@ export default function PurchasesPage({
   useEffect(() => {
     void loadPurchases();
   }, [loadPurchases, purchases]);
+
+  useEffect(() => {
+    if (consumeReorderModalFlag()) {
+      setShowReorderModal(true);
+    }
+
+    const draft = consumeReorderPurchaseDraft();
+    if (!draft) return;
+
+    applyReorderDraft(draft);
+  }, [defaultBranchId]);
+
+  function applyReorderDraft(draft: ReorderPurchaseDraft) {
+    setIsEditMode(false);
+    setEditingDraftKey(null);
+    setPurchaseNumber(`PUR-${Date.now()}`);
+    setTargetBranchId(draft.branchId || defaultBranchId);
+    setSupplierName(draft.supplierName || "");
+    setNotes(draft.notes || "");
+    setItemForm(emptyItemForm);
+    setDraftItems(
+      draft.items.map((item, index) => ({
+        key: `reorder-${index}-${Date.now()}`,
+        ...item,
+      }))
+    );
+    setItemLookupResetKey((key) => key + 1);
+    setShowPurchaseModal(true);
+  }
+
+  function handleReorderDraft(draft: ReorderPurchaseDraft) {
+    setShowReorderModal(false);
+    applyReorderDraft(draft);
+  }
 
   useEffect(() => {
     if (!showPurchaseModal || !targetBranchId) return;
@@ -248,7 +297,7 @@ export default function PurchasesPage({
   }
 
   async function handleDeletePurchase(group: PurchaseGroup) {
-    if (!canUsePurchases || isSubscriptionExpired) return;
+    if (!canUsePurchases || !canDeletePurchase || isSubscriptionExpired) return;
 
     const confirmed = window.confirm(
       isArabic
@@ -442,7 +491,7 @@ export default function PurchasesPage({
     const rows = [
       [
         isArabic ? "رقم التوريد" : "Purchase No.",
-        isArabic ? "الفرع" : "Branch",
+        ...(showBranchColumn ? [isArabic ? "الفرع" : "Branch"] : []),
         isArabic ? "اسم الدواء عربي" : "Arabic Medicine Name",
         isArabic ? "اسم الدواء إنجليزي" : "English Medicine Name",
         isArabic ? "الباركود" : "Barcode",
@@ -457,7 +506,7 @@ export default function PurchasesPage({
       ],
       ...allPurchases.map((purchase) => [
         purchase.purchaseNumber || `#${purchase.id}`,
-        getBranchLabel(purchase.pharmacyId || ""),
+        ...(showBranchColumn ? [getBranchLabel(purchase.pharmacyId || "")] : []),
         purchase.medicineName_ar || "-",
         purchase.medicineName_en || "-",
         barcodeCSV(purchase.barcode),
@@ -490,6 +539,14 @@ export default function PurchasesPage({
           <div className="returnsHeaderBtns">
             <button
               type="button"
+              className="editBtn"
+              onClick={() => setShowReorderModal(true)}
+              disabled={isSubscriptionExpired}
+            >
+              {isArabic ? "اقتراح من النواقص" : "Reorder suggestions"}
+            </button>
+            <button
+              type="button"
               className="printFullBtn"
               onClick={openPurchaseModal}
               disabled={isSubscriptionExpired}
@@ -519,14 +576,16 @@ export default function PurchasesPage({
           }
         />
 
-        <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)}>
-          <option value="all">{isArabic ? "كل الفروع" : "All branches"}</option>
-          {branchOptions.map((branch) => (
-            <option key={branch.id} value={branch.id}>
-              {(isArabic ? branch.name : branch.name_en) || branch.name || branch.id}
-            </option>
-          ))}
-        </select>
+        {showBranchColumn && branchOptions.length > 1 && (
+          <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)}>
+            <option value="all">{isArabic ? "كل الفروع" : "All branches"}</option>
+            {branchOptions.map((branch) => (
+              <option key={branch.id} value={branch.id}>
+                {(isArabic ? branch.name : branch.name_en) || branch.name || branch.id}
+              </option>
+            ))}
+          </select>
+        )}
 
         <input
           type="date"
@@ -562,7 +621,7 @@ export default function PurchasesPage({
             <thead>
               <tr>
                 <th>{isArabic ? "رقم التوريد" : "Purchase No."}</th>
-                <th>{isArabic ? "الفرع" : "Branch"}</th>
+                {showBranchColumn && <th>{isArabic ? "الفرع" : "Branch"}</th>}
                 <th>{isArabic ? "عدد الأصناف" : "Items"}</th>
                 <th>{isArabic ? "إجمالي الكمية" : "Total Qty"}</th>
                 <th>{isArabic ? "إجمالي التكلفة" : "Total Cost"}</th>
@@ -578,7 +637,7 @@ export default function PurchasesPage({
                   <td>
                     <strong className="purchaseNumberTag">{group.purchaseNumber}</strong>
                   </td>
-                  <td>{getBranchLabel(group.pharmacyId)}</td>
+                  {showBranchColumn && <td>{getBranchLabel(group.pharmacyId)}</td>}
                   <td>{group.items.length}</td>
                   <td>{group.totalQuantity}</td>
                   <td>
@@ -597,31 +656,31 @@ export default function PurchasesPage({
                         {isArabic ? "عرض" : "View"}
                       </button>
                       {canUsePurchases && (
-                        <>
-                          <button
-                            type="button"
-                            className="editBtn"
-                            disabled={isSubscriptionExpired || saving}
-                            onClick={() => void openEditPurchaseModal(group)}
-                          >
-                            {t.edit}
-                          </button>
-                          <button
-                            type="button"
-                            className="deleteSmallBtn"
-                            disabled={
-                              isSubscriptionExpired ||
-                              deletingPurchaseNumber === group.purchaseNumber
-                            }
-                            onClick={() => void handleDeletePurchase(group)}
-                          >
-                            {deletingPurchaseNumber === group.purchaseNumber
-                              ? isArabic
-                                ? "..."
-                                : "..."
-                              : t.delete}
-                          </button>
-                        </>
+                        <button
+                          type="button"
+                          className="editBtn"
+                          disabled={isSubscriptionExpired || saving}
+                          onClick={() => void openEditPurchaseModal(group)}
+                        >
+                          {t.edit}
+                        </button>
+                      )}
+                      {canDeletePurchase && (
+                        <button
+                          type="button"
+                          className="deleteSmallBtn"
+                          disabled={
+                            isSubscriptionExpired ||
+                            deletingPurchaseNumber === group.purchaseNumber
+                          }
+                          onClick={() => void handleDeletePurchase(group)}
+                        >
+                          {deletingPurchaseNumber === group.purchaseNumber
+                            ? isArabic
+                              ? "..."
+                              : "..."
+                            : t.delete}
+                        </button>
                       )}
                     </div>
                   </td>
@@ -715,6 +774,11 @@ export default function PurchasesPage({
                     : "Add item to purchase"}
               </h3>
               <div className="medicineForm purchaseModalForm">
+                <p className="returnsSectionHint purchaseScannerHint">
+                  {isArabic
+                    ? "يمكنك مسح الباركود بالماسح الضوئي أو الكاميرا أثناء إدخال الأصناف"
+                    : "Scan barcodes with a hardware scanner or camera while adding items"}
+                </p>
                 <MedicineEntryGrid
                   medicines={branchMedicines}
                   value={itemForm}
@@ -724,6 +788,7 @@ export default function PurchasesPage({
                   disabled={saving}
                   qtyPlaceholder={isArabic ? "كمية التوريد" : "Purchase quantity"}
                   resetKey={`${itemLookupResetKey}-${editingDraftKey || "new"}`}
+                  enableHardwareScanner
                 />
               </div>
               <div className="purchaseAddItemActions">
@@ -925,6 +990,18 @@ export default function PurchasesPage({
           </div>
         </div>
       )}
+
+      <ReorderSuggestionsModal
+        isArabic={isArabic}
+        open={showReorderModal}
+        onClose={() => setShowReorderModal(false)}
+        medicines={medicines}
+        branches={branchOptions}
+        defaultBranchId={defaultBranchId}
+        allowBranchPicker={showBranchColumn && branchOptions.length > 1}
+        fallbackSettings={fallbackSettings}
+        onApplyDraft={handleReorderDraft}
+      />
     </section>
   );
 }

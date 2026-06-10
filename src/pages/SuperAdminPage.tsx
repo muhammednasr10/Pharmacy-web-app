@@ -1,7 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import type { AppUser, PharmacyLoginAccount, PharmacySettings, SubscriptionRequest, UserRole } from "../types";
 import { computeSubscriptionEndDate } from "../config/subscription";
+import {
+  getSubscriptionTier,
+  getSubscriptionTierLabel,
+  parseSubscriptionTier,
+  subscriptionTierOrder,
+  subscriptionTiers,
+  type SubscriptionTier,
+} from "../config/subscriptionTiers";
+import { getOrganizationBranchUsage } from "../utils/branchLimits";
 import { getRoleLabel, superAdminRoleOptions } from "../utils/roles";
+import { isTierUpgradePlan, parseTierUpgradePlan } from "../utils/subscriptionFeatures";
+import { getSuperAdminSubscriptionWhatsappUrl } from "../utils/superAdminNotify";
+import SaasAdminStatsPanel from "../components/SaasAdminStatsPanel";
 
 type TenantForm = {
   id: string;
@@ -9,7 +21,8 @@ type TenantForm = {
   name_en: string;
   phone: string;
   address: string;
-  subscriptionPlan: string;
+  subscriptionTier: SubscriptionTier;
+  maxBranches: number;
 };
 
 type UserForm = {
@@ -39,6 +52,8 @@ type SuperAdminPageProps = {
   onCreateTenantUser: () => Promise<boolean>;
   creatingTenantUser: boolean;
   onUpdateTenantStatus: (pharmacyId: string, status: "active" | "suspended") => Promise<boolean>;
+  onUpdateMaxBranches: (organizationId: string, maxBranches: number) => Promise<boolean>;
+  onUpdateSubscriptionTier: (organizationId: string, tier: SubscriptionTier) => Promise<boolean>;
   subscriptionRequests: SubscriptionRequest[];
   onApproveSubscriptionRequest: (requestId: number) => Promise<boolean>;
   onRejectSubscriptionRequest: (requestId: number, note?: string) => Promise<boolean>;
@@ -49,7 +64,8 @@ type SuperAdminPageProps = {
 };
 
 function isPharmacyActive(pharmacy: PharmacySettings) {
-  return pharmacy.subscriptionStatus === "active" && pharmacy.isActive !== false;
+  const status = pharmacy.subscriptionStatus || "active";
+  return (status === "active" || status === "trial") && pharmacy.isActive !== false;
 }
 
 export default function SuperAdminPage({
@@ -70,6 +86,8 @@ export default function SuperAdminPage({
   onCreateTenantUser,
   creatingTenantUser,
   onUpdateTenantStatus,
+  onUpdateMaxBranches,
+  onUpdateSubscriptionTier,
   subscriptionRequests,
   onApproveSubscriptionRequest,
   onRejectSubscriptionRequest,
@@ -92,8 +110,6 @@ export default function SuperAdminPage({
 
   const selected = pharmacies.find((p) => p.id === selectedPharmacyId);
   const tenantUsers = systemUsers.filter((u) => u.pharmacyId === selectedPharmacyId);
-  const activeCount = pharmacies.filter(isPharmacyActive).length;
-  const suspendedCount = pharmacies.length - activeCount;
   const pendingRequests = subscriptionRequests.filter((r) => r.status === "pending");
   const pharmacyNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -103,6 +119,72 @@ export default function SuperAdminPage({
   const [requestActionId, setRequestActionId] = useState<number | null>(null);
   const [loginRequestActionId, setLoginRequestActionId] = useState<string | null>(null);
   const [requestUpdating, setRequestUpdating] = useState(false);
+  const [maxBranchDrafts, setMaxBranchDrafts] = useState<Record<string, string>>({});
+  const [maxBranchSavingId, setMaxBranchSavingId] = useState<string | null>(null);
+  const [tierSavingId, setTierSavingId] = useState<string | null>(null);
+
+  function getTierBadgeClass(tier: SubscriptionTier) {
+    if (tier === "premium") return "saasTierBadge premium";
+    if (tier === "professional") return "saasTierBadge professional";
+    return "saasTierBadge basic";
+  }
+
+  async function handleTierChange(pharmacy: PharmacySettings, nextTier: SubscriptionTier) {
+    const currentTier = parseSubscriptionTier(pharmacy.subscriptionTier || pharmacy.subscriptionPlan);
+    if (nextTier === currentTier) return;
+
+    const usage = getOrganizationBranchUsage(pharmacies, pharmacy);
+    const tierMax = getSubscriptionTier(nextTier).maxBranches;
+    if (usage.used > tierMax) {
+      alert(
+        isArabic
+          ? `لا يمكن خفض الباقة — الصيدلية تستخدم ${usage.used} فروع والباقة الجديدة تسمح بـ ${tierMax} فقط`
+          : `Cannot downgrade — pharmacy uses ${usage.used} branches but the new tier allows only ${tierMax}`
+      );
+      return;
+    }
+
+    setTierSavingId(usage.organizationId);
+    try {
+      await onUpdateSubscriptionTier(usage.organizationId, nextTier);
+    } finally {
+      setTierSavingId(null);
+    }
+  }
+
+  function getMaxBranchDraft(organizationId: string, fallback: number) {
+    return maxBranchDrafts[organizationId] ?? String(fallback);
+  }
+
+  async function saveMaxBranches(organizationId: string, currentUsed: number) {
+    const raw = getMaxBranchDraft(organizationId, currentUsed);
+    const next = Math.floor(Number(raw));
+    if (!Number.isFinite(next) || next < 1) {
+      alert(isArabic ? "أدخل عدداً صحيحاً أكبر من صفر" : "Enter a whole number greater than zero");
+      return;
+    }
+    if (next < currentUsed) {
+      alert(
+        isArabic
+          ? `لا يمكن تقليل الحد عن الفروع الحالية (${currentUsed})`
+          : `Cannot set limit below current branches (${currentUsed})`
+      );
+      return;
+    }
+    setMaxBranchSavingId(organizationId);
+    try {
+      const ok = await onUpdateMaxBranches(organizationId, next);
+      if (ok) {
+        setMaxBranchDrafts((prev) => {
+          const nextDrafts = { ...prev };
+          delete nextDrafts[organizationId];
+          return nextDrafts;
+        });
+      }
+    } finally {
+      setMaxBranchSavingId(null);
+    }
+  }
 
   async function handleApproveRequest(requestId: number) {
     setRequestActionId(requestId);
@@ -197,7 +279,21 @@ export default function SuperAdminPage({
     onSwitchTenant(pharmacyId);
   }
 
+  function getRequestTypeLabel(request: SubscriptionRequest) {
+    const targetTier = parseTierUpgradePlan(request.plan);
+    if (targetTier) {
+      return isArabic
+        ? `ترقية إلى ${getSubscriptionTierLabel(targetTier, true)}`
+        : `Upgrade to ${getSubscriptionTierLabel(targetTier, false)}`;
+    }
+    return isArabic ? "تجديد اشتراك" : "Renewal";
+  }
+
   function formatEndDateAfterApproval(request: SubscriptionRequest) {
+    const targetTier = parseTierUpgradePlan(request.plan);
+    if (targetTier) {
+      return getSubscriptionTierLabel(targetTier, isArabic);
+    }
     const pharmacy = pharmacies.find((item) => item.id === request.pharmacyId);
     const endDate = computeSubscriptionEndDate(pharmacy?.subscriptionEndDate, request.days);
     return formatPharmacyDate(endDate);
@@ -241,6 +337,15 @@ export default function SuperAdminPage({
         </button>
       </div>
 
+      <SaasAdminStatsPanel
+        isArabic={isArabic}
+        pharmacies={pharmacies}
+        systemUsers={systemUsers}
+        subscriptionRequests={subscriptionRequests}
+        pendingLoginAccountRequests={pendingPharmacyLoginAccounts.length}
+        isPharmacyActive={isPharmacyActive}
+      />
+
       <section className="saasRequestsPanel">
         <div className="saasPageHeader">
           <div>
@@ -258,7 +363,7 @@ export default function SuperAdminPage({
 
         {pendingRequests.length === 0 ? (
           <p className="empty">
-            {isArabic ? "لا توجد طلبات قيد المراجعة حالياً" : "No pending renewal requests"}
+            {isArabic ? "لا توجد طلبات قيد المراجعة حالياً" : "No pending subscription requests"}
           </p>
         ) : (
           <div className="tableWrap">
@@ -267,11 +372,13 @@ export default function SuperAdminPage({
                 <tr>
                   <th>{isArabic ? "رقم الطلب" : "Request #"}</th>
                   <th>{isArabic ? "الصيدلية" : "Pharmacy"}</th>
-                  <th>{isArabic ? "الأيام" : "Days"}</th>
-                  <th>{isArabic ? "المبلغ" : "Amount"}</th>
+                  <th>{isArabic ? "النوع" : "Type"}</th>
+                  <th>{isArabic ? "التفاصيل" : "Details"}</th>
                   <th>{isArabic ? "مقدم الطلب" : "Requested by"}</th>
                   <th>{isArabic ? "التاريخ" : "Date"}</th>
-                  <th>{isArabic ? "انتهاء الاشتراك بعد الاعتماد" : "End date after approval"}</th>
+                  <th>
+                    {isArabic ? "النتيجة بعد الاعتماد" : "Result after approval"}
+                  </th>
                   <th>{isArabic ? "إجراءات" : "Actions"}</th>
                 </tr>
               </thead>
@@ -287,9 +394,11 @@ export default function SuperAdminPage({
                         {request.pharmacyId}
                       </small>
                     </td>
-                    <td>{request.days}</td>
+                    <td>{getRequestTypeLabel(request)}</td>
                     <td>
-                      {request.amount} {request.currency || "EGP"}
+                      {isTierUpgradePlan(request.plan)
+                        ? `${request.amount} ${request.currency || "EGP"}`
+                        : `${request.days} ${isArabic ? "يوم" : "days"} · ${request.amount} ${request.currency || "EGP"}`}
                     </td>
                     <td>{request.requestedByName || "—"}</td>
                     <td>
@@ -300,6 +409,15 @@ export default function SuperAdminPage({
                     </td>
                     <td>
                       <div className="saasActions">
+                        <a
+                          className="smallBtn"
+                          href={getSuperAdminSubscriptionWhatsappUrl(request)}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={isArabic ? "نسخ تفاصيل الطلب على واتساب" : "Share request details on WhatsApp"}
+                        >
+                          WhatsApp
+                        </a>
                         <button
                           type="button"
                           className="smallBtn"
@@ -332,8 +450,8 @@ export default function SuperAdminPage({
             <h3>{isArabic ? "اعتماد حسابات الدخول" : "Login account approvals"}</h3>
             <p className="pageHint">
               {isArabic
-                ? "المدير أضاف حسابات — أنشئها في Supabase إن لزم، ثم اعتمد أو ارفض."
-                : "Admins added accounts — create them in Supabase if needed, then approve or reject."}
+                ? "حسابات جديدة، تعديلات، أو طلبات ربط — اعتمد أو ارفض. رفض التعديل يُبقي الحساب معتمداً، ورفض الربط يُبقيه غير مربوط."
+                : "New accounts, edits, or link requests — approve or reject. Rejecting an edit keeps the account approved; rejecting a link keeps it unlinked."}
             </p>
           </div>
           <span className={`saasRequestsCount${pendingPharmacyLoginAccounts.length ? " active" : ""}`}>
@@ -354,6 +472,7 @@ export default function SuperAdminPage({
               <thead>
                 <tr>
                   <th>{isArabic ? "الصيدلية" : "Pharmacy"}</th>
+                  <th>{isArabic ? "النوع" : "Type"}</th>
                   <th>{isArabic ? "الإيميل" : "Email"}</th>
                   <th>{isArabic ? "كلمة المرور" : "Password"}</th>
                   <th>{isArabic ? "الدور" : "Role"}</th>
@@ -363,19 +482,78 @@ export default function SuperAdminPage({
                 </tr>
               </thead>
               <tbody>
-                {pendingPharmacyLoginAccounts.map((account) => (
+                {pendingPharmacyLoginAccounts.map((account) => {
+                  const requestKind = account.linkRequestPending
+                    ? "link"
+                    : account.editPending
+                      ? "edit"
+                      : "new";
+                  const isEditRequest = requestKind === "edit";
+                  const proposedEmail = account.pendingEmail || account.email;
+                  const proposedPassword = account.pendingPassword || account.password;
+                  const proposedRole = account.pendingRole || account.role;
+
+                  return (
                   <tr key={account.id}>
                     <td>
                       <strong>{pharmacyNameById.get(account.pharmacyId) || account.pharmacyId}</strong>
                     </td>
-                    <td dir="ltr">{account.email}</td>
-                    <td dir="ltr">
-                      <code>{account.password || "—"}</code>
-                    </td>
-                    <td>{getRoleLabel(account.role, isArabic)}</td>
-                    <td>{account.requestedByName || "—"}</td>
                     <td>
-                      {account.createdAt ? new Date(account.createdAt).toLocaleString() : "—"}
+                      <span
+                        className={`badge ${
+                          requestKind === "new" ? "ok" : requestKind === "link" ? "warn" : "warn"
+                        }`}
+                      >
+                        {requestKind === "link"
+                          ? isArabic
+                            ? "ربط"
+                            : "Link"
+                          : requestKind === "edit"
+                            ? isArabic
+                              ? "تعديل"
+                              : "Edit"
+                            : isArabic
+                              ? "جديد"
+                              : "New"}
+                      </span>
+                    </td>
+                    <td dir="ltr">
+                      {isEditRequest && proposedEmail !== account.email ? (
+                        <span>
+                          {account.email} → <strong>{proposedEmail}</strong>
+                        </span>
+                      ) : (
+                        proposedEmail
+                      )}
+                    </td>
+                    <td dir="ltr">
+                      <code>{proposedPassword || "—"}</code>
+                    </td>
+                    <td>
+                      {isEditRequest && proposedRole !== account.role ? (
+                        <span>
+                          {getRoleLabel(account.role, isArabic)} →{" "}
+                          <strong>{getRoleLabel(proposedRole, isArabic)}</strong>
+                        </span>
+                      ) : (
+                        getRoleLabel(proposedRole, isArabic)
+                      )}
+                    </td>
+                    <td>
+                      {account.linkRequestedByName ||
+                        account.editRequestedByName ||
+                        account.requestedByName ||
+                        "—"}
+                    </td>
+                    <td>
+                      {account.linkRequestedAt || account.editRequestedAt || account.createdAt
+                        ? new Date(
+                            account.linkRequestedAt ||
+                              account.editRequestedAt ||
+                              account.createdAt ||
+                              ""
+                          ).toLocaleString()
+                        : "—"}
                     </td>
                     <td>
                       <div className="saasActions">
@@ -398,31 +576,47 @@ export default function SuperAdminPage({
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </section>
 
-      <div className="saasStats">
-        <div className="saasStatCard">
-          <span>{isArabic ? "إجمالي الصيدليات" : "Total pharmacies"}</span>
-          <strong>{pharmacies.length}</strong>
+      <section className="saasTierPackages">
+        <div className="saasPageHeader">
+          <div>
+            <h3>{isArabic ? "باقات الاشتراك" : "Subscription packages"}</h3>
+            <p className="pageHint">
+              {isArabic
+                ? "اختر الباقة لكل صيدلية من الجدول — يتم ضبط عدد الفروع تلقائياً"
+                : "Pick a package per pharmacy in the table — branch limits apply automatically"}
+            </p>
+          </div>
         </div>
-        <div className="saasStatCard green">
-          <span>{isArabic ? "نشطة" : "Active"}</span>
-          <strong>{activeCount}</strong>
+        <div className="saasTierGrid">
+          {subscriptionTierOrder.map((tierId) => {
+            const tier = subscriptionTiers[tierId];
+            return (
+              <article key={tierId} className={`saasTierCard ${tierId}`}>
+                <div className="saasTierCardHeader">
+                  <strong>{isArabic ? tier.labelAr : tier.labelEn}</strong>
+                  <span className={getTierBadgeClass(tierId)}>
+                    {isArabic ? `${tier.maxBranches} فروع` : `${tier.maxBranches} branches`}
+                  </span>
+                </div>
+                <p>{isArabic ? tier.summaryAr : tier.summaryEn}</p>
+                <ul>
+                  {(isArabic ? tier.featuresAr : tier.featuresEn).map((feature) => (
+                    <li key={feature}>{feature}</li>
+                  ))}
+                </ul>
+              </article>
+            );
+          })}
         </div>
-        <div className="saasStatCard red">
-          <span>{isArabic ? "موقوفة" : "Suspended"}</span>
-          <strong>{suspendedCount}</strong>
-        </div>
-        <div className="saasStatCard blue">
-          <span>{isArabic ? "إجمالي المستخدمين" : "Total users"}</span>
-          <strong>{systemUsers.length}</strong>
-        </div>
-      </div>
+      </section>
 
       <div className="tableWrap">
         {pharmacies.length === 0 ? (
@@ -434,7 +628,8 @@ export default function SuperAdminPage({
                 <th>{isArabic ? "المعرف" : "ID"}</th>
                 <th>{isArabic ? "الاسم" : "Name"}</th>
                 <th>{isArabic ? "الهاتف" : "Phone"}</th>
-                <th>{isArabic ? "الاشتراك" : "Plan"}</th>
+                <th>{isArabic ? "الباقة" : "Package"}</th>
+                <th>{isArabic ? "الفروع" : "Branches"}</th>
                 <th className="saasDateCol">
                   {isArabic ? "تاريخ بدء الاشتراك" : "Subscription start"}
                 </th>
@@ -450,6 +645,7 @@ export default function SuperAdminPage({
               {pharmacies.map((pharmacy) => {
                 const usersCount = systemUsers.filter((u) => u.pharmacyId === pharmacy.id).length;
                 const active = isPharmacyActive(pharmacy);
+                const branchUsage = getOrganizationBranchUsage(pharmacies, pharmacy);
                 return (
                   <tr key={pharmacy.id} className={selectedPharmacyId === pharmacy.id ? "saasRowSelected" : ""}>
                     <td>
@@ -460,7 +656,75 @@ export default function SuperAdminPage({
                       {pharmacy.address ? <small className="saasSub">{pharmacy.address}</small> : null}
                     </td>
                     <td dir="ltr">{pharmacy.phone || "—"}</td>
-                    <td>{pharmacy.subscriptionPlan || "basic"}</td>
+                    <td>
+                      <div className="saasTierCell">
+                        <span
+                          className={getTierBadgeClass(
+                            parseSubscriptionTier(pharmacy.subscriptionTier || pharmacy.subscriptionPlan)
+                          )}
+                        >
+                          {getSubscriptionTierLabel(
+                            pharmacy.subscriptionTier || pharmacy.subscriptionPlan,
+                            isArabic
+                          )}
+                        </span>
+                        <select
+                          className="saasTierSelect"
+                          value={parseSubscriptionTier(
+                            pharmacy.subscriptionTier || pharmacy.subscriptionPlan
+                          )}
+                          disabled={tierSavingId === branchUsage.organizationId}
+                          onChange={(e) =>
+                            void handleTierChange(pharmacy, e.target.value as SubscriptionTier)
+                          }
+                        >
+                          {subscriptionTierOrder.map((tierId) => (
+                            <option key={tierId} value={tierId}>
+                              {isArabic
+                                ? subscriptionTiers[tierId].labelAr
+                                : subscriptionTiers[tierId].labelEn}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="saasBranchLimitCell">
+                        <span className="saasBranchUsed">
+                          {branchUsage.used} / {branchUsage.max}
+                        </span>
+                        <div className="saasBranchLimitEditor">
+                          <input
+                            type="number"
+                            min={branchUsage.used}
+                            className="saasBranchLimitInput"
+                            value={getMaxBranchDraft(branchUsage.organizationId, branchUsage.max)}
+                            disabled={maxBranchSavingId === branchUsage.organizationId}
+                            onChange={(e) =>
+                              setMaxBranchDrafts((prev) => ({
+                                ...prev,
+                                [branchUsage.organizationId]: e.target.value,
+                              }))
+                            }
+                            aria-label={isArabic ? "الحد الأقصى للفروع" : "Max branches"}
+                          />
+                          <button
+                            type="button"
+                            className="smallBtn"
+                            disabled={maxBranchSavingId === branchUsage.organizationId}
+                            onClick={() =>
+                              void saveMaxBranches(branchUsage.organizationId, branchUsage.used)
+                            }
+                          >
+                            {maxBranchSavingId === branchUsage.organizationId
+                              ? "…"
+                              : isArabic
+                                ? "حفظ"
+                                : "Save"}
+                          </button>
+                        </div>
+                      </div>
+                    </td>
                     <td className="saasDateCell">{getPharmacyStartDate(pharmacy)}</td>
                     <td className="saasDateCell">{getPharmacyEndDate(pharmacy)}</td>
                     <td>
@@ -569,17 +833,35 @@ export default function SuperAdminPage({
                   placeholder={isArabic ? "القاهرة" : "Cairo"}
                 />
               </label>
-              <label className="saasField">
-                <span>{isArabic ? "خطة الاشتراك" : "Subscription plan"}</span>
-                <select
-                  value={tenantForm.subscriptionPlan}
-                  onChange={(e) => onTenantFormChange({ subscriptionPlan: e.target.value })}
-                >
-                  <option value="basic">{isArabic ? "أساسي" : "Basic"}</option>
-                  <option value="monthly">{isArabic ? "شهري" : "Monthly"}</option>
-                  <option value="yearly">{isArabic ? "سنوي" : "Yearly"}</option>
-                </select>
-              </label>
+              <div className="saasField saasFieldFullWidth">
+                <span>{isArabic ? "باقة الاشتراك" : "Subscription package"}</span>
+                <div className="saasTierPickGrid">
+                  {subscriptionTierOrder.map((tierId) => {
+                    const tier = subscriptionTiers[tierId];
+                    const selected = tenantForm.subscriptionTier === tierId;
+                    return (
+                      <button
+                        key={tierId}
+                        type="button"
+                        className={`saasTierPickCard ${tierId}${selected ? " selected" : ""}`}
+                        onClick={() =>
+                          onTenantFormChange({
+                            subscriptionTier: tierId,
+                            maxBranches: tier.maxBranches,
+                          })
+                        }
+                      >
+                        <strong>{isArabic ? tier.labelAr : tier.labelEn}</strong>
+                        <small>
+                          {isArabic
+                            ? `${tier.maxBranches} فروع`
+                            : `${tier.maxBranches} branches`}
+                        </small>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             <div className="modalActions saasModalActions">
@@ -628,8 +910,39 @@ export default function SuperAdminPage({
                 <strong dir="ltr">{selected.phone || "—"}</strong>
               </div>
               <div>
-                <span>{isArabic ? "الاشتراك" : "Plan"}</span>
-                <strong>{selected.subscriptionPlan || "basic"}</strong>
+                <span>{isArabic ? "الفروع" : "Branches"}</span>
+                <strong>
+                  {(() => {
+                    const usage = getOrganizationBranchUsage(pharmacies, selected);
+                    return `${usage.used} / ${usage.max}`;
+                  })()}
+                </strong>
+              </div>
+              <div>
+                <span>{isArabic ? "الباقة" : "Package"}</span>
+                <strong>
+                  {getSubscriptionTierLabel(
+                    selected.subscriptionTier || selected.subscriptionPlan,
+                    isArabic
+                  )}
+                </strong>
+              </div>
+              <div className="saasManageTierField">
+                <span>{isArabic ? "تغيير الباقة" : "Change package"}</span>
+                <select
+                  className="saasTierSelect"
+                  value={parseSubscriptionTier(selected.subscriptionTier || selected.subscriptionPlan)}
+                  disabled={tierSavingId === getOrganizationBranchUsage(pharmacies, selected).organizationId}
+                  onChange={(e) => void handleTierChange(selected, e.target.value as SubscriptionTier)}
+                >
+                  {subscriptionTierOrder.map((tierId) => (
+                    <option key={tierId} value={tierId}>
+                      {isArabic
+                        ? subscriptionTiers[tierId].labelAr
+                        : subscriptionTiers[tierId].labelEn}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <span>{isArabic ? "الحالة" : "Status"}</span>

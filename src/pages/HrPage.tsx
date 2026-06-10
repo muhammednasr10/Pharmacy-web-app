@@ -1,6 +1,10 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AppUser, AttendanceRecord, AttendanceStatus, EarlyLeaveOutcome, Employee, EmployeeRequest, PayrollRecord, ShiftId, SystemUser } from "../types";
 import * as pharmacyService from "../services/pharmacyService";
+import { downloadPayrollPdf } from "../utils/payrollExport";
+import AttendanceBarcodeInput from "../components/AttendanceBarcodeInput";
+import { resolveStaffFromAttendanceCode } from "../utils/employeeAttendanceCode";
+import { playBarcodeBeep } from "../utils/barcodeBeep";
 import {
   computeWorkHoursFromSchedule,
   evaluateAttendanceTiming,
@@ -18,6 +22,8 @@ type HrTab = "attendance" | "payroll" | "requests";
 
 type HrStaffRow = {
   employeeId: string;
+  pharmacyId: string;
+  employeeCode?: string;
   name: string;
   attendanceKey: string;
   salary: number;
@@ -52,10 +58,16 @@ type HrPageProps = {
   isArabic: boolean;
   appUser: AppUser | null;
   pharmacyId: string;
+  pharmacyName?: string;
   currency: string;
   hasRole: (roles: AppUser["role"][]) => boolean;
   embedded?: boolean;
   activeTab?: HrTab;
+  showOrgHr?: boolean;
+  orgBranchIds?: string[];
+  resolveBranchLabel?: (branchId: string) => string;
+  hrManagePharmacyId?: string;
+  orgHrReadOnly?: boolean;
 };
 
 export type { HrTab };
@@ -303,15 +315,22 @@ export default function HrPage({
   isArabic,
   appUser,
   pharmacyId,
+  pharmacyName,
   currency,
   hasRole,
   embedded = false,
   activeTab: controlledTab,
+  showOrgHr = false,
+  orgBranchIds = [],
+  resolveBranchLabel,
+  hrManagePharmacyId,
+  orgHrReadOnly = false,
 }: HrPageProps) {
   const [internalTab, setInternalTab] = useState<HrTab>("attendance");
   const activeTab = embedded && controlledTab ? controlledTab : internalTab;
   const [attendanceMonth, setAttendanceMonth] = useState(currentMonthValue);
   const [attendanceEmployeeFilter, setAttendanceEmployeeFilter] = useState("");
+  const [attendanceBranchFilter, setAttendanceBranchFilter] = useState("all");
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [employeeRequests, setEmployeeRequests] = useState<EmployeeRequest[]>([]);
   const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>([]);
@@ -324,12 +343,19 @@ export default function HrPage({
     record: PayrollRecord;
     draft: PayrollAdditionsDraft;
     commissionRate: number;
+    salesTotal: number;
+    salesInvoiceCount: number;
     overtimeMinutes: number;
     overtimePercent: number;
   } | null>(null);
   const [deductionsModal, setDeductionsModal] = useState<{
     record: PayrollRecord;
     breakdown: pharmacyService.AttendanceDeductionBreakdown;
+  } | null>(null);
+  const [attendanceScanMode, setAttendanceScanMode] = useState<"auto" | "in" | "out">("auto");
+  const [attendanceScanFeedback, setAttendanceScanFeedback] = useState<{
+    text: string;
+    ok: boolean;
   } | null>(null);
 
   const monthDefault = useMemo(() => monthBounds(), []);
@@ -346,8 +372,31 @@ export default function HrPage({
   const payrollConfigRef = useRef(payrollConfig);
   payrollConfigRef.current = payrollConfig;
 
-  const canManage = hasRole(["pharmacy_admin", "super_admin", "accountant"]);
-  const canEditAttendanceLog = hasRole(["pharmacy_admin", "super_admin"]);
+  const canManage = hasRole(["pharmacy_admin", "branch_manager", "super_admin", "accountant"]);
+  const canEditAttendanceLog = hasRole(["pharmacy_admin", "branch_manager", "super_admin"]);
+  const hrWriteScopeId = hrManagePharmacyId?.trim() || "";
+
+  const canManageHrFor = useCallback(
+    (branchId?: string) => {
+      if (!canManage) return false;
+      if (!hrWriteScopeId) return true;
+      return Boolean(branchId && branchId === hrWriteScopeId);
+    },
+    [canManage, hrWriteScopeId]
+  );
+
+  const staffBranchByKey = useMemo(() => {
+    const map = new Map<string, string>();
+    staffRows.forEach((row) => {
+      map.set(row.attendanceKey, row.pharmacyId);
+      map.set(row.employeeId, row.pharmacyId);
+    });
+    return map;
+  }, [staffRows]);
+
+  function payrollBranchId(rec: PayrollRecord) {
+    return rec.pharmacyId || staffBranchByKey.get(rec.userId) || "";
+  }
   const activeEmployees = useMemo(
     () => staffRows.filter((row) => row.name),
     [staffRows]
@@ -355,9 +404,16 @@ export default function HrPage({
 
   const loadStaff = useCallback(async () => {
     try {
+      const scopeIds = showOrgHr && orgBranchIds.length > 0 ? orgBranchIds : [pharmacyId].filter(Boolean);
       const [employees, accounts] = await Promise.all([
-        pharmacyService.getEmployees(),
-        pharmacyId ? pharmacyService.getSystemUsers(pharmacyId) : Promise.resolve([] as SystemUser[]),
+        scopeIds.length > 1
+          ? pharmacyService.getEmployeesForPharmacies(scopeIds)
+          : pharmacyService.getEmployees(),
+        scopeIds.length > 1
+          ? pharmacyService.getSystemUsersForPharmacies(scopeIds)
+          : pharmacyId
+            ? pharmacyService.getSystemUsers(pharmacyId)
+            : Promise.resolve([] as SystemUser[]),
       ]);
       const accountByEmployee = new Map<string, SystemUser>();
       accounts.forEach((acc) => {
@@ -369,6 +425,8 @@ export default function HrPage({
           const linked = accountByEmployee.get(emp.id);
           return {
             employeeId: emp.id,
+            pharmacyId: emp.pharmacyId,
+            employeeCode: emp.employeeCode,
             name: emp.name,
             attendanceKey: linked?.uid || emp.id,
             salary: emp.salary,
@@ -386,7 +444,7 @@ export default function HrPage({
       console.error(err);
       setStaffRows([]);
     }
-  }, [pharmacyId]);
+  }, [pharmacyId, showOrgHr, orgBranchIds]);
 
   const loadAttendance = useCallback(async () => {
     setLoading(true);
@@ -394,20 +452,29 @@ export default function HrPage({
     try {
       await loadStaff();
       const { start, end } = monthBoundsFromDate(monthAnchorDate(attendanceMonth));
-      const rows = await pharmacyService.getAttendanceRecords(start, end);
+      const scopeIds = showOrgHr && orgBranchIds.length > 0 ? orgBranchIds : undefined;
+      const rows = await pharmacyService.getAttendanceRecords(start, end, scopeIds);
       setAttendanceRecords(rows);
     } catch (err) {
       setError(err instanceof Error ? err.message : "load_failed");
     } finally {
       setLoading(false);
     }
-  }, [attendanceMonth, loadStaff]);
+  }, [attendanceMonth, loadStaff, showOrgHr, orgBranchIds]);
 
   const loadEmployeeRequests = useCallback(async () => {
     try {
-      const pending = await pharmacyService.getEmployeeRequests({ status: "pending" });
+      const scopeIds = showOrgHr && orgBranchIds.length > 0 ? orgBranchIds : undefined;
+      const pending = await pharmacyService.getEmployeeRequests({
+        status: "pending",
+        pharmacyIds: scopeIds,
+      });
       const { start, end } = monthBoundsFromDate(monthAnchorDate(attendanceMonth));
-      const monthRows = await pharmacyService.getEmployeeRequests({ fromDate: start, toDate: end });
+      const monthRows = await pharmacyService.getEmployeeRequests({
+        fromDate: start,
+        toDate: end,
+        pharmacyIds: scopeIds,
+      });
       const byId = new Map<number, EmployeeRequest>();
       for (const row of [...pending, ...monthRows]) {
         byId.set(row.id, row);
@@ -420,16 +487,23 @@ export default function HrPage({
     } catch {
       setEmployeeRequests([]);
     }
-  }, [attendanceMonth]);
+  }, [attendanceMonth, showOrgHr, orgBranchIds]);
 
   const loadPayroll = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
       await loadStaff();
+      const scopeIds = showOrgHr && orgBranchIds.length > 0 ? orgBranchIds : [pharmacyId].filter(Boolean);
       const [employees, accounts] = await Promise.all([
-        pharmacyService.getEmployees(),
-        pharmacyId ? pharmacyService.getSystemUsers(pharmacyId) : Promise.resolve([] as SystemUser[]),
+        scopeIds.length > 1
+          ? pharmacyService.getEmployeesForPharmacies(scopeIds)
+          : pharmacyService.getEmployees(),
+        scopeIds.length > 1
+          ? pharmacyService.getSystemUsersForPharmacies(scopeIds)
+          : pharmacyId
+            ? pharmacyService.getSystemUsers(pharmacyId)
+            : Promise.resolve([] as SystemUser[]),
       ]);
       const accountByEmployee = new Map<string, SystemUser>();
       accounts.forEach((acc) => {
@@ -448,6 +522,7 @@ export default function HrPage({
         });
 
       const config = payrollConfigRef.current;
+      const payrollScopeIds = scopeIds.length > 1 ? scopeIds : undefined;
       const rows =
         payrollStaff.length > 0
           ? await pharmacyService.generatePayroll(periodStart, periodEnd, payrollStaff, {
@@ -461,14 +536,14 @@ export default function HrPage({
               workShifts: config.workShifts,
               defaultShiftId: config.defaultShiftId,
             })
-          : await pharmacyService.getPayrollRecords(periodStart, periodEnd);
+          : await pharmacyService.getPayrollRecords(periodStart, periodEnd, payrollScopeIds);
       setPayrollRecords(rows);
     } catch (err) {
       setError(err instanceof Error ? err.message : "load_failed");
     } finally {
       setLoading(false);
     }
-  }, [periodStart, periodEnd, loadStaff, pharmacyId]);
+  }, [periodStart, periodEnd, loadStaff, pharmacyId, showOrgHr, orgBranchIds]);
 
   useEffect(() => {
     if (activeTab === "attendance") {
@@ -520,6 +595,99 @@ export default function HrPage({
     }
   }
 
+  const attendanceScanScopeIds = useMemo(
+    () => (showOrgHr && orgBranchIds.length > 0 ? orgBranchIds : [pharmacyId].filter(Boolean)),
+    [showOrgHr, orgBranchIds, pharmacyId]
+  );
+
+  const showAttendanceScanner = canEditAttendanceLog;
+
+  function mapAttendanceScanError(code: string) {
+    if (code === "employee_not_found") {
+      return isArabic ? "لم يُعثر على موظف بهذا الكود" : "No employee found for this code";
+    }
+    if (code === "forbidden_branch") {
+      return isArabic ? "لا يمكنك تسجيل حضور هذا الفرع" : "You cannot record attendance for this branch";
+    }
+    if (code === "already_checked_in") {
+      return isArabic ? "تم تسجيل الحضور مسبقاً" : "Already checked in";
+    }
+    if (code === "check_in_required") {
+      return isArabic ? "سجّل الحضور أولاً" : "Check in first";
+    }
+    if (code === "already_checked_out") {
+      return isArabic ? "تم تسجيل الانصراف مسبقاً" : "Already checked out";
+    }
+    if (code === "attendance_complete") {
+      return isArabic ? "اكتمل حضور وانصراف اليوم" : "Today's attendance is already complete";
+    }
+    return isArabic ? "تعذر تسجيل الحضور" : "Could not record attendance";
+  }
+
+  async function handleAttendanceBarcodeScan(rawCode: string) {
+    const staff = resolveStaffFromAttendanceCode(staffRows, rawCode, {
+      pharmacyIds: attendanceScanScopeIds,
+    });
+    if (!staff) {
+      throw new Error("employee_not_found");
+    }
+    if (!canManageHrFor(staff.pharmacyId)) {
+      throw new Error("forbidden_branch");
+    }
+
+    const todayRecord = attendanceRecords.find(
+      (row) => row.userId === staff.attendanceKey && row.workDate === todayIso
+    );
+
+    let action: "check_in" | "check_out";
+    if (attendanceScanMode === "in") {
+      action = "check_in";
+    } else if (attendanceScanMode === "out") {
+      action = "check_out";
+    } else if (!todayRecord?.checkIn) {
+      action = "check_in";
+    } else if (!todayRecord?.checkOut) {
+      action = "check_out";
+    } else {
+      throw new Error("attendance_complete");
+    }
+
+    if (action === "check_in") {
+      const schedule = resolveWorkSchedule(
+        staff,
+        payrollConfig.workShifts,
+        payrollConfig.defaultShiftId
+      );
+      const graceMinutes = resolveAllowedLateMinutes(schedule.shiftId, payrollConfig.workShifts);
+      await pharmacyService.recordCheckIn(staff.attendanceKey, staff.name, todayIso, {
+        expectedSchedule: schedule,
+        shiftId: schedule.shiftId,
+        graceMinutes,
+      });
+    } else {
+      await pharmacyService.recordCheckOut(staff.attendanceKey, staff.name, todayIso);
+    }
+
+    await loadAttendance();
+    playBarcodeBeep();
+
+    const time = new Date().toLocaleTimeString(isArabic ? "ar-EG" : "en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const message =
+      action === "check_in"
+        ? isArabic
+          ? `تم تسجيل حضور ${staff.name} — ${time}`
+          : `Checked in ${staff.name} — ${time}`
+        : isArabic
+          ? `تم تسجيل انصراف ${staff.name} — ${time}`
+          : `Checked out ${staff.name} — ${time}`;
+
+    setAttendanceScanFeedback({ text: message, ok: true });
+    window.setTimeout(() => setAttendanceScanFeedback(null), 2800);
+  }
+
   async function handleCheckOut(userId: string, userName: string, workDate = todayIso) {
     setBusyAction(`out-${userId}`);
     try {
@@ -563,7 +731,7 @@ export default function HrPage({
   }
 
   async function editBaseSalary(record: PayrollRecord) {
-    if (!canManage || !record.id || record.status !== "draft") return;
+    if (!canManageHrFor(payrollBranchId(record)) || !record.id || record.status !== "draft") return;
 
     const input = window.prompt(
       isArabic
@@ -688,9 +856,33 @@ export default function HrPage({
     const staff = findStaffForPayrollRecord(record);
     setBusyAction(`additions-open-${record.userId}`);
     try {
-      const overtime = await resolvePayrollOvertimeIncentives(record);
-      if (record.id && overtime.incentives !== (record.incentives ?? 0)) {
-        const merged = { ...record, incentives: overtime.incentives };
+      const [overtime, sales] = await Promise.all([
+        resolvePayrollOvertimeIncentives(record),
+        pharmacyService.resolvePayrollSalesCommission(
+          record,
+          staff
+            ? {
+                id: staff.employeeId,
+                commissionRate: staff.commissionRate,
+              }
+            : null,
+          periodStart,
+          periodEnd,
+          staff?.pharmacyId || pharmacyId
+        ),
+      ]);
+
+      const shouldSyncPayroll =
+        record.id &&
+        (overtime.incentives !== (record.incentives ?? 0) ||
+          sales.commission !== (record.commission ?? 0));
+
+      if (shouldSyncPayroll) {
+        const merged = {
+          ...record,
+          incentives: overtime.incentives,
+          commission: sales.commission,
+        };
         const { taxes, insurance } = pharmacyService.computeTaxInsuranceFromPercent(
           merged,
           payrollConfigRef.current.defaultTaxes,
@@ -699,11 +891,13 @@ export default function HrPage({
         const netPay = pharmacyService.computePayrollNet({ ...merged, taxes, insurance });
         await pharmacyService.updatePayrollRecord(record.id, {
           incentives: overtime.incentives,
+          commission: sales.commission,
           taxes,
           insurance,
           netPay,
         });
       }
+
       setPayrollRecords((prev) =>
         prev.map((row) => {
           const sameRow =
@@ -711,13 +905,22 @@ export default function HrPage({
             row.userId === record.userId ||
             (staff ? row.userId === staff.employeeId || row.userId === staff.attendanceKey : false);
           if (!sameRow) return row;
-          const next = { ...row, incentives: overtime.incentives };
+          const next = {
+            ...row,
+            incentives: overtime.incentives,
+            commission: sales.commission,
+          };
           const { taxes, insurance } = pharmacyService.computeTaxInsuranceFromPercent(
             next,
             payrollConfigRef.current.defaultTaxes,
             payrollConfigRef.current.defaultInsurance
           );
-          return { ...next, taxes, insurance, netPay: pharmacyService.computePayrollNet({ ...next, taxes, insurance }) };
+          return {
+            ...next,
+            taxes,
+            insurance,
+            netPay: pharmacyService.computePayrollNet({ ...next, taxes, insurance }),
+          };
         })
       );
       setAdditionsModal({
@@ -726,9 +929,11 @@ export default function HrPage({
           specialAllowances: record.specialAllowances ?? 0,
           bonuses: record.bonuses ?? 0,
           incentives: overtime.incentives,
-          commission: record.commission ?? 0,
+          commission: sales.commission,
         },
-        commissionRate: staff?.commissionRate ?? 0,
+        commissionRate: staff?.commissionRate ?? sales.commissionRate,
+        salesTotal: sales.salesTotal,
+        salesInvoiceCount: sales.invoiceCount,
         overtimeMinutes: overtime.overtimeMinutes,
         overtimePercent: overtime.overtimePercent,
       });
@@ -919,9 +1124,13 @@ export default function HrPage({
   );
 
   const filteredAttendanceEmployees = useMemo(() => {
-    if (!attendanceEmployeeFilter) return activeEmployees;
-    return activeEmployees.filter((emp) => emp.attendanceKey === attendanceEmployeeFilter);
-  }, [activeEmployees, attendanceEmployeeFilter]);
+    let rows = activeEmployees;
+    if (showOrgHr && attendanceBranchFilter !== "all") {
+      rows = rows.filter((emp) => emp.pharmacyId === attendanceBranchFilter);
+    }
+    if (!attendanceEmployeeFilter) return rows;
+    return rows.filter((emp) => emp.attendanceKey === attendanceEmployeeFilter);
+  }, [activeEmployees, attendanceEmployeeFilter, attendanceBranchFilter, showOrgHr]);
 
   const attendanceTableRows = useMemo(() => {
     const { start, end } = attendanceMonthBounds;
@@ -1052,10 +1261,11 @@ export default function HrPage({
   ]);
 
   const showEmployeeColumn = !attendanceEmployeeFilter;
+  const showBranchColumn = showOrgHr && showEmployeeColumn;
   const showAttendanceActions = canManage || canEditAttendanceLog;
 
   const attendanceTableColSpan =
-    7 + (showEmployeeColumn ? 1 : 0) + (showAttendanceActions ? 1 : 0);
+    7 + (showEmployeeColumn ? 1 : 0) + (showBranchColumn ? 1 : 0) + (showAttendanceActions ? 1 : 0);
 
   const tabs: { id: HrTab; ar: string; en: string }[] = [
     { id: "attendance", ar: "الحضور والانصراف", en: "Attendance" },
@@ -1102,6 +1312,21 @@ export default function HrPage({
 
   const totalNetPay = payrollRows.reduce((sum, r) => sum + (r.netPay || 0), 0);
 
+  function handleExportPayrollPdf() {
+    if (payrollRows.length === 0) return;
+    downloadPayrollPdf({
+      isArabic,
+      currency,
+      pharmacyName: pharmacyName || pharmacyId,
+      periodStart,
+      periodEnd,
+      records: payrollRows,
+      totalNetPay,
+      showBranchColumn: showOrgHr && !!resolveBranchLabel,
+      getBranchLabel: resolveBranchLabel,
+    });
+  }
+
   function renderAttendanceDeductionLine(
     labelAr: string,
     labelEn: string,
@@ -1131,7 +1356,7 @@ export default function HrPage({
     status: "approved" | "rejected",
     reviewNote = ""
   ) {
-    if (!appUser) return;
+    if (!appUser || !canManageHrFor(request.pharmacyId)) return;
     setBusyAction(`request-${request.id}`);
     try {
       await pharmacyService.reviewEmployeeRequest(
@@ -1174,6 +1399,14 @@ export default function HrPage({
         </p>
       )}
 
+      {orgHrReadOnly && showOrgHr && (
+        <p className="catalogLinkToolbarHint" style={{ padding: "0 1rem", marginBottom: 12 }}>
+          {isArabic
+            ? "عرض HR لكل الفروع — التعديل متاح لفرعك الأساسي فقط (قراءة فقط للفروع الأخرى)."
+            : "Organization HR view — you can edit your home branch only; other branches are read-only."}
+        </p>
+      )}
+
       {activeTab === "attendance" && (
         <div className="settingsTabPanel">
           <div className="hrFilters hrAttendanceFilters">
@@ -1197,11 +1430,30 @@ export default function HrPage({
                   <option value="">{isArabic ? "كل الموظفين" : "All employees"}</option>
                   {activeEmployees.map((emp) => (
                     <option key={emp.employeeId} value={emp.attendanceKey}>
-                      {emp.name}
+                      {showOrgHr && resolveBranchLabel
+                        ? `${emp.name} — ${resolveBranchLabel(emp.pharmacyId)}`
+                        : emp.name}
                     </option>
                   ))}
                 </select>
               </label>
+              {showOrgHr && orgBranchIds.length > 1 && (
+                <label>
+                  {isArabic ? "الفرع" : "Branch"}
+                  <select
+                    className="tableInput"
+                    value={attendanceBranchFilter}
+                    onChange={(e) => setAttendanceBranchFilter(e.target.value)}
+                  >
+                    <option value="all">{isArabic ? "كل الفروع" : "All branches"}</option>
+                    {orgBranchIds.map((branchId) => (
+                      <option key={branchId} value={branchId}>
+                        {resolveBranchLabel ? resolveBranchLabel(branchId) : branchId}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
             </div>
             <div className="hrAttendanceHoursStats">
               <span className="hrAttendanceHoursStat">
@@ -1227,6 +1479,62 @@ export default function HrPage({
             </div>
           </div>
 
+          {showAttendanceScanner && (
+            <section className="attendanceScannerPanel card">
+              <div className="attendanceScannerHeader">
+                <div>
+                  <h3>{isArabic ? "تسجيل الحضور بالباركود / QR" : "Barcode / QR attendance"}</h3>
+                  <p className="returnsSectionHint">
+                    {isArabic
+                      ? "امسح بطاقة الموظف أو كود EMP — يُسجّل حضوراً ثم انصرافاً تلقائياً"
+                      : "Scan the employee badge or EMP code — auto check-in then check-out"}
+                  </p>
+                </div>
+                <div className="attendanceScanModeBtns">
+                  {(
+                    [
+                      ["auto", isArabic ? "تلقائي" : "Auto"],
+                      ["in", isArabic ? "حضور فقط" : "Check-in only"],
+                      ["out", isArabic ? "انصراف فقط" : "Check-out only"],
+                    ] as const
+                  ).map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      className={`smallBtn ${attendanceScanMode === mode ? "completeBtn" : "editBtn"}`}
+                      onClick={() => setAttendanceScanMode(mode)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <AttendanceBarcodeInput
+                isArabic={isArabic}
+                disabled={loading || !!busyAction}
+                onBarcodeScan={async (code) => {
+                  try {
+                    await handleAttendanceBarcodeScan(code);
+                  } catch (error) {
+                    const message = mapAttendanceScanError(
+                      error instanceof Error ? error.message : "scan_failed"
+                    );
+                    setAttendanceScanFeedback({ text: message, ok: false });
+                    window.setTimeout(() => setAttendanceScanFeedback(null), 2800);
+                    throw error;
+                  }
+                }}
+              />
+
+              {attendanceScanFeedback && (
+                <p className={`posMessage attendanceScanFeedback ${attendanceScanFeedback.ok ? "" : "error"}`}>
+                  {attendanceScanFeedback.text}
+                </p>
+              )}
+            </section>
+          )}
+
           <div className="tableWrap hrAttendanceLogTableWrap">
             <table className="hrAttendanceTable">
               <thead>
@@ -1235,6 +1543,7 @@ export default function HrPage({
                   {showEmployeeColumn && (
                     <th className="col-name">{isArabic ? "الموظف" : "Employee"}</th>
                   )}
+                  {showBranchColumn && <th>{isArabic ? "الفرع" : "Branch"}</th>}
                   <th className="col-shift">{isArabic ? "الشيفت المخطط" : "Planned shift"}</th>
                   <th className="col-shift col-shift-actual">{isArabic ? "الشيفت الفعلي" : "Actual shift"}</th>
                   <th className="col-status">{isArabic ? "الحالة" : "Status"}</th>
@@ -1343,6 +1652,9 @@ export default function HrPage({
                           </span>
                         </td>
                         {showEmployeeColumn && <td className="col-name">{emp.name}</td>}
+                        {showBranchColumn && (
+                          <td>{resolveBranchLabel ? resolveBranchLabel(emp.pharmacyId) : emp.pharmacyId}</td>
+                        )}
                         <td className="col-shift">
                           <span className="hrShiftBadge hrShiftBadgePlanned">
                             {getShiftDisplayName(
@@ -1529,7 +1841,7 @@ export default function HrPage({
                                 </div>
                               ) : (
                                 <>
-                                  {canManage && isToday && (
+                                  {canManageHrFor(emp.pharmacyId) && isToday && (
                                     <div className="hrAttendanceQuickActions">
                                       <button
                                         type="button"
@@ -1689,7 +2001,7 @@ export default function HrPage({
                       </td>
                       {canManage && (
                         <td>
-                          {req.status === "pending" ? (
+                          {req.status === "pending" && canManageHrFor(req.pharmacyId) ? (
                             <div className="hrRequestActions">
                               <button
                                 type="button"
@@ -1753,6 +2065,15 @@ export default function HrPage({
               <button type="button" className="printBtn" onClick={() => void loadPayroll()} disabled={loading}>
                 {isArabic ? "تحديث" : "Refresh"}
               </button>
+              <button
+                type="button"
+                className="editBtn"
+                disabled={payrollRows.length === 0}
+                onClick={handleExportPayrollPdf}
+              >
+                <span aria-hidden="true">⬇️</span>
+                <span>{isArabic ? "تصدير PDF" : "Export PDF"}</span>
+              </button>
             </div>
           </div>
 
@@ -1804,9 +2125,15 @@ export default function HrPage({
                         <button
                           type="button"
                           className="hrBaseSalaryBtn"
-                          disabled={!rec.id || !canManage || rec.status !== "draft"}
+                          disabled={
+                            !rec.id ||
+                            !canManageHrFor(payrollBranchId(rec)) ||
+                            rec.status !== "draft"
+                          }
                           title={
-                            rec.id && canManage && rec.status === "draft"
+                            rec.id &&
+                            canManageHrFor(payrollBranchId(rec)) &&
+                            rec.status === "draft"
                               ? isArabic
                                 ? "تعديل الراتب الأساسي"
                                 : "Edit base salary"
@@ -1912,7 +2239,7 @@ export default function HrPage({
               step="0.01"
               className="searchInput"
               value={additionsModal.draft.specialAllowances}
-              disabled={!canManage}
+              disabled={!canManageHrFor(payrollBranchId(additionsModal.record))}
               onChange={(e) => {
                 const parsed = parseFloat(e.target.value);
                 setAdditionsModal({
@@ -1933,7 +2260,7 @@ export default function HrPage({
               step="0.01"
               className="searchInput"
               value={additionsModal.draft.bonuses}
-              disabled={!canManage}
+              disabled={!canManageHrFor(payrollBranchId(additionsModal.record))}
               onChange={(e) => {
                 const parsed = parseFloat(e.target.value);
                 setAdditionsModal({
@@ -1964,13 +2291,17 @@ export default function HrPage({
             </small>
           </label>
           <label>
-            {isArabic ? "عمولة" : "Commission"}
+            {isArabic ? "عمولة المبيعات" : "Sales commission"}
             <input
               type="number"
               min={0}
               className="searchInput"
               value={additionsModal.draft.commission}
-              disabled={!canManage || additionsModal.record.status !== "draft"}
+              readOnly={additionsModal.commissionRate > 0}
+              disabled={
+                !canManageHrFor(payrollBranchId(additionsModal.record)) ||
+                additionsModal.record.status !== "draft"
+              }
               onChange={(e) =>
                 setAdditionsModal({
                   ...additionsModal,
@@ -1978,6 +2309,13 @@ export default function HrPage({
                 })
               }
             />
+            {additionsModal.commissionRate > 0 && (
+              <small className="returnsSectionHint">
+                {isArabic
+                  ? `${additionsModal.salesInvoiceCount} فاتورة بمبيعات ${formatMoney(additionsModal.salesTotal)} ${currency} × ${additionsModal.commissionRate}% = ${formatMoney(additionsModal.draft.commission)} ${currency}`
+                  : `${additionsModal.salesInvoiceCount} invoices, sales ${formatMoney(additionsModal.salesTotal)} ${currency} × ${additionsModal.commissionRate}% = ${formatMoney(additionsModal.draft.commission)} ${currency}`}
+              </small>
+            )}
           </label>
         </div>
 
@@ -1993,7 +2331,7 @@ export default function HrPage({
         </div>
 
         <div className="modalActions">
-          {canManage && (
+          {canManageHrFor(payrollBranchId(additionsModal.record)) && (
             <button
               type="button"
               className="completeBtn"

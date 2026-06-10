@@ -3,6 +3,8 @@ import type { Invoice, PaymentMethod } from "../types";
 
 type InvoicesPageProps = {
   filteredInvoicesList: Invoice[];
+  showBranchColumn?: boolean;
+  getBranchLabel?: (branchId: string | undefined) => string;
   invoiceSearch: string;
   invoicePaymentFilter: "all" | PaymentMethod;
   invoiceFromDate: string;
@@ -24,6 +26,8 @@ type InvoicesPageProps = {
 
 export default function InvoicesPage({
   filteredInvoicesList,
+  showBranchColumn = false,
+  getBranchLabel,
   invoiceSearch,
   invoicePaymentFilter,
   invoiceFromDate,
@@ -47,6 +51,8 @@ export default function InvoicesPage({
       filteredInvoices={filteredInvoicesList}
       t={t}
       isArabic={isArabic}
+      showBranchColumn={showBranchColumn}
+      getBranchLabel={getBranchLabel}
       invoiceSearch={invoiceSearch}
       invoicePaymentFilter={invoicePaymentFilter}
       invoiceFromDate={invoiceFromDate}

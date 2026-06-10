@@ -1,5 +1,14 @@
 import DashboardCharts from "../components/DashboardCharts";
+import TierUpgradeNotice from "../components/TierUpgradeNotice";
+import CashierShiftsReport from "../components/CashierShiftsReport";
 import { getCostCategoryLabel } from "../utils/costCategories";
+import type { BranchReportRow } from "../utils/branchReports";
+import type { AppUser, Medicine, PharmacySettings } from "../types";
+import {
+  downloadFinancialReportCsv,
+  downloadFinancialReportPdf,
+  type ReportExportSnapshot,
+} from "../utils/reportExport";
 
 type SellingMedicine = {
   medicineId: number;
@@ -39,6 +48,14 @@ type ReportsPageProps = {
   reportCashierTotals: Record<string, number>;
   getPaymentLabel: (method: string) => string;
   currency: string;
+  branchReportRows?: BranchReportRow[];
+  showBranchBreakdown?: boolean;
+  branchBreakdownUpgradeNotice?: string | null;
+  onOpenSubscriptionSettings?: () => void;
+  pharmacyId?: string;
+  appUser?: AppUser | null;
+  pharmacySettings?: PharmacySettings | null;
+  medicines?: Medicine[];
 };
 
 function formatMoney(value: number) {
@@ -72,11 +89,64 @@ export default function ReportsPage({
   reportCashierTotals,
   getPaymentLabel,
   currency,
+  branchReportRows = [],
+  showBranchBreakdown = false,
+  branchBreakdownUpgradeNotice = null,
+  onOpenSubscriptionSettings,
+  pharmacyId = "",
+  appUser = null,
+  pharmacySettings = null,
+  medicines = [],
 }: ReportsPageProps) {
   const profitMargin = filteredReportTotal
     ? (filteredReportProfitTotal / filteredReportTotal) * 100
     : 0;
   const netSales = filteredReportTotal - reportReturnsTotal;
+
+  function buildExportSnapshot(): ReportExportSnapshot {
+    return {
+      isArabic,
+      currency,
+      reportFrom,
+      reportTo,
+      pharmacyName: pharmacySettings?.name || "الصيدلية",
+      pharmacyNameEn: pharmacySettings?.name_en,
+      pharmacyPhone: pharmacySettings?.phone,
+      pharmacyAddress: pharmacySettings?.address,
+      invoiceFooter: pharmacySettings?.invoiceFooter,
+      filteredReportInvoicesCount,
+      filteredReportTotal,
+      filteredReportProfitTotal,
+      filteredReportDiscountTotal,
+      reportUnitsSold,
+      reportReturnsTotal,
+      reportCostsTotal,
+      reportCostsCount,
+      netProfitAfterCosts,
+      netSales,
+      profitMargin,
+      reportPaymentTotals,
+      reportCostsByCategory: reportCostsByCategory.map((item) => ({
+        category: item.category,
+        label: getCostCategoryLabel(item.category, isArabic),
+        total: item.total,
+      })),
+      reportCashierTotals,
+      topSellingMedicines,
+      reportSalesTrend,
+      branchReportRows: showBranchBreakdown ? branchReportRows : [],
+      medicines: medicines.map((medicine) => ({
+        name_ar: medicine.name_ar,
+        name_en: medicine.name_en,
+        barcode: medicine.barcode,
+        qty: medicine.qty,
+        buyPrice: medicine.buyPrice,
+        price: medicine.price,
+        expiry: medicine.expiry,
+      })),
+      getPaymentLabel,
+    };
+  }
 
   const cashierRows = Object.entries(reportCashierTotals).sort((a, b) => b[1] - a[1]);
   const maxCashier = Math.max(1, ...cashierRows.map(([, amount]) => amount));
@@ -158,11 +228,29 @@ export default function ReportsPage({
               : "Sales, profit, and costs summary for the selected period"}
           </p>
         </div>
-        <div className="reportsPeriodBadge">
-          <span>{t.fromDate}</span>
-          <strong>{reportFrom || "—"}</strong>
-          <span>{t.toDate}</span>
-          <strong>{reportTo || "—"}</strong>
+        <div className="reportsHeaderActions">
+          <div className="reportsPeriodBadge">
+            <span>{t.fromDate}</span>
+            <strong>{reportFrom || "—"}</strong>
+            <span>{t.toDate}</span>
+            <strong>{reportTo || "—"}</strong>
+          </div>
+          <div className="reportExportActions">
+            <button
+              type="button"
+              className="secondaryBtn"
+              onClick={() => downloadFinancialReportPdf(buildExportSnapshot())}
+            >
+              {isArabic ? "تصدير PDF" : "Export PDF"}
+            </button>
+            <button
+              type="button"
+              className="printBtn"
+              onClick={() => downloadFinancialReportCsv(buildExportSnapshot())}
+            >
+              {isArabic ? "تصدير Excel" : "Export Excel"}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -206,6 +294,91 @@ export default function ReportsPage({
           </div>
         ))}
       </div>
+
+      {branchBreakdownUpgradeNotice && onOpenSubscriptionSettings && (
+        <TierUpgradeNotice
+          isArabic={isArabic}
+          message={branchBreakdownUpgradeNotice}
+          onAction={onOpenSubscriptionSettings}
+        />
+      )}
+
+      {showBranchBreakdown && branchReportRows.length > 1 && (
+        <div className="reportBox fullWidth branchReportBreakdown">
+          <h3>{isArabic ? "مقارنة الفروع" : "Branch Comparison"}</h3>
+          <p className="returnsSectionHint">
+            {isArabic
+              ? "ملخص المبيعات والأرباح لكل فرع في الفترة المحددة"
+              : "Sales and profit summary per branch for the selected period"}
+          </p>
+          <div className="tableWrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>{isArabic ? "الفرع" : "Branch"}</th>
+                  <th>{isArabic ? "فواتير" : "Invoices"}</th>
+                  <th>{isArabic ? "مبيعات" : "Sales"}</th>
+                  <th>{isArabic ? "ربح" : "Profit"}</th>
+                  <th>{isArabic ? "مرتجعات" : "Returns"}</th>
+                  <th>{isArabic ? "تكاليف" : "Costs"}</th>
+                  <th>{isArabic ? "صافي بعد التكاليف" : "Net after costs"}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {branchReportRows.map((row) => (
+                  <tr key={row.branchId}>
+                    <td>
+                      <strong>{row.branchLabel}</strong>
+                    </td>
+                    <td>{row.invoiceCount}</td>
+                    <td>
+                      {formatMoney(row.salesTotal)} {currency}
+                    </td>
+                    <td>
+                      {formatMoney(row.profitTotal)} {currency}
+                    </td>
+                    <td>
+                      {formatMoney(row.returnsTotal)} {currency}
+                    </td>
+                    <td>
+                      {formatMoney(row.costsTotal)} {currency}
+                    </td>
+                    <td>
+                      <span className={row.netProfitAfterCosts >= 0 ? "badge ok" : "badge danger"}>
+                        {formatMoney(row.netProfitAfterCosts)} {currency}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="branchReportTotalsRow">
+                  <td>
+                    <strong>{isArabic ? "الإجمالي" : "Total"}</strong>
+                  </td>
+                  <td>{branchReportRows.reduce((s, r) => s + r.invoiceCount, 0)}</td>
+                  <td>
+                    {formatMoney(branchReportRows.reduce((s, r) => s + r.salesTotal, 0))} {currency}
+                  </td>
+                  <td>
+                    {formatMoney(branchReportRows.reduce((s, r) => s + r.profitTotal, 0))} {currency}
+                  </td>
+                  <td>
+                    {formatMoney(branchReportRows.reduce((s, r) => s + r.returnsTotal, 0))} {currency}
+                  </td>
+                  <td>
+                    {formatMoney(branchReportRows.reduce((s, r) => s + r.costsTotal, 0))} {currency}
+                  </td>
+                  <td>
+                    {formatMoney(branchReportRows.reduce((s, r) => s + r.netProfitAfterCosts, 0))}{" "}
+                    {currency}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
 
       <DashboardCharts
         isArabic={isArabic}
@@ -312,6 +485,17 @@ export default function ReportsPage({
           )}
         </div>
       </div>
+
+      {pharmacyId && (
+        <CashierShiftsReport
+          isArabic={isArabic}
+          currency={currency}
+          pharmacyId={pharmacyId}
+          appUser={appUser}
+          pharmacySettings={pharmacySettings}
+          getPaymentLabel={getPaymentLabel}
+        />
+      )}
     </section>
   );
 }

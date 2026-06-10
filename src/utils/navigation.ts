@@ -15,6 +15,7 @@ export const pageIcons: Record<Page, string> = {
   users: "👤",
   branches: "🏢",
   tenants: "🏪",
+  sqlMigrations: "🗄️",
   settings: "⚙️",
   hr: "👔",
   employeePortal: "🕐",
@@ -57,6 +58,8 @@ export function buildNavigationItems(
         return { page, label: isArabic ? "الفروع" : "Branches" };
       case "tenants":
         return { page, label: isArabic ? "الصيدليات (SaaS)" : "Pharmacies (SaaS)" };
+      case "sqlMigrations":
+        return { page, label: isArabic ? "حالة SQL" : "SQL status" };
       case "settings":
         return { page, label: isArabic ? "الإعدادات" : "Settings" };
       case "employeePortal":

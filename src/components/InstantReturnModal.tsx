@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import * as pharmacyService from "../services/pharmacyService";
 import type { Invoice, InvoiceItem } from "../types";
+import { playBarcodeBeep } from "../utils/barcodeBeep";
+import InstantReturnBarcodeInput from "./InstantReturnBarcodeInput";
 
 type InstantReturnModalProps = {
   isArabic: boolean;
@@ -38,6 +40,96 @@ export default function InstantReturnModal({
   const [isSearching, setIsSearching] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchError, setSearchError] = useState("");
+  const [barcodeHint, setBarcodeHint] = useState("");
+
+  const applyBarcodeSelection = useCallback(
+    (invoice: Invoice, item: InvoiceItem) => {
+      const available = getAvailableReturnQty(invoice, item);
+      if (available <= 0) {
+        playBarcodeBeep(false);
+        setSearchError(
+          isArabic
+            ? "لا توجد كمية متاحة للمرتجع لهذا الصنف في الفاتورة"
+            : "No returnable quantity for this item on the invoice"
+        );
+        return false;
+      }
+
+      setSelectedInvoice(invoice);
+      setSelectedMedicineId(item.medicineId);
+      setReturnQty(1);
+      setSearchQuery(String(item.barcode || "").trim());
+      setSearchResults([]);
+      setSearchError("");
+      setBarcodeHint(
+        isArabic
+          ? `تم اختيار ${item.name_ar} من فاتورة ${invoice.invoiceNumber}`
+          : `Selected ${item.name_en || item.name_ar} from invoice ${invoice.invoiceNumber}`
+      );
+      playBarcodeBeep(true);
+      return true;
+    },
+    [getAvailableReturnQty, isArabic]
+  );
+
+  const handleBarcodeScan = useCallback(
+    async (code: string) => {
+      setIsSearching(true);
+      setSearchError("");
+      setBarcodeHint("");
+
+      try {
+        const results = await pharmacyService.searchInvoicesForReturnByBarcode(code);
+        if (results.length === 0) {
+          playBarcodeBeep(false);
+          setSearchError(
+            isArabic
+              ? "لا توجد فاتورة تحتوي على هذا الباركود"
+              : "No invoice found with this barcode"
+          );
+          return;
+        }
+
+        const clean = code.trim();
+        const invoiceMatches = results
+          .map((invoice) => ({
+            invoice,
+            items: (invoice.items || []).filter(
+              (item) => String(item.barcode ?? "").trim() === clean
+            ),
+          }))
+          .filter((entry) => entry.items.length > 0);
+
+        if (invoiceMatches.length === 1) {
+          const { invoice, items } = invoiceMatches[0];
+          const returnableItem =
+            items.find((item) => getAvailableReturnQty(invoice, item) > 0) || items[0];
+          if (applyBarcodeSelection(invoice, returnableItem)) {
+            return;
+          }
+        }
+
+        setSearchQuery(clean);
+        setSearchResults(results);
+        setSelectedInvoice(null);
+        setSelectedMedicineId(null);
+        playBarcodeBeep(true);
+        setBarcodeHint(
+          isArabic
+            ? "وُجدت أكثر من فاتورة — اختر الفاتورة المناسبة"
+            : "Multiple invoices found — pick the correct invoice"
+        );
+      } catch {
+        playBarcodeBeep(false);
+        setSearchError(
+          isArabic ? "تعذر البحث بالباركود" : "Could not search by barcode"
+        );
+      } finally {
+        setIsSearching(false);
+      }
+    },
+    [applyBarcodeSelection, getAvailableReturnQty, isArabic]
+  );
 
   useEffect(() => {
     if (!searchQuery.trim()) {
@@ -88,6 +180,19 @@ export default function InstantReturnModal({
     setSelectedMedicineId(null);
     setReturnQty(1);
     setSearchError("");
+
+    const barcode = searchQuery.trim();
+    if (barcode) {
+      const matchingItems = (invoice.items || []).filter(
+        (item) => String(item.barcode ?? "").trim() === barcode
+      );
+      const returnable = matchingItems.find(
+        (item) => getAvailableReturnQty(invoice, item) > 0
+      );
+      if (returnable) {
+        setSelectedMedicineId(returnable.medicineId);
+      }
+    }
   }
 
   function selectItem(item: InvoiceItem) {
@@ -192,8 +297,8 @@ export default function InstantReturnModal({
             <h2>{isArabic ? "مرتجع بيع لحظي" : "Instant Sale Return"}</h2>
             <p>
               {isArabic
-                ? "ابحث عن الفاتورة ثم اختر الصنف والكمية"
-                : "Search invoice, then pick item and quantity"}
+                ? "امسح باركود الصنف أو ابحث عن الفاتورة ثم اختر الكمية"
+                : "Scan item barcode or search invoice, then choose quantity"}
             </p>
           </div>
           <button className="closeBtn" onClick={onClose} type="button">
@@ -202,7 +307,15 @@ export default function InstantReturnModal({
         </div>
 
         <div className="instantReturnForm">
-          <label>{isArabic ? "بحث" : "Search"}</label>
+          <InstantReturnBarcodeInput
+            isArabic={isArabic}
+            disabled={isSubmitting}
+            onBarcodeScan={handleBarcodeScan}
+          />
+
+          {barcodeHint && <p className="instantReturnHint">{barcodeHint}</p>}
+
+          <label>{isArabic ? "بحث يدوي" : "Manual search"}</label>
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

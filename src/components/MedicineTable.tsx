@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
-import type { Medicine } from "../types";
+import type { Medicine, PharmacySettings } from "../types";
 import { formatDateInput } from "../utils/date";
 import {
   DEFAULT_EXPIRING_SOON_DAYS,
   DEFAULT_LOW_STOCK_THRESHOLD,
   getExpiryLimitValue,
+  getExpiringSoonDaysForBranch,
+  getLowStockThresholdForBranch,
 } from "../utils/inventoryAlerts";
 
 type MedicineTableProps = {
@@ -14,6 +16,8 @@ type MedicineTableProps = {
   currency: string;
   showManagementActions: boolean;
   showColumnFilters?: boolean;
+  showBranchColumn?: boolean;
+  getBranchLabel?: (branchId: string | undefined) => string;
   canUsePOS: boolean;
   canManageInventory: boolean;
   canDeleteMedicine: boolean;
@@ -24,6 +28,9 @@ type MedicineTableProps = {
   onViewStockDetail?: (medicine: Medicine) => void;
   lowStockThreshold?: number;
   expiringSoonDays?: number;
+  branchAwareAlerts?: boolean;
+  branches?: PharmacySettings[];
+  fallbackSettings?: PharmacySettings | null;
 };
 
 type StockFilter = "all" | "low" | "expiring" | "expired";
@@ -42,6 +49,8 @@ export default function MedicineTable({
   currency,
   showManagementActions,
   showColumnFilters = false,
+  showBranchColumn = false,
+  getBranchLabel,
   canUsePOS,
   canManageInventory,
   canDeleteMedicine,
@@ -52,6 +61,9 @@ export default function MedicineTable({
   onViewStockDetail,
   lowStockThreshold = DEFAULT_LOW_STOCK_THRESHOLD,
   expiringSoonDays = DEFAULT_EXPIRING_SOON_DAYS,
+  branchAwareAlerts = false,
+  branches = [],
+  fallbackSettings = null,
 }: MedicineTableProps) {
   const [nameFilter, setNameFilter] = useState("");
   const [barcodeFilter, setBarcodeFilter] = useState("");
@@ -67,7 +79,19 @@ export default function MedicineTable({
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   const todayValue = formatDateInput(new Date());
-  const expiringLimitValue = getExpiryLimitValue(expiringSoonDays);
+  const defaultExpiringLimitValue = getExpiryLimitValue(expiringSoonDays);
+
+  const resolveLowStockThreshold = (medicine: Medicine) =>
+    branchAwareAlerts
+      ? getLowStockThresholdForBranch(medicine.pharmacyId, branches, fallbackSettings)
+      : lowStockThreshold;
+
+  const resolveExpiringLimitValue = (medicine: Medicine) =>
+    branchAwareAlerts
+      ? getExpiryLimitValue(
+          getExpiringSoonDaysForBranch(medicine.pharmacyId, branches, fallbackSettings)
+        )
+      : defaultExpiringLimitValue;
 
   const filteredMedicines = useMemo(() => {
     const nameQ = nameFilter.trim().toLowerCase();
@@ -96,12 +120,12 @@ export default function MedicineTable({
 
       const matchesStock =
         stockFilter === "all" ||
-        (stockFilter === "low" && qty <= lowStockThreshold) ||
+        (stockFilter === "low" && qty <= resolveLowStockThreshold(medicine)) ||
         (stockFilter === "expired" && expiry && expiry < todayValue) ||
         (stockFilter === "expiring" &&
           expiry &&
           expiry >= todayValue &&
-          expiry <= expiringLimitValue);
+          expiry <= resolveExpiringLimitValue(medicine));
 
       const buy = medicine.buyPrice || 0;
       const sell = medicine.price || 0;
@@ -137,9 +161,12 @@ export default function MedicineTable({
     sellMax,
     isArabic,
     todayValue,
-    expiringLimitValue,
+    defaultExpiringLimitValue,
     lowStockThreshold,
     expiringSoonDays,
+    branchAwareAlerts,
+    branches,
+    fallbackSettings,
   ]);
 
   const hasActiveFilters =
@@ -327,6 +354,7 @@ export default function MedicineTable({
         <table>
           <thead>
             <tr>
+              {showBranchColumn && <th>{isArabic ? "الفرع" : "Branch"}</th>}
               <th>{t.medicine}</th>
               <th>{t.barcode}</th>
               <th>{t.qty}</th>
@@ -340,13 +368,16 @@ export default function MedicineTable({
           <tbody>
             {filteredMedicines.length === 0 ? (
               <tr>
-                <td colSpan={8} className="empty">
+                <td colSpan={showBranchColumn ? 9 : 8} className="empty">
                   {isArabic ? "لا توجد نتائج مطابقة للفلاتر" : "No rows match the filters"}
                 </td>
               </tr>
             ) : (
               filteredMedicines.map((medicine) => (
-                <tr key={medicine.id}>
+                <tr key={`${medicine.pharmacyId || "main"}-${medicine.id}`}>
+                  {showBranchColumn && (
+                    <td>{getBranchLabel ? getBranchLabel(medicine.pharmacyId) : medicine.pharmacyId || "—"}</td>
+                  )}
                   <td>{isArabic ? medicine.name_ar : medicine.name_en}</td>
                   <td>{medicine.barcode}</td>
                   <td>
@@ -361,7 +392,9 @@ export default function MedicineTable({
                       >
                         <span
                           className={
-                            medicine.qty <= lowStockThreshold ? "badge danger" : "badge ok"
+                            medicine.qty <= resolveLowStockThreshold(medicine)
+                              ? "badge danger"
+                              : "badge ok"
                           }
                         >
                           {medicine.qty}
@@ -370,7 +403,9 @@ export default function MedicineTable({
                     ) : (
                       <span
                         className={
-                          medicine.qty <= lowStockThreshold ? "badge danger" : "badge ok"
+                          medicine.qty <= resolveLowStockThreshold(medicine)
+                            ? "badge danger"
+                            : "badge ok"
                         }
                       >
                         {medicine.qty}

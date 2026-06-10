@@ -1,4 +1,5 @@
 import type { FormEvent } from "react";
+import { TRIAL_SUBSCRIPTION_DAYS } from "../config/subscription";
 import DeveloperCredit from "./DeveloperCredit";
 
 type LoginPageProps = {
@@ -7,6 +8,7 @@ type LoginPageProps = {
   loginEmail: string;
   loginPassword: string;
   registerName: string;
+  registerPharmacyName: string;
   loginError: string;
   registerSuccess: string;
   registering: boolean;
@@ -16,6 +18,7 @@ type LoginPageProps = {
   onEmailChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
   onRegisterNameChange: (value: string) => void;
+  onRegisterPharmacyNameChange: (value: string) => void;
   onAuthModeChange: (mode: "login" | "register") => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onRegisterSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -53,6 +56,7 @@ export default function LoginPage({
   loginEmail,
   loginPassword,
   registerName,
+  registerPharmacyName,
   loginError,
   registerSuccess,
   registering,
@@ -62,6 +66,7 @@ export default function LoginPage({
   onEmailChange,
   onPasswordChange,
   onRegisterNameChange,
+  onRegisterPharmacyNameChange,
   onAuthModeChange,
   onSubmit,
   onRegisterSubmit,
@@ -111,8 +116,8 @@ export default function LoginPage({
         <p>
           {isRegister
             ? isArabic
-              ? "أنشئ حساباً جديداً للوصول إلى نظام الصيدلية"
-              : "Create a new account to access the pharmacy system"
+              ? `سجّل صيدليتك واحصل على تجربة مجانية ${TRIAL_SUBSCRIPTION_DAYS} يوماً`
+              : `Register your pharmacy and get a free ${TRIAL_SUBSCRIPTION_DAYS}-day trial`
             : isArabic
               ? "ادخل اسم المستخدم أو البريد وكلمة المرور"
               : "Enter username or email and password"}
@@ -137,13 +142,22 @@ export default function LoginPage({
         <div className="loginDivider">{isArabic ? "أو" : "or"}</div>
 
         {isRegister && (
-          <input
-            type="text"
-            value={registerName}
-            onChange={(e) => onRegisterNameChange(e.target.value)}
-            placeholder={isArabic ? "الاسم الكامل" : "Full name"}
-            autoComplete="name"
-          />
+          <>
+            <input
+              type="text"
+              value={registerPharmacyName}
+              onChange={(e) => onRegisterPharmacyNameChange(e.target.value)}
+              placeholder={isArabic ? "اسم الصيدلية" : "Pharmacy name"}
+              autoComplete="organization"
+            />
+            <input
+              type="text"
+              value={registerName}
+              onChange={(e) => onRegisterNameChange(e.target.value)}
+              placeholder={isArabic ? "اسم المدير" : "Your full name"}
+              autoComplete="name"
+            />
+          </>
         )}
 
         <input
@@ -168,8 +182,8 @@ export default function LoginPage({
             </p>
             <p className="loginHint">
               {isArabic
-                ? "استخدم بريداً حقيقياً (Gmail / Outlook). الدومينات الوهمية مثل pharmacy.com مرفوضة من Supabase."
-                : "Use a real email (Gmail / Outlook). Fake domains like pharmacy.com are rejected by Supabase."}
+                ? `بعد التسجيل تبدأ فترة تجريبية ${TRIAL_SUBSCRIPTION_DAYS} يوماً. استخدم بريداً حقيقياً (Gmail / Outlook).`
+                : `After signup you get a ${TRIAL_SUBSCRIPTION_DAYS}-day trial. Use a real email (Gmail / Outlook).`}
             </p>
           </>
         )}

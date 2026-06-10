@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { ActivityLog, AppUser, SubscriptionRequest } from "../types";
 import DeveloperCredit from "../components/DeveloperCredit";
@@ -8,8 +8,18 @@ import {
   getPlanAmount,
   getPlanDays,
   getSubscriptionAmountForDays,
+  getTierUpgradeAmount,
   subscriptionPlanPricing,
+  TRIAL_SUBSCRIPTION_DAYS,
 } from "../config/subscription";
+import { getSubscriptionTier, type SubscriptionTier } from "../config/subscriptionTiers";
+import {
+  getNextSubscriptionTier,
+  isTierUpgradePlan,
+  parseTierUpgradePlan,
+} from "../utils/subscriptionFeatures";
+
+export type SettingsTab = "pharmacy" | "invoice" | "inventory" | "payroll" | "subscription";
 
 type SettingsForm = {
   name: string;
@@ -23,24 +33,30 @@ type SettingsForm = {
   logoBase64: string;
   lowStockThreshold: number;
   expiringSoonDays: number;
+  expiryNotifyEnabled: boolean;
+  expiryNotifyPhone: string;
+  expiryNotifyEmail: string;
 };
-
-type SettingsTab = "pharmacy" | "invoice" | "inventory" | "payroll" | "subscription";
 
 type SettingsPageProps = {
   isArabic: boolean;
   pharmacyId: string;
+  initialTab?: SettingsTab;
   t: Record<string, string>;
   settingsForm: SettingsForm;
   setSettingsForm: Dispatch<SetStateAction<SettingsForm>>;
   isSubscriptionExpired: boolean;
   isSubscriptionExpiringSoon: boolean;
+  isTrialSubscription?: boolean;
   getSubscriptionPlanLabel: (plan: string) => string;
+  subscriptionTierLabel?: string;
+  subscriptionTier?: SubscriptionTier;
   submitSubscriptionRequest: (input: {
     plan: string;
     days: number;
     amount: number;
   }) => Promise<SubscriptionRequest | null>;
+  submitTierUpgradeRequest?: (targetTier: SubscriptionTier) => Promise<SubscriptionRequest | null>;
   pharmacySubscriptionRequests: SubscriptionRequest[];
   hasRole: (roles: AppUser["role"][]) => boolean;
   subscriptionRenewLogs: ActivityLog[];
@@ -48,18 +64,27 @@ type SettingsPageProps = {
   handleLogoUpload: (file: File | null) => void;
   savePharmacySettings: () => Promise<void>;
   exportBackupCSV: () => void;
+  onRequestExpiryNotificationPermission?: () => Promise<boolean>;
+  onSendExpiryNotifyNow?: () => Promise<void>;
+  onOpenExpiryWhatsappDigest?: () => void;
+  onOpenExpiryEmailDigest?: () => void;
 };
 
 export default function SettingsPage({
   isArabic,
   pharmacyId,
+  initialTab,
   t,
   settingsForm,
   setSettingsForm,
   isSubscriptionExpired,
   isSubscriptionExpiringSoon,
+  isTrialSubscription = false,
   getSubscriptionPlanLabel,
+  subscriptionTierLabel,
+  subscriptionTier = "basic",
   submitSubscriptionRequest,
+  submitTierUpgradeRequest,
   pharmacySubscriptionRequests,
   hasRole,
   subscriptionRenewLogs,
@@ -67,6 +92,10 @@ export default function SettingsPage({
   handleLogoUpload,
   savePharmacySettings,
   exportBackupCSV,
+  onRequestExpiryNotificationPermission,
+  onSendExpiryNotifyNow,
+  onOpenExpiryWhatsappDigest,
+  onOpenExpiryEmailDigest,
 }: SettingsPageProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>("pharmacy");
   const [requestPlan, setRequestPlan] = useState<"monthly" | "quarterly" | "yearly" | "custom">(
@@ -74,10 +103,26 @@ export default function SettingsPage({
   );
   const [customDays, setCustomDays] = useState(30);
   const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [submittingTierUpgrade, setSubmittingTierUpgrade] = useState(false);
   const [paymentRequest, setPaymentRequest] = useState<SubscriptionRequest | null>(null);
-  const isAdmin = hasRole(["pharmacy_admin", "super_admin"]);
+  const isOrgAdmin = hasRole(["pharmacy_admin", "super_admin"]);
+  const canEditSettings = hasRole(["pharmacy_admin", "branch_manager", "super_admin"]);
+  const tierConfig = useMemo(() => getSubscriptionTier(subscriptionTier), [subscriptionTier]);
+  const tierFeatures = isArabic ? tierConfig.featuresAr : tierConfig.featuresEn;
+  const tierUpgradeTarget = getNextSubscriptionTier(subscriptionTier);
+  const tierUpgradeConfig = tierUpgradeTarget ? getSubscriptionTier(tierUpgradeTarget) : null;
+  const tierUpgradeAmount = tierUpgradeTarget ? getTierUpgradeAmount(tierUpgradeTarget) : 0;
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   const pendingRequest = pharmacySubscriptionRequests.find((r) => r.status === "pending");
+  const pendingTierUpgrade = pharmacySubscriptionRequests.find(
+    (r) => r.status === "pending" && isTierUpgradePlan(r.plan)
+  );
   const requestDays =
     requestPlan === "custom" ? Math.max(7, Math.floor(customDays) || 7) : getPlanDays(requestPlan);
   const requestAmount =
@@ -123,14 +168,38 @@ export default function SettingsPage({
     [isArabic]
   );
 
+  async function handleSubmitTierUpgradeRequest() {
+    if (!tierUpgradeTarget || !submitTierUpgradeRequest) return;
+    if (pendingRequest) {
+      alert(
+        isArabic
+          ? "لديك طلب اشتراك قيد المراجعة. انتظر الاعتماد قبل إرسال طلب جديد."
+          : "You already have a pending subscription request."
+      );
+      return;
+    }
+
+    setSubmittingTierUpgrade(true);
+    try {
+      const created = await submitTierUpgradeRequest(tierUpgradeTarget);
+      if (created) {
+        setPaymentRequest(created);
+      }
+    } finally {
+      setSubmittingTierUpgrade(false);
+    }
+  }
+
   async function handleSubmitSubscriptionRequest() {
     if (pendingRequest) {
       alert(
         isArabic
-          ? "لديك طلب تجديد قيد المراجعة. أكمل الدفع أو انتظر الاعتماد."
-          : "You already have a pending renewal request."
+          ? "لديك طلب اشتراك قيد المراجعة. أكمل الدفع أو انتظر الاعتماد."
+          : "You already have a pending subscription request."
       );
-      setPaymentRequest(pendingRequest);
+      if (!isTierUpgradePlan(pendingRequest.plan)) {
+        setPaymentRequest(pendingRequest);
+      }
       return;
     }
 
@@ -155,10 +224,21 @@ export default function SettingsPage({
     return isArabic ? "قيد المراجعة" : "Pending";
   }
 
+  function getRequestTypeLabel(plan: string) {
+    const targetTier = parseTierUpgradePlan(plan);
+    if (targetTier) {
+      const target = getSubscriptionTier(targetTier);
+      return isArabic ? `ترقية إلى ${target.labelAr}` : `Upgrade to ${target.labelEn}`;
+    }
+    return isArabic ? "تجديد اشتراك" : "Renewal";
+  }
+
   const subscriptionTone = isSubscriptionExpired
     ? "expired"
     : isSubscriptionExpiringSoon
     ? "warning"
+    : isTrialSubscription
+    ? "trial"
     : "active";
 
   const subscriptionStatusLabel = isSubscriptionExpired
@@ -169,6 +249,10 @@ export default function SettingsPage({
     ? isArabic
       ? "قرب الانتهاء"
       : "Expiring Soon"
+    : isTrialSubscription
+    ? isArabic
+      ? "تجريبي"
+      : "Trial"
     : isArabic
     ? "نشط"
     : "Active";
@@ -186,8 +270,16 @@ export default function SettingsPage({
 
   const subscriptionMessage = isSubscriptionExpired
     ? isArabic
-      ? "انتهى الاشتراك. يرجى التجديد لاستمرار استخدام النظام."
-      : "Subscription expired. Renew to continue using the system."
+      ? isTrialSubscription
+        ? `انتهت الفترة التجريبية (${TRIAL_SUBSCRIPTION_DAYS} يوم). اشترك للاستمرار.`
+        : "انتهى الاشتراك. يرجى التجديد لاستمرار استخدام النظام."
+      : isTrialSubscription
+        ? `Your ${TRIAL_SUBSCRIPTION_DAYS}-day trial has ended. Subscribe to continue.`
+        : "Subscription expired. Renew to continue using the system."
+    : isTrialSubscription
+    ? isArabic
+      ? `أنت على باقة تجريبية مجانية ${TRIAL_SUBSCRIPTION_DAYS} يوماً. متبقي ${subscriptionDaysLeft ?? "?"} يوم.`
+      : `You are on a free ${TRIAL_SUBSCRIPTION_DAYS}-day trial. ${subscriptionDaysLeft ?? "?"} days left.`
     : isSubscriptionExpiringSoon
     ? isArabic
       ? `متبقي ${subscriptionDaysLeft} يوم على انتهاء الاشتراك.`
@@ -201,7 +293,9 @@ export default function SettingsPage({
     : "Subscription is active and running normally.";
 
   const progressCap =
-    settingsForm.subscriptionPlan === "yearly"
+    settingsForm.subscriptionPlan === "trial" || isTrialSubscription
+      ? TRIAL_SUBSCRIPTION_DAYS
+      : settingsForm.subscriptionPlan === "yearly"
       ? 365
       : settingsForm.subscriptionPlan === "quarterly"
       ? 90
@@ -223,7 +317,7 @@ export default function SettingsPage({
       )
     : "-";
 
-  const tabs: { id: SettingsTab; ar: string; en: string }[] = [
+  const allTabs: { id: SettingsTab; ar: string; en: string }[] = [
     { id: "pharmacy", ar: "بيانات الصيدلية", en: "Pharmacy" },
     { id: "invoice", ar: "بيانات الفاتورة", en: "Invoice" },
     { id: "inventory", ar: "انتهاء المخزون", en: "Inventory Alerts" },
@@ -231,13 +325,17 @@ export default function SettingsPage({
     { id: "subscription", ar: "الاشتراك والترخيص", en: "Subscription" },
   ];
 
+  const tabs = isOrgAdmin
+    ? allTabs
+    : allTabs.filter((tab) => tab.id === "pharmacy" || tab.id === "invoice");
+
   function renderSaveActions(showBackup = false) {
     return (
       <div className="settingsActions">
         <button type="button" className="completeBtn" onClick={() => void savePharmacySettings()}>
           {isArabic ? "حفظ الإعدادات" : "Save Settings"}
         </button>
-        {showBackup && isAdmin && (
+        {showBackup && isOrgAdmin && (
           <button type="button" className="printBtn" onClick={exportBackupCSV}>
             <span aria-hidden="true">⬇️</span>
             <span>{isArabic ? "تصدير نسخة احتياطية" : "Export Backup"}</span>
@@ -253,9 +351,13 @@ export default function SettingsPage({
         <div>
           <h2>{isArabic ? "إعدادات الصيدلية" : "Pharmacy Settings"}</h2>
           <p className="returnsSectionHint">
-            {isArabic
-              ? "اختر القسم الذي تريد تعديله"
-              : "Choose the section you want to edit"}
+            {!isOrgAdmin
+              ? isArabic
+                ? "مدير الفرع: يمكنك تعديل بيانات الفرع والفاتورة فقط"
+                : "Branch manager: you can edit branch contact and invoice settings only"
+              : isArabic
+                ? "اختر القسم الذي تريد تعديله"
+                : "Choose the section you want to edit"}
           </p>
         </div>
       </div>
@@ -419,7 +521,7 @@ export default function SettingsPage({
             </p>
           </div>
 
-          {isAdmin ? (
+          {isOrgAdmin ? (
             <div className="settingsFieldsGrid">
               <div className="settingsField">
                 <label>{isArabic ? "حد الكمية الناقصة" : "Low Stock Threshold"}</label>
@@ -463,6 +565,89 @@ export default function SettingsPage({
                 </p>
               </div>
 
+              <div className="settingsField settingsFieldFull">
+                <div className="settingsSectionTitle settingsSectionTitle--compact">
+                  <h3>{isArabic ? "إشعارات انتهاء الصلاحية" : "Expiry Notifications"}</h3>
+                  <p>
+                    {isArabic
+                      ? "تنبيه يومي عند فتح النظام + إرسال يدوي عبر واتساب أو بريد"
+                      : "Daily alert on login plus manual WhatsApp or email digest"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="settingsField">
+                <label className="settingsCheckboxLabel">
+                  <input
+                    type="checkbox"
+                    checked={settingsForm.expiryNotifyEnabled}
+                    onChange={(e) =>
+                      setSettingsForm({
+                        ...settingsForm,
+                        expiryNotifyEnabled: e.target.checked,
+                      })
+                    }
+                  />
+                  <span>{isArabic ? "تفعيل التنبيهات اليومية" : "Enable daily alerts"}</span>
+                </label>
+                <p className="settingsFieldHint">
+                  {isArabic
+                    ? "مرة واحدة يومياً عند دخول المدير — إشعار المتصفح + webhook إن وُجد"
+                    : "Once per day when a manager logs in — browser notification + optional webhook"}
+                </p>
+              </div>
+
+              <div className="settingsField">
+                <label>{isArabic ? "واتساب للتنبيهات (اختياري)" : "WhatsApp number (optional)"}</label>
+                <input
+                  type="text"
+                  value={settingsForm.expiryNotifyPhone}
+                  onChange={(e) =>
+                    setSettingsForm({ ...settingsForm, expiryNotifyPhone: e.target.value })
+                  }
+                  placeholder={isArabic ? "اتركه فارغاً لاستخدام هاتف الصيدلية" : "Leave empty to use pharmacy phone"}
+                />
+              </div>
+
+              <div className="settingsField">
+                <label>{isArabic ? "بريد للتنبيهات (اختياري)" : "Alert email (optional)"}</label>
+                <input
+                  type="email"
+                  value={settingsForm.expiryNotifyEmail}
+                  onChange={(e) =>
+                    setSettingsForm({ ...settingsForm, expiryNotifyEmail: e.target.value })
+                  }
+                  placeholder={isArabic ? "example@mail.com" : "example@mail.com"}
+                />
+              </div>
+
+              <div className="settingsField settingsFieldFull expiryNotifyActions">
+                {onRequestExpiryNotificationPermission && (
+                  <button
+                    type="button"
+                    className="alertFooterBtn"
+                    onClick={() => void onRequestExpiryNotificationPermission()}
+                  >
+                    {isArabic ? "تفعيل إشعارات المتصفح" : "Enable browser notifications"}
+                  </button>
+                )}
+                {onSendExpiryNotifyNow && (
+                  <button type="button" className="alertFooterBtn" onClick={() => void onSendExpiryNotifyNow()}>
+                    {isArabic ? "إرسال تنبيه الآن" : "Send alert now"}
+                  </button>
+                )}
+                {onOpenExpiryWhatsappDigest && (
+                  <button type="button" className="alertFooterBtn" onClick={onOpenExpiryWhatsappDigest}>
+                    {isArabic ? "ملخص واتساب" : "WhatsApp digest"}
+                  </button>
+                )}
+                {onOpenExpiryEmailDigest && settingsForm.expiryNotifyEmail.trim() && (
+                  <button type="button" className="alertFooterBtn" onClick={onOpenExpiryEmailDigest}>
+                    {isArabic ? "ملخص بريد" : "Email digest"}
+                  </button>
+                )}
+              </div>
+
               {renderSaveActions()}
             </div>
           ) : (
@@ -476,7 +661,7 @@ export default function SettingsPage({
       )}
 
       {activeTab === "payroll" && (
-        <PayrollSettingsPanel isArabic={isArabic} pharmacyId={pharmacyId} canEdit={isAdmin} />
+        <PayrollSettingsPanel isArabic={isArabic} pharmacyId={pharmacyId} canEdit={isOrgAdmin} />
       )}
 
       {activeTab === "subscription" && (
@@ -498,8 +683,14 @@ export default function SettingsPage({
           </section>
 
           <div className="subscriptionStatsGrid">
+            {subscriptionTierLabel && (
+              <div className={`subscriptionStatCard ${subscriptionTone}`}>
+                <span>{isArabic ? "باقة الاشتراك" : "Package"}</span>
+                <strong>{subscriptionTierLabel}</strong>
+              </div>
+            )}
             <div className={`subscriptionStatCard ${subscriptionTone}`}>
-              <span>{isArabic ? "الخطة الحالية" : "Current Plan"}</span>
+              <span>{isArabic ? "مدة التجديد" : "Billing period"}</span>
               <strong>{getSubscriptionPlanLabel(settingsForm.subscriptionPlan)}</strong>
             </div>
             <div className={`subscriptionStatCard ${subscriptionTone}`}>
@@ -515,6 +706,98 @@ export default function SettingsPage({
               <strong>{subscriptionRenewLogs.length}</strong>
             </div>
           </div>
+
+          <section className="subscriptionEditCard subscriptionTierFeaturesCard">
+            <div className="subscriptionEditHeader">
+              <span className="subscriptionEditHeaderIcon" aria-hidden="true">
+                ✨
+              </span>
+              <div>
+                <h3>{isArabic ? "مميزات باقتك" : "Your package features"}</h3>
+                <p>{isArabic ? tierConfig.summaryAr : tierConfig.summaryEn}</p>
+              </div>
+            </div>
+            <ul className="subscriptionTierFeatureList">
+              {tierFeatures.map((feature) => (
+                <li key={feature}>{feature}</li>
+              ))}
+            </ul>
+            <p className="returnsSectionHint">
+              {isArabic
+                ? `الحد الأقصى للفروع في باقتك: ${tierConfig.maxBranches}`
+                : `Branch limit on your plan: ${tierConfig.maxBranches}`}
+            </p>
+          </section>
+
+          {isOrgAdmin && tierUpgradeTarget && tierUpgradeConfig && submitTierUpgradeRequest && (
+            <section className="subscriptionEditCard subscriptionTierUpgradeCard">
+              <div className="subscriptionEditHeader">
+                <span className="subscriptionEditHeaderIcon" aria-hidden="true">
+                  ⬆️
+                </span>
+                <div>
+                  <h3>
+                    {isArabic
+                      ? `ترقية إلى باقة ${tierUpgradeConfig.labelAr}`
+                      : `Upgrade to ${tierUpgradeConfig.labelEn}`}
+                  </h3>
+                  <p>
+                    {isArabic
+                      ? "أرسل طلب ترقية — سيراجعه المشرف ويفعّل الباقة الجديدة بعد الموافقة"
+                      : "Submit an upgrade request — an admin will review and activate the new package"}
+                  </p>
+                </div>
+              </div>
+              <ul className="subscriptionTierFeatureList">
+                {(isArabic ? tierUpgradeConfig.featuresAr : tierUpgradeConfig.featuresEn).map(
+                  (feature) => (
+                    <li key={feature}>{feature}</li>
+                  )
+                )}
+              </ul>
+              <div className="subscriptionRequestSummary">
+                <div>
+                  <span>{isArabic ? "رسوم الترقية (مرة واحدة)" : "Upgrade fee (one-time)"}</span>
+                  <strong>
+                    {tierUpgradeAmount} {isArabic ? "ج.م" : "EGP"}
+                  </strong>
+                </div>
+              </div>
+              {pendingTierUpgrade ? (
+                <div className="subscriptionSaveBar">
+                  <p className="returnsSectionHint">
+                    {isArabic
+                      ? `لديك طلب ترقية قيد المراجعة (${getRequestTypeLabel(pendingTierUpgrade.plan)}).`
+                      : `You have a pending upgrade request (${getRequestTypeLabel(pendingTierUpgrade.plan)}).`}
+                  </p>
+                  <button
+                    type="button"
+                    className="smallBtn"
+                    onClick={() => setPaymentRequest(pendingTierUpgrade)}
+                  >
+                    {isArabic ? "تعليمات الدفع" : "Payment info"}
+                  </button>
+                </div>
+              ) : (
+                <div className="subscriptionSaveBar">
+                  <button
+                    type="button"
+                    className="completeBtn subscriptionSaveBtn"
+                    disabled={submittingTierUpgrade || Boolean(pendingRequest)}
+                    onClick={() => void handleSubmitTierUpgradeRequest()}
+                  >
+                    {submittingTierUpgrade
+                      ? isArabic
+                        ? "جاري إرسال الطلب..."
+                        : "Submitting..."
+                      : isArabic
+                        ? "إرسال طلب ترقية الباقة"
+                        : "Submit package upgrade request"}
+                  </button>
+                </div>
+              )}
+            </section>
+          )}
 
           {settingsForm.subscriptionPlan !== "lifetime" && (
             <div className="subscriptionProgressCard">
@@ -537,7 +820,7 @@ export default function SettingsPage({
             </div>
           )}
 
-          {isAdmin && (
+          {isOrgAdmin && (
             <section className="subscriptionEditCard">
               <div className="subscriptionEditHeader">
                 <span className="subscriptionEditHeaderIcon" aria-hidden="true">
@@ -643,18 +926,18 @@ export default function SettingsPage({
 
           <section className="subscriptionHistoryCard">
             <div className="subscriptionPanelHeader">
-              <h3>{isArabic ? "طلبات التجديد" : "Renewal Requests"}</h3>
+              <h3>{isArabic ? "طلبات الاشتراك" : "Subscription Requests"}</h3>
               <p>
                 {isArabic
-                  ? "سجل طلبات تجديد الاشتراك وحالة كل طلب"
-                  : "Subscription renewal requests and their status"}
+                  ? "سجل طلبات التجديد وترقية الباقة وحالة كل طلب"
+                  : "Renewal and package upgrade requests and their status"}
               </p>
             </div>
 
             {pharmacySubscriptionRequests.length === 0 ? (
               <div className="subscriptionEmptyState">
                 <span aria-hidden="true">📋</span>
-                <p>{isArabic ? "لا توجد طلبات تجديد حتى الآن" : "No renewal requests yet"}</p>
+                <p>{isArabic ? "لا توجد طلبات حتى الآن" : "No requests yet"}</p>
               </div>
             ) : (
               <div className="tableWrap">
@@ -662,8 +945,8 @@ export default function SettingsPage({
                   <thead>
                     <tr>
                       <th>{isArabic ? "رقم الطلب" : "Request #"}</th>
-                      <th>{isArabic ? "الأيام" : "Days"}</th>
-                      <th>{isArabic ? "المبلغ" : "Amount"}</th>
+                      <th>{isArabic ? "النوع" : "Type"}</th>
+                      <th>{isArabic ? "التفاصيل" : "Details"}</th>
                       <th>{isArabic ? "الحالة" : "Status"}</th>
                       <th>{t.date}</th>
                       <th>{isArabic ? "إجراء" : "Action"}</th>
@@ -673,9 +956,11 @@ export default function SettingsPage({
                     {pharmacySubscriptionRequests.map((request) => (
                       <tr key={request.id}>
                         <td dir="ltr">{request.requestNumber}</td>
-                        <td>{request.days}</td>
+                        <td>{getRequestTypeLabel(request.plan)}</td>
                         <td>
-                          {request.amount} {request.currency || "EGP"}
+                          {isTierUpgradePlan(request.plan)
+                            ? `${request.amount} ${request.currency || "EGP"}`
+                            : `${request.days} ${isArabic ? "يوم" : "days"} · ${request.amount} ${request.currency || "EGP"}`}
                         </td>
                         <td>
                           <span className={`subscriptionRequestBadge ${request.status}`}>

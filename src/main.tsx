@@ -1,9 +1,14 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { registerSW } from "virtual:pwa-register";
 import App from "./App";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { supabaseConfigError } from "./services/supabaseClient";
 import "./styles.css";
+
+if (typeof window !== "undefined" && !supabaseConfigError) {
+  registerSW({ immediate: true });
+}
 
 function ConfigErrorScreen({ message }: { message: string }) {
   return (
