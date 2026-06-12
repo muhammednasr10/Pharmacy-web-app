@@ -68,8 +68,14 @@ function formatBranchTransferActionError(message: string, isArabic: boolean) {
     transfer_not_found: ["طلب النقل غير موجود", "Transfer request not found"],
     not_pending: ["هذا الطلب ليس بانتظار الاعتماد", "This request is not pending approval"],
     medicine_not_found: ["الدواء غير موجود في الفرع المصدر", "Medicine not found in source branch"],
-    insufficient_stock: ["الكمية غير متوفرة في الفرع المصدر", "Insufficient stock in source branch"],
-    target_medicine_missing: ["تعذر إنشاء الدواء في الفرع الهدف", "Could not create medicine in target branch"],
+    insufficient_stock: [
+      "الكمية غير متوفرة في الفرع المصدر",
+      "Insufficient stock in source branch",
+    ],
+    target_medicine_missing: [
+      "تعذر إنشاء الدواء في الفرع الهدف",
+      "Could not create medicine in target branch",
+    ],
   };
   const entry = map[message];
   if (entry) return isArabic ? entry[0] : entry[1];
@@ -128,13 +134,13 @@ export default function BranchesPage({
       (group) =>
         group.status === "pending" &&
         group.toPharmacyId &&
-        canApproveBranchStockTransfer(appUser, group.toPharmacyId)
+        canApproveBranchStockTransfer(appUser, group.toPharmacyId),
     );
   }, [branchTransferGroups, appUser, orgSubscriptionTier, branches.length]);
 
   const completedBranchTransferGroups = useMemo(
     () => branchTransferGroups.filter((group) => group.status !== "pending"),
-    [branchTransferGroups]
+    [branchTransferGroups],
   );
 
   function branchLabel(pharmacyId: string) {
@@ -146,10 +152,16 @@ export default function BranchesPage({
   function openAddBranchModal() {
     if (!canManageOrgBranchesWithTier(appUser, orgSubscriptionTier)) {
       alert(
-        getTierUpgradeNotice(appUser, orgSubscriptionTier, branches.length, "branchesPage", isArabic) ||
+        getTierUpgradeNotice(
+          appUser,
+          orgSubscriptionTier,
+          branches.length,
+          "branchesPage",
+          isArabic,
+        ) ||
           (isArabic
             ? "باقتك الحالية لا تدعم إضافة فروع — رقِّ للاحترافي أو الفاخر"
-            : "Your package does not support branches — upgrade to Professional or Premium")
+            : "Your package does not support branches — upgrade to Professional or Premium"),
       );
       return;
     }
@@ -161,7 +173,7 @@ export default function BranchesPage({
         alert(
           isArabic
             ? `وصلت للحد الأقصى للفروع (${usage.used}/${usage.max}). تواصل مع الدعم لزيادة الحد.`
-            : `Branch limit reached (${usage.used}/${usage.max}). Contact support to increase the limit.`
+            : `Branch limit reached (${usage.used}/${usage.max}). Contact support to increase the limit.`,
         );
         return;
       }
@@ -206,7 +218,7 @@ export default function BranchesPage({
       alert(
         isArabic
           ? "باقتك الحالية لا تدعم إدارة الفروع"
-          : "Your current package does not include branch management"
+          : "Your current package does not include branch management",
       );
       return;
     }
@@ -281,7 +293,7 @@ export default function BranchesPage({
           ? isArabic
             ? "وصلت للحد الأقصى للفروع المسموح بها في اشتراكك"
             : "You reached the allowed branch limit for your subscription"
-          : message || (isArabic ? "تعذر حفظ الفرع" : "Could not save branch")
+          : message || (isArabic ? "تعذر حفظ الفرع" : "Could not save branch"),
       );
     } finally {
       setSavingBranch(false);
@@ -293,7 +305,7 @@ export default function BranchesPage({
       alert(
         isArabic
           ? "باقتك الحالية لا تدعم إدارة الفروع"
-          : "Your current package does not include branch management"
+          : "Your current package does not include branch management",
       );
       return;
     }
@@ -308,7 +320,7 @@ export default function BranchesPage({
     const confirmed = window.confirm(
       isArabic
         ? `حذف الفرع "${name}"؟ تأكد أن الفرع لا يحتوي على بيانات (أدوية/فواتير) أولاً.`
-        : `Delete branch "${name}"? Make sure it has no data (medicines/invoices) first.`
+        : `Delete branch "${name}"? Make sure it has no data (medicines/invoices) first.`,
     );
     if (!confirmed) return;
 
@@ -329,7 +341,7 @@ export default function BranchesPage({
       alert(
         isArabic
           ? "تعذر حذف الفرع. قد يكون مرتبطاً ببيانات (أدوية أو فواتير)."
-          : "Could not delete branch. It may still contain data (medicines or invoices)."
+          : "Could not delete branch. It may still contain data (medicines or invoices).",
       );
     }
   }
@@ -350,7 +362,7 @@ export default function BranchesPage({
     const confirmed = window.confirm(
       isArabic
         ? `اعتماد طلب النقل ${transferNumber} وتنفيذ حركة المخزون؟`
-        : `Approve transfer ${transferNumber} and move stock?`
+        : `Approve transfer ${transferNumber} and move stock?`,
     );
     if (!confirmed) return;
     try {
@@ -363,13 +375,9 @@ export default function BranchesPage({
       alert(
         isArabic
           ? `تم اعتماد النقل (${results.length} صنف)`
-          : `Transfer approved (${results.length} item(s))`
+          : `Transfer approved (${results.length} item(s))`,
       );
-      if (
-        window.confirm(
-          isArabic ? "هل تريد طباعة سند النقل؟" : "Print the transfer document?"
-        )
-      ) {
+      if (window.confirm(isArabic ? "هل تريد طباعة سند النقل؟" : "Print the transfer document?")) {
         printBranchTransferRecords(results);
       }
     } catch (error) {
@@ -380,7 +388,7 @@ export default function BranchesPage({
 
   async function handleRejectBranchTransfer(transferNumber: string) {
     const rejectionReason = window.prompt(
-      isArabic ? "سبب الرفض (اختياري):" : "Rejection reason (optional):"
+      isArabic ? "سبب الرفض (اختياري):" : "Rejection reason (optional):",
     );
     if (rejectionReason === null) return;
     try {
@@ -400,8 +408,7 @@ export default function BranchesPage({
 
   const effectiveBranchId = activeBranchId || appUser?.pharmacyId;
   const canTransfer = canTransferStockWithTier(appUser, orgSubscriptionTier, branches.length);
-  const homePharmacy =
-    branches.find((branch) => branch.id === appUser?.pharmacyId) || branches[0];
+  const homePharmacy = branches.find((branch) => branch.id === appUser?.pharmacyId) || branches[0];
   const branchUsage = homePharmacy ? getOrganizationBranchUsage(branches, homePharmacy) : null;
   const canAddBranch =
     canManageOrgBranchesWithTier(appUser, orgSubscriptionTier) && (branchUsage?.canAdd ?? true);
@@ -555,7 +562,11 @@ export default function BranchesPage({
         <h2>{isArabic ? "الفروع" : "Branches"}</h2>
         <div className="actionButtons">
           {canTransfer && (
-            <button type="button" className="editBtn" onClick={() => setShowBranchTransferModal(true)}>
+            <button
+              type="button"
+              className="editBtn"
+              onClick={() => setShowBranchTransferModal(true)}
+            >
               {isArabic ? "⇄ نقل مخزون" : "⇄ Transfer stock"}
             </button>
           )}
@@ -648,7 +659,7 @@ export default function BranchesPage({
                           onClick={() =>
                             void removeBranch(
                               branch.id,
-                              (isArabic ? branch.name : branch.name_en) || branch.name
+                              (isArabic ? branch.name : branch.name_en) || branch.name,
                             )
                           }
                         >

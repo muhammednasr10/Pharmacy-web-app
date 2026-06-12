@@ -89,7 +89,7 @@ export default function MedicineTable({
   const resolveExpiringLimitValue = (medicine: Medicine) =>
     branchAwareAlerts
       ? getExpiryLimitValue(
-          getExpiringSoonDaysForBranch(medicine.pharmacyId, branches, fallbackSettings)
+          getExpiringSoonDaysForBranch(medicine.pharmacyId, branches, fallbackSettings),
         )
       : defaultExpiringLimitValue;
 
@@ -110,8 +110,7 @@ export default function MedicineTable({
       const qty = medicine.qty;
       const minQ = qtyMin !== "" ? Number(qtyMin) : null;
       const maxQ = qtyMax !== "" ? Number(qtyMax) : null;
-      const matchesQty =
-        (minQ === null || qty >= minQ) && (maxQ === null || qty <= maxQ);
+      const matchesQty = (minQ === null || qty >= minQ) && (maxQ === null || qty <= maxQ);
 
       const expiry = medicine.expiry || "";
       const matchesExpiryRange =
@@ -205,7 +204,7 @@ export default function MedicineTable({
     maxValue: string,
     onMinChange: (value: string) => void,
     onMaxChange: (value: string) => void,
-    options?: { type?: "number" | "date"; step?: string }
+    options?: { type?: "number" | "date"; step?: string },
   ) {
     const inputType = options?.type || "number";
 
@@ -314,28 +313,17 @@ export default function MedicineTable({
 
           {showAdvancedFilters && (
             <div className="inventoryFilterAdvanced">
-              {renderRangeField(
-                t.qty,
-                qtyMin,
-                qtyMax,
-                setQtyMin,
-                setQtyMax
-              )}
-              {renderRangeField(
-                t.expiry,
-                expiryFrom,
-                expiryTo,
-                setExpiryFrom,
-                setExpiryTo,
-                { type: "date" }
-              )}
+              {renderRangeField(t.qty, qtyMin, qtyMax, setQtyMin, setQtyMax)}
+              {renderRangeField(t.expiry, expiryFrom, expiryTo, setExpiryFrom, setExpiryTo, {
+                type: "date",
+              })}
               {renderRangeField(
                 isArabic ? "سعر الشراء" : "Buy price",
                 buyMin,
                 buyMax,
                 setBuyMin,
                 setBuyMax,
-                { step: "0.01" }
+                { step: "0.01" },
               )}
               {renderRangeField(
                 isArabic ? "سعر البيع" : "Sell price",
@@ -343,7 +331,7 @@ export default function MedicineTable({
                 sellMax,
                 setSellMin,
                 setSellMax,
-                { step: "0.01" }
+                { step: "0.01" },
               )}
             </div>
           )}
@@ -376,7 +364,11 @@ export default function MedicineTable({
               filteredMedicines.map((medicine) => (
                 <tr key={`${medicine.pharmacyId || "main"}-${medicine.id}`}>
                   {showBranchColumn && (
-                    <td>{getBranchLabel ? getBranchLabel(medicine.pharmacyId) : medicine.pharmacyId || "—"}</td>
+                    <td>
+                      {getBranchLabel
+                        ? getBranchLabel(medicine.pharmacyId)
+                        : medicine.pharmacyId || "—"}
+                    </td>
                   )}
                   <td>{isArabic ? medicine.name_ar : medicine.name_en}</td>
                   <td>{medicine.barcode}</td>
@@ -386,9 +378,7 @@ export default function MedicineTable({
                         type="button"
                         className="stockQtyBtn"
                         onClick={() => onViewStockDetail(medicine)}
-                        title={
-                          isArabic ? "عرض تفاصيل حركة الكمية" : "View stock movement details"
-                        }
+                        title={isArabic ? "عرض تفاصيل حركة الكمية" : "View stock movement details"}
                       >
                         <span
                           className={

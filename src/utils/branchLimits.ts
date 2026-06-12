@@ -19,7 +19,7 @@ export function resolveSubscriptionTier(pharmacy: PharmacySettings) {
 
 export function countOrganizationBranches(
   pharmacies: PharmacySettings[],
-  organizationId: string
+  organizationId: string,
 ): number {
   return pharmacies.filter((pharmacy) => resolveOrganizationId(pharmacy) === organizationId).length;
 }
@@ -27,14 +27,14 @@ export function countOrganizationBranches(
 export function canAddOrganizationBranch(
   pharmacies: PharmacySettings[],
   organizationId: string,
-  maxBranches: number
+  maxBranches: number,
 ): boolean {
   return countOrganizationBranches(pharmacies, organizationId) < Math.max(1, maxBranches);
 }
 
 export function getOrganizationBranchUsage(
   pharmacies: PharmacySettings[],
-  pharmacy: PharmacySettings
+  pharmacy: PharmacySettings,
 ) {
   const organizationId = resolveOrganizationId(pharmacy);
   const used = countOrganizationBranches(pharmacies, organizationId);

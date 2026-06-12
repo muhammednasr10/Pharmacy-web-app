@@ -435,7 +435,9 @@ export default function DashboardPage({
                       </span>
                     </td>
                     <td>
-                      <span className={row.outOfStockCount > 0 ? "alertCountTag danger" : "mutedCell"}>
+                      <span
+                        className={row.outOfStockCount > 0 ? "alertCountTag danger" : "mutedCell"}
+                      >
                         {row.outOfStockCount}
                       </span>
                     </td>
@@ -573,61 +575,67 @@ export default function DashboardPage({
         </section>
       )}
 
-      {pendingBranchTransferGroups.length > 0 && onApproveBranchTransfer && onRejectBranchTransfer && (
-        <section className="card dashboardPendingTransfers">
-          <div className="cardHeader">
-            <h2>{isArabic ? "طلبات نقل بانتظار الاعتماد" : "Pending transfer approvals"}</h2>
-            <span className="badge warn">{pendingBranchTransferGroups.length}</span>
-          </div>
-          <div className="tableWrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>{isArabic ? "الرقم" : "No."}</th>
-                  <th>{isArabic ? "من" : "From"}</th>
-                  <th>{isArabic ? "إلى" : "To"}</th>
-                  <th>{isArabic ? "الأصناف" : "Items"}</th>
-                  <th>{isArabic ? "الكمية" : "Qty"}</th>
-                  <th>{t.date}</th>
-                  <th>{t.action}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pendingBranchTransferGroups.map((group) => (
-                  <tr key={group.transferNumber}>
-                    <td>{group.transferNumber}</td>
-                    <td>{getBranchLabel ? getBranchLabel(group.fromPharmacyId) : group.fromPharmacyId}</td>
-                    <td>{getBranchLabel ? getBranchLabel(group.toPharmacyId) : group.toPharmacyId}</td>
-                    <td>{group.items.length}</td>
-                    <td>{group.totalQty}</td>
-                    <td>
-                      {group.createdAt ? new Date(group.createdAt).toLocaleString() : "—"}
-                    </td>
-                    <td>
-                      <div className="actionButtons">
-                        <button
-                          type="button"
-                          className="smallBtn"
-                          onClick={() => void onApproveBranchTransfer(group.transferNumber)}
-                        >
-                          {isArabic ? "اعتماد" : "Approve"}
-                        </button>
-                        <button
-                          type="button"
-                          className="deleteSmallBtn"
-                          onClick={() => void onRejectBranchTransfer(group.transferNumber)}
-                        >
-                          {isArabic ? "رفض" : "Reject"}
-                        </button>
-                      </div>
-                    </td>
+      {pendingBranchTransferGroups.length > 0 &&
+        onApproveBranchTransfer &&
+        onRejectBranchTransfer && (
+          <section className="card dashboardPendingTransfers">
+            <div className="cardHeader">
+              <h2>{isArabic ? "طلبات نقل بانتظار الاعتماد" : "Pending transfer approvals"}</h2>
+              <span className="badge warn">{pendingBranchTransferGroups.length}</span>
+            </div>
+            <div className="tableWrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>{isArabic ? "الرقم" : "No."}</th>
+                    <th>{isArabic ? "من" : "From"}</th>
+                    <th>{isArabic ? "إلى" : "To"}</th>
+                    <th>{isArabic ? "الأصناف" : "Items"}</th>
+                    <th>{isArabic ? "الكمية" : "Qty"}</th>
+                    <th>{t.date}</th>
+                    <th>{t.action}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
+                </thead>
+                <tbody>
+                  {pendingBranchTransferGroups.map((group) => (
+                    <tr key={group.transferNumber}>
+                      <td>{group.transferNumber}</td>
+                      <td>
+                        {getBranchLabel
+                          ? getBranchLabel(group.fromPharmacyId)
+                          : group.fromPharmacyId}
+                      </td>
+                      <td>
+                        {getBranchLabel ? getBranchLabel(group.toPharmacyId) : group.toPharmacyId}
+                      </td>
+                      <td>{group.items.length}</td>
+                      <td>{group.totalQty}</td>
+                      <td>{group.createdAt ? new Date(group.createdAt).toLocaleString() : "—"}</td>
+                      <td>
+                        <div className="actionButtons">
+                          <button
+                            type="button"
+                            className="smallBtn"
+                            onClick={() => void onApproveBranchTransfer(group.transferNumber)}
+                          >
+                            {isArabic ? "اعتماد" : "Approve"}
+                          </button>
+                          <button
+                            type="button"
+                            className="deleteSmallBtn"
+                            onClick={() => void onRejectBranchTransfer(group.transferNumber)}
+                          >
+                            {isArabic ? "رفض" : "Reject"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
 
       {showInventoryAlerts && (
         <section className="alertsGrid">
@@ -637,7 +645,9 @@ export default function DashboardPage({
               <span className="alertCountTag warn">{lowStockCount}</span>
             </div>
             {lowStockMedicines.length === 0 ? (
-              <p className="empty">{isArabic ? "لا توجد نواقص حالياً" : "No low stock medicines"}</p>
+              <p className="empty">
+                {isArabic ? "لا توجد نواقص حالياً" : "No low stock medicines"}
+              </p>
             ) : (
               <>
                 <div className="miniList">
@@ -646,7 +656,9 @@ export default function DashboardPage({
                       <span>
                         {showBranchInAlertLists && getBranchLabel && medicine.pharmacyId ? (
                           <>
-                            <span className="miniListBranchTag">{getBranchLabel(medicine.pharmacyId)}</span>
+                            <span className="miniListBranchTag">
+                              {getBranchLabel(medicine.pharmacyId)}
+                            </span>
                             {" · "}
                           </>
                         ) : null}
@@ -688,7 +700,9 @@ export default function DashboardPage({
                     <span>
                       {showBranchInAlertLists && getBranchLabel && medicine.pharmacyId ? (
                         <>
-                          <span className="miniListBranchTag">{getBranchLabel(medicine.pharmacyId)}</span>
+                          <span className="miniListBranchTag">
+                            {getBranchLabel(medicine.pharmacyId)}
+                          </span>
                           {" · "}
                         </>
                       ) : null}
@@ -715,7 +729,9 @@ export default function DashboardPage({
                     <span>
                       {showBranchInAlertLists && getBranchLabel && medicine.pharmacyId ? (
                         <>
-                          <span className="miniListBranchTag">{getBranchLabel(medicine.pharmacyId)}</span>
+                          <span className="miniListBranchTag">
+                            {getBranchLabel(medicine.pharmacyId)}
+                          </span>
                           {" · "}
                         </>
                       ) : null}

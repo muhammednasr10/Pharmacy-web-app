@@ -87,7 +87,12 @@ export default function CashierShiftsReport({
               : "Closed shifts with expected vs actual cash variance."}
           </p>
         </div>
-        <button type="button" className="secondaryBtn" onClick={() => void loadRows()} disabled={loading}>
+        <button
+          type="button"
+          className="secondaryBtn"
+          onClick={() => void loadRows()}
+          disabled={loading}
+        >
           {loading ? (isArabic ? "جاري التحميل..." : "Loading...") : isArabic ? "تحديث" : "Refresh"}
         </button>
       </div>

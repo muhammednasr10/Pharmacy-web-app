@@ -29,12 +29,7 @@ export const subscriptionTiers: Record<SubscriptionTier, SubscriptionTierConfig>
     maxBranches: 3,
     summaryAr: "حتى 3 فروع — تقارير مجمّعة ونقل مخزون",
     summaryEn: "Up to 3 branches — consolidated reports and transfers",
-    featuresAr: [
-      "حتى 3 فروع",
-      "تقارير حسب الفرع",
-      "نقل مخزون بين الفروع",
-      "اعتماد طلبات النقل",
-    ],
+    featuresAr: ["حتى 3 فروع", "تقارير حسب الفرع", "نقل مخزون بين الفروع", "اعتماد طلبات النقل"],
     featuresEn: [
       "Up to 3 branches",
       "Branch breakdown reports",
@@ -81,7 +76,10 @@ export function getSubscriptionTier(value?: string | null): SubscriptionTierConf
   return subscriptionTiers[parseSubscriptionTier(value)];
 }
 
-export function getSubscriptionTierLabel(value: string | undefined | null, isArabic: boolean): string {
+export function getSubscriptionTierLabel(
+  value: string | undefined | null,
+  isArabic: boolean,
+): string {
   const tier = getSubscriptionTier(value);
   return isArabic ? tier.labelAr : tier.labelEn;
 }

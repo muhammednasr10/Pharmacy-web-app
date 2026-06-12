@@ -1,17 +1,44 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import type {
   ActivityLog,
   AppUser,
   Employee,
+  Page,
+  PharmacyCustomRole,
+  PharmacyRoleConfig,
   PharmacyLoginAccount,
   PharmacySettings,
   SystemUser,
   UserRole,
 } from "../types";
 import * as pharmacyService from "../services/pharmacyService";
-import HrPage, { type HrTab } from "./HrPage";
-import EmployeeAttendanceBadgeModal from "../components/EmployeeAttendanceBadgeModal";
+import type { HrTab } from "./HrPage";
 import TierUpgradeNotice from "../components/TierUpgradeNotice";
+import { EmployeePhotoThumb, readEmployeePhotoFile } from "../components/staff/EmployeePhotoThumb";
+import {
+  LazyEmployeeAttendanceBadgeModal,
+  LazyHrPage,
+  LazyWorkScheduleEditor,
+} from "./staff/lazyStaffModules";
+import { formatLoginAccountSyncError } from "../utils/staffLoginAccountErrors";
+import { pickCatalogAccountForRole, suggestLoginAccountDraft } from "../utils/staffCatalog";
+import {
+  CUSTOM_ROLE_PAGE_OPTIONS,
+  CUSTOM_ROLE_TEMPLATE_OPTIONS,
+  defaultPagesForCustomRoleTemplate,
+} from "../utils/customRolePages";
+import RolePermissionsEditorModal, {
+  buildDefaultRoleAccess,
+  normalizeEditorAccess,
+  type RolePermissionsEditorTarget,
+} from "../components/staff/RolePermissionsEditorModal";
+import {
+  EDITABLE_BUILTIN_ROLES,
+  roleAccessSummaryTitle,
+  summarizeRoleAccess,
+  type RolePermissionFlags,
+} from "../utils/rolePermissions";
+import { getEffectiveRoleAccess } from "../utils/roleAccess";
 import {
   canManageOrgLoginAccountsWithTier,
   canShowCentralHrWithTier,
@@ -26,17 +53,14 @@ import {
   isPharmacyManager,
   isOrgPharmacyAdmin,
   isAccountant,
-  loginAccountRoleOptions,
   loginAccountRoleOptionsFor,
   parseLoginAccountRole,
   getDefaultLoginAccountDraft,
-  rolePermissionMatrix,
   STAFF_ACTIVITY_TYPES,
 } from "../utils/roles";
 import { getBranchLabel } from "../utils/branchLabel";
 import { buildBranchHrSummaryRows } from "../utils/branchHrSummary";
 import { buildBranchLoginSummaryRows } from "../utils/branchLoginSummary";
-import WorkScheduleEditor from "../components/WorkScheduleEditor";
 import {
   computeWorkHoursFromSchedule,
   getShiftDisplayName,
@@ -87,56 +111,6 @@ function usernameFromEmployeeName(name: string) {
   return name.trim();
 }
 
-function formatUserCreationError(message: string, isArabic: boolean) {
-  if (message === "email_address_invalid_format") {
-    return isArabic ? "صيغة الإيميل غير صحيحة" : "Invalid email format";
-  }
-  if (message === "email_domain_rejected" || message === "email_address_invalid") {
-    return isArabic
-      ? "Supabase يرفض هذا الدومين. استخدم بريداً حقيقياً."
-      : "Email domain rejected. Use a real mailbox.";
-  }
-  if (message.includes("already registered")) {
-    return isArabic ? "هذا الإيميل مسجل بالفعل" : "Email already registered";
-  }
-  if (message === "auth_pending_confirmation") {
-    return isArabic
-      ? "تم إنشاء الحساب. قد يحتاج المستخدم لتأكيد البريد."
-      : "Account created. User may need email confirmation.";
-  }
-  return message;
-}
-
-function formatLoginAccountSyncError(message: string, isArabic: boolean) {
-  if (message === "auth_user_not_found") {
-    return isArabic
-      ? "لا يوجد حساب بهذا الإيميل في Supabase Auth. أنشئه أولاً من Authentication → Users."
-      : "No Auth user with this email. Create it in Supabase Authentication → Users first.";
-  }
-  if (message === "not_authorized") {
-    return isArabic ? "ليس لديك صلاحية الربط" : "You are not allowed to sync users";
-  }
-  if (message.includes("users_role_check") || message === "invalid_role") {
-    return isArabic
-      ? "الدور غير مسموح في جدول users. استخدم pharmacy_admin وليس admin."
-      : "Invalid role for users table. Use pharmacy_admin, not admin.";
-  }
-  if (message === "edit_pending") {
-    return isArabic
-      ? "يوجد تعديل قيد الاعتماد على هذا الحساب. انتظر حتى يُعتمد أو يُرفض."
-      : "An edit is pending on this account. Wait until it is approved or rejected.";
-  }
-  if (message === "link_request_already_pending") {
-    return isArabic ? "طلب الربط مُرسل بالفعل" : "Link request already sent";
-  }
-  if (message === "revoke_rpc_not_configured") {
-    return isArabic
-      ? "شغّل supabase/user-session-revocation.sql في Supabase أولاً"
-      : "Run supabase/user-session-revocation.sql in Supabase first";
-  }
-  return message;
-}
-
 const emptyEmployeeForm = {
   pharmacyId: "",
   employeeCode: "",
@@ -150,72 +124,11 @@ const emptyEmployeeForm = {
   useCustomWorkSchedule: false,
   workDayStart: DEFAULT_PHARMACY_SHIFTS[0].dayStart,
   workDayEnd: DEFAULT_PHARMACY_SHIFTS[0].dayEnd,
-  workBreaks: [] as typeof DEFAULT_PHARMACY_SHIFTS[0]["breaks"],
+  workBreaks: [] as (typeof DEFAULT_PHARMACY_SHIFTS)[0]["breaks"],
   hireDate: "",
   notes: "",
   isActive: true,
 };
-
-function pickCatalogAccountForRole(
-  accounts: PharmacyLoginAccount[],
-  role: UserRole
-): PharmacyLoginAccount | undefined {
-  const matches = accounts.filter((item) => parseLoginAccountRole(item.role) === role);
-  if (matches.length === 0) return undefined;
-
-  const statusRank: Record<PharmacyLoginAccount["status"], number> = {
-    approved: 0,
-    pending: 1,
-    rejected: 2,
-  };
-
-  return [...matches].sort((a, b) => {
-    const byStatus = statusRank[a.status] - statusRank[b.status];
-    if (byStatus !== 0) return byStatus;
-    return (b.updatedAt || b.createdAt || "").localeCompare(a.updatedAt || a.createdAt || "");
-  })[0];
-}
-
-function EmployeePhotoThumb({
-  photoBase64,
-  name,
-  variant = "table",
-}: {
-  photoBase64?: string;
-  name: string;
-  variant?: "table" | "form";
-}) {
-  const className = variant === "form" ? "employeePhotoThumb employeePhotoThumbForm" : "employeePhotoThumb";
-  const placeholderClassName =
-    variant === "form" ? "employeePhotoPlaceholder employeePhotoPlaceholderForm" : "employeePhotoPlaceholder";
-
-  if (photoBase64) {
-    return <img src={photoBase64} alt="" className={className} />;
-  }
-  const initial = name.trim().charAt(0) || "?";
-  return <span className={placeholderClassName}>{initial}</span>;
-}
-
-function readEmployeePhotoFile(
-  file: File | null,
-  isArabic: boolean,
-  onLoad: (dataUrl: string) => void
-) {
-  if (!file) return;
-  const allowedTypes = ["image/png", "image/jpeg", "image/webp"];
-  if (!allowedTypes.includes(file.type)) {
-    alert(isArabic ? "يرجى اختيار صورة PNG أو JPG أو WebP" : "Please choose a PNG, JPG, or WebP image");
-    return;
-  }
-  if (file.size > 2 * 1024 * 1024) {
-    alert(isArabic ? "حجم الصورة كبير. الحد الأقصى 2 ميجابايت" : "Image is too large. Maximum size is 2 MB");
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = () => onLoad(String(reader.result || ""));
-  reader.onerror = () => alert(isArabic ? "تعذر قراءة الصورة" : "Could not read the image");
-  reader.readAsDataURL(file);
-}
 
 export default function EmployeesUsersPage({
   isArabic,
@@ -231,6 +144,13 @@ export default function EmployeesUsersPage({
   const [activeTab, setActiveTab] = useState<TabId>(isAccountantOnly ? "attendance" : "employees");
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loginCatalog, setLoginCatalog] = useState<PharmacyLoginAccount[]>([]);
+  const [customRoles, setCustomRoles] = useState<PharmacyCustomRole[]>([]);
+  const [roleConfigs, setRoleConfigs] = useState<PharmacyRoleConfig[]>([]);
+  const [permissionEditorTarget, setPermissionEditorTarget] =
+    useState<RolePermissionsEditorTarget | null>(null);
+  const [permissionEditorPages, setPermissionEditorPages] = useState<Page[]>([]);
+  const [permissionEditorPermissions, setPermissionEditorPermissions] =
+    useState<RolePermissionFlags>({});
   const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(false);
@@ -241,7 +161,9 @@ export default function EmployeesUsersPage({
   const [attendanceBadgeEmployee, setAttendanceBadgeEmployee] = useState<Employee | null>(null);
   const [editEmployeeId, setEditEmployeeId] = useState<string | null>(null);
   const [employeeForm, setEmployeeForm] = useState(emptyEmployeeForm);
-  const [pharmacyShifts, setPharmacyShifts] = useState(clonePharmacyShifts(DEFAULT_PHARMACY_SHIFTS));
+  const [pharmacyShifts, setPharmacyShifts] = useState(
+    clonePharmacyShifts(DEFAULT_PHARMACY_SHIFTS),
+  );
   const [pharmacyDefaultShiftId, setPharmacyDefaultShiftId] = useState<ShiftId>("A");
 
   const [accountModal, setAccountModal] = useState<"add" | "edit" | null>(null);
@@ -251,8 +173,22 @@ export default function EmployeesUsersPage({
     email: "",
     password: "",
   }));
+  const [customRoleModal, setCustomRoleModal] = useState(false);
+  const [customRoleForm, setCustomRoleForm] = useState(() => ({
+    nameAr: "",
+    nameEn: "",
+    baseRole: "cashier" as UserRole,
+    allowedPages: defaultPagesForCustomRoleTemplate("cashier"),
+  }));
 
   const catalogRoleOptions = loginAccountRoleOptionsFor(appUser);
+  const customRoleTemplateOptions = useMemo(
+    () =>
+      isOrgPharmacyAdmin(appUser) || isSuperAdmin(appUser)
+        ? CUSTOM_ROLE_TEMPLATE_OPTIONS
+        : CUSTOM_ROLE_TEMPLATE_OPTIONS.filter((role) => role !== "pharmacy_admin"),
+    [appUser],
+  );
   const canManage = isPharmacyManager(appUser) || isSuperAdmin(appUser);
 
   const employeeById = useMemo(() => {
@@ -264,31 +200,32 @@ export default function EmployeesUsersPage({
   const pendingCatalogAccounts = useMemo(
     () =>
       loginCatalog.filter(
-        (item) => item.status === "pending" || item.editPending || item.linkRequestPending
+        (item) => item.status === "pending" || item.editPending || item.linkRequestPending,
       ),
-    [loginCatalog]
+    [loginCatalog],
   );
 
   const isOrgManager = isOrgPharmacyAdmin(appUser);
   const orgTier = useMemo(
     () => resolveOrganizationTier(pharmacies, appUser?.pharmacyId),
-    [pharmacies, appUser?.pharmacyId]
+    [pharmacies, appUser?.pharmacyId],
   );
   const showOrgHrManage = canShowCentralHrWithTier(appUser, orgTier, pharmacies.length);
   const showOrgHr = canViewOrgHrWithTier(appUser, orgTier, pharmacies.length);
-  const orgHrReadOnly =
-    showOrgHr && isAccountant(appUser) && !isOrgPharmacyAdmin(appUser);
+  const orgHrReadOnly = showOrgHr && isAccountant(appUser) && !isOrgPharmacyAdmin(appUser);
   const hrManagePharmacyId = orgHrReadOnly ? appUser?.pharmacyId : undefined;
-  const showOrgLoginAccounts = canManageOrgLoginAccountsWithTier(appUser, orgTier, pharmacies.length);
+  const showOrgLoginAccounts = canManageOrgLoginAccountsWithTier(
+    appUser,
+    orgTier,
+    pharmacies.length,
+  );
   const centralHrUpgradeNotice = useMemo(
-    () =>
-      getTierUpgradeNotice(appUser, orgTier, pharmacies.length, "centralHr", isArabic),
-    [appUser, orgTier, pharmacies.length, isArabic]
+    () => getTierUpgradeNotice(appUser, orgTier, pharmacies.length, "centralHr", isArabic),
+    [appUser, orgTier, pharmacies.length, isArabic],
   );
   const loginAccountsUpgradeNotice = useMemo(
-    () =>
-      getTierUpgradeNotice(appUser, orgTier, pharmacies.length, "branchesPage", isArabic),
-    [appUser, orgTier, pharmacies.length, isArabic]
+    () => getTierUpgradeNotice(appUser, orgTier, pharmacies.length, "branchesPage", isArabic),
+    [appUser, orgTier, pharmacies.length, isArabic],
   );
   const orgBranchIds = useMemo(() => pharmacies.map((branch) => branch.id), [pharmacies]);
   const [employeeBranchFilter, setEmployeeBranchFilter] = useState("all");
@@ -318,14 +255,28 @@ export default function EmployeesUsersPage({
     return map;
   }, [branchLoginCatalog]);
 
-  const catalogByRole = useMemo(() => {
-    const map = new Map<UserRole, PharmacyLoginAccount>();
-    catalogRoleOptions.forEach((role) => {
-      const account = pickCatalogAccountForRole(branchLoginCatalog, role);
-      if (account) map.set(role, account);
-    });
-    return map;
-  }, [branchLoginCatalog, catalogRoleOptions]);
+  const branchCustomRoles = useMemo(
+    () => customRoles.filter((role) => role.pharmacyId === catalogTargetPharmacyId),
+    [customRoles, catalogTargetPharmacyId],
+  );
+
+  const loginAccountRoleSelectOptions = useMemo(
+    () => [...catalogRoleOptions, ...branchCustomRoles.map((role) => role.roleKey)],
+    [catalogRoleOptions, branchCustomRoles],
+  );
+
+  const sortedBranchLoginAccounts = useMemo(
+    () =>
+      [...branchLoginCatalog].sort((a, b) => {
+        const byRole = getRoleLabel(a.role, isArabic).localeCompare(
+          getRoleLabel(b.role, isArabic),
+          isArabic ? "ar" : "en",
+        );
+        if (byRole !== 0) return byRole;
+        return a.email.localeCompare(b.email);
+      }),
+    [branchLoginCatalog, isArabic],
+  );
 
   const branchLoginSummaryRows = useMemo(
     () =>
@@ -333,11 +284,10 @@ export default function EmployeesUsersPage({
         ? buildBranchLoginSummaryRows({
             accounts: loginCatalog,
             branches: pharmacies,
-            roleSlotCount: catalogRoleOptions.length,
             isArabic,
           })
         : [],
-    [showOrgLoginAccounts, loginCatalog, pharmacies, catalogRoleOptions.length, isArabic]
+    [showOrgLoginAccounts, loginCatalog, pharmacies, isArabic],
   );
 
   const systemUserByEmail = useMemo(() => {
@@ -348,19 +298,40 @@ export default function EmployeesUsersPage({
     return map;
   }, [systemUsers]);
 
-  const staffEmployeeOptions = useMemo(() => {
-    return [...employees].sort((a, b) => a.name.localeCompare(b.name, isArabic ? "ar" : "en"));
-  }, [employees, isArabic]);
+  const loginCatalogByPharmacy = useMemo(() => {
+    const map = new Map<string, PharmacyLoginAccount[]>();
+    loginCatalog.forEach((account) => {
+      const list = map.get(account.pharmacyId) || [];
+      list.push(account);
+      map.set(account.pharmacyId, list);
+    });
+    return map;
+  }, [loginCatalog]);
 
-  function catalogEmployeeOptionsForRow(assignedEmployeeId?: string) {
-    const branchEmployees = showOrgLoginAccounts
-      ? staffEmployeeOptions.filter((employee) => employee.pharmacyId === catalogTargetPharmacyId)
-      : staffEmployeeOptions;
-    const assigned = assignedEmployeeId ? employeeById.get(assignedEmployeeId) : undefined;
-    if (assigned && !branchEmployees.some((item) => item.id === assigned.id)) {
-      return [assigned, ...branchEmployees];
-    }
-    return branchEmployees;
+  function employeeLoginAccountOptionsFor(pharmacyId: string, employeeId: string) {
+    const accounts = loginCatalogByPharmacy.get(pharmacyId) || [];
+    return accounts
+      .filter(
+        (account) =>
+          account.status === "approved" &&
+          (!account.employeeId || account.employeeId === employeeId),
+      )
+      .sort((a, b) => {
+        const byRole = getRoleLabel(a.role, isArabic).localeCompare(
+          getRoleLabel(b.role, isArabic),
+          isArabic ? "ar" : "en",
+        );
+        if (byRole !== 0) return byRole;
+        return a.email.localeCompare(b.email);
+      });
+  }
+
+  function getEmployeeAssignedAccountId(employee: Employee): string {
+    return catalogByEmployeeId.get(employee.id)?.id || "";
+  }
+
+  function isAccountCustomRole(roleKey: string) {
+    return branchCustomRoles.some((role) => role.roleKey === roleKey);
   }
 
   const pharmacyName = useMemo(() => {
@@ -371,15 +342,13 @@ export default function EmployeesUsersPage({
 
   const branchLabel = useCallback(
     (id: string) => getBranchLabel(id, pharmacies, isArabic),
-    [pharmacies, isArabic]
+    [pharmacies, isArabic],
   );
 
   const branchHrSummaryRows = useMemo(
     () =>
-      showOrgHr
-        ? buildBranchHrSummaryRows({ employees, branches: pharmacies, isArabic })
-        : [],
-    [showOrgHr, employees, pharmacies, isArabic]
+      showOrgHr ? buildBranchHrSummaryRows({ employees, branches: pharmacies, isArabic }) : [],
+    [showOrgHr, employees, pharmacies, isArabic],
   );
 
   const filteredEmployees = useMemo(() => {
@@ -393,7 +362,7 @@ export default function EmployeesUsersPage({
     try {
       const targetPharmacyId = pharmacyId || appUser?.pharmacyId || "main";
       const loadOrgScope = showOrgHr || showOrgLoginAccounts;
-      const [empRows, logs, catalog, users] = await Promise.all([
+      const [empRows, logs, catalog, users, roleRows, configRows] = await Promise.all([
         loadOrgScope
           ? pharmacyService.getEmployeesForPharmacies(orgBranchIds)
           : pharmacyService.getEmployees(),
@@ -404,17 +373,31 @@ export default function EmployeesUsersPage({
         loadOrgScope
           ? pharmacyService.getSystemUsersForPharmacies(orgBranchIds)
           : pharmacyService.getSystemUsers(targetPharmacyId),
+        loadOrgScope
+          ? pharmacyService.getPharmacyCustomRolesForPharmacies(orgBranchIds)
+          : pharmacyService.getPharmacyCustomRoles(targetPharmacyId),
+        loadOrgScope
+          ? pharmacyService.getPharmacyRoleConfigsForPharmacies(orgBranchIds)
+          : pharmacyService.getPharmacyRoleConfigs(targetPharmacyId),
       ]);
       setEmployees(empRows);
       setActivityLogs(logs);
       setLoginCatalog(catalog);
       setSystemUsers(users);
+      setCustomRoles(roleRows);
+      setRoleConfigs(configRows);
+      pharmacyService.setPharmacyCustomRoles(roleRows);
+      pharmacyService.setPharmacyRoleConfigs(configRows);
     } catch (err) {
       console.error(err);
       setLoadError(err instanceof Error ? err.message : "load_failed");
       setEmployees([]);
       setLoginCatalog([]);
       setSystemUsers([]);
+      setCustomRoles([]);
+      setRoleConfigs([]);
+      pharmacyService.setPharmacyCustomRoles([]);
+      pharmacyService.setPharmacyRoleConfigs([]);
     } finally {
       setLoading(false);
     }
@@ -431,7 +414,7 @@ export default function EmployeesUsersPage({
     const confirmed = window.confirm(
       isArabic
         ? `اعتماد حساب ${account.email}؟\n\nتأكد من إنشاء الحساب في Supabase Auth بنفس الإيميل.`
-        : `Approve account ${account.email}?\n\nEnsure the Auth user exists with the same email.`
+        : `Approve account ${account.email}?\n\nEnsure the Auth user exists with the same email.`,
     );
     if (!confirmed) return;
 
@@ -440,7 +423,7 @@ export default function EmployeesUsersPage({
       await pharmacyService.superAdminApprovePharmacyLoginAccountCatalog(
         account.id,
         appUser?.uid,
-        appUser?.name
+        appUser?.name,
       );
       await loadAll();
       alert(isArabic ? "تم اعتماد الحساب" : "Account approved");
@@ -450,7 +433,7 @@ export default function EmployeesUsersPage({
           ? formatLoginAccountSyncError(err.message, isArabic)
           : isArabic
             ? "تعذر اعتماد الحساب"
-            : "Could not approve account"
+            : "Could not approve account",
       );
     } finally {
       setBusy("");
@@ -459,9 +442,7 @@ export default function EmployeesUsersPage({
 
   async function approveCatalogEdit(account: PharmacyLoginAccount) {
     const confirmed = window.confirm(
-      isArabic
-        ? `اعتماد تعديل حساب ${account.email}؟`
-        : `Approve changes to ${account.email}?`
+      isArabic ? `اعتماد تعديل حساب ${account.email}؟` : `Approve changes to ${account.email}?`,
     );
     if (!confirmed) return;
 
@@ -470,7 +451,7 @@ export default function EmployeesUsersPage({
       await pharmacyService.approvePharmacyLoginAccountEdit(
         account.id,
         appUser?.uid,
-        appUser?.name
+        appUser?.name,
       );
       await loadAll();
       alert(isArabic ? "تم اعتماد التعديل" : "Changes approved");
@@ -480,7 +461,7 @@ export default function EmployeesUsersPage({
           ? formatLoginAccountSyncError(err.message, isArabic)
           : isArabic
             ? "تعذر اعتماد التعديل"
-            : "Could not approve changes"
+            : "Could not approve changes",
       );
     } finally {
       setBusy("");
@@ -491,7 +472,7 @@ export default function EmployeesUsersPage({
     const confirmed = window.confirm(
       isArabic
         ? `ربط حساب ${account.email} بالنظام؟\n\nتأكد من وجود الحساب في Supabase Auth.`
-        : `Link account ${account.email} to the system?\n\nEnsure the Auth user exists in Supabase.`
+        : `Link account ${account.email} to the system?\n\nEnsure the Auth user exists in Supabase.`,
     );
     if (!confirmed) return;
 
@@ -501,7 +482,7 @@ export default function EmployeesUsersPage({
         await pharmacyService.approvePharmacyLoginAccountLink(
           account.id,
           appUser?.uid,
-          appUser?.name
+          appUser?.name,
         );
       } else {
         const employee = account.employeeId ? employeeById.get(account.employeeId) : undefined;
@@ -515,17 +496,14 @@ export default function EmployeesUsersPage({
           ? formatLoginAccountSyncError(err.message, isArabic)
           : isArabic
             ? "تعذر ربط الحساب"
-            : "Could not link account"
+            : "Could not link account",
       );
     } finally {
       setBusy("");
     }
   }
 
-  async function unlinkCatalogAccount(
-    account: PharmacyLoginAccount,
-    linkedUser: SystemUser
-  ) {
+  async function unlinkCatalogAccount(account: PharmacyLoginAccount, linkedUser: SystemUser) {
     if (linkedUser.uid === currentUid || linkedUser.uid === appUser?.uid) {
       alert(isArabic ? "لا يمكنك فصل حسابك الحالي" : "You cannot unlink your own account");
       return;
@@ -534,17 +512,13 @@ export default function EmployeesUsersPage({
     const confirmed = window.confirm(
       isArabic
         ? `فصل ربط ${account.email}؟\n\nسيتم طرد المستخدم فوراً إن كان متصلاً بالتطبيق.`
-        : `Unlink ${account.email}?\n\nThe user will be signed out immediately if online.`
+        : `Unlink ${account.email}?\n\nThe user will be signed out immediately if online.`,
     );
     if (!confirmed) return;
 
     setBusy(`unlink-${account.id}`);
     try {
-      await pharmacyService.unlinkLoginAccountFromSystem(
-        linkedUser.uid,
-        account.id,
-        appUser?.uid
-      );
+      await pharmacyService.unlinkLoginAccountFromSystem(linkedUser.uid, account.id, appUser?.uid);
       await onActivityLog({
         type: "user_update",
         title: isArabic ? "فصل ربط حساب" : "Account unlinked",
@@ -560,7 +534,7 @@ export default function EmployeesUsersPage({
           ? formatLoginAccountSyncError(err.message, isArabic)
           : isArabic
             ? "تعذر فصل الربط"
-            : "Could not unlink account"
+            : "Could not unlink account",
       );
     } finally {
       setBusy("");
@@ -570,7 +544,7 @@ export default function EmployeesUsersPage({
   async function syncSavedCatalogAccount(
     targetPharmacyId: string,
     role: UserRole,
-    accountId?: string | null
+    accountId?: string | null,
   ) {
     const refreshed = await pharmacyService.getPharmacyLoginAccounts(targetPharmacyId);
     const saved =
@@ -596,10 +570,13 @@ export default function EmployeesUsersPage({
 
   const staffActivity = useMemo(
     () =>
-      activityLogs.filter((log) =>
-        STAFF_ACTIVITY_TYPES.includes(log.type) || log.referenceType === "employee" || log.referenceType === "user"
+      activityLogs.filter(
+        (log) =>
+          STAFF_ACTIVITY_TYPES.includes(log.type) ||
+          log.referenceType === "employee" ||
+          log.referenceType === "user",
       ),
-    [activityLogs]
+    [activityLogs],
   );
 
   function openAddEmployee() {
@@ -677,7 +654,7 @@ export default function EmployeesUsersPage({
               useCustomWorkSchedule: false,
             },
             pharmacyShifts,
-            pharmacyDefaultShiftId
+            pharmacyDefaultShiftId,
           );
       const requiredWorkHours = computeWorkHoursFromSchedule(customSchedule);
 
@@ -692,9 +669,15 @@ export default function EmployeesUsersPage({
         requiredWorkHours,
         assignedShiftId: employeeForm.assignedShiftId,
         useCustomWorkSchedule: employeeForm.useCustomWorkSchedule,
-        workDayStart: employeeForm.useCustomWorkSchedule ? employeeForm.workDayStart : (null as unknown as undefined),
-        workDayEnd: employeeForm.useCustomWorkSchedule ? employeeForm.workDayEnd : (null as unknown as undefined),
-        workBreaks: employeeForm.useCustomWorkSchedule ? employeeForm.workBreaks : (null as unknown as undefined),
+        workDayStart: employeeForm.useCustomWorkSchedule
+          ? employeeForm.workDayStart
+          : (null as unknown as undefined),
+        workDayEnd: employeeForm.useCustomWorkSchedule
+          ? employeeForm.workDayEnd
+          : (null as unknown as undefined),
+        workBreaks: employeeForm.useCustomWorkSchedule
+          ? employeeForm.workBreaks
+          : (null as unknown as undefined),
         hireDate: employeeForm.hireDate || undefined,
         notes: employeeForm.notes.trim() || undefined,
         isActive: employeeForm.isActive,
@@ -737,6 +720,51 @@ export default function EmployeesUsersPage({
     }
   }
 
+  async function deleteEmployeeRecord(employee: Employee) {
+    const linkedAccount = catalogByEmployeeId.get(employee.id);
+    const linkedUser = systemUsers.find((user) => user.employeeId === employee.id);
+    let confirmMessage = isArabic
+      ? `حذف الموظف «${employee.name}» نهائياً؟ لا يمكن التراجع عن هذا الإجراء.`
+      : `Permanently delete employee "${employee.name}"? This cannot be undone.`;
+    if (linkedAccount) {
+      confirmMessage += isArabic
+        ? `\n\nسيتم فك ربط حساب الدخول ${linkedAccount.email}.`
+        : `\n\nLogin account ${linkedAccount.email} will be unlinked.`;
+    }
+    if (linkedUser) {
+      confirmMessage += isArabic
+        ? `\nسيتم فك ربط المستخدم ${linkedUser.email || linkedUser.name}.`
+        : `\nUser ${linkedUser.email || linkedUser.name} will be unlinked.`;
+    }
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    setBusy(`del-emp-${employee.id}`);
+    try {
+      await pharmacyService.deleteEmployee(employee.id);
+      await onActivityLog({
+        type: "employee_delete",
+        title: isArabic ? "حذف موظف" : "Employee Deleted",
+        description: employee.name,
+        referenceType: "employee",
+        referenceId: employee.id,
+      });
+      if (editEmployeeId === employee.id) {
+        setEmployeeModal(null);
+        setEditEmployeeId(null);
+      }
+      if (attendanceBadgeEmployee?.id === employee.id) {
+        setAttendanceBadgeEmployee(null);
+      }
+      await loadAll();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : isArabic ? "تعذر الحذف" : "Delete failed");
+    } finally {
+      setBusy("");
+    }
+  }
+
   async function toggleEmployeeActive(employee: Employee) {
     setBusy(`emp-${employee.id}`);
     try {
@@ -749,8 +777,8 @@ export default function EmployeesUsersPage({
             ? "تفعيل موظف"
             : "Employee Activated"
           : isArabic
-          ? "تعطيل موظف"
-          : "Employee Deactivated",
+            ? "تعطيل موظف"
+            : "Employee Deactivated",
         description: `${employee.name}`,
         referenceType: "employee",
         referenceId: employee.id,
@@ -761,19 +789,213 @@ export default function EmployeesUsersPage({
     }
   }
 
-  function openCatalogAccountForRole(role: UserRole) {
-    const existing = catalogByRole.get(role);
-    const defaults = getDefaultLoginAccountDraft(role);
-    if (existing) {
-      setEditCatalogId(existing.id);
-      setCatalogForm({
-        role: parseLoginAccountRole(existing.role),
-        email: existing.email,
-        password: existing.password || defaults.password,
-      });
-      setAccountModal("edit");
+  function openCustomRoleModal() {
+    setCustomRoleForm({
+      nameAr: "",
+      nameEn: "",
+      baseRole: "cashier",
+      allowedPages: defaultPagesForCustomRoleTemplate("cashier"),
+    });
+    setCustomRoleModal(true);
+  }
+
+  function onCustomRoleBaseChange(baseRole: UserRole) {
+    setCustomRoleForm((prev) => ({
+      ...prev,
+      baseRole,
+      allowedPages: defaultPagesForCustomRoleTemplate(baseRole),
+    }));
+  }
+
+  function toggleCustomRolePage(page: Page) {
+    setCustomRoleForm((prev) => {
+      const has = prev.allowedPages.includes(page);
+      return {
+        ...prev,
+        allowedPages: has
+          ? prev.allowedPages.filter((item) => item !== page)
+          : [...prev.allowedPages, page],
+      };
+    });
+  }
+
+  async function saveCustomRole() {
+    if (!customRoleForm.nameAr.trim() || !customRoleForm.nameEn.trim()) {
+      alert(isArabic ? "أدخل اسم الدور بالعربية والإنجليزية" : "Enter role name in Arabic and English");
       return;
     }
+    if (customRoleForm.allowedPages.length === 0) {
+      alert(isArabic ? "اختر صفحة واحدة على الأقل" : "Select at least one page");
+      return;
+    }
+
+    setBusy("save-custom-role");
+    try {
+      const created = await pharmacyService.createPharmacyCustomRole({
+        pharmacyId: catalogTargetPharmacyId,
+        nameAr: customRoleForm.nameAr,
+        nameEn: customRoleForm.nameEn,
+        baseRole: customRoleForm.baseRole,
+        allowedPages: customRoleForm.allowedPages,
+      });
+      setCustomRoleModal(false);
+      await loadAll();
+      const openAccount = window.confirm(
+        isArabic
+          ? `تم إنشاء دور «${created.nameAr}». هل تريد إضافة حساب دخول له الآن؟`
+          : `Role «${created.nameEn}» created. Add a login account for it now?`,
+      );
+      if (openAccount) {
+        openCatalogAccountAdd(created.roleKey);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      alert(
+        msg === "custom_role_name_required"
+          ? isArabic
+            ? "أدخل اسم الدور"
+            : "Enter role name"
+          : msg || (isArabic ? "تعذر إنشاء الدور" : "Could not create role"),
+      );
+    } finally {
+      setBusy("");
+    }
+  }
+
+  const permissionsBranchCustomRoles = useMemo(
+    () => customRoles.filter((role) => role.pharmacyId === catalogTargetPharmacyId),
+    [customRoles, catalogTargetPharmacyId],
+  );
+
+  function openPermissionEditorBuiltin(roleKey: (typeof EDITABLE_BUILTIN_ROLES)[number]) {
+    const access = getEffectiveRoleAccess(roleKey, catalogTargetPharmacyId);
+    setPermissionEditorTarget({ kind: "builtin", roleKey });
+    setPermissionEditorPages([...access.allowedPages]);
+    setPermissionEditorPermissions({ ...access.permissions });
+  }
+
+  function openPermissionEditorCustom(role: PharmacyCustomRole) {
+    const access = getEffectiveRoleAccess(role.roleKey, role.pharmacyId);
+    setPermissionEditorTarget({
+      kind: "custom",
+      roleKey: role.roleKey,
+      customRoleId: role.id,
+      baseRole: role.baseRole,
+    });
+    setPermissionEditorPages([...access.allowedPages]);
+    setPermissionEditorPermissions({ ...access.permissions });
+  }
+
+  async function savePermissionEditor() {
+    if (!permissionEditorTarget) return;
+    if (permissionEditorPages.length === 0) {
+      alert(isArabic ? "اختر صفحة واحدة على الأقل" : "Select at least one page");
+      return;
+    }
+
+    const normalized = normalizeEditorAccess(
+      permissionEditorTarget,
+      permissionEditorPages,
+      permissionEditorPermissions,
+    );
+
+    setBusy("save-role-permissions");
+    try {
+      if (permissionEditorTarget.kind === "builtin") {
+        await pharmacyService.upsertPharmacyRoleConfig({
+          pharmacyId: catalogTargetPharmacyId,
+          roleKey: permissionEditorTarget.roleKey,
+          allowedPages: normalized.allowedPages,
+          permissions: normalized.permissions,
+        });
+      } else {
+        await pharmacyService.updatePharmacyCustomRoleAccess(permissionEditorTarget.customRoleId, {
+          allowedPages: normalized.allowedPages,
+          permissions: normalized.permissions,
+        });
+      }
+      setPermissionEditorTarget(null);
+      await loadAll();
+      alert(isArabic ? "تم حفظ الصلاحيات" : "Permissions saved");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : isArabic ? "تعذر الحفظ" : "Save failed");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  function resetPermissionEditorDefaults() {
+    if (!permissionEditorTarget) return;
+    const defaults = buildDefaultRoleAccess(permissionEditorTarget);
+    setPermissionEditorPages(defaults.allowedPages);
+    setPermissionEditorPermissions(defaults.permissions);
+  }
+
+  async function resetRolePermissionsToDefaults(
+    target: RolePermissionsEditorTarget,
+  ) {
+    const label = getRoleLabel(
+      target.kind === "custom" ? target.roleKey : target.roleKey,
+      isArabic,
+    );
+    if (
+      !window.confirm(
+        isArabic
+          ? `استعادة الإعدادات الافتراضية لدور «${label}»؟`
+          : `Reset «${label}» to default permissions?`,
+      )
+    ) {
+      return;
+    }
+
+    setBusy("reset-role-permissions");
+    try {
+      if (target.kind === "builtin") {
+        await pharmacyService.deletePharmacyRoleConfig(catalogTargetPharmacyId, target.roleKey);
+      } else {
+        const defaults = buildDefaultRoleAccess(target);
+        await pharmacyService.updatePharmacyCustomRoleAccess(target.customRoleId, {
+          allowedPages: defaults.allowedPages,
+          permissions: defaults.permissions,
+        });
+      }
+      await loadAll();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : isArabic ? "تعذر الاستعادة" : "Reset failed");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function deleteCustomRoleDefinition(customRoleId: string, roleLabel: string) {
+    const confirmed = window.confirm(
+      isArabic
+        ? `حذف الدور «${roleLabel}»؟\n\nلن يُحذف إذا كان مربوطاً بحساب أو مستخدم.`
+        : `Delete role «${roleLabel}»?\n\nCannot delete if linked to an account or user.`,
+    );
+    if (!confirmed) return;
+
+    setBusy(`del-role-${customRoleId}`);
+    try {
+      await pharmacyService.deletePharmacyCustomRole(customRoleId);
+      await loadAll();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      alert(
+        msg === "custom_role_in_use"
+          ? isArabic
+            ? "لا يمكن حذف الدور — يوجد حساب أو مستخدم يستخدمه"
+            : "Cannot delete — an account or user uses this role"
+          : msg || (isArabic ? "تعذر حذف الدور" : "Could not delete role"),
+      );
+    } finally {
+      setBusy("");
+    }
+  }
+
+  function openCatalogAccountAdd(preferredRole?: string) {
+    const role = preferredRole ?? loginAccountRoleSelectOptions[0] ?? "cashier";
+    const defaults = suggestLoginAccountDraft(branchLoginCatalog, role);
     setEditCatalogId(null);
     setCatalogForm({
       role,
@@ -781,6 +1003,43 @@ export default function EmployeesUsersPage({
       password: defaults.password,
     });
     setAccountModal("add");
+  }
+
+  function openCatalogAccountEdit(account: PharmacyLoginAccount) {
+    const defaults = getDefaultLoginAccountDraft(account.role);
+    setEditCatalogId(account.id);
+    setCatalogForm({
+      role: parseLoginAccountRole(account.role),
+      email: account.email,
+      password: account.password || defaults.password,
+    });
+    setAccountModal("edit");
+  }
+
+  function openCatalogAccountDuplicate(account: PharmacyLoginAccount) {
+    const role = parseLoginAccountRole(account.role);
+    const defaults = suggestLoginAccountDraft(branchLoginCatalog, role);
+    setEditCatalogId(null);
+    setCatalogForm({
+      role,
+      email: defaults.email,
+      password: defaults.password,
+    });
+    setAccountModal("add");
+  }
+
+  function onCatalogFormRoleChange(nextRole: UserRole) {
+    const role = parseLoginAccountRole(nextRole);
+    if (accountModal === "add") {
+      const defaults = suggestLoginAccountDraft(branchLoginCatalog, role);
+      setCatalogForm({
+        role,
+        email: defaults.email,
+        password: defaults.password,
+      });
+      return;
+    }
+    setCatalogForm((prev) => ({ ...prev, role }));
   }
 
   async function saveCatalogAccount() {
@@ -800,17 +1059,16 @@ export default function EmployeesUsersPage({
     try {
       const targetPharmacyId = catalogTargetPharmacyId;
       const autoApprove = isSuperAdmin(appUser);
-      const existing = catalogByRole.get(role);
-      let savedAccountId = editCatalogId || existing?.id || null;
+      let savedAccountId = editCatalogId || null;
 
       if (accountModal === "edit" && editCatalogId) {
-        const editing = catalogByRole.get(role) || existing;
+        const editing = branchLoginCatalog.find((item) => item.id === editCatalogId);
         if (!autoApprove && editing?.status === "approved") {
           await pharmacyService.submitPharmacyLoginAccountEditRequest(
             editCatalogId,
             { email, password, role },
             appUser?.uid,
-            appUser?.name
+            appUser?.name,
           );
         } else {
           await pharmacyService.updatePharmacyLoginAccount(editCatalogId, {
@@ -821,24 +1079,18 @@ export default function EmployeesUsersPage({
           });
         }
         savedAccountId = editCatalogId;
-      } else if (existing) {
-        if (!autoApprove && existing.status === "approved") {
-          await pharmacyService.submitPharmacyLoginAccountEditRequest(
-            existing.id,
-            { email, password, role },
-            appUser?.uid,
-            appUser?.name
+      } else if (accountModal === "add") {
+        const duplicateEmail = branchLoginCatalog.some(
+          (item) => item.email.trim().toLowerCase() === email,
+        );
+        if (duplicateEmail) {
+          alert(
+            isArabic
+              ? "هذا الإيميل مستخدم بالفعل في هذا الفرع."
+              : "This email is already used for this branch.",
           );
-        } else {
-          await pharmacyService.updatePharmacyLoginAccount(existing.id, {
-            email,
-            password,
-            role,
-            ...(autoApprove ? {} : { status: "pending" }),
-          });
+          return;
         }
-        savedAccountId = existing.id;
-      } else {
         const created = await pharmacyService.createPharmacyLoginAccount({
           pharmacyId: targetPharmacyId,
           email,
@@ -864,7 +1116,7 @@ export default function EmployeesUsersPage({
           alert(
             isArabic
               ? `تم حفظ الحساب لكن الربط فشل:\n${syncMessage}`
-              : `Account saved but linking failed:\n${syncMessage}`
+              : `Account saved but linking failed:\n${syncMessage}`,
           );
         }
       }
@@ -876,13 +1128,13 @@ export default function EmployeesUsersPage({
           ? isArabic
             ? "تم الحفظ"
             : "Saved"
-          : accountModal === "edit" || existing
-          ? isArabic
-            ? "تم إرسال التعديل للاعتماد"
-            : "Changes sent for approval"
-          : isArabic
-          ? "تم إرسال الحساب للاعتماد"
-          : "Account sent for approval"
+          : accountModal === "edit"
+            ? isArabic
+              ? "تم إرسال التعديل للاعتماد"
+              : "Changes sent for approval"
+            : isArabic
+              ? "تم إرسال الحساب للاعتماد"
+              : "Account sent for approval",
       );
     } catch (err) {
       alert(err instanceof Error ? err.message : isArabic ? "تعذر الحفظ" : "Save failed");
@@ -898,8 +1150,8 @@ export default function EmployeesUsersPage({
         ? `حذف حساب ${account.email}؟ سيتم فك ربطه بالموظف ${linkedEmployee.name}.`
         : `Delete account ${account.email}? It will be unlinked from ${linkedEmployee.name}.`
       : isArabic
-      ? `حذف حساب ${account.email}؟`
-      : `Delete account ${account.email}?`;
+        ? `حذف حساب ${account.email}؟`
+        : `Delete account ${account.email}?`;
     if (!window.confirm(confirmMessage)) {
       return;
     }
@@ -914,29 +1166,73 @@ export default function EmployeesUsersPage({
     }
   }
 
-  async function assignCatalogRowEmployee(role: UserRole, employeeId: string) {
-    const acc = catalogByRole.get(role);
-    if (!acc || acc.status !== "approved") return;
+  async function assignEmployeeLoginAccount(employee: Employee, accountId: string) {
+    const targetPharmacyId = employee.pharmacyId;
+    const currentAccountId = getEmployeeAssignedAccountId(employee);
 
-    setBusy(`assign-role-${role}`);
-    try {
-      const targetPharmacyId = catalogTargetPharmacyId;
-      const previousEmployeeId = acc.employeeId;
-
-      if (!employeeId) {
-        await pharmacyService.assignPharmacyLoginAccountToEmployee(acc.id, null, targetPharmacyId);
-        if (previousEmployeeId) {
-          await pharmacyService.updateEmployee(previousEmployeeId, { jobTitle: "" });
-        }
-      } else {
-        const employee = employeeById.get(employeeId);
-        if (!employee) return;
-        await pharmacyService.assignPharmacyLoginAccountToEmployee(acc.id, employee.id, targetPharmacyId);
-        await pharmacyService.updateEmployee(employee.id, { jobTitle: acc.role });
-        if (previousEmployeeId && previousEmployeeId !== employee.id) {
-          await pharmacyService.updateEmployee(previousEmployeeId, { jobTitle: "" });
-        }
+    if (!accountId) {
+      const linked = catalogByEmployeeId.get(employee.id);
+      if (!linked) return;
+      setBusy(`assign-emp-${employee.id}`);
+      try {
+        await pharmacyService.assignPharmacyLoginAccountToEmployee(
+          linked.id,
+          null,
+          targetPharmacyId,
+        );
+        await pharmacyService.updateEmployee(employee.id, { jobTitle: "" });
+        await loadAll();
+      } catch (err) {
+        alert(err instanceof Error ? err.message : isArabic ? "تعذر فك الربط" : "Unlink failed");
+      } finally {
+        setBusy("");
       }
+      return;
+    }
+
+    if (accountId === currentAccountId) return;
+
+    const accounts = loginCatalogByPharmacy.get(targetPharmacyId) || [];
+    const acc = accounts.find((item) => item.id === accountId);
+    if (!acc) {
+      alert(isArabic ? "الحساب غير موجود" : "Account not found");
+      return;
+    }
+    if (acc.status !== "approved") {
+      alert(
+        isArabic
+          ? "اعتمد حساب الدخول أولاً من تبويب حسابات الدخول."
+          : "Approve this login account first under Login Accounts.",
+      );
+      return;
+    }
+    if (acc.employeeId && acc.employeeId !== employee.id) {
+      const other = employeeById.get(acc.employeeId);
+      alert(
+        isArabic
+          ? `هذا الحساب مربوط بالفعل بالموظف «${other?.name || "آخر"}».`
+          : `This account is already assigned to ${other?.name || "another employee"}.`,
+      );
+      return;
+    }
+
+    setBusy(`assign-emp-${employee.id}`);
+    try {
+      const previousLinked = catalogByEmployeeId.get(employee.id);
+      if (previousLinked && previousLinked.id !== acc.id) {
+        await pharmacyService.assignPharmacyLoginAccountToEmployee(
+          previousLinked.id,
+          null,
+          targetPharmacyId,
+        );
+      }
+
+      await pharmacyService.assignPharmacyLoginAccountToEmployee(
+        acc.id,
+        employee.id,
+        targetPharmacyId,
+      );
+      await pharmacyService.updateEmployee(employee.id, { jobTitle: acc.role });
       await loadAll();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
@@ -945,7 +1241,7 @@ export default function EmployeesUsersPage({
           ? isArabic
             ? "هذا الحساب مربوط بموظف آخر"
             : "This account is assigned to another employee"
-          : msg || (isArabic ? "تعذر الربط" : "Assign failed")
+          : msg || (isArabic ? "تعذر الربط" : "Assign failed"),
       );
     } finally {
       setBusy("");
@@ -963,7 +1259,13 @@ export default function EmployeesUsersPage({
       { id: "activity", ar: "سجل النشاط", en: "Activity Log" },
     ];
     if (isAccountantOnly) {
-      return all.filter((tab) => tab.id === "attendance" || tab.id === "requests" || tab.id === "payroll" || tab.id === "activity");
+      return all.filter(
+        (tab) =>
+          tab.id === "attendance" ||
+          tab.id === "requests" ||
+          tab.id === "payroll" ||
+          tab.id === "activity",
+      );
     }
     return all;
   }, [isAccountantOnly]);
@@ -971,23 +1273,54 @@ export default function EmployeesUsersPage({
   const isHrTab = activeTab === "attendance" || activeTab === "payroll" || activeTab === "requests";
 
   function renderEmployeeRoleCell(emp: Employee) {
-    const account = catalogByEmployeeId.get(emp.id);
-    if (account) {
-      return getRoleLabel(account.role, isArabic);
+    const linked = catalogByEmployeeId.get(emp.id);
+    if (!linked) {
+      return <span className="catalogEmptyCell">—</span>;
     }
-    return <span className="catalogEmptyCell">—</span>;
+    return getRoleLabel(linked.role, isArabic);
   }
 
   function renderEmployeeLoginCell(emp: Employee) {
-    const account = catalogByEmployeeId.get(emp.id);
-    if (account) {
+    const linked = catalogByEmployeeId.get(emp.id);
+    const accountOptions = employeeLoginAccountOptionsFor(emp.pharmacyId, emp.id);
+    const rowBusy = busy === `assign-emp-${emp.id}`;
+    const selectedAccountId = getEmployeeAssignedAccountId(emp);
+
+    if (canManage) {
       return (
-        <span dir="ltr" className="catalogEmailCell">
-          {account.email}
-        </span>
+        <select
+          className="tableSelect employeeLoginAccountSelect"
+          value={selectedAccountId}
+          disabled={rowBusy}
+          onChange={(e) => void assignEmployeeLoginAccount(emp, e.target.value)}
+        >
+          <option value="">{isArabic ? "— بدون حساب —" : "— No account —"}</option>
+          {accountOptions.map((account) => (
+            <option key={account.id} value={account.id}>
+              {getRoleLabel(account.role, isArabic)} — {account.email}
+            </option>
+          ))}
+        </select>
       );
     }
-    return <span className="catalogEmptyCell">—</span>;
+
+    if (!linked?.email) {
+      return <span className="catalogEmptyCell">—</span>;
+    }
+
+    return (
+      <div className="employeeLoginEmailCell">
+        <span dir="ltr" className="catalogEmailCell">
+          {linked.email}
+        </span>
+        {linked.status === "approved" &&
+          systemUserByEmail.has(linked.email.trim().toLowerCase()) && (
+            <span className="badge ok employeeLoginLinkedBadge">
+              {isArabic ? "مربوط" : "Linked"}
+            </span>
+          )}
+      </div>
+    );
   }
 
   return (
@@ -1001,7 +1334,10 @@ export default function EmployeesUsersPage({
       )}
 
       <div className="staffPageTabsBar">
-        <nav className="settingsTabsNav" aria-label={isArabic ? "أقسام الموظفين" : "Staff sections"}>
+        <nav
+          className="settingsTabsNav"
+          aria-label={isArabic ? "أقسام الموظفين" : "Staff sections"}
+        >
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -1036,21 +1372,29 @@ export default function EmployeesUsersPage({
 
       {isHrTab && (
         <div className="settingsTabPanel hrPage">
-          <HrPage
-            embedded
-            activeTab={activeTab}
-            isArabic={isArabic}
-            appUser={appUser}
-            pharmacyId={pharmacyId}
-            pharmacyName={pharmacyName}
-            currency={currency}
-            hasRole={(roles) => hasRole(appUser, roles)}
-            showOrgHr={showOrgHr}
-            orgBranchIds={orgBranchIds}
-            resolveBranchLabel={branchLabel}
-            hrManagePharmacyId={hrManagePharmacyId}
-            orgHrReadOnly={orgHrReadOnly}
-          />
+          <Suspense
+            fallback={
+              <p className="hintText" style={{ padding: "0 1rem" }}>
+                {isArabic ? "جاري تحميل الموارد البشرية..." : "Loading HR module..."}
+              </p>
+            }
+          >
+            <LazyHrPage
+              embedded
+              activeTab={activeTab}
+              isArabic={isArabic}
+              appUser={appUser}
+              pharmacyId={pharmacyId}
+              pharmacyName={pharmacyName}
+              currency={currency}
+              hasRole={(roles) => hasRole(appUser, roles)}
+              showOrgHr={showOrgHr}
+              orgBranchIds={orgBranchIds}
+              resolveBranchLabel={branchLabel}
+              hrManagePharmacyId={hrManagePharmacyId}
+              orgHrReadOnly={orgHrReadOnly}
+            />
+          </Suspense>
         </div>
       )}
 
@@ -1116,78 +1460,98 @@ export default function EmployeesUsersPage({
                     <th>{isArabic ? "التعيين" : "Hire date"}</th>
                     <th>{isArabic ? "الحالة" : "Status"}</th>
                     <th>{isArabic ? "حساب الدخول" : "Login account"}</th>
-                    {canManage && <th className="col-actions">{isArabic ? "إجراءات" : "Actions"}</th>}
+                    {canManage && (
+                      <th className="col-actions">{isArabic ? "إجراءات" : "Actions"}</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
                   {filteredEmployees.map((emp) => (
-                      <tr key={emp.id}>
-                        {showOrgHr && <td>{branchLabel(emp.pharmacyId)}</td>}
-                        <td dir="ltr">
-                          <code>{emp.employeeCode || "—"}</code>
-                        </td>
-                        <td className="col-photo">
-                          <EmployeePhotoThumb photoBase64={emp.photoBase64} name={emp.name} />
-                        </td>
-                        <td>{emp.name}</td>
-                        <td>{emp.phone || "—"}</td>
-                        <td>{renderEmployeeRoleCell(emp)}</td>
-                        <td>
-                          {emp.useCustomWorkSchedule
+                    <tr key={emp.id}>
+                      {showOrgHr && <td>{branchLabel(emp.pharmacyId)}</td>}
+                      <td dir="ltr">
+                        <code>{emp.employeeCode || "—"}</code>
+                      </td>
+                      <td className="col-photo">
+                        <EmployeePhotoThumb photoBase64={emp.photoBase64} name={emp.name} />
+                      </td>
+                      <td>{emp.name}</td>
+                      <td>{emp.phone || "—"}</td>
+                      <td>{renderEmployeeRoleCell(emp)}</td>
+                      <td>
+                        {emp.useCustomWorkSchedule
+                          ? isArabic
+                            ? "مخصص"
+                            : "Custom"
+                          : getShiftDisplayName(
+                              (emp.assignedShiftId as ShiftId) || pharmacyDefaultShiftId,
+                              pharmacyShifts,
+                              isArabic,
+                            )}
+                      </td>
+                      <td>{formatDate(emp.hireDate, isArabic)}</td>
+                      <td>
+                        <span className={emp.isActive ? "badge ok" : "badge danger"}>
+                          {emp.isActive
                             ? isArabic
-                              ? "مخصص"
-                              : "Custom"
-                            : getShiftDisplayName(
-                                (emp.assignedShiftId as ShiftId) || pharmacyDefaultShiftId,
-                                pharmacyShifts,
-                                isArabic
-                              )}
-                        </td>
-                        <td>{formatDate(emp.hireDate, isArabic)}</td>
-                        <td>
-                          <span className={emp.isActive ? "badge ok" : "badge danger"}>
-                            {emp.isActive ? (isArabic ? "نشط" : "Active") : isArabic ? "موقوف" : "Inactive"}
-                          </span>
-                        </td>
-                        <td>{renderEmployeeLoginCell(emp)}</td>
-                        {canManage && (
-                          <td className="col-actions">
-                            <div className="staffEmployeesActions">
-                              {emp.employeeCode && (
-                                <button
-                                  type="button"
-                                  className="smallBtn staffEmployeesActionBtn"
-                                  onClick={() => setAttendanceBadgeEmployee(emp)}
-                                >
-                                  {isArabic ? "بطاقة QR" : "QR badge"}
-                                </button>
-                              )}
+                              ? "نشط"
+                              : "Active"
+                            : isArabic
+                              ? "موقوف"
+                              : "Inactive"}
+                        </span>
+                      </td>
+                      <td>{renderEmployeeLoginCell(emp)}</td>
+                      {canManage && (
+                        <td className="col-actions">
+                          <div className="staffEmployeesActions">
+                            {emp.employeeCode && (
                               <button
                                 type="button"
-                                className="editBtn staffEmployeesActionBtn"
-                                onClick={() => openEditEmployee(emp)}
+                                className="smallBtn staffEmployeesActionBtn"
+                                onClick={() => setAttendanceBadgeEmployee(emp)}
                               >
-                                {isArabic ? "تعديل" : "Edit"}
+                                {isArabic ? "بطاقة QR" : "QR badge"}
                               </button>
-                              <button
-                                type="button"
-                                className={`staffEmployeesActionBtn${emp.isActive ? " dangerBtn" : " smallBtn"}`}
-                                disabled={!!busy}
-                                onClick={() => void toggleEmployeeActive(emp)}
-                              >
-                                {emp.isActive
-                                  ? isArabic
-                                    ? "تعطيل"
-                                    : "Deactivate"
-                                  : isArabic
+                            )}
+                            <button
+                              type="button"
+                              className="editBtn staffEmployeesActionBtn"
+                              onClick={() => openEditEmployee(emp)}
+                            >
+                              {isArabic ? "تعديل" : "Edit"}
+                            </button>
+                            <button
+                              type="button"
+                              className={`staffEmployeesActionBtn${emp.isActive ? " dangerBtn" : " smallBtn"}`}
+                              disabled={!!busy}
+                              onClick={() => void toggleEmployeeActive(emp)}
+                            >
+                              {emp.isActive
+                                ? isArabic
+                                  ? "تعطيل"
+                                  : "Deactivate"
+                                : isArabic
                                   ? "تفعيل"
                                   : "Activate"}
-                              </button>
-                            </div>
-                          </td>
-                        )}
-                      </tr>
-                    ))}
+                            </button>
+                            <button
+                              type="button"
+                              className="deleteSmallBtn staffEmployeesActionBtn"
+                              disabled={!!busy}
+                              onClick={() => void deleteEmployeeRecord(emp)}
+                            >
+                              {busy === `del-emp-${emp.id}`
+                                ? "…"
+                                : isArabic
+                                  ? "حذف"
+                                  : "Delete"}
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -1195,38 +1559,49 @@ export default function EmployeesUsersPage({
         </div>
       )}
 
-      {showOrgLoginAccounts && branchLoginSummaryRows.length > 0 && activeTab === "accounts" && !loading && (
-        <section className="card branchReportBreakdown branchHrSummaryCard">
-          <h3>{isArabic ? "حسابات الدخول حسب الفرع" : "Login accounts by branch"}</h3>
-          <div className="tableWrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>{isArabic ? "الفرع" : "Branch"}</th>
-                  <th>{isArabic ? "معتمد" : "Approved"}</th>
-                  <th>{isArabic ? "معلّق" : "Pending"}</th>
-                  <th>{isArabic ? "الأدوار" : "Role slots"}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {branchLoginSummaryRows.map((row) => (
-                  <tr
-                    key={row.branchId}
-                    className={row.branchId === catalogTargetPharmacyId ? "branchSummaryRowActive" : ""}
-                    style={{ cursor: "pointer" }}
-                    onClick={() => setCatalogBranchFilter(row.branchId)}
-                  >
-                    <td>{row.branchLabel}</td>
-                    <td>{row.approvedAccounts}</td>
-                    <td>{row.pendingAccounts > 0 ? <span className="badge warn">{row.pendingAccounts}</span> : "0"}</td>
-                    <td>{row.totalSlots}</td>
+      {showOrgLoginAccounts &&
+        branchLoginSummaryRows.length > 0 &&
+        activeTab === "accounts" &&
+        !loading && (
+          <section className="card branchReportBreakdown branchHrSummaryCard">
+            <h3>{isArabic ? "حسابات الدخول حسب الفرع" : "Login accounts by branch"}</h3>
+            <div className="tableWrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>{isArabic ? "الفرع" : "Branch"}</th>
+                    <th>{isArabic ? "معتمد" : "Approved"}</th>
+                    <th>{isArabic ? "معلّق" : "Pending"}</th>
+                    <th>{isArabic ? "الحسابات" : "Accounts"}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
+                </thead>
+                <tbody>
+                  {branchLoginSummaryRows.map((row) => (
+                    <tr
+                      key={row.branchId}
+                      className={
+                        row.branchId === catalogTargetPharmacyId ? "branchSummaryRowActive" : ""
+                      }
+                      style={{ cursor: "pointer" }}
+                      onClick={() => setCatalogBranchFilter(row.branchId)}
+                    >
+                      <td>{row.branchLabel}</td>
+                      <td>{row.approvedAccounts}</td>
+                      <td>
+                        {row.pendingAccounts > 0 ? (
+                          <span className="badge warn">{row.pendingAccounts}</span>
+                        ) : (
+                          "0"
+                        )}
+                      </td>
+                      <td>{row.totalAccounts}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
 
       {activeTab === "accounts" && !loading && (
         <div className="settingsTabPanel">
@@ -1259,25 +1634,41 @@ export default function EmployeesUsersPage({
               </p>
             </div>
           )}
-          {(pendingCatalogAccounts.length > 0 || isCatalogOwner) && (
-            <div className="staffAccountsToolbar">
+          <div className="staffAccountsToolbar">
+              {canManage && (
+                <>
+                  <button
+                    type="button"
+                    className="completeBtn catalogAddRoleBtn"
+                    disabled={!!busy}
+                    onClick={() => openCustomRoleModal()}
+                  >
+                    {isArabic ? "إضافة دور جديد" : "Add new role"}
+                  </button>
+                  <button
+                    type="button"
+                    className="editBtn catalogAddAccountBtn"
+                    disabled={!!busy}
+                    onClick={() => openCatalogAccountAdd()}
+                  >
+                    {isArabic ? "إضافة حساب دخول" : "Add login account"}
+                  </button>
+                </>
+              )}
               {pendingCatalogAccounts.length > 0 && (
                 <span className="badge warn">
                   {pendingCatalogAccounts.length}{" "}
                   {isArabic ? "بانتظار مراجعتك" : "awaiting your review"}
                   {showOrgLoginAccounts && (
-                    <small>
-                      {" "}
-                      ({isArabic ? "كل الفروع" : "all branches"})
-                    </small>
+                    <small> ({isArabic ? "كل الفروع" : "all branches"})</small>
                   )}
                 </span>
               )}
               {isCatalogOwner && (
                 <p className="catalogLinkToolbarHint">
                   {isArabic
-                    ? "أدوار ثابتة — لكل دور إيميل وكلمة مرور. الاعتماد والربط من عمود الإجراءات لكل حساب."
-                    : "Fixed roles with email and password. Approve and link each account from Actions."}
+                    ? "يمكنك إضافة نفس الدور أكثر من مرة (مثلاً كاشيرين). «دور جديد» = صلاحيات جديدة. عيّن الحسابات للموظفين من تبويب الموظفين."
+                    : "You can add the same role multiple times (e.g. two cashiers). «Add new role» = new permissions. Assign accounts to employees on the Employees tab."}
                 </p>
               )}
               {isOrgManager && pendingCatalogAccounts.length > 0 && (
@@ -1288,7 +1679,6 @@ export default function EmployeesUsersPage({
                 </p>
               )}
             </div>
-          )}
           <div className="tableWrap catalogAccountsTableWrap">
             <table className="catalogAccountsTable">
               <thead>
@@ -1296,7 +1686,7 @@ export default function EmployeesUsersPage({
                   <th>{isArabic ? "الدور" : "Role"}</th>
                   <th>{isArabic ? "الإيميل" : "Email"}</th>
                   <th>{isArabic ? "كلمة المرور" : "Password"}</th>
-                  <th>{isArabic ? "الموظف" : "Employee"}</th>
+                  <th>{isArabic ? "الموظف المعيّن" : "Assigned employee"}</th>
                   {canManage && (
                     <th className="catalogWorkflowActionsHead">
                       {isArabic ? "إجراءات" : "Actions"}
@@ -1305,96 +1695,92 @@ export default function EmployeesUsersPage({
                 </tr>
               </thead>
               <tbody>
-                {catalogRoleOptions.map((role) => {
-                  const acc = catalogByRole.get(role);
-                  const defaults = getDefaultLoginAccountDraft(role);
-                  const employeeOptions = catalogEmployeeOptionsForRow(acc?.employeeId);
-                  const linkedUser = acc ? systemUserByEmail.get(acc.email.trim().toLowerCase()) : undefined;
-                  const rowBusy =
-                    busy === "save-catalog" ||
-                    busy === `assign-role-${role}` ||
-                    busy === `del-${acc?.id}` ||
-                    busy === `link-approve-${acc?.id}` ||
-                    busy === `approve-account-${acc?.id}` ||
-                    busy === `approve-edit-${acc?.id}` ||
-                    busy === `unlink-${acc?.id}`;
-                  const canAssignEmployee =
-                    isCatalogOwner || (canManage && acc?.status === "approved");
-                  const assignedEmployee = acc?.employeeId
-                    ? employeeById.get(acc.employeeId)
-                    : undefined;
+                {sortedBranchLoginAccounts.length === 0 ? (
+                  <tr>
+                    <td colSpan={canManage ? 5 : 4} className="catalogEmptyCell">
+                      {isArabic
+                        ? "لا توجد حسابات دخول. أضف حساباً أو أنشئ دوراً جديداً."
+                        : "No login accounts yet. Add an account or create a new role."}
+                    </td>
+                  </tr>
+                ) : (
+                  sortedBranchLoginAccounts.map((acc) => {
+                    const role = parseLoginAccountRole(acc.role);
+                    const isCustom = isAccountCustomRole(role);
+                    const linkedUser = systemUserByEmail.get(acc.email.trim().toLowerCase());
+                    const rowBusy =
+                      busy === "save-catalog" ||
+                      busy === `del-${acc.id}` ||
+                      busy === `link-approve-${acc.id}` ||
+                      busy === `approve-account-${acc.id}` ||
+                      busy === `approve-edit-${acc.id}` ||
+                      busy === `unlink-${acc.id}`;
+                    const assignedEmployee = acc.employeeId
+                      ? employeeById.get(acc.employeeId)
+                      : undefined;
 
-                  return (
-                    <tr key={role}>
-                      <td className="catalogRoleCell">{getRoleLabel(role, isArabic)}</td>
-                      <td dir="ltr" className="catalogEmailCell">
-                        {acc?.email || defaults.email}
-                      </td>
-                      <td dir="ltr" className="catalogPasswordCell">
-                        <code className="catalogPasswordCode">{acc?.password || defaults.password}</code>
-                      </td>
-                      <td className="catalogEmployeeCell">
-                        {canManage ? (
-                          <select
-                            className="tableSelect catalogEmployeeSelect"
-                            value={canAssignEmployee ? acc?.employeeId || "" : ""}
-                            disabled={rowBusy || !canAssignEmployee}
-                            onChange={(e) => void assignCatalogRowEmployee(role, e.target.value)}
-                          >
-                            <option value="">
-                              {canAssignEmployee
-                                ? isArabic
-                                  ? "— اختر موظف —"
-                                  : "— Select employee —"
-                                : isArabic
-                                ? "—"
-                                : "—"}
-                            </option>
-                            {employeeOptions.map((employee) => (
-                              <option key={employee.id} value={employee.id}>
-                                {employee.name}
-                              </option>
-                            ))}
-                          </select>
-                        ) : assignedEmployee ? (
-                          assignedEmployee.name
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      {canManage && (
-                        <td className="catalogAccountActionsCell">
-                          <div className="catalogAccountActions">
-                            {acc && isCatalogOwner && (
-                              <>
-                                {(acc.status === "pending" ||
-                                  acc.status === "rejected" ||
-                                  acc.editPending) && (
-                                  <button
-                                    type="button"
-                                    className="smallBtn catalogAccountActionBtn catalogWorkflowBtn"
-                                    disabled={rowBusy}
-                                    onClick={() =>
-                                      void (acc.editPending
-                                        ? approveCatalogEdit(acc)
-                                        : approveCatalogAccount(acc))
-                                    }
-                                  >
-                                    {busy === `approve-account-${acc.id}` ||
-                                    busy === `approve-edit-${acc.id}`
-                                      ? "…"
-                                      : acc.editPending
-                                        ? isArabic
-                                          ? "اعتماد"
-                                          : "Approve"
+                    return (
+                      <tr key={acc.id}>
+                        <td className="catalogRoleCell">
+                          {getRoleLabel(role, isArabic)}
+                          {isCustom && (
+                            <span className="badge catalogRoleStatusBadge">
+                              {isArabic ? "مخصص" : "Custom"}
+                            </span>
+                          )}
+                          {acc.status === "pending" && (
+                            <span className="badge warn catalogRoleStatusBadge">
+                              {isArabic ? "معلّق" : "Pending"}
+                            </span>
+                          )}
+                          {acc.status === "rejected" && (
+                            <span className="badge danger catalogRoleStatusBadge">
+                              {isArabic ? "مرفوض" : "Rejected"}
+                            </span>
+                          )}
+                        </td>
+                        <td dir="ltr" className="catalogEmailCell">
+                          {acc.email}
+                        </td>
+                        <td dir="ltr" className="catalogPasswordCell">
+                          <code className="catalogPasswordCode">{acc.password || "—"}</code>
+                        </td>
+                        <td className="catalogEmployeeCell">
+                          {assignedEmployee ? (
+                            assignedEmployee.name
+                          ) : (
+                            <span className="catalogEmptyCell hintText">
+                              {isArabic ? "عيّن من صفحة الموظفين" : "Assign from Employees tab"}
+                            </span>
+                          )}
+                        </td>
+                        {canManage && (
+                          <td className="catalogAccountActionsCell">
+                            <div className="catalogAccountActions">
+                              {isCatalogOwner && (
+                                <>
+                                  {(acc.status === "pending" ||
+                                    acc.status === "rejected" ||
+                                    acc.editPending) && (
+                                    <button
+                                      type="button"
+                                      className="smallBtn catalogAccountActionBtn catalogWorkflowBtn"
+                                      disabled={rowBusy}
+                                      onClick={() =>
+                                        void (acc.editPending
+                                          ? approveCatalogEdit(acc)
+                                          : approveCatalogAccount(acc))
+                                      }
+                                    >
+                                      {busy === `approve-account-${acc.id}` ||
+                                      busy === `approve-edit-${acc.id}`
+                                        ? "…"
                                         : isArabic
                                           ? "اعتماد"
                                           : "Approve"}
-                                  </button>
-                                )}
-                                {acc.status === "approved" &&
-                                  !acc.editPending &&
-                                  !linkedUser && (
+                                    </button>
+                                  )}
+                                  {acc.status === "approved" && !acc.editPending && !linkedUser && (
                                     <button
                                       type="button"
                                       className="smallBtn linkAccountBtn catalogAccountActionBtn catalogWorkflowBtn"
@@ -1408,9 +1794,7 @@ export default function EmployeesUsersPage({
                                           : "Link"}
                                     </button>
                                   )}
-                                {acc.status === "approved" &&
-                                  !acc.editPending &&
-                                  linkedUser && (
+                                  {acc.status === "approved" && !acc.editPending && linkedUser && (
                                     <button
                                       type="button"
                                       className="catalogAccountActionBtn catalogUnlinkBtn"
@@ -1424,22 +1808,173 @@ export default function EmployeesUsersPage({
                                           : "Unlink"}
                                     </button>
                                   )}
-                              </>
-                            )}
+                                </>
+                              )}
+                              <button
+                                type="button"
+                                className="editBtn catalogAccountActionBtn"
+                                disabled={rowBusy}
+                                onClick={() => openCatalogAccountEdit(acc)}
+                              >
+                                {isArabic ? "تعديل" : "Edit"}
+                              </button>
+                              <button
+                                type="button"
+                                className="smallBtn catalogAccountActionBtn"
+                                disabled={rowBusy}
+                                onClick={() => openCatalogAccountDuplicate(acc)}
+                              >
+                                {isArabic ? "نسخ الدور" : "Same role"}
+                              </button>
+                              {isCatalogOwner && (
+                                <button
+                                  type="button"
+                                  className="dangerBtn catalogAccountActionBtn"
+                                  disabled={rowBusy}
+                                  onClick={() => void deleteCatalogAccount(acc)}
+                                >
+                                  {isArabic ? "حذف" : "Delete"}
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "permissions" && (
+        <div className="settingsTabPanel">
+          {showOrgLoginAccounts && pharmacies.length > 1 && (
+            <div className="filtersBar staffBranchFilterBar">
+              <label>
+                {isArabic ? "فرع الصلاحيات" : "Permissions branch"}
+                <select
+                  value={catalogTargetPharmacyId}
+                  onChange={(e) => setCatalogBranchFilter(e.target.value)}
+                >
+                  {pharmacies.map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {(isArabic ? branch.name : branch.name_en) || branch.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
+          {canManage && (
+            <p className="catalogLinkToolbarHint">
+              {isArabic
+                ? "حدّد لكل دور الصفحات التي يراها والصلاحيات الإضافية (حذف، إعدادات…). التغييرات تُطبَّق بعد الحفظ."
+                : "Set visible pages and extra permissions (delete, settings…) per role. Changes apply after save."}
+            </p>
+          )}
+          <div className="tableWrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>{isArabic ? "الدور" : "Role"}</th>
+                  <th>{isArabic ? "الملخص" : "Summary"}</th>
+                  {canManage && <th>{isArabic ? "إجراءات" : "Actions"}</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {EDITABLE_BUILTIN_ROLES.map((roleKey) => {
+                  const access = getEffectiveRoleAccess(roleKey, catalogTargetPharmacyId);
+                  return (
+                    <tr key={roleKey}>
+                      <td>{getRoleLabel(roleKey, isArabic)}</td>
+                      <td
+                        title={roleAccessSummaryTitle(
+                          access.allowedPages,
+                          access.permissions,
+                          isArabic,
+                        )}
+                      >
+                        {summarizeRoleAccess(access.allowedPages, access.permissions, isArabic)}
+                        {access.isCustomized && (
+                          <span className="badge warn" style={{ marginInlineStart: "0.5rem" }}>
+                            {isArabic ? "مخصّص" : "Customized"}
+                          </span>
+                        )}
+                      </td>
+                      {canManage && (
+                        <td>
+                          <div className="catalogAccountActions">
                             <button
                               type="button"
-                              className="editBtn catalogAccountActionBtn"
-                              disabled={rowBusy}
-                              onClick={() => openCatalogAccountForRole(role)}
+                              className="editBtn smallBtn"
+                              disabled={!!busy}
+                              onClick={() => openPermissionEditorBuiltin(roleKey)}
                             >
                               {isArabic ? "تعديل" : "Edit"}
                             </button>
-                            {acc && isCatalogOwner && (
+                            {access.isCustomized && (
                               <button
                                 type="button"
-                                className="dangerBtn catalogAccountActionBtn"
-                                disabled={rowBusy}
-                                onClick={() => void deleteCatalogAccount(acc)}
+                                className="smallBtn"
+                                disabled={!!busy}
+                                onClick={() =>
+                                  void resetRolePermissionsToDefaults({
+                                    kind: "builtin",
+                                    roleKey,
+                                  })
+                                }
+                              >
+                                {isArabic ? "افتراضي" : "Default"}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+                {permissionsBranchCustomRoles.map((role) => {
+                  const access = getEffectiveRoleAccess(role.roleKey, role.pharmacyId);
+                  return (
+                    <tr key={role.id}>
+                      <td>
+                        {isArabic ? role.nameAr : role.nameEn}{" "}
+                        <span className="badge">{isArabic ? "مخصص" : "Custom"}</span>
+                      </td>
+                      <td
+                        title={roleAccessSummaryTitle(
+                          access.allowedPages,
+                          access.permissions,
+                          isArabic,
+                        )}
+                      >
+                        {summarizeRoleAccess(access.allowedPages, access.permissions, isArabic)}
+                      </td>
+                      {canManage && (
+                        <td>
+                          <div className="catalogAccountActions">
+                            <button
+                              type="button"
+                              className="editBtn smallBtn"
+                              disabled={!!busy}
+                              onClick={() => openPermissionEditorCustom(role)}
+                            >
+                              {isArabic ? "تعديل" : "Edit"}
+                            </button>
+                            {isCatalogOwner && (
+                              <button
+                                type="button"
+                                className="dangerBtn smallBtn"
+                                disabled={busy === `del-role-${role.id}`}
+                                onClick={() =>
+                                  void deleteCustomRoleDefinition(
+                                    role.id,
+                                    isArabic ? role.nameAr : role.nameEn,
+                                  )
+                                }
                               >
                                 {isArabic ? "حذف" : "Delete"}
                               </button>
@@ -1456,28 +1991,19 @@ export default function EmployeesUsersPage({
         </div>
       )}
 
-      {activeTab === "permissions" && (
-        <div className="settingsTabPanel">
-          <div className="tableWrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>{isArabic ? "الدور" : "Role"}</th>
-                  <th>{isArabic ? "الصلاحيات" : "Permissions"}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rolePermissionMatrix.map((row) => (
-                  <tr key={row.role}>
-                    <td>{isArabic ? row.labelAr : row.labelEn}</td>
-                    <td>{isArabic ? row.summaryAr : row.summaryEn}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      <RolePermissionsEditorModal
+        isArabic={isArabic}
+        open={Boolean(permissionEditorTarget)}
+        busy={busy === "save-role-permissions"}
+        target={permissionEditorTarget}
+        allowedPages={permissionEditorPages}
+        permissions={permissionEditorPermissions}
+        onClose={() => setPermissionEditorTarget(null)}
+        onChangePages={setPermissionEditorPages}
+        onChangePermissions={setPermissionEditorPermissions}
+        onSave={() => void savePermissionEditor()}
+        onResetDefaults={resetPermissionEditorDefaults}
+      />
 
       {activeTab === "activity" && !loading && (
         <div className="settingsTabPanel">
@@ -1513,17 +2039,23 @@ export default function EmployeesUsersPage({
       )}
 
       {attendanceBadgeEmployee && (
-        <EmployeeAttendanceBadgeModal
-          isArabic={isArabic}
-          employee={attendanceBadgeEmployee}
-          branchLabel={branchLabel(attendanceBadgeEmployee.pharmacyId)}
-          onClose={() => setAttendanceBadgeEmployee(null)}
-        />
+        <Suspense fallback={null}>
+          <LazyEmployeeAttendanceBadgeModal
+            isArabic={isArabic}
+            employee={attendanceBadgeEmployee}
+            branchLabel={branchLabel(attendanceBadgeEmployee.pharmacyId)}
+            onClose={() => setAttendanceBadgeEmployee(null)}
+          />
+        </Suspense>
       )}
 
       {employeeModal && (
         <div className="modalOverlay" onClick={() => setEmployeeModal(null)}>
-          <div className="invoiceModal userModal" onClick={(e) => e.stopPropagation()} dir={isArabic ? "rtl" : "ltr"}>
+          <div
+            className="invoiceModal userModal"
+            onClick={(e) => e.stopPropagation()}
+            dir={isArabic ? "rtl" : "ltr"}
+          >
             <div className="modalHeader">
               <h2>
                 {employeeModal === "add"
@@ -1531,92 +2063,98 @@ export default function EmployeesUsersPage({
                     ? "إضافة موظف"
                     : "Add Employee"
                   : isArabic
-                  ? "تعديل موظف"
-                  : "Edit Employee"}
+                    ? "تعديل موظف"
+                    : "Edit Employee"}
               </h2>
-              <button type="button" className="deleteSmallBtn" onClick={() => setEmployeeModal(null)}>
+              <button
+                type="button"
+                className="deleteSmallBtn"
+                onClick={() => setEmployeeModal(null)}
+              >
                 {isArabic ? "إغلاق" : "Close"}
               </button>
             </div>
-              <div className="userFormGrid">
-                {showOrgHrManage && employeeModal === "add" && (
-                  <label className="userFormFullWidth">
-                    {isArabic ? "الفرع" : "Branch"}
-                    <select
-                      value={employeeForm.pharmacyId}
-                      onChange={(e) => {
-                        const nextBranchId = e.target.value;
-                        setEmployeeForm({ ...employeeForm, pharmacyId: nextBranchId });
-                        void pharmacyService.suggestNextEmployeeCode(nextBranchId).then((code) => {
-                          setEmployeeForm((prev) =>
-                            prev.pharmacyId === nextBranchId ? { ...prev, employeeCode: code } : prev
-                          );
-                        });
-                      }}
-                    >
-                      {pharmacies.map((branch) => (
-                        <option key={branch.id} value={branch.id}>
-                          {(isArabic ? branch.name : branch.name_en) || branch.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-                <div className="employeeTopRow">
-                  <label className="employeeCodeField">
-                    {isArabic ? "كود الموظف" : "Employee code"}
-                    <input
-                      className="searchInput"
-                      value={employeeForm.employeeCode}
-                      onChange={(e) => setEmployeeForm({ ...employeeForm, employeeCode: e.target.value })}
-                      placeholder="EMP-001"
-                      dir="ltr"
+            <div className="userFormGrid">
+              {showOrgHrManage && employeeModal === "add" && (
+                <label className="userFormFullWidth">
+                  {isArabic ? "الفرع" : "Branch"}
+                  <select
+                    value={employeeForm.pharmacyId}
+                    onChange={(e) => {
+                      const nextBranchId = e.target.value;
+                      setEmployeeForm({ ...employeeForm, pharmacyId: nextBranchId });
+                      void pharmacyService.suggestNextEmployeeCode(nextBranchId).then((code) => {
+                        setEmployeeForm((prev) =>
+                          prev.pharmacyId === nextBranchId ? { ...prev, employeeCode: code } : prev,
+                        );
+                      });
+                    }}
+                  >
+                    {pharmacies.map((branch) => (
+                      <option key={branch.id} value={branch.id}>
+                        {(isArabic ? branch.name : branch.name_en) || branch.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <div className="employeeTopRow">
+                <label className="employeeCodeField">
+                  {isArabic ? "كود الموظف" : "Employee code"}
+                  <input
+                    className="searchInput"
+                    value={employeeForm.employeeCode}
+                    onChange={(e) =>
+                      setEmployeeForm({ ...employeeForm, employeeCode: e.target.value })
+                    }
+                    placeholder="EMP-001"
+                    dir="ltr"
+                  />
+                </label>
+                <div className="employeePhotoCompact">
+                  <span className="employeePhotoCompactLabel">
+                    {isArabic ? "صورة الموظف" : "Employee photo"}
+                  </span>
+                  <label className="employeePhotoPicker" htmlFor="employee-photo-input">
+                    <EmployeePhotoThumb
+                      variant="form"
+                      photoBase64={employeeForm.photoBase64}
+                      name={employeeForm.name || "?"}
                     />
-                  </label>
-                  <div className="employeePhotoCompact">
-                    <span className="employeePhotoCompactLabel">
-                      {isArabic ? "صورة الموظف" : "Employee photo"}
-                    </span>
-                    <label className="employeePhotoPicker" htmlFor="employee-photo-input">
-                      <EmployeePhotoThumb
-                        variant="form"
-                        photoBase64={employeeForm.photoBase64}
-                        name={employeeForm.name || "?"}
-                      />
-                      <span className="employeePhotoPickerHint">
-                        {employeeForm.photoBase64
-                          ? isArabic
-                            ? "تغيير"
-                            : "Change"
-                          : isArabic
+                    <span className="employeePhotoPickerHint">
+                      {employeeForm.photoBase64
+                        ? isArabic
+                          ? "تغيير"
+                          : "Change"
+                        : isArabic
                           ? "رفع صورة"
                           : "Upload"}
-                      </span>
-                    </label>
-                    <input
-                      id="employee-photo-input"
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      className="employeePhotoFileInput"
-                      onChange={(e) =>
-                        readEmployeePhotoFile(e.target.files?.[0] ?? null, isArabic, (dataUrl) =>
-                          setEmployeeForm({ ...employeeForm, photoBase64: dataUrl })
-                        )
-                      }
-                    />
-                    {employeeForm.photoBase64 && (
-                      <button
-                        type="button"
-                        className="employeePhotoRemoveBtn"
-                        onClick={() => setEmployeeForm({ ...employeeForm, photoBase64: "" })}
-                      >
-                        {isArabic ? "حذف" : "Remove"}
-                      </button>
-                    )}
-                  </div>
+                    </span>
+                  </label>
+                  <input
+                    id="employee-photo-input"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="employeePhotoFileInput"
+                    onChange={(e) =>
+                      readEmployeePhotoFile(e.target.files?.[0] ?? null, isArabic, (dataUrl) =>
+                        setEmployeeForm({ ...employeeForm, photoBase64: dataUrl }),
+                      )
+                    }
+                  />
+                  {employeeForm.photoBase64 && (
+                    <button
+                      type="button"
+                      className="employeePhotoRemoveBtn"
+                      onClick={() => setEmployeeForm({ ...employeeForm, photoBase64: "" })}
+                    >
+                      {isArabic ? "حذف" : "Remove"}
+                    </button>
+                  )}
                 </div>
-                <label>
-                  {isArabic ? "الاسم" : "Name"} *
+              </div>
+              <label>
+                {isArabic ? "الاسم" : "Name"} *
                 <input
                   className="searchInput"
                   value={employeeForm.name}
@@ -1659,7 +2197,10 @@ export default function EmployeesUsersPage({
                   value={employeeForm.requiredWorkHours}
                   disabled={employeeForm.useCustomWorkSchedule}
                   onChange={(e) =>
-                    setEmployeeForm({ ...employeeForm, requiredWorkHours: Number(e.target.value) || 0 })
+                    setEmployeeForm({
+                      ...employeeForm,
+                      requiredWorkHours: Number(e.target.value) || 0,
+                    })
                   }
                 />
               </label>
@@ -1674,7 +2215,8 @@ export default function EmployeesUsersPage({
                     onChange={(e) => {
                       const assignedShiftId = e.target.value as ShiftId;
                       const shift =
-                        pharmacyShifts.find((item) => item.id === assignedShiftId) || pharmacyShifts[0];
+                        pharmacyShifts.find((item) => item.id === assignedShiftId) ||
+                        pharmacyShifts[0];
                       setEmployeeForm((prev) => ({
                         ...prev,
                         assignedShiftId,
@@ -1721,8 +2263,7 @@ export default function EmployeesUsersPage({
                           ? computeWorkHoursFromSchedule({
                               dayStart: prev.workDayStart,
                               dayEnd: prev.workDayEnd,
-                              breaks:
-                                prev.workBreaks.length > 0 ? prev.workBreaks : shift.breaks,
+                              breaks: prev.workBreaks.length > 0 ? prev.workBreaks : shift.breaks,
                             })
                           : computeWorkHoursFromSchedule({
                               dayStart: shift.dayStart,
@@ -1733,20 +2274,28 @@ export default function EmployeesUsersPage({
                     }}
                   />
                   <span>
-                    {isArabic ? "مواعيد عمل مخصصة (بدل الشيفت)" : "Custom work schedule (override shift)"}
+                    {isArabic
+                      ? "مواعيد عمل مخصصة (بدل الشيفت)"
+                      : "Custom work schedule (override shift)"}
                   </span>
                 </label>
 
                 {employeeForm.useCustomWorkSchedule ? (
-                  <WorkScheduleEditor
-                    isArabic={isArabic}
-                    schedule={{
-                      dayStart: employeeForm.workDayStart,
-                      dayEnd: employeeForm.workDayEnd,
-                      breaks: employeeForm.workBreaks,
-                    }}
-                    onChange={updateEmployeeWorkSchedule}
-                  />
+                  <Suspense
+                    fallback={
+                      <p className="hintText">{isArabic ? "جاري التحميل..." : "Loading..."}</p>
+                    }
+                  >
+                    <LazyWorkScheduleEditor
+                      isArabic={isArabic}
+                      schedule={{
+                        dayStart: employeeForm.workDayStart,
+                        dayEnd: employeeForm.workDayEnd,
+                        breaks: employeeForm.workBreaks,
+                      }}
+                      onChange={updateEmployeeWorkSchedule}
+                    />
+                  </Suspense>
                 ) : (
                   <p className="workScheduleHint">
                     {isArabic
@@ -1758,10 +2307,112 @@ export default function EmployeesUsersPage({
             </div>
 
             <div className="modalActions">
-              <button type="button" className="completeBtn" disabled={!!busy} onClick={() => void saveEmployee()}>
+              <button
+                type="button"
+                className="completeBtn"
+                disabled={!!busy}
+                onClick={() => void saveEmployee()}
+              >
                 {isArabic ? "حفظ" : "Save"}
               </button>
               <button type="button" className="editBtn" onClick={() => setEmployeeModal(null)}>
+                {isArabic ? "إلغاء" : "Cancel"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {customRoleModal && (
+        <div className="modalOverlay" onClick={() => setCustomRoleModal(false)}>
+          <div
+            className="invoiceModal userModal loginRequestModal customRoleModal"
+            onClick={(e) => e.stopPropagation()}
+            dir={isArabic ? "rtl" : "ltr"}
+          >
+            <div className="modalHeader catalogAccountModalHeader">
+              <h2>{isArabic ? "إضافة دور جديد" : "Add new role"}</h2>
+              <button
+                type="button"
+                className="deleteSmallBtn"
+                onClick={() => setCustomRoleModal(false)}
+              >
+                {isArabic ? "إغلاق" : "Close"}
+              </button>
+            </div>
+            <div className="catalogAccountFormFields">
+              <div className="settingsField settingsFieldFull">
+                <label htmlFor="custom-role-name-ar">{isArabic ? "اسم الدور (عربي)" : "Role name (Arabic)"} *</label>
+                <input
+                  id="custom-role-name-ar"
+                  value={customRoleForm.nameAr}
+                  onChange={(e) => setCustomRoleForm({ ...customRoleForm, nameAr: e.target.value })}
+                  autoFocus
+                />
+              </div>
+              <div className="settingsField settingsFieldFull">
+                <label htmlFor="custom-role-name-en">{isArabic ? "اسم الدور (إنجليزي)" : "Role name (English)"} *</label>
+                <input
+                  id="custom-role-name-en"
+                  dir="ltr"
+                  value={customRoleForm.nameEn}
+                  onChange={(e) => setCustomRoleForm({ ...customRoleForm, nameEn: e.target.value })}
+                />
+              </div>
+              <div className="settingsField settingsFieldFull">
+                <label htmlFor="custom-role-template">
+                  {isArabic ? "قالب الصلاحيات" : "Permission template"}
+                </label>
+                <select
+                  id="custom-role-template"
+                  className="tableSelect"
+                  value={customRoleForm.baseRole}
+                  onChange={(e) => onCustomRoleBaseChange(e.target.value as UserRole)}
+                >
+                  {customRoleTemplateOptions.map((role) => (
+                    <option key={role} value={role}>
+                      {getRoleLabel(role, isArabic)}
+                    </option>
+                  ))}
+                </select>
+                <p className="catalogLinkToolbarHint">
+                  {isArabic
+                    ? "يُنسخ من الدور المختار ويمكنك تعديل الصفحات أدناه."
+                    : "Pages are copied from the template; adjust the checklist below."}
+                </p>
+              </div>
+              <fieldset className="customRolePagesFieldset settingsFieldFull">
+                <legend>{isArabic ? "الصفحات المسموحة" : "Allowed pages"}</legend>
+                <div className="customRolePagesGrid">
+                  {CUSTOM_ROLE_PAGE_OPTIONS.map((option) => (
+                    <label key={option.page} className="customRolePageCheck">
+                      <input
+                        type="checkbox"
+                        checked={customRoleForm.allowedPages.includes(option.page)}
+                        onChange={() => toggleCustomRolePage(option.page)}
+                      />
+                      <span>{isArabic ? option.labelAr : option.labelEn}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            </div>
+            <div className="modalActions catalogAccountModalActions">
+              <button
+                type="button"
+                className="completeBtn"
+                disabled={!!busy}
+                onClick={() => void saveCustomRole()}
+              >
+                {busy === "save-custom-role"
+                  ? isArabic
+                    ? "جاري الحفظ..."
+                    : "Saving..."
+                  : isArabic
+                    ? "إنشاء الدور"
+                    : "Create role"}
+              </button>
+              <button type="button" className="editBtn" onClick={() => setCustomRoleModal(false)}>
                 {isArabic ? "إلغاء" : "Cancel"}
               </button>
             </div>
@@ -1789,11 +2440,39 @@ export default function EmployeesUsersPage({
                 </h2>
                 <span className="catalogRoleBadge">{getRoleLabel(catalogForm.role, isArabic)}</span>
               </div>
-              <button type="button" className="deleteSmallBtn" onClick={() => setAccountModal(null)}>
+              <button
+                type="button"
+                className="deleteSmallBtn"
+                onClick={() => setAccountModal(null)}
+              >
                 {isArabic ? "إغلاق" : "Close"}
               </button>
             </div>
             <div className="catalogAccountFormFields">
+              {accountModal === "add" && (
+                <div className="settingsField settingsFieldFull">
+                  <label htmlFor="catalog-account-role">
+                    {isArabic ? "الدور" : "Role"} *
+                  </label>
+                  <select
+                    id="catalog-account-role"
+                    className="tableSelect catalogAccountRoleSelect"
+                    value={catalogForm.role}
+                    onChange={(e) => onCatalogFormRoleChange(e.target.value as UserRole)}
+                  >
+                    {loginAccountRoleSelectOptions.map((roleKey) => (
+                      <option key={roleKey} value={roleKey}>
+                        {getRoleLabel(roleKey, isArabic)}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="catalogLinkToolbarHint">
+                    {isArabic
+                      ? "يمكنك اختيار نفس الدور أكثر من مرة — سيُقترح إيميل جديد تلقائياً."
+                      : "You can pick the same role again — a new email will be suggested automatically."}
+                  </p>
+                </div>
+              )}
               <div className="settingsField settingsFieldFull">
                 <label htmlFor="catalog-account-email">
                   {isArabic ? "البريد الإلكتروني" : "Email"} *
@@ -1832,8 +2511,8 @@ export default function EmployeesUsersPage({
                     ? "جاري الحفظ..."
                     : "Saving..."
                   : isArabic
-                  ? "حفظ"
-                  : "Save"}
+                    ? "حفظ"
+                    : "Save"}
               </button>
               <button type="button" className="editBtn" onClick={() => setAccountModal(null)}>
                 {isArabic ? "إلغاء" : "Cancel"}
@@ -1842,7 +2521,6 @@ export default function EmployeesUsersPage({
           </div>
         </div>
       )}
-
     </section>
   );
 }

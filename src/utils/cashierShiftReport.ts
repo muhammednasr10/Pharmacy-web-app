@@ -39,7 +39,7 @@ export function downloadCashierShiftPdf(options: {
   doc.text(
     pdfLabel("تقرير إغلاق وردية الكاشير", "Cashier Shift Closing Report", isArabic),
     margin,
-    y
+    y,
   );
   y += 10;
 
@@ -52,9 +52,15 @@ export function downloadCashierShiftPdf(options: {
     [pdfLabel("رصيد افتتاحي", "Opening cash", isArabic), formatMoney(shift.openingCash, currency)],
     [pdfLabel("مبيعات نقدية", "Cash sales", isArabic), formatMoney(summary.cashSales, currency)],
     [pdfLabel("مبيعات فيزا", "Card sales", isArabic), formatMoney(summary.visaSales, currency)],
-    [pdfLabel("مبيعات محفظة", "Wallet sales", isArabic), formatMoney(summary.walletSales, currency)],
+    [
+      pdfLabel("مبيعات محفظة", "Wallet sales", isArabic),
+      formatMoney(summary.walletSales, currency),
+    ],
     [pdfLabel("مبيعات آجل", "Credit sales", isArabic), formatMoney(summary.creditSales, currency)],
-    [pdfLabel("إجمالي المبيعات", "Total sales", isArabic), formatMoney(summary.totalSales, currency)],
+    [
+      pdfLabel("إجمالي المبيعات", "Total sales", isArabic),
+      formatMoney(summary.totalSales, currency),
+    ],
     [pdfLabel("مرتجعات", "Returns", isArabic), formatMoney(summary.returnsTotal, currency)],
     [
       pdfLabel("تحصيلات نقدية", "Cash collections", isArabic),
@@ -64,7 +70,10 @@ export function downloadCashierShiftPdf(options: {
       pdfLabel("تحصيلات أخرى", "Other collections", isArabic),
       formatMoney(summary.customerPaymentsOther, currency),
     ],
-    [pdfLabel("النقد المتوقع", "Expected cash", isArabic), formatMoney(summary.expectedCash, currency)],
+    [
+      pdfLabel("النقد المتوقع", "Expected cash", isArabic),
+      formatMoney(summary.expectedCash, currency),
+    ],
     [
       pdfLabel("النقد الفعلي", "Actual cash", isArabic),
       formatMoney(shift.actualCash ?? 0, currency),

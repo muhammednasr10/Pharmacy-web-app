@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import type { AppUser, PharmacyLoginAccount, PharmacySettings, SubscriptionRequest, UserRole } from "../types";
+import type {
+  AppUser,
+  PharmacyLoginAccount,
+  PharmacySettings,
+  SubscriptionRequest,
+  UserRole,
+} from "../types";
 import { computeSubscriptionEndDate } from "../config/subscription";
 import {
   getSubscriptionTier,
@@ -130,7 +136,9 @@ export default function SuperAdminPage({
   }
 
   async function handleTierChange(pharmacy: PharmacySettings, nextTier: SubscriptionTier) {
-    const currentTier = parseSubscriptionTier(pharmacy.subscriptionTier || pharmacy.subscriptionPlan);
+    const currentTier = parseSubscriptionTier(
+      pharmacy.subscriptionTier || pharmacy.subscriptionPlan,
+    );
     if (nextTier === currentTier) return;
 
     const usage = getOrganizationBranchUsage(pharmacies, pharmacy);
@@ -139,7 +147,7 @@ export default function SuperAdminPage({
       alert(
         isArabic
           ? `لا يمكن خفض الباقة — الصيدلية تستخدم ${usage.used} فروع والباقة الجديدة تسمح بـ ${tierMax} فقط`
-          : `Cannot downgrade — pharmacy uses ${usage.used} branches but the new tier allows only ${tierMax}`
+          : `Cannot downgrade — pharmacy uses ${usage.used} branches but the new tier allows only ${tierMax}`,
       );
       return;
     }
@@ -167,7 +175,7 @@ export default function SuperAdminPage({
       alert(
         isArabic
           ? `لا يمكن تقليل الحد عن الفروع الحالية (${currentUsed})`
-          : `Cannot set limit below current branches (${currentUsed})`
+          : `Cannot set limit below current branches (${currentUsed})`,
       );
       return;
     }
@@ -198,9 +206,7 @@ export default function SuperAdminPage({
   }
 
   async function handleRejectRequest(requestId: number) {
-    const note = window.prompt(
-      isArabic ? "سبب الرفض (اختياري):" : "Rejection reason (optional):"
-    );
+    const note = window.prompt(isArabic ? "سبب الرفض (اختياري):" : "Rejection reason (optional):");
     if (note === null) return;
     setRequestActionId(requestId);
     setRequestUpdating(true);
@@ -224,9 +230,7 @@ export default function SuperAdminPage({
   }
 
   async function handleRejectLoginRequest(accountId: string) {
-    const note = window.prompt(
-      isArabic ? "سبب الرفض (اختياري):" : "Rejection reason (optional):"
-    );
+    const note = window.prompt(isArabic ? "سبب الرفض (اختياري):" : "Rejection reason (optional):");
     if (note === null) return;
     setLoginRequestActionId(accountId);
     setRequestUpdating(true);
@@ -332,7 +336,11 @@ export default function SuperAdminPage({
               : "Each pharmacy is an isolated tenant (pharmacy_id + RLS)."}
           </p>
         </div>
-        <button type="button" className="completeBtn saasAddBtn" onClick={() => setAddModalOpen(true)}>
+        <button
+          type="button"
+          className="completeBtn saasAddBtn"
+          onClick={() => setAddModalOpen(true)}
+        >
           + {isArabic ? "إضافة صيدلية" : "Add Pharmacy"}
         </button>
       </div>
@@ -376,9 +384,7 @@ export default function SuperAdminPage({
                   <th>{isArabic ? "التفاصيل" : "Details"}</th>
                   <th>{isArabic ? "مقدم الطلب" : "Requested by"}</th>
                   <th>{isArabic ? "التاريخ" : "Date"}</th>
-                  <th>
-                    {isArabic ? "النتيجة بعد الاعتماد" : "Result after approval"}
-                  </th>
+                  <th>{isArabic ? "النتيجة بعد الاعتماد" : "Result after approval"}</th>
                   <th>{isArabic ? "إجراءات" : "Actions"}</th>
                 </tr>
               </thead>
@@ -414,7 +420,11 @@ export default function SuperAdminPage({
                           href={getSuperAdminSubscriptionWhatsappUrl(request)}
                           target="_blank"
                           rel="noreferrer"
-                          title={isArabic ? "نسخ تفاصيل الطلب على واتساب" : "Share request details on WhatsApp"}
+                          title={
+                            isArabic
+                              ? "نسخ تفاصيل الطلب على واتساب"
+                              : "Share request details on WhatsApp"
+                          }
                         >
                           WhatsApp
                         </a>
@@ -454,7 +464,9 @@ export default function SuperAdminPage({
                 : "New accounts, edits, or link requests — approve or reject. Rejecting an edit keeps the account approved; rejecting a link keeps it unlinked."}
             </p>
           </div>
-          <span className={`saasRequestsCount${pendingPharmacyLoginAccounts.length ? " active" : ""}`}>
+          <span
+            className={`saasRequestsCount${pendingPharmacyLoginAccounts.length ? " active" : ""}`}
+          >
             {pendingPharmacyLoginAccounts.length} {isArabic ? "قيد المراجعة" : "pending"}
           </span>
           <button type="button" className="printBtn" onClick={() => void onRefreshAdminRequests()}>
@@ -494,88 +506,90 @@ export default function SuperAdminPage({
                   const proposedRole = account.pendingRole || account.role;
 
                   return (
-                  <tr key={account.id}>
-                    <td>
-                      <strong>{pharmacyNameById.get(account.pharmacyId) || account.pharmacyId}</strong>
-                    </td>
-                    <td>
-                      <span
-                        className={`badge ${
-                          requestKind === "new" ? "ok" : requestKind === "link" ? "warn" : "warn"
-                        }`}
-                      >
-                        {requestKind === "link"
-                          ? isArabic
-                            ? "ربط"
-                            : "Link"
-                          : requestKind === "edit"
+                    <tr key={account.id}>
+                      <td>
+                        <strong>
+                          {pharmacyNameById.get(account.pharmacyId) || account.pharmacyId}
+                        </strong>
+                      </td>
+                      <td>
+                        <span
+                          className={`badge ${
+                            requestKind === "new" ? "ok" : requestKind === "link" ? "warn" : "warn"
+                          }`}
+                        >
+                          {requestKind === "link"
                             ? isArabic
-                              ? "تعديل"
-                              : "Edit"
-                            : isArabic
-                              ? "جديد"
-                              : "New"}
-                      </span>
-                    </td>
-                    <td dir="ltr">
-                      {isEditRequest && proposedEmail !== account.email ? (
-                        <span>
-                          {account.email} → <strong>{proposedEmail}</strong>
+                              ? "ربط"
+                              : "Link"
+                            : requestKind === "edit"
+                              ? isArabic
+                                ? "تعديل"
+                                : "Edit"
+                              : isArabic
+                                ? "جديد"
+                                : "New"}
                         </span>
-                      ) : (
-                        proposedEmail
-                      )}
-                    </td>
-                    <td dir="ltr">
-                      <code>{proposedPassword || "—"}</code>
-                    </td>
-                    <td>
-                      {isEditRequest && proposedRole !== account.role ? (
-                        <span>
-                          {getRoleLabel(account.role, isArabic)} →{" "}
-                          <strong>{getRoleLabel(proposedRole, isArabic)}</strong>
-                        </span>
-                      ) : (
-                        getRoleLabel(proposedRole, isArabic)
-                      )}
-                    </td>
-                    <td>
-                      {account.linkRequestedByName ||
-                        account.editRequestedByName ||
-                        account.requestedByName ||
-                        "—"}
-                    </td>
-                    <td>
-                      {account.linkRequestedAt || account.editRequestedAt || account.createdAt
-                        ? new Date(
-                            account.linkRequestedAt ||
-                              account.editRequestedAt ||
-                              account.createdAt ||
-                              ""
-                          ).toLocaleString()
-                        : "—"}
-                    </td>
-                    <td>
-                      <div className="saasActions">
-                        <button
-                          type="button"
-                          className="smallBtn"
-                          disabled={requestUpdating && loginRequestActionId === account.id}
-                          onClick={() => void handleApproveLoginRequest(account.id)}
-                        >
-                          {isArabic ? "اعتماد" : "Approve"}
-                        </button>
-                        <button
-                          type="button"
-                          className="dangerBtn"
-                          disabled={requestUpdating && loginRequestActionId === account.id}
-                          onClick={() => void handleRejectLoginRequest(account.id)}
-                        >
-                          {isArabic ? "رفض" : "Reject"}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                      </td>
+                      <td dir="ltr">
+                        {isEditRequest && proposedEmail !== account.email ? (
+                          <span>
+                            {account.email} → <strong>{proposedEmail}</strong>
+                          </span>
+                        ) : (
+                          proposedEmail
+                        )}
+                      </td>
+                      <td dir="ltr">
+                        <code>{proposedPassword || "—"}</code>
+                      </td>
+                      <td>
+                        {isEditRequest && proposedRole !== account.role ? (
+                          <span>
+                            {getRoleLabel(account.role, isArabic)} →{" "}
+                            <strong>{getRoleLabel(proposedRole, isArabic)}</strong>
+                          </span>
+                        ) : (
+                          getRoleLabel(proposedRole, isArabic)
+                        )}
+                      </td>
+                      <td>
+                        {account.linkRequestedByName ||
+                          account.editRequestedByName ||
+                          account.requestedByName ||
+                          "—"}
+                      </td>
+                      <td>
+                        {account.linkRequestedAt || account.editRequestedAt || account.createdAt
+                          ? new Date(
+                              account.linkRequestedAt ||
+                                account.editRequestedAt ||
+                                account.createdAt ||
+                                "",
+                            ).toLocaleString()
+                          : "—"}
+                      </td>
+                      <td>
+                        <div className="saasActions">
+                          <button
+                            type="button"
+                            className="smallBtn"
+                            disabled={requestUpdating && loginRequestActionId === account.id}
+                            onClick={() => void handleApproveLoginRequest(account.id)}
+                          >
+                            {isArabic ? "اعتماد" : "Approve"}
+                          </button>
+                          <button
+                            type="button"
+                            className="dangerBtn"
+                            disabled={requestUpdating && loginRequestActionId === account.id}
+                            onClick={() => void handleRejectLoginRequest(account.id)}
+                          >
+                            {isArabic ? "رفض" : "Reject"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   );
                 })}
               </tbody>
@@ -647,31 +661,40 @@ export default function SuperAdminPage({
                 const active = isPharmacyActive(pharmacy);
                 const branchUsage = getOrganizationBranchUsage(pharmacies, pharmacy);
                 return (
-                  <tr key={pharmacy.id} className={selectedPharmacyId === pharmacy.id ? "saasRowSelected" : ""}>
+                  <tr
+                    key={pharmacy.id}
+                    className={selectedPharmacyId === pharmacy.id ? "saasRowSelected" : ""}
+                  >
                     <td>
                       <code className="saasId">{pharmacy.id}</code>
                     </td>
                     <td>
-                      <strong>{isArabic ? pharmacy.name : pharmacy.name_en || pharmacy.name}</strong>
-                      {pharmacy.address ? <small className="saasSub">{pharmacy.address}</small> : null}
+                      <strong>
+                        {isArabic ? pharmacy.name : pharmacy.name_en || pharmacy.name}
+                      </strong>
+                      {pharmacy.address ? (
+                        <small className="saasSub">{pharmacy.address}</small>
+                      ) : null}
                     </td>
                     <td dir="ltr">{pharmacy.phone || "—"}</td>
                     <td>
                       <div className="saasTierCell">
                         <span
                           className={getTierBadgeClass(
-                            parseSubscriptionTier(pharmacy.subscriptionTier || pharmacy.subscriptionPlan)
+                            parseSubscriptionTier(
+                              pharmacy.subscriptionTier || pharmacy.subscriptionPlan,
+                            ),
                           )}
                         >
                           {getSubscriptionTierLabel(
                             pharmacy.subscriptionTier || pharmacy.subscriptionPlan,
-                            isArabic
+                            isArabic,
                           )}
                         </span>
                         <select
                           className="saasTierSelect"
                           value={parseSubscriptionTier(
-                            pharmacy.subscriptionTier || pharmacy.subscriptionPlan
+                            pharmacy.subscriptionTier || pharmacy.subscriptionPlan,
                           )}
                           disabled={tierSavingId === branchUsage.organizationId}
                           onChange={(e) =>
@@ -735,19 +758,25 @@ export default function SuperAdminPage({
                     <td>{usersCount}</td>
                     <td>
                       <div className="saasActions">
-                        <button type="button" className="smallBtn" onClick={() => openManage(pharmacy.id)}>
+                        <button
+                          type="button"
+                          className="smallBtn"
+                          onClick={() => openManage(pharmacy.id)}
+                        >
                           {isArabic ? "إدارة" : "Manage"}
                         </button>
-                        <button type="button" className="editBtn" onClick={() => handleViewAsTenant(pharmacy.id)}>
+                        <button
+                          type="button"
+                          className="editBtn"
+                          onClick={() => handleViewAsTenant(pharmacy.id)}
+                        >
                           {isArabic ? "عرض" : "View"}
                         </button>
                         {active ? (
                           <button
                             type="button"
                             className="dangerBtn"
-                            onClick={() =>
-                              setStatusTarget({ pharmacy, nextStatus: "suspended" })
-                            }
+                            onClick={() => setStatusTarget({ pharmacy, nextStatus: "suspended" })}
                           >
                             {isArabic ? "إيقاف" : "Suspend"}
                           </button>
@@ -755,9 +784,7 @@ export default function SuperAdminPage({
                           <button
                             type="button"
                             className="smallBtn"
-                            onClick={() =>
-                              setStatusTarget({ pharmacy, nextStatus: "active" })
-                            }
+                            onClick={() => setStatusTarget({ pharmacy, nextStatus: "active" })}
                           >
                             {isArabic ? "تفعيل" : "Activate"}
                           </button>
@@ -853,9 +880,7 @@ export default function SuperAdminPage({
                       >
                         <strong>{isArabic ? tier.labelAr : tier.labelEn}</strong>
                         <small>
-                          {isArabic
-                            ? `${tier.maxBranches} فروع`
-                            : `${tier.maxBranches} branches`}
+                          {isArabic ? `${tier.maxBranches} فروع` : `${tier.maxBranches} branches`}
                         </small>
                       </button>
                     );
@@ -889,7 +914,10 @@ export default function SuperAdminPage({
 
       {manageModalOpen && selected && (
         <div className="modalOverlay" onClick={() => setManageModalOpen(false)}>
-          <div className="invoiceModal saasModal saasModalWide" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="invoiceModal saasModal saasModalWide"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="modalHeader">
               <div>
                 <h2>
@@ -923,7 +951,7 @@ export default function SuperAdminPage({
                 <strong>
                   {getSubscriptionTierLabel(
                     selected.subscriptionTier || selected.subscriptionPlan,
-                    isArabic
+                    isArabic,
                   )}
                 </strong>
               </div>
@@ -931,9 +959,15 @@ export default function SuperAdminPage({
                 <span>{isArabic ? "تغيير الباقة" : "Change package"}</span>
                 <select
                   className="saasTierSelect"
-                  value={parseSubscriptionTier(selected.subscriptionTier || selected.subscriptionPlan)}
-                  disabled={tierSavingId === getOrganizationBranchUsage(pharmacies, selected).organizationId}
-                  onChange={(e) => void handleTierChange(selected, e.target.value as SubscriptionTier)}
+                  value={parseSubscriptionTier(
+                    selected.subscriptionTier || selected.subscriptionPlan,
+                  )}
+                  disabled={
+                    tierSavingId === getOrganizationBranchUsage(pharmacies, selected).organizationId
+                  }
+                  onChange={(e) =>
+                    void handleTierChange(selected, e.target.value as SubscriptionTier)
+                  }
                 >
                   {subscriptionTierOrder.map((tierId) => (
                     <option key={tierId} value={tierId}>
@@ -974,13 +1008,19 @@ export default function SuperAdminPage({
               >
                 + {isArabic ? "إضافة مستخدم" : "Add User"}
               </button>
-              <button type="button" className="editBtn" onClick={() => handleViewAsTenant(selected.id)}>
+              <button
+                type="button"
+                className="editBtn"
+                onClick={() => handleViewAsTenant(selected.id)}
+              >
                 {isArabic ? "عرض بيانات الصيدلية" : "View pharmacy data"}
               </button>
             </div>
 
             {tenantUsers.length === 0 ? (
-              <p className="empty">{isArabic ? "لا يوجد مستخدمون لهذه الصيدلية" : "No users for this pharmacy"}</p>
+              <p className="empty">
+                {isArabic ? "لا يوجد مستخدمون لهذه الصيدلية" : "No users for this pharmacy"}
+              </p>
             ) : (
               <div className="tableWrap">
                 <table className="dataTable">
@@ -1046,7 +1086,8 @@ export default function SuperAdminPage({
                 >
                   {pharmacies.map((pharmacy) => (
                     <option key={pharmacy.id} value={pharmacy.id}>
-                      {(isArabic ? pharmacy.name : pharmacy.name_en) || pharmacy.name} ({pharmacy.id})
+                      {(isArabic ? pharmacy.name : pharmacy.name_en) || pharmacy.name} (
+                      {pharmacy.id})
                     </option>
                   ))}
                 </select>
@@ -1101,7 +1142,11 @@ export default function SuperAdminPage({
             </div>
 
             <div className="modalActions saasModalActions">
-              <button type="button" className="deleteSmallBtn" onClick={() => setAddUserModalOpen(false)}>
+              <button
+                type="button"
+                className="deleteSmallBtn"
+                onClick={() => setAddUserModalOpen(false)}
+              >
                 {isArabic ? "إلغاء" : "Cancel"}
               </button>
               <button
@@ -1125,7 +1170,10 @@ export default function SuperAdminPage({
 
       {statusTarget && (
         <div className="modalOverlay" onClick={() => !statusUpdating && setStatusTarget(null)}>
-          <div className="invoiceModal saasModal saasConfirmModal" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="invoiceModal saasModal saasConfirmModal"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="modalHeader">
               <div>
                 <h2>

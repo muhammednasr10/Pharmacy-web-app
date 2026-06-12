@@ -57,11 +57,16 @@ export default function MedicineForm({
               ? "جاري الحفظ..."
               : "Saving..."
             : editingMedicineId
-            ? t.saveChanges
-            : t.addMedicineBtn}
+              ? t.saveChanges
+              : t.addMedicineBtn}
         </button>
         {showCancel && (
-          <button type="button" className="cancelMedicineBtn" onClick={onCancel} disabled={isSaving}>
+          <button
+            type="button"
+            className="cancelMedicineBtn"
+            onClick={onCancel}
+            disabled={isSaving}
+          >
             {editingMedicineId ? t.cancelEdit : isArabic ? "إلغاء" : "Cancel"}
           </button>
         )}

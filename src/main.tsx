@@ -4,7 +4,11 @@ import { registerSW } from "virtual:pwa-register";
 import App from "./App";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { supabaseConfigError } from "./services/supabaseClient";
+import { initDisplayPreferences } from "./utils/displayPreferences";
 import "./styles.css";
+import "./theme.css";
+
+initDisplayPreferences();
 
 if (typeof window !== "undefined" && !supabaseConfigError) {
   registerSW({ immediate: true });
@@ -62,6 +66,6 @@ if (supabaseConfigError) {
       <ErrorBoundary>
         <App />
       </ErrorBoundary>
-    </React.StrictMode>
+    </React.StrictMode>,
   );
 }

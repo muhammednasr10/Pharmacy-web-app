@@ -1,5 +1,6 @@
 -- Run in Supabase SQL Editor
 -- Links Auth users (auth.users) to app users (public.users) by email
+-- Includes branch_manager (مدير فرع). For org branches, prefer org-login-accounts-access.sql.
 
 create or replace function public.sync_auth_user_for_login_account(
   p_email text,
@@ -20,7 +21,11 @@ declare
   v_name text;
   v_username text;
 begin
-  if not (public.is_super_admin() or public.is_pharmacy_admin()) then
+  if not (public.is_super_admin() or public.is_pharmacy_manager()) then
+    raise exception 'not_authorized';
+  end if;
+
+  if not public.can_write_pharmacy_row(p_pharmacy_id) then
     raise exception 'not_authorized';
   end if;
 
@@ -32,7 +37,14 @@ begin
     v_role := 'pharmacy_admin';
   end if;
 
-  if v_role not in ('super_admin', 'pharmacy_admin', 'cashier', 'inventory', 'accountant') then
+  if v_role not in (
+    'super_admin',
+    'pharmacy_admin',
+    'branch_manager',
+    'cashier',
+    'inventory',
+    'accountant'
+  ) then
     raise exception 'invalid_role';
   end if;
 

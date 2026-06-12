@@ -18,8 +18,16 @@ import {
   isTierUpgradePlan,
   parseTierUpgradePlan,
 } from "../utils/subscriptionFeatures";
+import DisplayPreferencesPanel from "../components/DisplayPreferencesPanel";
+import type { FontScale, ThemeMode } from "../utils/displayPreferences";
 
-export type SettingsTab = "pharmacy" | "invoice" | "inventory" | "payroll" | "subscription";
+export type SettingsTab =
+  | "pharmacy"
+  | "invoice"
+  | "inventory"
+  | "payroll"
+  | "subscription"
+  | "display";
 
 type SettingsForm = {
   name: string;
@@ -68,6 +76,11 @@ type SettingsPageProps = {
   onSendExpiryNotifyNow?: () => Promise<void>;
   onOpenExpiryWhatsappDigest?: () => void;
   onOpenExpiryEmailDigest?: () => void;
+  themeMode: ThemeMode;
+  fontScale: FontScale;
+  resolvedTheme: "light" | "dark";
+  onThemeModeChange: (mode: ThemeMode) => void;
+  onFontScaleChange: (scale: FontScale) => void;
 };
 
 export default function SettingsPage({
@@ -96,10 +109,15 @@ export default function SettingsPage({
   onSendExpiryNotifyNow,
   onOpenExpiryWhatsappDigest,
   onOpenExpiryEmailDigest,
+  themeMode,
+  fontScale,
+  resolvedTheme,
+  onThemeModeChange,
+  onFontScaleChange,
 }: SettingsPageProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>("pharmacy");
   const [requestPlan, setRequestPlan] = useState<"monthly" | "quarterly" | "yearly" | "custom">(
-    "monthly"
+    "monthly",
   );
   const [customDays, setCustomDays] = useState(30);
   const [submittingRequest, setSubmittingRequest] = useState(false);
@@ -121,7 +139,7 @@ export default function SettingsPage({
 
   const pendingRequest = pharmacySubscriptionRequests.find((r) => r.status === "pending");
   const pendingTierUpgrade = pharmacySubscriptionRequests.find(
-    (r) => r.status === "pending" && isTierUpgradePlan(r.plan)
+    (r) => r.status === "pending" && isTierUpgradePlan(r.plan),
   );
   const requestDays =
     requestPlan === "custom" ? Math.max(7, Math.floor(customDays) || 7) : getPlanDays(requestPlan);
@@ -165,7 +183,7 @@ export default function SettingsPage({
         hint: isArabic ? "حدد عدد الأيام بنفسك" : "Choose your own number of days",
       },
     ],
-    [isArabic]
+    [isArabic],
   );
 
   async function handleSubmitTierUpgradeRequest() {
@@ -174,7 +192,7 @@ export default function SettingsPage({
       alert(
         isArabic
           ? "لديك طلب اشتراك قيد المراجعة. انتظر الاعتماد قبل إرسال طلب جديد."
-          : "You already have a pending subscription request."
+          : "You already have a pending subscription request.",
       );
       return;
     }
@@ -195,7 +213,7 @@ export default function SettingsPage({
       alert(
         isArabic
           ? "لديك طلب اشتراك قيد المراجعة. أكمل الدفع أو انتظر الاعتماد."
-          : "You already have a pending subscription request."
+          : "You already have a pending subscription request.",
       );
       if (!isTierUpgradePlan(pendingRequest.plan)) {
         setPaymentRequest(pendingRequest);
@@ -236,26 +254,26 @@ export default function SettingsPage({
   const subscriptionTone = isSubscriptionExpired
     ? "expired"
     : isSubscriptionExpiringSoon
-    ? "warning"
-    : isTrialSubscription
-    ? "trial"
-    : "active";
+      ? "warning"
+      : isTrialSubscription
+        ? "trial"
+        : "active";
 
   const subscriptionStatusLabel = isSubscriptionExpired
     ? isArabic
       ? "منتهي"
       : "Expired"
     : isSubscriptionExpiringSoon
-    ? isArabic
-      ? "قرب الانتهاء"
-      : "Expiring Soon"
-    : isTrialSubscription
-    ? isArabic
-      ? "تجريبي"
-      : "Trial"
-    : isArabic
-    ? "نشط"
-    : "Active";
+      ? isArabic
+        ? "قرب الانتهاء"
+        : "Expiring Soon"
+      : isTrialSubscription
+        ? isArabic
+          ? "تجريبي"
+          : "Trial"
+        : isArabic
+          ? "نشط"
+          : "Active";
 
   const daysLeftLabel =
     subscriptionDaysLeft === null
@@ -263,10 +281,10 @@ export default function SettingsPage({
         ? "غير محدد"
         : "Not set"
       : subscriptionDaysLeft < 0
-      ? isArabic
-        ? "منتهي"
-        : "Expired"
-      : String(subscriptionDaysLeft);
+        ? isArabic
+          ? "منتهي"
+          : "Expired"
+        : String(subscriptionDaysLeft);
 
   const subscriptionMessage = isSubscriptionExpired
     ? isArabic
@@ -277,43 +295,43 @@ export default function SettingsPage({
         ? `Your ${TRIAL_SUBSCRIPTION_DAYS}-day trial has ended. Subscribe to continue.`
         : "Subscription expired. Renew to continue using the system."
     : isTrialSubscription
-    ? isArabic
-      ? `أنت على باقة تجريبية مجانية ${TRIAL_SUBSCRIPTION_DAYS} يوماً. متبقي ${subscriptionDaysLeft ?? "?"} يوم.`
-      : `You are on a free ${TRIAL_SUBSCRIPTION_DAYS}-day trial. ${subscriptionDaysLeft ?? "?"} days left.`
-    : isSubscriptionExpiringSoon
-    ? isArabic
-      ? `متبقي ${subscriptionDaysLeft} يوم على انتهاء الاشتراك.`
-      : `${subscriptionDaysLeft} days left until subscription ends.`
-    : settingsForm.subscriptionPlan === "lifetime"
-    ? isArabic
-      ? "اشتراك مدى الحياة — النظام متاح بدون قيود زمنية."
-      : "Lifetime license — full access without expiry."
-    : isArabic
-    ? "الاشتراك نشط ويعمل بشكل طبيعي."
-    : "Subscription is active and running normally.";
+      ? isArabic
+        ? `أنت على باقة تجريبية مجانية ${TRIAL_SUBSCRIPTION_DAYS} يوماً. متبقي ${subscriptionDaysLeft ?? "?"} يوم.`
+        : `You are on a free ${TRIAL_SUBSCRIPTION_DAYS}-day trial. ${subscriptionDaysLeft ?? "?"} days left.`
+      : isSubscriptionExpiringSoon
+        ? isArabic
+          ? `متبقي ${subscriptionDaysLeft} يوم على انتهاء الاشتراك.`
+          : `${subscriptionDaysLeft} days left until subscription ends.`
+        : settingsForm.subscriptionPlan === "lifetime"
+          ? isArabic
+            ? "اشتراك مدى الحياة — النظام متاح بدون قيود زمنية."
+            : "Lifetime license — full access without expiry."
+          : isArabic
+            ? "الاشتراك نشط ويعمل بشكل طبيعي."
+            : "Subscription is active and running normally.";
 
   const progressCap =
     settingsForm.subscriptionPlan === "trial" || isTrialSubscription
       ? TRIAL_SUBSCRIPTION_DAYS
       : settingsForm.subscriptionPlan === "yearly"
-      ? 365
-      : settingsForm.subscriptionPlan === "quarterly"
-      ? 90
-      : settingsForm.subscriptionPlan === "lifetime"
-      ? null
-      : 30;
+        ? 365
+        : settingsForm.subscriptionPlan === "quarterly"
+          ? 90
+          : settingsForm.subscriptionPlan === "lifetime"
+            ? null
+            : 30;
 
   const progressPercent =
     progressCap && subscriptionDaysLeft !== null && subscriptionDaysLeft >= 0
       ? Math.min(100, Math.max(8, (subscriptionDaysLeft / progressCap) * 100))
       : settingsForm.subscriptionPlan === "lifetime"
-      ? 100
-      : 0;
+        ? 100
+        : 0;
 
   const formattedEndDate = settingsForm.subscriptionEndDate
     ? new Date(`${settingsForm.subscriptionEndDate}T12:00:00`).toLocaleDateString(
         isArabic ? "ar-EG" : "en-GB",
-        { year: "numeric", month: "long", day: "numeric" }
+        { year: "numeric", month: "long", day: "numeric" },
       )
     : "-";
 
@@ -323,11 +341,14 @@ export default function SettingsPage({
     { id: "inventory", ar: "انتهاء المخزون", en: "Inventory Alerts" },
     { id: "payroll", ar: "إعدادات المرتبات", en: "Payroll" },
     { id: "subscription", ar: "الاشتراك والترخيص", en: "Subscription" },
+    { id: "display", ar: "المظهر والخط", en: "Display" },
   ];
 
   const tabs = isOrgAdmin
     ? allTabs
-    : allTabs.filter((tab) => tab.id === "pharmacy" || tab.id === "invoice");
+    : allTabs.filter(
+        (tab) => tab.id === "pharmacy" || tab.id === "invoice" || tab.id === "display",
+      );
 
   function renderSaveActions(showBackup = false) {
     return (
@@ -362,7 +383,10 @@ export default function SettingsPage({
         </div>
       </div>
 
-      <nav className="settingsTabsNav" aria-label={isArabic ? "أقسام الإعدادات" : "Settings sections"}>
+      <nav
+        className="settingsTabsNav"
+        aria-label={isArabic ? "أقسام الإعدادات" : "Settings sections"}
+      >
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -391,7 +415,10 @@ export default function SettingsPage({
             <div className="settingsLogoRow">
               <div className="settingsLogoPreview">
                 {settingsForm.logoBase64 ? (
-                  <img src={settingsForm.logoBase64} alt={isArabic ? "لوجو الصيدلية" : "Pharmacy logo"} />
+                  <img
+                    src={settingsForm.logoBase64}
+                    alt={isArabic ? "لوجو الصيدلية" : "Pharmacy logo"}
+                  />
                 ) : (
                   <span className="settingsLogoPlaceholder">
                     {isArabic ? "لا يوجد لوجو" : "No logo"}
@@ -598,14 +625,20 @@ export default function SettingsPage({
               </div>
 
               <div className="settingsField">
-                <label>{isArabic ? "واتساب للتنبيهات (اختياري)" : "WhatsApp number (optional)"}</label>
+                <label>
+                  {isArabic ? "واتساب للتنبيهات (اختياري)" : "WhatsApp number (optional)"}
+                </label>
                 <input
                   type="text"
                   value={settingsForm.expiryNotifyPhone}
                   onChange={(e) =>
                     setSettingsForm({ ...settingsForm, expiryNotifyPhone: e.target.value })
                   }
-                  placeholder={isArabic ? "اتركه فارغاً لاستخدام هاتف الصيدلية" : "Leave empty to use pharmacy phone"}
+                  placeholder={
+                    isArabic
+                      ? "اتركه فارغاً لاستخدام هاتف الصيدلية"
+                      : "Leave empty to use pharmacy phone"
+                  }
                 />
               </div>
 
@@ -632,17 +665,29 @@ export default function SettingsPage({
                   </button>
                 )}
                 {onSendExpiryNotifyNow && (
-                  <button type="button" className="alertFooterBtn" onClick={() => void onSendExpiryNotifyNow()}>
+                  <button
+                    type="button"
+                    className="alertFooterBtn"
+                    onClick={() => void onSendExpiryNotifyNow()}
+                  >
                     {isArabic ? "إرسال تنبيه الآن" : "Send alert now"}
                   </button>
                 )}
                 {onOpenExpiryWhatsappDigest && (
-                  <button type="button" className="alertFooterBtn" onClick={onOpenExpiryWhatsappDigest}>
+                  <button
+                    type="button"
+                    className="alertFooterBtn"
+                    onClick={onOpenExpiryWhatsappDigest}
+                  >
                     {isArabic ? "ملخص واتساب" : "WhatsApp digest"}
                   </button>
                 )}
                 {onOpenExpiryEmailDigest && settingsForm.expiryNotifyEmail.trim() && (
-                  <button type="button" className="alertFooterBtn" onClick={onOpenExpiryEmailDigest}>
+                  <button
+                    type="button"
+                    className="alertFooterBtn"
+                    onClick={onOpenExpiryEmailDigest}
+                  >
                     {isArabic ? "ملخص بريد" : "Email digest"}
                   </button>
                 )}
@@ -752,7 +797,7 @@ export default function SettingsPage({
                 {(isArabic ? tierUpgradeConfig.featuresAr : tierUpgradeConfig.featuresEn).map(
                   (feature) => (
                     <li key={feature}>{feature}</li>
-                  )
+                  ),
                 )}
               </ul>
               <div className="subscriptionRequestSummary">
@@ -807,8 +852,8 @@ export default function SettingsPage({
                   {subscriptionDaysLeft !== null && subscriptionDaysLeft >= 0
                     ? `${subscriptionDaysLeft} ${isArabic ? "يوم" : "days"}`
                     : isArabic
-                    ? "منتهي"
-                    : "Expired"}
+                      ? "منتهي"
+                      : "Expired"}
                 </strong>
               </div>
               <div className="subscriptionProgressTrack">
@@ -916,8 +961,8 @@ export default function SettingsPage({
                         ? "جاري إرسال الطلب..."
                         : "Submitting..."
                       : isArabic
-                      ? "إرسال طلب التجديد"
-                      : "Submit renewal request"}
+                        ? "إرسال طلب التجديد"
+                        : "Submit renewal request"}
                   </button>
                 </div>
               </div>
@@ -1031,6 +1076,27 @@ export default function SettingsPage({
               </div>
             )}
           </section>
+        </div>
+      )}
+
+      {activeTab === "display" && (
+        <div className="settingsTabPanel">
+          <div className="settingsSectionTitle">
+            <h3>{isArabic ? "المظهر وحجم الخط" : "Appearance & font size"}</h3>
+            <p>
+              {isArabic
+                ? "خصّص الوضع الداكن وحجم النص لراحة العين أثناء العمل"
+                : "Customize dark mode and text size for comfortable daily use"}
+            </p>
+          </div>
+          <DisplayPreferencesPanel
+            isArabic={isArabic}
+            themeMode={themeMode}
+            fontScale={fontScale}
+            resolvedTheme={resolvedTheme}
+            onThemeModeChange={onThemeModeChange}
+            onFontScaleChange={onFontScaleChange}
+          />
         </div>
       )}
 

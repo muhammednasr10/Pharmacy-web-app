@@ -22,7 +22,7 @@ function formatRequestType(request: SubscriptionRequest, isArabic: boolean) {
 
 export function formatSuperAdminSubscriptionMessage(
   request: SubscriptionRequest,
-  isArabic: boolean
+  isArabic: boolean,
 ) {
   const typeLabel = formatRequestType(request, isArabic);
   const pharmacy = request.pharmacyName || request.pharmacyId;
@@ -70,7 +70,7 @@ export function getSuperAdminSubscriptionWhatsappUrl(request: SubscriptionReques
 }
 
 export async function notifySuperAdminOfSubscriptionRequest(
-  request: SubscriptionRequest
+  request: SubscriptionRequest,
 ): Promise<void> {
   const payload = {
     event: "subscription_request_created",
@@ -165,7 +165,7 @@ export function playAdminAlertSound() {
 export function showSuperAdminBrowserNotification(
   request: SubscriptionRequest,
   isArabic: boolean,
-  onOpen?: () => void
+  onOpen?: () => void,
 ) {
   if (!("Notification" in window) || Notification.permission !== "granted") return;
 

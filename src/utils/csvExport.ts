@@ -12,12 +12,12 @@ export function downloadCSV(filename: string, rows: unknown[][]) {
     .map((row) =>
       row
         .map((value) => {
-          if (typeof value === "string" && value.startsWith("=\"")) {
+          if (typeof value === "string" && value.startsWith('="')) {
             return value;
           }
           return escapeCSV(value);
         })
-        .join(",")
+        .join(","),
     )
     .join("\n");
 

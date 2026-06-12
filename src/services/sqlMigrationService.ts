@@ -1,4 +1,8 @@
-import { SQL_MIGRATIONS, type MigrationProbe, type SqlMigrationDefinition } from "../config/sqlMigrations";
+import {
+  SQL_MIGRATIONS,
+  type MigrationProbe,
+  type SqlMigrationDefinition,
+} from "../config/sqlMigrations";
 import { supabase } from "./supabaseClient";
 
 export type MigrationCheckStatus = "ok" | "missing" | "error";
@@ -38,7 +42,10 @@ async function probeColumn(table: string, column: string): Promise<MigrationChec
   return "ok";
 }
 
-async function probeRpc(name: string, args: Record<string, unknown> = {}): Promise<MigrationCheckStatus> {
+async function probeRpc(
+  name: string,
+  args: Record<string, unknown> = {},
+): Promise<MigrationCheckStatus> {
   const { error } = await supabase.rpc(name, args);
   if (!error) return "ok";
   const msg = error.message || "";
@@ -53,7 +60,9 @@ async function runProbe(probe: MigrationProbe): Promise<MigrationCheckStatus> {
   return probeRpc(probe.name, probe.args);
 }
 
-export async function checkSqlMigration(definition: SqlMigrationDefinition): Promise<MigrationCheckRow> {
+export async function checkSqlMigration(
+  definition: SqlMigrationDefinition,
+): Promise<MigrationCheckRow> {
   try {
     const status = await runProbe(definition.probe);
     return { ...definition, status };

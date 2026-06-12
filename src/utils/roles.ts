@@ -1,18 +1,32 @@
-import type { AppUser, Page, UserRole } from "../types";
+import type { AppUser, BuiltinUserRole, Page, UserRole } from "../types";
+import { getPharmacyCustomRoleByKey } from "../services/pharmacy/customRoleCache";
+import { getEffectiveRoleAccess, roleHasConfiguredPermission } from "./roleAccess";
+import type { RolePermissionKey } from "./rolePermissions";
 
-/** Map legacy DB roles to current roles */
+const BUILTIN_ROLES: BuiltinUserRole[] = [
+  "super_admin",
+  "pharmacy_admin",
+  "branch_manager",
+  "cashier",
+  "inventory",
+  "accountant",
+];
+
+export function isCustomRole(role: string | undefined | null): boolean {
+  return Boolean(role?.trim().toLowerCase().startsWith("custom_"));
+}
+
+export function isBuiltinRole(role: string): role is BuiltinUserRole {
+  return BUILTIN_ROLES.includes(role as BuiltinUserRole);
+}
+
+/** Map legacy DB roles to current roles; preserve custom_* keys */
 export function normalizeRole(role: string): UserRole {
-  if (role === "admin" || role === "pharmacy_admin") return "pharmacy_admin";
-  if (role === "manager") return "accountant";
-  if (
-    role === "super_admin" ||
-    role === "branch_manager" ||
-    role === "cashier" ||
-    role === "inventory" ||
-    role === "accountant"
-  ) {
-    return role;
-  }
+  const trimmed = role?.trim() || "";
+  if (isCustomRole(trimmed)) return trimmed.toLowerCase();
+  if (trimmed === "admin" || trimmed === "pharmacy_admin") return "pharmacy_admin";
+  if (trimmed === "manager") return "accountant";
+  if (isBuiltinRole(trimmed)) return trimmed;
   return "cashier";
 }
 
@@ -51,7 +65,7 @@ export function isPharmacyAdmin(appUser: AppUser | null | undefined): boolean {
 /** Org admin or accountant can switch branches or view all at once (accountant: read-only). */
 export function canSwitchOrganizationBranches(
   appUser: AppUser | null | undefined,
-  branchCount: number
+  branchCount: number,
 ): boolean {
   if (branchCount <= 1) return false;
   return isOrgPharmacyAdmin(appUser) || isAccountant(appUser);
@@ -59,65 +73,78 @@ export function canSwitchOrganizationBranches(
 
 export function canViewBranchBreakdownReports(
   appUser: AppUser | null | undefined,
-  branchCount: number
+  branchCount: number,
 ): boolean {
   return (isOrgPharmacyAdmin(appUser) || isAccountant(appUser)) && branchCount > 1;
 }
 
+function userHasPermission(
+  appUser: AppUser | null | undefined,
+  permission: RolePermissionKey,
+): boolean {
+  if (!appUser) return false;
+  if (isSuperAdmin(appUser)) return true;
+  return roleHasConfiguredPermission(
+    normalizeRole(appUser.role),
+    appUser.pharmacyId,
+    permission,
+  );
+}
+
 export function canManageUsers(appUser: AppUser | null | undefined): boolean {
-  return isPharmacyManager(appUser);
+  return userHasPermission(appUser, "manage_users");
 }
 
 /** Org-wide settings: subscription, alert rules, payroll, backup. */
 export function canEditOrgWideSettings(appUser: AppUser | null | undefined): boolean {
-  return isOrgPharmacyAdmin(appUser) || isSuperAdmin(appUser);
+  return userHasPermission(appUser, "edit_org_settings");
 }
 
 /** Branch contact + invoice footer for own branch. */
 export function canEditBranchSettings(appUser: AppUser | null | undefined): boolean {
-  return isPharmacyManager(appUser) || isSuperAdmin(appUser);
+  return userHasPermission(appUser, "edit_branch_settings");
 }
 
 export function canDeleteMedicines(appUser: AppUser | null | undefined): boolean {
-  return isOrgPharmacyAdmin(appUser) || isSuperAdmin(appUser);
+  return userHasPermission(appUser, "delete_medicines");
 }
 
 export function canDeleteReturns(appUser: AppUser | null | undefined): boolean {
-  return isOrgPharmacyAdmin(appUser) || isSuperAdmin(appUser);
+  return userHasPermission(appUser, "delete_returns");
 }
 
 export function canDeletePurchases(appUser: AppUser | null | undefined): boolean {
-  return isOrgPharmacyAdmin(appUser) || isSuperAdmin(appUser);
+  return userHasPermission(appUser, "delete_purchases");
 }
 
 export function canDeleteCustomerPayments(appUser: AppUser | null | undefined): boolean {
-  return isOrgPharmacyAdmin(appUser) || isSuperAdmin(appUser);
+  return userHasPermission(appUser, "delete_customer_payments");
 }
 
 export function canRequestSubscription(appUser: AppUser | null | undefined): boolean {
-  return isOrgPharmacyAdmin(appUser) || isSuperAdmin(appUser);
+  return userHasPermission(appUser, "edit_org_settings");
 }
 
 export function canExportPharmacyBackup(appUser: AppUser | null | undefined): boolean {
-  return isOrgPharmacyAdmin(appUser) || isSuperAdmin(appUser);
+  return userHasPermission(appUser, "export_backup");
 }
 
 export function canViewOrgActivityLogs(appUser: AppUser | null | undefined): boolean {
-  return isOrgPharmacyAdmin(appUser) || isSuperAdmin(appUser) || isAccountant(appUser);
+  return userHasPermission(appUser, "view_org_activity_logs");
 }
 
 export function canManageOrgBranches(appUser: AppUser | null | undefined): boolean {
-  return isOrgPharmacyAdmin(appUser);
+  return userHasPermission(appUser, "manage_org_branches");
 }
 
 /** Can approve or reject pending branch stock transfers (incoming at own branch for branch managers). */
 export function canReviewPendingBranchTransfers(appUser: AppUser | null | undefined): boolean {
-  return isOrgPharmacyAdmin(appUser) || isBranchManager(appUser);
+  return userHasPermission(appUser, "review_branch_transfers");
 }
 
 export function canApproveBranchStockTransfer(
   appUser: AppUser | null | undefined,
-  toPharmacyId: string
+  toPharmacyId: string,
 ): boolean {
   if (!appUser) return false;
   if (isOrgPharmacyAdmin(appUser)) return true;
@@ -130,11 +157,23 @@ export function canManageTenants(appUser: AppUser | null | undefined): boolean {
 
 export function hasRole(appUser: AppUser | null | undefined, roles: UserRole[]): boolean {
   if (!appUser) return false;
-  return roles.includes(appUser.role);
+  const role = normalizeRole(appUser.role);
+  if (roles.includes(role)) return true;
+  if (isCustomRole(role)) {
+    const custom = getPharmacyCustomRoleByKey(role, appUser.pharmacyId);
+    if (custom && roles.includes(custom.baseRole)) return true;
+  }
+  return false;
 }
 
 export function getRoleLabel(role: UserRole | string, isArabic: boolean): string {
-  const normalized = normalizeRole(role);
+  const raw = role?.trim() || "";
+  if (isCustomRole(raw)) {
+    const custom = getPharmacyCustomRoleByKey(raw);
+    if (custom) return isArabic ? custom.nameAr : custom.nameEn;
+    return raw;
+  }
+  const normalized = normalizeRole(role) as BuiltinUserRole;
   if (!isArabic) {
     const en: Record<UserRole, string> = {
       super_admin: "System Owner",
@@ -173,7 +212,7 @@ const branchManagerPages: Page[] = [
   "settings",
 ];
 
-export const allowedPagesByRole: Record<UserRole, Page[]> = {
+export const allowedPagesByRole: Record<BuiltinUserRole, Page[]> = {
   super_admin: [
     "dashboard",
     "employeePortal",
@@ -213,7 +252,7 @@ export const allowedPagesByRole: Record<UserRole, Page[]> = {
 
 export function getAllowedPages(appUser: AppUser | null): Page[] {
   if (!appUser) return [];
-  return allowedPagesByRole[appUser.role] || [];
+  return getEffectiveRoleAccess(normalizeRole(appUser.role), appUser.pharmacyId).allowedPages;
 }
 
 export const pharmacyAdminRoleOptions: UserRole[] = [
@@ -259,13 +298,21 @@ export const employeeJobRoleOptions: UserRole[] = pharmacyAdminRoleOptions;
 
 export function parseLoginAccountRole(value?: string | null): UserRole {
   if (!value?.trim()) return "cashier";
-  const normalized = normalizeRole(value.trim());
-  if (loginAccountRoleOptions.includes(normalized)) return normalized;
+  const trimmed = value.trim();
+  if (isCustomRole(trimmed)) return trimmed.toLowerCase();
+  const normalized = normalizeRole(trimmed);
+  if (loginAccountRoleOptions.includes(normalized as (typeof loginAccountRoleOptions)[number])) {
+    return normalized;
+  }
   return "cashier";
 }
 
-export function getDefaultLoginAccountDraft(role: UserRole): { email: string; password: string } {
-  const parsed = parseLoginAccountRole(role);
+export function getDefaultLoginAccountDraft(role: UserRole | string): { email: string; password: string } {
+  const parsed = parseLoginAccountRole(String(role));
+  if (isCustomRole(parsed)) {
+    const slug = parsed.replace(/^custom_/, "") || "user";
+    return { email: `${slug}@pharmacy.com`, password: "1234567" };
+  }
   return defaultLoginAccountDrafts[parsed as (typeof loginAccountRoleOptions)[number]];
 }
 
@@ -281,7 +328,10 @@ export function isStoredEmployeeJobRole(value?: string | null): boolean {
   return employeeJobRoleOptions.includes(normalizeRole(value.trim()));
 }
 
-export function getEmployeeJobRoleLabel(value: string | undefined | null, isArabic: boolean): string {
+export function getEmployeeJobRoleLabel(
+  value: string | undefined | null,
+  isArabic: boolean,
+): string {
   if (!value?.trim()) return "—";
   if (isStoredEmployeeJobRole(value)) {
     return getRoleLabel(parseEmployeeJobRole(value), isArabic);
@@ -318,8 +368,10 @@ export const rolePermissionMatrix: RolePermissionRow[] = [
     role: "pharmacy_admin",
     labelAr: "مدير عام",
     labelEn: "General Manager",
-    summaryAr: "يدير كل فروع المجموعة: تقارير مجمّعة، HR مركزي، نقل مخزون (فوري أو باعتماد)، تنبيهات نواقص، وكل الفروع أو فرع واحد.",
-    summaryEn: "Manages all organization branches: consolidated reports, central HR, transfers (immediate or approval), low-stock alerts, all or one branch.",
+    summaryAr:
+      "يدير كل فروع المجموعة: تقارير مجمّعة، HR مركزي، نقل مخزون (فوري أو باعتماد)، تنبيهات نواقص، وكل الفروع أو فرع واحد.",
+    summaryEn:
+      "Manages all organization branches: consolidated reports, central HR, transfers (immediate or approval), low-stock alerts, all or one branch.",
   },
   {
     role: "branch_manager",
@@ -348,8 +400,10 @@ export const rolePermissionMatrix: RolePermissionRow[] = [
     role: "accountant",
     labelAr: "محاسب",
     labelEn: "Accountant",
-    summaryAr: "التقارير والفواتير والمرتجعات والعملاء — يمكنه عرض كل الفروع للقراءة فقط ومقارنة التقارير.",
-    summaryEn: "Reports, invoices, returns, customers — can view all branches read-only and compare branch reports.",
+    summaryAr:
+      "التقارير والفواتير والمرتجعات والعملاء — يمكنه عرض كل الفروع للقراءة فقط ومقارنة التقارير.",
+    summaryEn:
+      "Reports, invoices, returns, customers — can view all branches read-only and compare branch reports.",
   },
 ];
 
@@ -358,6 +412,7 @@ export const STAFF_ACTIVITY_TYPES = [
   "employee_update",
   "employee_activate",
   "employee_deactivate",
+  "employee_delete",
   "user_create",
   "user_update",
   "user_activate",

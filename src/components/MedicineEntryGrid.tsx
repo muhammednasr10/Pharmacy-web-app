@@ -51,7 +51,7 @@ export default function MedicineEntryGrid({
 
   const catalog = useMemo(
     () => medicines.filter((medicine) => medicine.id !== excludeMedicineId),
-    [medicines, excludeMedicineId]
+    [medicines, excludeMedicineId],
   );
 
   const activeQuery =
@@ -118,7 +118,7 @@ export default function MedicineEntryGrid({
       onChange({ ...value, barcode: clean });
       setActiveField("barcode");
     },
-    [catalog, onChange, value]
+    [catalog, onChange, value],
   );
 
   useHardwareBarcodeScanner({
@@ -321,9 +321,7 @@ export default function MedicineEntryGrid({
           <input
             type="number"
             value={value.qty || ""}
-            onChange={(e) =>
-              updateField("qty", e.target.value === "" ? 0 : Number(e.target.value))
-            }
+            onChange={(e) => updateField("qty", e.target.value === "" ? 0 : Number(e.target.value))}
             placeholder={qtyPlaceholder || t.qty}
             disabled={disabled}
           />

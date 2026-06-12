@@ -72,7 +72,7 @@ export default function StockCountModal({
         return resolved;
       });
     },
-    []
+    [],
   );
 
   const processBarcode = useCallback(
@@ -85,7 +85,7 @@ export default function StockCountModal({
         playBarcodeBeep(false);
         showMessage(
           isArabic ? "الباركود غير موجود في هذا الفرع" : "Barcode not found in this branch",
-          true
+          true,
         );
         return false;
       }
@@ -94,14 +94,12 @@ export default function StockCountModal({
       setScanValue("");
       playBarcodeBeep(true);
       showMessage(
-        isArabic
-          ? `تم عد ${found.name_ar} (+1)`
-          : `Counted ${found.name_en || found.name_ar} (+1)`
+        isArabic ? `تم عد ${found.name_ar} (+1)` : `Counted ${found.name_en || found.name_ar} (+1)`,
       );
       focusInput();
       return true;
     },
-    [disabled, focusInput, isArabic, medicines, showMessage, updateSession]
+    [disabled, focusInput, isArabic, medicines, showMessage, updateSession],
   );
 
   useEffect(() => {
@@ -135,7 +133,7 @@ export default function StockCountModal({
     const confirmed = window.confirm(
       isArabic
         ? "مسح جلسة الجرد الحالية والبدء من جديد؟"
-        : "Clear the current count session and start over?"
+        : "Clear the current count session and start over?",
     );
     if (!confirmed) return;
     clearStockCountSession(pharmacyId);
@@ -148,18 +146,14 @@ export default function StockCountModal({
 
   async function handleApply() {
     if (varianceLines.length === 0) {
-      alert(
-        isArabic
-          ? "لا توجد فروقات لتسويتها"
-          : "No variances to adjust"
-      );
+      alert(isArabic ? "لا توجد فروقات لتسويتها" : "No variances to adjust");
       return;
     }
 
     const confirmed = window.confirm(
       isArabic
         ? `تأكيد تسوية ${varianceLines.length} صنف في المخزون؟`
-        : `Apply adjustments for ${varianceLines.length} items?`
+        : `Apply adjustments for ${varianceLines.length} items?`,
     );
     if (!confirmed) return;
 
@@ -175,7 +169,7 @@ export default function StockCountModal({
           ? error.message
           : isArabic
             ? "تعذر تطبيق تسوية الجرد"
-            : "Could not apply stock count adjustments"
+            : "Could not apply stock count adjustments",
       );
     } finally {
       setApplying(false);
@@ -208,9 +202,15 @@ export default function StockCountModal({
         </div>
 
         <div className="stockCountSummaryRow">
-          <span>{isArabic ? "أصناف معدودة" : "Counted"}: {summary.totalLines}</span>
-          <span>{isArabic ? "متطابق" : "Matched"}: {summary.matchedLines}</span>
-          <span>{isArabic ? "فروقات" : "Variances"}: {summary.varianceLines}</span>
+          <span>
+            {isArabic ? "أصناف معدودة" : "Counted"}: {summary.totalLines}
+          </span>
+          <span>
+            {isArabic ? "متطابق" : "Matched"}: {summary.matchedLines}
+          </span>
+          <span>
+            {isArabic ? "فروقات" : "Variances"}: {summary.varianceLines}
+          </span>
           <span>
             {isArabic ? "فرق الكمية" : "Qty diff"}: {summary.totalVariance > 0 ? "+" : ""}
             {summary.totalVariance}
@@ -268,7 +268,9 @@ export default function StockCountModal({
                 type="text"
                 value={searchValue}
                 disabled={disabled}
-                placeholder={isArabic ? "بحث بالاسم أو الباركود..." : "Search by name or barcode..."}
+                placeholder={
+                  isArabic ? "بحث بالاسم أو الباركود..." : "Search by name or barcode..."
+                }
                 onChange={(event) => setSearchValue(event.target.value)}
               />
               {searchResults.length > 0 && (
@@ -296,9 +298,7 @@ export default function StockCountModal({
 
             <div className="stockCountTableWrap">
               {session.lines.length === 0 ? (
-                <p className="empty">
-                  {isArabic ? "لم يُعد أي صنف بعد" : "No items counted yet"}
-                </p>
+                <p className="empty">{isArabic ? "لم يُعد أي صنف بعد" : "No items counted yet"}</p>
               ) : (
                 <table className="stockCountTable">
                   <thead>
@@ -329,12 +329,20 @@ export default function StockCountModal({
                               disabled={disabled}
                               onChange={(event) =>
                                 updateSession((prev) =>
-                                  setStockCountLineQty(prev, line.medicineId, Number(event.target.value))
+                                  setStockCountLineQty(
+                                    prev,
+                                    line.medicineId,
+                                    Number(event.target.value),
+                                  ),
                                 )
                               }
                             />
                           </td>
-                          <td className={variance === 0 ? "" : variance > 0 ? "textSuccess" : "textDanger"}>
+                          <td
+                            className={
+                              variance === 0 ? "" : variance > 0 ? "textSuccess" : "textDanger"
+                            }
+                          >
                             {variance > 0 ? `+${variance}` : variance}
                           </td>
                           <td>
@@ -405,7 +413,12 @@ export default function StockCountModal({
         )}
 
         <div className="stockCountActions">
-          <button type="button" className="editBtn" onClick={handleResetSession} disabled={applying}>
+          <button
+            type="button"
+            className="editBtn"
+            onClick={handleResetSession}
+            disabled={applying}
+          >
             {isArabic ? "جلسة جديدة" : "New session"}
           </button>
           {step === "count" ? (
@@ -419,7 +432,12 @@ export default function StockCountModal({
             </button>
           ) : (
             <>
-              <button type="button" className="editBtn" onClick={() => setStep("count")} disabled={applying}>
+              <button
+                type="button"
+                className="editBtn"
+                onClick={() => setStep("count")}
+                disabled={applying}
+              >
                 {isArabic ? "رجوع للعد" : "Back to count"}
               </button>
               <button

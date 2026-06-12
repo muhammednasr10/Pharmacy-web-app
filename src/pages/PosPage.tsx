@@ -1,9 +1,19 @@
-import type { AppUser, CashierShift, Medicine, CartItem, PaymentMethod, PharmacySettings } from "../types";
+import { useCallback, useRef, useState } from "react";
+import type {
+  AppUser,
+  CashierShift,
+  Medicine,
+  CartItem,
+  PaymentMethod,
+  PharmacySettings,
+} from "../types";
 import MedicineTable from "../components/MedicineTable";
-import PosBarcodeInput from "../components/PosBarcodeInput";
+import PosBarcodeInput, { type PosBarcodeInputHandle } from "../components/PosBarcodeInput";
 import PosCart from "../components/PosCart";
 import CashierShiftPanel from "../components/CashierShiftPanel";
 import OfflinePosBanner from "../components/OfflinePosBanner";
+import PosShortcutsModal from "../components/PosShortcutsModal";
+import { usePosKeyboardShortcuts } from "../hooks/usePosKeyboardShortcuts";
 
 type PosPageProps = {
   medicines: Medicine[];
@@ -106,6 +116,30 @@ export default function PosPage({
   offlineMedicinesCacheAt = null,
   isSyncingOfflineSales = false,
 }: PosPageProps) {
+  const barcodeInputRef = useRef<PosBarcodeInputHandle>(null);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const shortcutsEnabled = canUsePOS && !isSubscriptionExpired;
+
+  const focusBarcode = useCallback(() => {
+    barcodeInputRef.current?.focus();
+  }, []);
+
+  usePosKeyboardShortcuts({
+    enabled: shortcutsEnabled,
+    isArabic,
+    isOnline,
+    cartLength: cart.length,
+    isSelling,
+    isHolding,
+    onShowHelp: () => setShortcutsOpen(true),
+    onFocusBarcode: focusBarcode,
+    onPaymentMethodChange,
+    onHoldInvoice,
+    onOpenHeldInvoices,
+    onCompleteSale,
+    onClearCart,
+  });
+
   return (
     <section className="card posOnlyPage">
       <OfflinePosBanner
@@ -117,9 +151,17 @@ export default function PosPage({
       />
       <div className="cardHeader posPageHeader">
         <h2>{t.pos}</h2>
-        {workShiftLabel && (
-          <span className="posShiftBadge">{workShiftLabel}</span>
-        )}
+        <div className="posPageHeaderActions">
+          {workShiftLabel && <span className="posShiftBadge">{workShiftLabel}</span>}
+          <button
+            type="button"
+            className="posShortcutsBtn"
+            onClick={() => setShortcutsOpen(true)}
+            title={isArabic ? "اختصارات لوحة المفاتيح (F1)" : "Keyboard shortcuts (F1)"}
+          >
+            {isArabic ? "اختصارات F1" : "Shortcuts F1"}
+          </button>
+        </div>
       </div>
       <CashierShiftPanel
         isArabic={isArabic}
@@ -133,10 +175,11 @@ export default function PosPage({
         getPaymentLabel={getPaymentLabel}
       />
       <PosBarcodeInput
+        ref={barcodeInputRef}
         medicines={medicines}
         isArabic={isArabic}
         onAddToCart={onAddToCart}
-        disabled={!canUsePOS || isSubscriptionExpired || !isOnline && medicines.length === 0}
+        disabled={!canUsePOS || isSubscriptionExpired || (!isOnline && medicines.length === 0)}
       />
 
       <div className="posSplit">
@@ -188,6 +231,14 @@ export default function PosPage({
           isOnline={isOnline}
         />
       </div>
+
+      {shortcutsOpen && (
+        <PosShortcutsModal
+          isArabic={isArabic}
+          isOnline={isOnline}
+          onClose={() => setShortcutsOpen(false)}
+        />
+      )}
     </section>
   );
 }

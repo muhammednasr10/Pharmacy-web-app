@@ -49,7 +49,7 @@ export default function TransferBarcodeInput({
         showMessage(
           isArabic
             ? `تمت إضافة ${found.name_ar} (${found.qty} متاح)`
-            : `Added ${found.name_en || found.name_ar} (${found.qty} available)`
+            : `Added ${found.name_en || found.name_ar} (${found.qty} available)`,
         );
         focusInput();
         return true;
@@ -58,11 +58,11 @@ export default function TransferBarcodeInput({
       playBarcodeBeep(false);
       showMessage(
         isArabic ? "الباركود غير موجود في فرع المصدر" : "Barcode not found in source branch",
-        true
+        true,
       );
       return false;
     },
-    [focusInput, isArabic, medicines, onScan, showMessage]
+    [focusInput, isArabic, medicines, onScan, showMessage],
   );
 
   useEffect(() => {
@@ -105,7 +105,7 @@ export default function TransferBarcodeInput({
         isArabic
           ? "مسح الكاميرا غير مدعوم هنا — استخدم Chrome على الجوال"
           : "Camera scan is not supported here — use Chrome on mobile",
-        true
+        true,
       );
       return;
     }
@@ -135,9 +135,7 @@ export default function TransferBarcodeInput({
           onChange={(event) => handleChange(event.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={
-            isArabic
-              ? "امسح الباركود أو اكتبه واضغط Enter"
-              : "Scan barcode or type and press Enter"
+            isArabic ? "امسح الباركود أو اكتبه واضغط Enter" : "Scan barcode or type and press Enter"
           }
         />
         {cameraSupported && (

@@ -47,7 +47,7 @@ export function searchMedicines(medicines: Medicine[], query: string, limit = 8)
 
 export function medicineToEntryValues(
   medicine: Medicine,
-  current?: Partial<MedicineEntryValues>
+  current?: Partial<MedicineEntryValues>,
 ): MedicineEntryValues {
   return {
     barcode: medicine.barcode,

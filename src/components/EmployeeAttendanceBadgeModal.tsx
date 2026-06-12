@@ -17,7 +17,10 @@ export default function EmployeeAttendanceBadgeModal({
   onClose,
 }: EmployeeAttendanceBadgeModalProps) {
   const [qrDataUrl, setQrDataUrl] = useState("");
-  const token = buildEmployeeAttendanceToken(employee.pharmacyId, employee.employeeCode || employee.id);
+  const token = buildEmployeeAttendanceToken(
+    employee.pharmacyId,
+    employee.employeeCode || employee.id,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -54,7 +57,11 @@ export default function EmployeeAttendanceBadgeModal({
             {employee.employeeCode || "—"}
           </p>
           {qrDataUrl ? (
-            <img src={qrDataUrl} alt={isArabic ? "QR الحضور" : "Attendance QR"} className="employeeBadgeQr" />
+            <img
+              src={qrDataUrl}
+              alt={isArabic ? "QR الحضور" : "Attendance QR"}
+              className="employeeBadgeQr"
+            />
           ) : (
             <p className="mutedText">{isArabic ? "جاري إنشاء QR..." : "Generating QR..."}</p>
           )}

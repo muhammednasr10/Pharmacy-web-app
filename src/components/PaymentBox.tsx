@@ -47,9 +47,7 @@ export default function PaymentBox({
       </select>
       {disableCredit && (
         <p className="mutedText paymentOfflineHint">
-          {isArabic
-            ? "البيع الآجل غير متاح بدون اتصال"
-            : "Credit sales are unavailable offline"}
+          {isArabic ? "البيع الآجل غير متاح بدون اتصال" : "Credit sales are unavailable offline"}
         </p>
       )}
       {paymentMethod === "credit" && (

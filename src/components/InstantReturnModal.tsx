@@ -50,7 +50,7 @@ export default function InstantReturnModal({
         setSearchError(
           isArabic
             ? "لا توجد كمية متاحة للمرتجع لهذا الصنف في الفاتورة"
-            : "No returnable quantity for this item on the invoice"
+            : "No returnable quantity for this item on the invoice",
         );
         return false;
       }
@@ -64,12 +64,12 @@ export default function InstantReturnModal({
       setBarcodeHint(
         isArabic
           ? `تم اختيار ${item.name_ar} من فاتورة ${invoice.invoiceNumber}`
-          : `Selected ${item.name_en || item.name_ar} from invoice ${invoice.invoiceNumber}`
+          : `Selected ${item.name_en || item.name_ar} from invoice ${invoice.invoiceNumber}`,
       );
       playBarcodeBeep(true);
       return true;
     },
-    [getAvailableReturnQty, isArabic]
+    [getAvailableReturnQty, isArabic],
   );
 
   const handleBarcodeScan = useCallback(
@@ -85,7 +85,7 @@ export default function InstantReturnModal({
           setSearchError(
             isArabic
               ? "لا توجد فاتورة تحتوي على هذا الباركود"
-              : "No invoice found with this barcode"
+              : "No invoice found with this barcode",
           );
           return;
         }
@@ -95,7 +95,7 @@ export default function InstantReturnModal({
           .map((invoice) => ({
             invoice,
             items: (invoice.items || []).filter(
-              (item) => String(item.barcode ?? "").trim() === clean
+              (item) => String(item.barcode ?? "").trim() === clean,
             ),
           }))
           .filter((entry) => entry.items.length > 0);
@@ -117,18 +117,16 @@ export default function InstantReturnModal({
         setBarcodeHint(
           isArabic
             ? "وُجدت أكثر من فاتورة — اختر الفاتورة المناسبة"
-            : "Multiple invoices found — pick the correct invoice"
+            : "Multiple invoices found — pick the correct invoice",
         );
       } catch {
         playBarcodeBeep(false);
-        setSearchError(
-          isArabic ? "تعذر البحث بالباركود" : "Could not search by barcode"
-        );
+        setSearchError(isArabic ? "تعذر البحث بالباركود" : "Could not search by barcode");
       } finally {
         setIsSearching(false);
       }
     },
-    [applyBarcodeSelection, getAvailableReturnQty, isArabic]
+    [applyBarcodeSelection, getAvailableReturnQty, isArabic],
   );
 
   useEffect(() => {
@@ -149,14 +147,12 @@ export default function InstantReturnModal({
               ? isArabic
                 ? "لم يتم العثور على فواتير مطابقة"
                 : "No matching invoices found"
-              : ""
+              : "",
           );
         })
         .catch(() => {
           setSearchResults([]);
-          setSearchError(
-            isArabic ? "تعذر البحث عن الفواتير" : "Could not search invoices"
-          );
+          setSearchError(isArabic ? "تعذر البحث عن الفواتير" : "Could not search invoices");
         })
         .finally(() => setIsSearching(false));
     }, 350);
@@ -166,14 +162,11 @@ export default function InstantReturnModal({
 
   const selectedItem = useMemo(() => {
     if (!selectedInvoice || selectedMedicineId === null) return null;
-    return (
-      selectedInvoice.items?.find((item) => item.medicineId === selectedMedicineId) || null
-    );
+    return selectedInvoice.items?.find((item) => item.medicineId === selectedMedicineId) || null;
   }, [selectedInvoice, selectedMedicineId]);
 
-  const availableQty = selectedItem && selectedInvoice
-    ? getAvailableReturnQty(selectedInvoice, selectedItem)
-    : 0;
+  const availableQty =
+    selectedItem && selectedInvoice ? getAvailableReturnQty(selectedInvoice, selectedItem) : 0;
 
   function selectInvoice(invoice: Invoice) {
     setSelectedInvoice(invoice);
@@ -184,11 +177,9 @@ export default function InstantReturnModal({
     const barcode = searchQuery.trim();
     if (barcode) {
       const matchingItems = (invoice.items || []).filter(
-        (item) => String(item.barcode ?? "").trim() === barcode
+        (item) => String(item.barcode ?? "").trim() === barcode,
       );
-      const returnable = matchingItems.find(
-        (item) => getAvailableReturnQty(invoice, item) > 0
-      );
+      const returnable = matchingItems.find((item) => getAvailableReturnQty(invoice, item) > 0);
       if (returnable) {
         setSelectedMedicineId(returnable.medicineId);
       }
@@ -208,7 +199,11 @@ export default function InstantReturnModal({
     }
 
     if (returnQty <= 0) {
-      alert(isArabic ? "كمية المرتجع يجب أن تكون أكبر من صفر" : "Return quantity must be greater than zero");
+      alert(
+        isArabic
+          ? "كمية المرتجع يجب أن تكون أكبر من صفر"
+          : "Return quantity must be greater than zero",
+      );
       return;
     }
 
@@ -216,7 +211,7 @@ export default function InstantReturnModal({
       alert(
         isArabic
           ? `الكمية المتاحة للمرتجع: ${availableQty}`
-          : `Available return quantity: ${availableQty}`
+          : `Available return quantity: ${availableQty}`,
       );
       return;
     }
@@ -230,7 +225,7 @@ export default function InstantReturnModal({
       alert(
         isArabic
           ? "لا توجد سلة مفتوحة لخصم قيمة المرتجع منها"
-          : "No open cart to deduct return amount from"
+          : "No open cart to deduct return amount from",
       );
       return;
     }
@@ -270,7 +265,7 @@ export default function InstantReturnModal({
         alert(
           isArabic
             ? `كمية المرتجع أكبر من المتاح. المتاح: ${available}`
-            : `Return quantity exceeds available: ${available}`
+            : `Return quantity exceeds available: ${available}`,
         );
       } else if (message === "item_not_in_invoice") {
         alert(isArabic ? "الصنف غير موجود في الفاتورة" : "Item not found in invoice");
@@ -281,7 +276,7 @@ export default function InstantReturnModal({
       } else {
         alert(
           message ||
-            (isArabic ? "حدث خطأ أثناء تنفيذ المرتجع" : "Failed to process instant return")
+            (isArabic ? "حدث خطأ أثناء تنفيذ المرتجع" : "Failed to process instant return"),
         );
       }
     } finally {
@@ -326,9 +321,7 @@ export default function InstantReturnModal({
             }
           />
           {isSearching && (
-            <p className="instantReturnHint">
-              {isArabic ? "جاري البحث..." : "Searching..."}
-            </p>
+            <p className="instantReturnHint">{isArabic ? "جاري البحث..." : "Searching..."}</p>
           )}
           {searchError && <p className="instantReturnError">{searchError}</p>}
 
@@ -399,8 +392,8 @@ export default function InstantReturnModal({
                                   ? "محدد"
                                   : "Selected"
                                 : isArabic
-                                ? "اختيار"
-                                : "Select"}
+                                  ? "اختيار"
+                                  : "Select"}
                             </button>
                           </td>
                         </tr>
@@ -434,17 +427,13 @@ export default function InstantReturnModal({
                   <label>{isArabic ? "طريقة الرد" : "Refund method"}</label>
                   <select
                     value={refundMethod}
-                    onChange={(e) =>
-                      setRefundMethod(e.target.value as "cash" | "deduct_from_cart")
-                    }
+                    onChange={(e) => setRefundMethod(e.target.value as "cash" | "deduct_from_cart")}
                   >
                     <option value="cash">
                       {isArabic ? "رد نقدي للعميل" : "Cash refund to customer"}
                     </option>
                     <option value="deduct_from_cart" disabled={!hasOpenCart}>
-                      {isArabic
-                        ? "خصم من السلة الحالية"
-                        : "Deduct from current cart"}
+                      {isArabic ? "خصم من السلة الحالية" : "Deduct from current cart"}
                     </option>
                   </select>
                   {!hasOpenCart && (
@@ -472,8 +461,8 @@ export default function InstantReturnModal({
                 ? "جاري تنفيذ المرتجع..."
                 : "Processing return..."
               : isArabic
-              ? "تنفيذ المرتجع"
-              : "Process Return"}
+                ? "تنفيذ المرتجع"
+                : "Process Return"}
           </button>
         </div>
       </div>

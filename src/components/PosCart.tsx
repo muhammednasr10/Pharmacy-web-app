@@ -68,8 +68,12 @@ export default function PosCart({
         <div>
           <h3>{t.cart}</h3>
           <div className="cartMiniStats">
-            <span>{isArabic ? "الأصناف" : "Items"}: {cartItemsCount}</span>
-            <span>{isArabic ? "الكمية" : "Qty"}: {cartTotalQty}</span>
+            <span>
+              {isArabic ? "الأصناف" : "Items"}: {cartItemsCount}
+            </span>
+            <span>
+              {isArabic ? "الكمية" : "Qty"}: {cartTotalQty}
+            </span>
           </div>
         </div>
         {cart.length > 0 && (
@@ -86,7 +90,9 @@ export default function PosCart({
             <div className="cartItem" key={item.id}>
               <div>
                 <strong>{isArabic ? item.name_ar : item.name_en}</strong>
-                <p>{item.price} {currency} × {item.cartQty}</p>
+                <p>
+                  {item.price} {currency} × {item.cartQty}
+                </p>
               </div>
               <div className="qtyControls">
                 <button onClick={() => onDecreaseQty(item.id)}>-</button>
@@ -114,11 +120,15 @@ export default function PosCart({
       />
       <div className="subtotalLine">
         <span>{t.subtotal}</span>
-        <strong>{subtotal.toFixed(2)} {currency}</strong>
+        <strong>
+          {subtotal.toFixed(2)} {currency}
+        </strong>
       </div>
       <div className="totalBox">
         <span>{t.total}</span>
-        <strong>{total.toFixed(2)} {currency}</strong>
+        <strong>
+          {total.toFixed(2)} {currency}
+        </strong>
       </div>
       <div className="posActionRow">
         {cart.length > 0 && (
@@ -133,8 +143,8 @@ export default function PosCart({
                 ? "جاري التعليق..."
                 : "Holding..."
               : isArabic
-              ? "تعليق الفاتورة"
-              : "Hold Invoice"}
+                ? "تعليق الفاتورة"
+                : "Hold Invoice"}
           </button>
         )}
         <button
@@ -165,10 +175,10 @@ export default function PosCart({
             ? "الاشتراك منتهي"
             : "Subscription Expired"
           : isSelling
-          ? isArabic
-            ? "جاري تسجيل البيع..."
-            : "Completing sale..."
-          : t.completeSale}
+            ? isArabic
+              ? "جاري تسجيل البيع..."
+              : "Completing sale..."
+            : t.completeSale}
       </button>
     </div>
   );

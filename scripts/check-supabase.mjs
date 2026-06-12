@@ -85,7 +85,10 @@ async function main() {
     }
   }
 
-  const { data: users, error: usersErr } = await supabase.from("users").select("uid,name,email,role,is_active").limit(5);
+  const { data: users, error: usersErr } = await supabase
+    .from("users")
+    .select("uid,name,email,role,is_active")
+    .limit(5);
   if (!usersErr && users?.length) {
     console.log("\n--- Sample users (app login must match Auth) ---\n");
     for (const u of users) {
@@ -93,7 +96,10 @@ async function main() {
     }
   }
 
-  const { data: pharmacies, error: phErr } = await supabase.from("pharmacies").select("id,name,is_active").limit(3);
+  const { data: pharmacies, error: phErr } = await supabase
+    .from("pharmacies")
+    .select("id,name,is_active")
+    .limit(3);
   if (!phErr && pharmacies?.length) {
     console.log("\n--- Pharmacies ---\n");
     for (const p of pharmacies) {
@@ -108,7 +114,9 @@ async function main() {
   if (fails === 0) {
     console.log(`All ${TABLES.length} tables reachable. Connection looks good.\n`);
   } else {
-    console.log(`${fails} table(s) failed. Check RLS policies or run supabase/schema.sql in SQL Editor.\n`);
+    console.log(
+      `${fails} table(s) failed. Check RLS policies or run supabase/schema.sql in SQL Editor.\n`,
+    );
     process.exit(1);
   }
 }

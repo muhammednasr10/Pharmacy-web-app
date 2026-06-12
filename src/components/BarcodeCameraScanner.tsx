@@ -44,16 +44,18 @@ export default function BarcodeCameraScanner({
       setError(
         isArabic
           ? "مسح الكاميرا غير مدعوم في هذا المتصفح. استخدم Chrome على الجوال أو امسح بالماسح الضوئي."
-          : "Camera scanning is not supported in this browser. Use Chrome on mobile or a hardware scanner."
+          : "Camera scanning is not supported in this browser. Use Chrome on mobile or a hardware scanner.",
       );
       setStarting(false);
       return;
     }
 
     let cancelled = false;
-    const DetectorCtor = (window as typeof window & {
-      BarcodeDetector: new (options?: { formats: string[] }) => BarcodeDetectorLike;
-    }).BarcodeDetector;
+    const DetectorCtor = (
+      window as typeof window & {
+        BarcodeDetector: new (options?: { formats: string[] }) => BarcodeDetectorLike;
+      }
+    ).BarcodeDetector;
     const detector = new DetectorCtor({
       formats: includeQrCode ? [...BARCODE_FORMATS, QR_CODE_FORMAT] : BARCODE_FORMATS,
     });
@@ -107,7 +109,7 @@ export default function BarcodeCameraScanner({
           setError(
             isArabic
               ? "تعذر فتح الكاميرا. تأكد من منح الإذن أو استخدم الماسح الضوئي."
-              : "Could not open the camera. Allow camera access or use a hardware scanner."
+              : "Could not open the camera. Allow camera access or use a hardware scanner.",
           );
           setStarting(false);
         }
@@ -147,7 +149,12 @@ export default function BarcodeCameraScanner({
                 : "Point the camera at the barcode inside the frame"}
             </p>
           </div>
-          <button type="button" className="closeBtn" onClick={onClose} aria-label={isArabic ? "إغلاق" : "Close"}>
+          <button
+            type="button"
+            className="closeBtn"
+            onClick={onClose}
+            aria-label={isArabic ? "إغلاق" : "Close"}
+          >
             ×
           </button>
         </div>

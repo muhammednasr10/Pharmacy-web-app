@@ -39,6 +39,8 @@ type CustomersPageProps = {
   onViewInvoice: (invoice: Invoice) => void;
   openPaymentModalRequest?: number;
   onOpenPaymentModalRequestConsumed?: () => void;
+  initialCustomerSearch?: string;
+  onInitialCustomerSearchConsumed?: () => void;
 };
 
 function safeNumber(value: unknown) {
@@ -63,6 +65,8 @@ export default function CustomersPage({
   onViewInvoice,
   openPaymentModalRequest = 0,
   onOpenPaymentModalRequestConsumed,
+  initialCustomerSearch = "",
+  onInitialCustomerSearchConsumed,
 }: CustomersPageProps) {
   const [customerSearch, setCustomerSearch] = useState("");
   const [customerDebtFilter, setCustomerDebtFilter] = useState<"all" | "debt" | "paid">("all");
@@ -81,7 +85,7 @@ export default function CustomersPage({
       pharmacySettings,
       getPaymentLabel,
     }),
-    [isArabic, t.currency, pharmacySettings, getPaymentLabel]
+    [isArabic, t.currency, pharmacySettings, getPaymentLabel],
   );
 
   const filteredCustomerDebts = useMemo(() => {
@@ -105,21 +109,23 @@ export default function CustomersPage({
         !searchValue ||
         payment.customerName.toLowerCase().includes(searchValue) ||
         (payment.paymentNumber || "").toLowerCase().includes(searchValue) ||
-        String(payment.userName || "").toLowerCase().includes(searchValue)
+        String(payment.userName || "")
+          .toLowerCase()
+          .includes(searchValue),
     );
   }, [customerPayments, paymentSearch]);
 
   const totalDebts = customerDebts.reduce(
     (sum, customer) => sum + safeNumber(customer.totalDebt),
-    0
+    0,
   );
   const totalPaid = customerDebts.reduce(
     (sum, customer) => sum + safeNumber(customer.paidAmount),
-    0
+    0,
   );
   const totalRemaining = customerDebts.reduce(
     (sum, customer) => sum + safeNumber(customer.remainingDebt),
-    0
+    0,
   );
 
   function getCustomerPayments(customerName: string) {
@@ -146,12 +152,18 @@ export default function CustomersPage({
     onOpenPaymentModalRequestConsumed?.();
   }, [openPaymentModalRequest]);
 
+  useEffect(() => {
+    if (!initialCustomerSearch.trim()) return;
+    setCustomerSearch(initialCustomerSearch);
+    onInitialCustomerSearchConsumed?.();
+  }, [initialCustomerSearch, onInitialCustomerSearchConsumed]);
+
   async function saveCustomerPayment() {
     if (isSubscriptionExpired) {
       alert(
         isArabic
           ? "انتهى الاشتراك — جدّد الاشتراك لاستخدام النظام"
-          : "Subscription expired — renew to use the system"
+          : "Subscription expired — renew to use the system",
       );
       return;
     }
@@ -160,40 +172,28 @@ export default function CustomersPage({
       alert(
         isArabic
           ? "ليس لديك صلاحية لتسجيل التحصيل"
-          : "You do not have permission to collect payments"
+          : "You do not have permission to collect payments",
       );
       return;
     }
 
     if (!paymentCustomerName.trim() || paymentAmount <= 0) {
       alert(
-        isArabic
-          ? "اختر العميل وأدخل مبلغ التحصيل"
-          : "Choose customer and enter payment amount"
+        isArabic ? "اختر العميل وأدخل مبلغ التحصيل" : "Choose customer and enter payment amount",
       );
       return;
     }
 
-    const customer = customerDebts.find(
-      (item) => item.customerName === paymentCustomerName.trim()
-    );
+    const customer = customerDebts.find((item) => item.customerName === paymentCustomerName.trim());
 
     if (!customer) {
-      alert(
-        isArabic
-          ? "هذا العميل غير موجود في المديونيات"
-          : "Customer not found in debts"
-      );
+      alert(isArabic ? "هذا العميل غير موجود في المديونيات" : "Customer not found in debts");
       return;
     }
 
     const remainingDebt = safeNumber(customer.remainingDebt);
     if (remainingDebt <= 0) {
-      alert(
-        isArabic
-          ? "هذا العميل لا يوجد عليه مديونية"
-          : "This customer has no remaining debt"
-      );
+      alert(isArabic ? "هذا العميل لا يوجد عليه مديونية" : "This customer has no remaining debt");
       return;
     }
 
@@ -201,7 +201,7 @@ export default function CustomersPage({
       alert(
         isArabic
           ? `مبلغ التحصيل أكبر من الرصيد المتبقي. المتبقي: ${remainingDebt.toFixed(2)} ${t.currency}`
-          : `Payment amount is greater than remaining debt. Remaining: ${remainingDebt.toFixed(2)} ${t.currency}`
+          : `Payment amount is greater than remaining debt. Remaining: ${remainingDebt.toFixed(2)} ${t.currency}`,
       );
       return;
     }
@@ -248,7 +248,7 @@ export default function CustomersPage({
           ? error.message
           : isArabic
             ? "حدث خطأ أثناء تسجيل التحصيل"
-            : "An error occurred while saving payment"
+            : "An error occurred while saving payment",
       );
     }
   }
@@ -258,7 +258,7 @@ export default function CustomersPage({
       alert(
         isArabic
           ? "حذف التحصيل متاح للمدير العام فقط"
-          : "Only the general manager can delete payments"
+          : "Only the general manager can delete payments",
       );
       return;
     }
@@ -267,7 +267,7 @@ export default function CustomersPage({
     const confirmDelete = window.confirm(
       isArabic
         ? `هل أنت متأكد من حذف التحصيل رقم ${paymentNum}؟`
-        : `Are you sure you want to delete payment ${paymentNum}?`
+        : `Are you sure you want to delete payment ${paymentNum}?`,
     );
     if (!confirmDelete) return;
 
@@ -290,7 +290,7 @@ export default function CustomersPage({
           ? error.message
           : isArabic
             ? "حدث خطأ أثناء حذف التحصيل"
-            : "An error occurred while deleting payment"
+            : "An error occurred while deleting payment",
       );
     }
   }
@@ -361,9 +361,7 @@ export default function CustomersPage({
         />
         <select
           value={customerDebtFilter}
-          onChange={(e) =>
-            setCustomerDebtFilter(e.target.value as "all" | "debt" | "paid")
-          }
+          onChange={(e) => setCustomerDebtFilter(e.target.value as "all" | "debt" | "paid")}
         >
           <option value="all">{isArabic ? "كل العملاء" : "All customers"}</option>
           <option value="debt">{isArabic ? "عليه مديونية" : "Has debt"}</option>
@@ -381,9 +379,7 @@ export default function CustomersPage({
       </div>
 
       {filteredCustomerDebts.length === 0 ? (
-        <p className="empty">
-          {isArabic ? "لا توجد مديونيات آجلة" : "No credit debts"}
-        </p>
+        <p className="empty">{isArabic ? "لا توجد مديونيات آجلة" : "No credit debts"}</p>
       ) : (
         <div className="tableWrap">
           <table>
@@ -411,9 +407,7 @@ export default function CustomersPage({
                   <td>
                     <span
                       className={
-                        safeNumber(customer.remainingDebt) > 0
-                          ? "badge danger"
-                          : "badge ok"
+                        safeNumber(customer.remainingDebt) > 0 ? "badge danger" : "badge ok"
                       }
                     >
                       {safeNumber(customer.remainingDebt).toFixed(2)} {t.currency}
@@ -431,10 +425,7 @@ export default function CustomersPage({
                           {isArabic ? "تحصيل" : "Collect"}
                         </button>
                       )}
-                      <button
-                        className="printBtn"
-                        onClick={() => setSelectedCustomer(customer)}
-                      >
+                      <button className="printBtn" onClick={() => setSelectedCustomer(customer)}>
                         {isArabic ? "كشف حساب" : "Statement"}
                       </button>
                     </div>
@@ -466,9 +457,7 @@ export default function CustomersPage({
       </div>
 
       {filteredCustomerPayments.length === 0 ? (
-        <p className="empty">
-          {isArabic ? "لا توجد تحصيلات حتى الآن" : "No payments yet"}
-        </p>
+        <p className="empty">{isArabic ? "لا توجد تحصيلات حتى الآن" : "No payments yet"}</p>
       ) : (
         <div className="tableWrap">
           <table>
@@ -523,19 +512,11 @@ export default function CustomersPage({
       )}
 
       {showCustomerPaymentModal && (
-        <div
-          className="modalOverlay"
-          onClick={() => setShowCustomerPaymentModal(false)}
-        >
-          <div
-            className="invoiceModal purchaseModal"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="modalOverlay" onClick={() => setShowCustomerPaymentModal(false)}>
+          <div className="invoiceModal purchaseModal" onClick={(e) => e.stopPropagation()}>
             <div className="modalHeader">
               <div>
-                <h2>
-                  {isArabic ? "تسجيل تحصيل من عميل" : "Collect Customer Payment"}
-                </h2>
+                <h2>{isArabic ? "تسجيل تحصيل من عميل" : "Collect Customer Payment"}</h2>
                 <p>
                   {isArabic
                     ? "اختر العميل وأدخل مبلغ التحصيل"
@@ -564,15 +545,13 @@ export default function CustomersPage({
                   value={paymentCustomerName}
                   onChange={(e) => setPaymentCustomerName(e.target.value)}
                 >
-                  <option value="">
-                    {isArabic ? "اختر العميل" : "Choose customer"}
-                  </option>
+                  <option value="">{isArabic ? "اختر العميل" : "Choose customer"}</option>
                   {customerDebts
                     .filter((customer) => safeNumber(customer.remainingDebt) > 0)
                     .map((customer) => (
                       <option key={customer.customerName} value={customer.customerName}>
-                        {customer.customerName} -{" "}
-                        {safeNumber(customer.remainingDebt).toFixed(2)} {t.currency}
+                        {customer.customerName} - {safeNumber(customer.remainingDebt).toFixed(2)}{" "}
+                        {t.currency}
                       </option>
                     ))}
                 </select>
@@ -580,17 +559,13 @@ export default function CustomersPage({
                   type="number"
                   value={paymentAmount || ""}
                   onChange={(e) =>
-                    setPaymentAmount(
-                      e.target.value === "" ? 0 : Number(e.target.value)
-                    )
+                    setPaymentAmount(e.target.value === "" ? 0 : Number(e.target.value))
                   }
                   placeholder={isArabic ? "مبلغ التحصيل" : "Payment amount"}
                 />
                 <select
                   value={paymentMethodForDebt}
-                  onChange={(e) =>
-                    setPaymentMethodForDebt(e.target.value as PaymentMethod)
-                  }
+                  onChange={(e) => setPaymentMethodForDebt(e.target.value as PaymentMethod)}
                 >
                   <option value="cash">{getPaymentLabel("cash")}</option>
                   <option value="visa">{getPaymentLabel("visa")}</option>
@@ -692,10 +667,7 @@ export default function CustomersPage({
                         {safeNumber(invoice.total).toFixed(2)} {t.currency}
                       </td>
                       <td>
-                        <button
-                          className="smallBtn"
-                          onClick={() => onViewInvoice(invoice)}
-                        >
+                        <button className="smallBtn" onClick={() => onViewInvoice(invoice)}>
                           {t.view}
                         </button>
                       </td>
@@ -711,9 +683,7 @@ export default function CustomersPage({
 
             {getCustomerPayments(selectedCustomer.customerName).length === 0 ? (
               <p className="empty">
-                {isArabic
-                  ? "لا توجد تحصيلات لهذا العميل"
-                  : "No payments for this customer"}
+                {isArabic ? "لا توجد تحصيلات لهذا العميل" : "No payments for this customer"}
               </p>
             ) : (
               <div className="tableWrap">
@@ -751,7 +721,7 @@ export default function CustomersPage({
                   printCustomerStatement(
                     selectedCustomer,
                     getCustomerPayments(selectedCustomer.customerName),
-                    exportCtx
+                    exportCtx,
                   )
                 }
               >
@@ -764,7 +734,7 @@ export default function CustomersPage({
                   exportCustomerStatementCSV(
                     selectedCustomer,
                     getCustomerPayments(selectedCustomer.customerName),
-                    exportCtx
+                    exportCtx,
                   )
                 }
               >

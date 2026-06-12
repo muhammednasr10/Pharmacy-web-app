@@ -103,7 +103,7 @@ export default function CostsPage({
 
   const totalFilteredAmount = useMemo(
     () => filteredCosts.reduce((sum, cost) => sum + safeNumber(cost.amount), 0),
-    [filteredCosts, safeNumber]
+    [filteredCosts, safeNumber],
   );
 
   const monthTotal = useMemo(() => {
@@ -149,7 +149,7 @@ export default function CostsPage({
       alert(
         isArabic
           ? "أدخل عنوان التكلفة ومبلغاً أكبر من صفر"
-          : "Enter a title and amount greater than zero"
+          : "Enter a title and amount greater than zero",
       );
       return;
     }
@@ -217,7 +217,7 @@ export default function CostsPage({
             : "Cost updated successfully"
           : isArabic
             ? "تم تسجيل التكلفة بنجاح"
-            : "Cost saved successfully"
+            : "Cost saved successfully",
       );
     } catch (error) {
       console.error("Save cost error:", error);
@@ -226,7 +226,7 @@ export default function CostsPage({
           ? error.message
           : isArabic
             ? "تعذر حفظ التكلفة"
-            : "Could not save cost"
+            : "Could not save cost",
       );
     } finally {
       setSaving(false);
@@ -237,9 +237,7 @@ export default function CostsPage({
     if (!canManageCosts || isSubscriptionExpired) return;
 
     const confirmed = window.confirm(
-      isArabic
-        ? `حذف تكلفة "${cost.title}"؟`
-        : `Delete cost "${cost.title}"?`
+      isArabic ? `حذف تكلفة "${cost.title}"؟` : `Delete cost "${cost.title}"?`,
     );
     if (!confirmed) return;
 
@@ -263,7 +261,7 @@ export default function CostsPage({
           ? error.message
           : isArabic
             ? "تعذر حذف التكلفة"
-            : "Could not delete cost"
+            : "Could not delete cost",
       );
     } finally {
       setDeletingId(null);
@@ -428,9 +426,7 @@ export default function CostsPage({
                         <button
                           type="button"
                           className="deleteSmallBtn"
-                          disabled={
-                            isSubscriptionExpired || deletingId === cost.id
-                          }
+                          disabled={isSubscriptionExpired || deletingId === cost.id}
                           onClick={() => void handleDelete(cost)}
                         >
                           {deletingId === cost.id ? "..." : t.delete}
@@ -471,7 +467,9 @@ export default function CostsPage({
                 <input
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  placeholder={isArabic ? "مثال: فاتورة كهرباء مارس" : "e.g. March electricity bill"}
+                  placeholder={
+                    isArabic ? "مثال: فاتورة كهرباء مارس" : "e.g. March electricity bill"
+                  }
                   disabled={saving}
                 />
               </div>

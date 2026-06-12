@@ -86,7 +86,7 @@ export default function ReturnsPage({
         const bTime = parseReturnDate(b.createdAt || b.date)?.getTime() || 0;
         return bTime - aTime;
       }),
-    [returns]
+    [returns],
   );
 
   const filteredReturns = useMemo(() => {
@@ -128,7 +128,7 @@ export default function ReturnsPage({
 
   const returnsTotal = useMemo(
     () => filteredReturns.reduce((sum, record) => sum + safeNumber(record.total), 0),
-    [filteredReturns, safeNumber]
+    [filteredReturns, safeNumber],
   );
 
   function handlePickInvoiceForReturn(invoice: Invoice) {
@@ -334,10 +334,7 @@ export default function ReturnsPage({
 
       {showNewReturnPicker && canUseReturns && (
         <div className="modalOverlay" onClick={() => setShowNewReturnPicker(false)}>
-          <div
-            className="invoiceModal returnsPickerModal"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="invoiceModal returnsPickerModal" onClick={(e) => e.stopPropagation()}>
             <div className="modalHeader">
               <div>
                 <h2>{isArabic ? "تسجيل مرتجع جديد" : "Create New Return"}</h2>

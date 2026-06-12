@@ -58,7 +58,7 @@ export function medicineToCountLine(medicine: Medicine, countedQty = 1): StockCo
 export function recordStockCountScan(
   session: StockCountSession,
   medicine: Medicine,
-  increment = 1
+  increment = 1,
 ): StockCountSession {
   const existing = session.lines.find((line) => line.medicineId === medicine.id);
   if (existing) {
@@ -67,7 +67,7 @@ export function recordStockCountScan(
       lines: session.lines.map((line) =>
         line.medicineId === medicine.id
           ? { ...line, countedQty: line.countedQty + increment }
-          : line
+          : line,
       ),
     };
   }
@@ -80,18 +80,21 @@ export function recordStockCountScan(
 export function setStockCountLineQty(
   session: StockCountSession,
   medicineId: number,
-  countedQty: number
+  countedQty: number,
 ): StockCountSession {
   const safeQty = Math.max(0, Math.floor(Number(countedQty) || 0));
   return {
     ...session,
     lines: session.lines.map((line) =>
-      line.medicineId === medicineId ? { ...line, countedQty: safeQty } : line
+      line.medicineId === medicineId ? { ...line, countedQty: safeQty } : line,
     ),
   };
 }
 
-export function removeStockCountLine(session: StockCountSession, medicineId: number): StockCountSession {
+export function removeStockCountLine(
+  session: StockCountSession,
+  medicineId: number,
+): StockCountSession {
   return {
     ...session,
     lines: session.lines.filter((line) => line.medicineId !== medicineId),

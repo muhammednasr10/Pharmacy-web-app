@@ -4,12 +4,7 @@ import {
   type SubscriptionTier,
 } from "../config/subscriptionTiers";
 import type { AppUser, Page, PharmacySettings } from "../types";
-import {
-  isAccountant,
-  isBranchManager,
-  isOrgPharmacyAdmin,
-  isSuperAdmin,
-} from "./roles";
+import { isAccountant, isBranchManager, isOrgPharmacyAdmin, isSuperAdmin } from "./roles";
 
 export type TierFeatureKey =
   | "branchesPage"
@@ -54,18 +49,17 @@ export function getTierFeatures(tier: SubscriptionTier): TierFeatures {
 
 export function resolveOrganizationTier(
   branches: PharmacySettings[],
-  homePharmacyId?: string | null
+  homePharmacyId?: string | null,
 ): SubscriptionTier {
   if (!branches.length) return "basic";
-  const home =
-    branches.find((branch) => branch.id === homePharmacyId) || branches[0];
+  const home = branches.find((branch) => branch.id === homePharmacyId) || branches[0];
   return parseSubscriptionTier(home?.subscriptionTier || home?.subscriptionPlan);
 }
 
 export function isTierFeatureEnabled(
   appUser: AppUser | null | undefined,
   tier: SubscriptionTier,
-  feature: TierFeatureKey
+  feature: TierFeatureKey,
 ): boolean {
   if (isSuperAdmin(appUser)) return true;
   return getTierFeatures(tier)[feature];
@@ -74,7 +68,7 @@ export function isTierFeatureEnabled(
 export function filterPagesBySubscriptionTier(
   pages: Page[],
   appUser: AppUser | null | undefined,
-  tier: SubscriptionTier
+  tier: SubscriptionTier,
 ): Page[] {
   if (isSuperAdmin(appUser)) return pages;
   const features = getTierFeatures(tier);
@@ -87,7 +81,7 @@ export function filterPagesBySubscriptionTier(
 export function canSwitchBranchesWithTier(
   appUser: AppUser | null | undefined,
   tier: SubscriptionTier,
-  branchCount: number
+  branchCount: number,
 ): boolean {
   if (branchCount <= 1) return false;
   if (isSuperAdmin(appUser)) return true;
@@ -98,7 +92,7 @@ export function canSwitchBranchesWithTier(
 export function canViewBranchBreakdownWithTier(
   appUser: AppUser | null | undefined,
   tier: SubscriptionTier,
-  branchCount: number
+  branchCount: number,
 ): boolean {
   if (branchCount <= 1) return false;
   if (isSuperAdmin(appUser)) return true;
@@ -108,7 +102,7 @@ export function canViewBranchBreakdownWithTier(
 
 export function canManageOrgBranchesWithTier(
   appUser: AppUser | null | undefined,
-  tier: SubscriptionTier
+  tier: SubscriptionTier,
 ): boolean {
   if (!isOrgPharmacyAdmin(appUser)) return false;
   return isTierFeatureEnabled(appUser, tier, "branchesPage");
@@ -117,7 +111,7 @@ export function canManageOrgBranchesWithTier(
 export function canTransferStockWithTier(
   appUser: AppUser | null | undefined,
   tier: SubscriptionTier,
-  branchCount: number
+  branchCount: number,
 ): boolean {
   if (branchCount <= 1) return false;
   if (!isOrgPharmacyAdmin(appUser)) return false;
@@ -127,7 +121,7 @@ export function canTransferStockWithTier(
 export function canShowOrgInventoryAlertsWithTier(
   appUser: AppUser | null | undefined,
   tier: SubscriptionTier,
-  branchCount: number
+  branchCount: number,
 ): boolean {
   if (branchCount <= 1) return false;
   if (!isOrgPharmacyAdmin(appUser)) return false;
@@ -137,7 +131,7 @@ export function canShowOrgInventoryAlertsWithTier(
 export function canShowCentralHrWithTier(
   appUser: AppUser | null | undefined,
   tier: SubscriptionTier,
-  branchCount: number
+  branchCount: number,
 ): boolean {
   if (!isOrgPharmacyAdmin(appUser)) return false;
   if (branchCount <= 1) return false;
@@ -148,7 +142,7 @@ export function canShowCentralHrWithTier(
 export function canViewOrgHrAcrossBranchesWithTier(
   appUser: AppUser | null | undefined,
   tier: SubscriptionTier,
-  branchCount: number
+  branchCount: number,
 ): boolean {
   if (!isAccountant(appUser)) return false;
   if (branchCount <= 1) return false;
@@ -158,7 +152,7 @@ export function canViewOrgHrAcrossBranchesWithTier(
 export function canViewOrgHrWithTier(
   appUser: AppUser | null | undefined,
   tier: SubscriptionTier,
-  branchCount: number
+  branchCount: number,
 ): boolean {
   return (
     canShowCentralHrWithTier(appUser, tier, branchCount) ||
@@ -170,7 +164,7 @@ export function canViewOrgHrWithTier(
 export function canManageOrgLoginAccountsWithTier(
   appUser: AppUser | null | undefined,
   tier: SubscriptionTier,
-  branchCount: number
+  branchCount: number,
 ): boolean {
   if (!isOrgPharmacyAdmin(appUser)) return false;
   if (branchCount <= 1) return false;
@@ -180,7 +174,7 @@ export function canManageOrgLoginAccountsWithTier(
 export function canReviewBranchTransfersWithTier(
   appUser: AppUser | null | undefined,
   tier: SubscriptionTier,
-  branchCount: number
+  branchCount: number,
 ): boolean {
   if (branchCount <= 1) return false;
   if (isSuperAdmin(appUser)) return true;
@@ -223,7 +217,7 @@ export type TierUpgradePrompt = {
 export function getTierUpgradePrompt(
   appUser: AppUser | null | undefined,
   tier: SubscriptionTier,
-  isArabic: boolean
+  isArabic: boolean,
 ): TierUpgradePrompt | null {
   if (!isOrgPharmacyAdmin(appUser) || isSuperAdmin(appUser)) return null;
   if (tier === "premium") return null;
@@ -255,12 +249,10 @@ export function getTierUpgradePrompt(
 export function getTierUpgradeHint(
   tier: SubscriptionTier,
   feature: TierFeatureKey,
-  isArabic: boolean
+  isArabic: boolean,
 ): string {
   const requiredTier: SubscriptionTier =
-    feature === "centralHr" || feature === "orgInventoryAlerts"
-      ? "premium"
-      : "professional";
+    feature === "centralHr" || feature === "orgInventoryAlerts" ? "premium" : "professional";
   const required = getSubscriptionTier(requiredTier);
   const current = getSubscriptionTier(tier);
   if (isArabic) {
@@ -275,7 +267,7 @@ export function getTierUpgradeNotice(
   tier: SubscriptionTier,
   branchCount: number,
   feature: TierFeatureKey,
-  isArabic: boolean
+  isArabic: boolean,
 ): string | null {
   if (isSuperAdmin(appUser)) return null;
   if (!isOrgPharmacyAdmin(appUser)) return null;

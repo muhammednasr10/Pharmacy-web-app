@@ -73,12 +73,12 @@ function downloadCsv(filename: string, rows: unknown[][]) {
     .map((row) =>
       row
         .map((value) => {
-          if (typeof value === "string" && value.startsWith("=\"")) {
+          if (typeof value === "string" && value.startsWith('="')) {
             return value;
           }
           return escapeCSV(value);
         })
-        .join(",")
+        .join(","),
     )
     .join("\n");
 
@@ -129,14 +129,14 @@ function addPdfHeader(docPdf: jsPDF, snapshot: ReportExportSnapshot, title: stri
     `${label(snapshot, "الهاتف", "Phone")}: ${snapshot.pharmacyPhone || "-"}`,
     pageWidth / 2,
     y,
-    { align: "center" }
+    { align: "center" },
   );
   y += 6;
   docPdf.text(
     `${label(snapshot, "العنوان", "Address")}: ${snapshot.pharmacyAddress || "-"}`,
     pageWidth / 2,
     y,
-    { align: "center" }
+    { align: "center" },
   );
   y += 8;
 
@@ -144,12 +144,9 @@ function addPdfHeader(docPdf: jsPDF, snapshot: ReportExportSnapshot, title: stri
   docPdf.text(title, pageWidth / 2, y, { align: "center" });
   y += 6;
   docPdf.setFontSize(9);
-  docPdf.text(
-    `${snapshot.reportFrom} → ${snapshot.reportTo}`,
-    pageWidth / 2,
-    y,
-    { align: "center" }
-  );
+  docPdf.text(`${snapshot.reportFrom} → ${snapshot.reportTo}`, pageWidth / 2, y, {
+    align: "center",
+  });
 
   return y + 12;
 }
@@ -170,15 +167,24 @@ export function downloadFinancialReportCsv(snapshot: ReportExportSnapshot) {
     [label(snapshot, "تاريخ التصدير", "Export date"), new Date().toLocaleString()],
     [],
     [label(snapshot, "ملخص الفترة", "Period Summary")],
-    [label(snapshot, "إجمالي المبيعات", "Total Sales"), money(snapshot.filteredReportTotal, snapshot.currency)],
-    [label(snapshot, "مجمل الربح", "Gross Profit"), money(snapshot.filteredReportProfitTotal, snapshot.currency)],
     [
-      label(snapshot, "هامش الربح", "Profit Margin"),
-      `${snapshot.profitMargin.toFixed(1)}%`,
+      label(snapshot, "إجمالي المبيعات", "Total Sales"),
+      money(snapshot.filteredReportTotal, snapshot.currency),
     ],
+    [
+      label(snapshot, "مجمل الربح", "Gross Profit"),
+      money(snapshot.filteredReportProfitTotal, snapshot.currency),
+    ],
+    [label(snapshot, "هامش الربح", "Profit Margin"), `${snapshot.profitMargin.toFixed(1)}%`],
     [label(snapshot, "صافي المبيعات", "Net Sales"), money(snapshot.netSales, snapshot.currency)],
-    [label(snapshot, "المرتجعات", "Returns"), money(snapshot.reportReturnsTotal, snapshot.currency)],
-    [label(snapshot, "الخصومات", "Discounts"), money(snapshot.filteredReportDiscountTotal, snapshot.currency)],
+    [
+      label(snapshot, "المرتجعات", "Returns"),
+      money(snapshot.reportReturnsTotal, snapshot.currency),
+    ],
+    [
+      label(snapshot, "الخصومات", "Discounts"),
+      money(snapshot.filteredReportDiscountTotal, snapshot.currency),
+    ],
     [label(snapshot, "التكاليف", "Costs"), money(snapshot.reportCostsTotal, snapshot.currency)],
     [
       label(snapshot, "صافي الربح بعد التكاليف", "Net Profit After Costs"),
@@ -208,7 +214,12 @@ export function downloadFinancialReportCsv(snapshot: ReportExportSnapshot) {
       .map(([name, total]) => [name, money(total, snapshot.currency)]),
     [],
     [label(snapshot, "أكثر الأدوية مبيعًا", "Top Selling Medicines")],
-    ["#", label(snapshot, "الصنف", "Item"), label(snapshot, "الكمية", "Qty"), label(snapshot, "الإجمالي", "Total")],
+    [
+      "#",
+      label(snapshot, "الصنف", "Item"),
+      label(snapshot, "الكمية", "Qty"),
+      label(snapshot, "الإجمالي", "Total"),
+    ],
     ...snapshot.topSellingMedicines.map((item, index) => [
       index + 1,
       snapshot.isArabic ? item.name_ar : item.name_en,
@@ -245,7 +256,7 @@ export function downloadFinancialReportCsv(snapshot: ReportExportSnapshot) {
         money(row.returnsTotal, snapshot.currency),
         money(row.costsTotal, snapshot.currency),
         money(row.netProfitAfterCosts, snapshot.currency),
-      ])
+      ]),
     );
   }
 
@@ -269,7 +280,7 @@ export function downloadFinancialReportCsv(snapshot: ReportExportSnapshot) {
       Number(medicine.buyPrice || 0).toFixed(2),
       Number(medicine.price || 0).toFixed(2),
       medicine.expiry,
-    ])
+    ]),
   );
 
   downloadCsv(`financial-report-${snapshot.reportFrom}_${snapshot.reportTo}.csv`, rows);
@@ -279,18 +290,23 @@ export function downloadFinancialReportPdf(snapshot: ReportExportSnapshot) {
   const docPdf = new jsPDF();
   const margin = 10;
   const pageWidth = docPdf.internal.pageSize.getWidth();
-  let y = addPdfHeader(
-    docPdf,
-    snapshot,
-    label(snapshot, "التقرير المالي", "Financial Report")
-  );
+  let y = addPdfHeader(docPdf, snapshot, label(snapshot, "التقرير المالي", "Financial Report"));
 
   const summaryLines: Array<[string, string]> = [
-    [label(snapshot, "إجمالي المبيعات", "Total Sales"), money(snapshot.filteredReportTotal, snapshot.currency)],
-    [label(snapshot, "مجمل الربح", "Gross Profit"), money(snapshot.filteredReportProfitTotal, snapshot.currency)],
+    [
+      label(snapshot, "إجمالي المبيعات", "Total Sales"),
+      money(snapshot.filteredReportTotal, snapshot.currency),
+    ],
+    [
+      label(snapshot, "مجمل الربح", "Gross Profit"),
+      money(snapshot.filteredReportProfitTotal, snapshot.currency),
+    ],
     [label(snapshot, "هامش الربح", "Profit Margin"), `${snapshot.profitMargin.toFixed(1)}%`],
     [label(snapshot, "صافي المبيعات", "Net Sales"), money(snapshot.netSales, snapshot.currency)],
-    [label(snapshot, "المرتجعات", "Returns"), money(snapshot.reportReturnsTotal, snapshot.currency)],
+    [
+      label(snapshot, "المرتجعات", "Returns"),
+      money(snapshot.reportReturnsTotal, snapshot.currency),
+    ],
     [label(snapshot, "التكاليف", "Costs"), money(snapshot.reportCostsTotal, snapshot.currency)],
     [
       label(snapshot, "صافي الربح بعد التكاليف", "Net Profit After Costs"),
@@ -321,7 +337,7 @@ export function downloadFinancialReportPdf(snapshot: ReportExportSnapshot) {
     docPdf.text(
       `${snapshot.getPaymentLabel(method)}: ${money(snapshot.reportPaymentTotals[method] || 0, snapshot.currency)}`,
       margin,
-      y
+      y,
     );
     y += 6;
   });
@@ -382,7 +398,15 @@ export function downloadFinancialReportPdf(snapshot: ReportExportSnapshot) {
     docPdf.text(label(snapshot, "مقارنة الفروع", "Branch Comparison"), margin, y);
     y += 8;
     docPdf.setFontSize(8);
-    const cols = [margin, margin + 42, margin + 62, margin + 82, margin + 102, margin + 122, margin + 142];
+    const cols = [
+      margin,
+      margin + 42,
+      margin + 62,
+      margin + 82,
+      margin + 102,
+      margin + 122,
+      margin + 142,
+    ];
     docPdf.text(label(snapshot, "الفرع", "Branch"), cols[0], y);
     docPdf.text(label(snapshot, "فواتير", "Inv."), cols[1], y);
     docPdf.text(label(snapshot, "مبيعات", "Sales"), cols[2], y);
@@ -418,7 +442,7 @@ export function downloadFinancialReportPdf(snapshot: ReportExportSnapshot) {
       docPdf.text(
         (snapshot.isArabic ? medicine.name_ar : medicine.name_en).slice(0, 42),
         margin,
-        y
+        y,
       );
       docPdf.text(String(medicine.qty), margin + 95, y);
       docPdf.text(Number(medicine.price || 0).toFixed(2), margin + 115, y);
@@ -430,19 +454,16 @@ export function downloadFinancialReportPdf(snapshot: ReportExportSnapshot) {
       docPdf.text(
         label(snapshot, "… والمزيد في ملف Excel", "… more rows in Excel export"),
         margin,
-        y
+        y,
       );
     }
   }
 
   y = ensurePageSpace(docPdf, y, 16);
   docPdf.setFontSize(9);
-  docPdf.text(
-    snapshot.invoiceFooter || snapshot.pharmacyName,
-    pageWidth / 2,
-    y,
-    { align: "center" }
-  );
+  docPdf.text(snapshot.invoiceFooter || snapshot.pharmacyName, pageWidth / 2, y, {
+    align: "center",
+  });
 
   docPdf.save(`financial-report-${snapshot.reportFrom}_${snapshot.reportTo}.pdf`);
 }

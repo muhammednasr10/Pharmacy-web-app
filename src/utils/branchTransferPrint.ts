@@ -54,7 +54,7 @@ function addHeader(
   docPdf: jsPDF,
   params: BranchTransferPrintParams,
   title: string,
-  subtitle: string
+  subtitle: string,
 ) {
   setupPdfFont(docPdf, params.isArabic);
   const pageWidth = docPdf.internal.pageSize.getWidth();
@@ -71,10 +71,12 @@ function addHeader(
 
   docPdf.setFontSize(18);
   docPdf.text(
-    params.isArabic ? settings?.name || "صيدلية Focus" : settings?.name_en || settings?.name || "Focus Pharmacy",
+    params.isArabic
+      ? settings?.name || "صيدلية Focus"
+      : settings?.name_en || settings?.name || "Focus Pharmacy",
     pageWidth / 2,
     y,
-    { align: "center" }
+    { align: "center" },
   );
   y += 7;
 
@@ -83,14 +85,14 @@ function addHeader(
     `${label(params.isArabic, "الهاتف", "Phone")}: ${settings?.phone || "-"}`,
     pageWidth / 2,
     y,
-    { align: "center" }
+    { align: "center" },
   );
   y += 6;
   docPdf.text(
     `${label(params.isArabic, "العنوان", "Address")}: ${settings?.address || "-"}`,
     pageWidth / 2,
     y,
-    { align: "center" }
+    { align: "center" },
   );
   y += 8;
 
@@ -145,7 +147,7 @@ export function printBranchTransferPDF(params: BranchTransferPrintParams) {
     docPdf,
     params,
     label(ar, "سند نقل مخزون بين الفروع", "Branch Stock Transfer Note"),
-    `${params.transferNumber} · ${formatPrintDate(params.createdAt, ar)}`
+    `${params.transferNumber} · ${formatPrintDate(params.createdAt, ar)}`,
   );
 
   docPdf.setFontSize(10);
@@ -153,31 +155,23 @@ export function printBranchTransferPDF(params: BranchTransferPrintParams) {
   docPdf.rect(margin, y, pageWidth - margin * 2, 36, "F");
   docPdf.rect(margin, y, pageWidth - margin * 2, 36);
 
-  docPdf.text(`${label(ar, "رقم السند", "Transfer No.")}: ${params.transferNumber}`, margin + 4, y + 9);
+  docPdf.text(
+    `${label(ar, "رقم السند", "Transfer No.")}: ${params.transferNumber}`,
+    margin + 4,
+    y + 9,
+  );
   docPdf.text(
     `${label(ar, "التاريخ", "Date")}: ${formatPrintDate(params.createdAt, ar)}`,
     margin + 4,
-    y + 18
+    y + 18,
   );
-  docPdf.text(
-    `${label(ar, "المستخدم", "User")}: ${params.userName || "—"}`,
-    margin + 4,
-    y + 27
-  );
-  docPdf.text(
-    `${label(ar, "من فرع", "From")}: ${params.fromBranchLabel}`,
-    pageWidth / 2,
-    y + 9
-  );
-  docPdf.text(
-    `${label(ar, "إلى فرع", "To")}: ${params.toBranchLabel}`,
-    pageWidth / 2,
-    y + 18
-  );
+  docPdf.text(`${label(ar, "المستخدم", "User")}: ${params.userName || "—"}`, margin + 4, y + 27);
+  docPdf.text(`${label(ar, "من فرع", "From")}: ${params.fromBranchLabel}`, pageWidth / 2, y + 9);
+  docPdf.text(`${label(ar, "إلى فرع", "To")}: ${params.toBranchLabel}`, pageWidth / 2, y + 18);
   docPdf.text(
     `${label(ar, "إجمالي الكمية", "Total qty")}: ${params.totalQty}`,
     pageWidth / 2,
-    y + 27
+    y + 27,
   );
 
   y += 44;

@@ -22,14 +22,16 @@ export default function InvoiceModal({
   safeNumber,
 }: InvoiceModalProps) {
   return (
-    <div className="modalOverlay">
-      <div className="invoiceModal">
+    <div className="modalOverlay" onClick={onClose}>
+      <div className="invoiceModal" onClick={(e) => e.stopPropagation()}>
         <div className="modalHeader">
           <div>
             <h2>{t.invoiceDetails}</h2>
             <p>{selectedInvoice.invoiceNumber || `#${selectedInvoice.id}`}</p>
           </div>
-          <button className="closeBtn" onClick={onClose}>×</button>
+          <button className="closeBtn" onClick={onClose}>
+            ×
+          </button>
         </div>
         <div className="invoiceInfo">
           <div>
@@ -42,15 +44,21 @@ export default function InvoiceModal({
           </div>
           <div>
             <span>{t.subtotal}</span>
-            <strong>{safeNumber(selectedInvoice.subtotal || selectedInvoice.total).toFixed(2)} {currency}</strong>
+            <strong>
+              {safeNumber(selectedInvoice.subtotal || selectedInvoice.total).toFixed(2)} {currency}
+            </strong>
           </div>
           <div>
             <span>{t.discount}</span>
-            <strong>{safeNumber(selectedInvoice.discount).toFixed(2)} {currency}</strong>
+            <strong>
+              {safeNumber(selectedInvoice.discount).toFixed(2)} {currency}
+            </strong>
           </div>
           <div>
             <span>{t.total}</span>
-            <strong>{safeNumber(selectedInvoice.total).toFixed(2)} {currency}</strong>
+            <strong>
+              {safeNumber(selectedInvoice.total).toFixed(2)} {currency}
+            </strong>
           </div>
         </div>
         <div className="tableWrap">
@@ -65,27 +73,38 @@ export default function InvoiceModal({
               </tr>
             </thead>
             <tbody>
-              {(Array.isArray(selectedInvoice.items) ? selectedInvoice.items : []).map((item, index) => {
-                const quantity = safeNumber(item.quantity);
-                const unitPrice = safeNumber(item.unitPrice);
-                const lineTotal = safeNumber(item.lineTotal || unitPrice * quantity);
+              {(Array.isArray(selectedInvoice.items) ? selectedInvoice.items : []).map(
+                (item, index) => {
+                  const quantity = safeNumber(item.quantity);
+                  const unitPrice = safeNumber(item.unitPrice);
+                  const lineTotal = safeNumber(item.lineTotal || unitPrice * quantity);
 
-                return (
-                  <tr key={`${item.medicineId || index}-${index}`}>
-                    <td>{isArabic ? item.name_ar || "-" : item.name_en || "-"}</td>
-                    <td>{item.barcode || "-"}</td>
-                    <td>{quantity}</td>
-                    <td>{unitPrice.toFixed(2)} {currency}</td>
-                    <td>{lineTotal.toFixed(2)} {currency}</td>
-                  </tr>
-                );
-              })}
+                  return (
+                    <tr key={`${item.medicineId || index}-${index}`}>
+                      <td>{isArabic ? item.name_ar || "-" : item.name_en || "-"}</td>
+                      <td>{item.barcode || "-"}</td>
+                      <td>{quantity}</td>
+                      <td>
+                        {unitPrice.toFixed(2)} {currency}
+                      </td>
+                      <td>
+                        {lineTotal.toFixed(2)} {currency}
+                      </td>
+                    </tr>
+                  );
+                },
+              )}
             </tbody>
           </table>
         </div>
         <div className="modalActions">
-          <button className="printFullBtn" onClick={() => onPrint(selectedInvoice)}><span aria-hidden="true">🖨️</span><span>{t.printInvoice}</span></button>
-          <button className="completeBtn" onClick={onClose}>{t.close}</button>
+          <button className="printFullBtn" onClick={() => onPrint(selectedInvoice)}>
+            <span aria-hidden="true">🖨️</span>
+            <span>{t.printInvoice}</span>
+          </button>
+          <button className="completeBtn" onClick={onClose}>
+            {t.close}
+          </button>
         </div>
       </div>
     </div>

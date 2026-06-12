@@ -81,17 +81,25 @@ export function filterActivityLogs(logs: ActivityLog[], filters: ActivityLogFilt
   return logs.filter((log) => {
     const matchesSearch =
       !searchValue ||
-      String(log.title || "").toLowerCase().includes(searchValue) ||
-      String(log.description || "").toLowerCase().includes(searchValue) ||
-      String(log.referenceId || "").toLowerCase().includes(searchValue) ||
-      String(log.userName || "").toLowerCase().includes(searchValue) ||
-      String(log.type || "").toLowerCase().includes(searchValue);
+      String(log.title || "")
+        .toLowerCase()
+        .includes(searchValue) ||
+      String(log.description || "")
+        .toLowerCase()
+        .includes(searchValue) ||
+      String(log.referenceId || "")
+        .toLowerCase()
+        .includes(searchValue) ||
+      String(log.userName || "")
+        .toLowerCase()
+        .includes(searchValue) ||
+      String(log.type || "")
+        .toLowerCase()
+        .includes(searchValue);
 
     const matchesType = filters.type === "all" || log.type === filters.type;
-    const matchesBranch =
-      filters.branchId === "all" || (log.pharmacyId || "") === filters.branchId;
-    const matchesUser =
-      filters.userName === "all" || (log.userName || "") === filters.userName;
+    const matchesBranch = filters.branchId === "all" || (log.pharmacyId || "") === filters.branchId;
+    const matchesUser = filters.userName === "all" || (log.userName || "") === filters.userName;
 
     const logDate = new Date(log.createdAt);
     const fromDate = filters.fromDate ? new Date(`${filters.fromDate}T00:00:00`) : null;
@@ -118,9 +126,7 @@ export function buildActivityLogSummary(logs: ActivityLog[]) {
     }
   });
 
-  const topTypes = [...typeCounts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5);
+  const topTypes = [...typeCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
 
   return {
     total: logs.length,
@@ -132,6 +138,6 @@ export function buildActivityLogSummary(logs: ActivityLog[]) {
 
 export function listActivityLogUsers(logs: ActivityLog[]) {
   return [...new Set(logs.map((log) => log.userName).filter(Boolean))].sort((a, b) =>
-    String(a).localeCompare(String(b))
+    String(a).localeCompare(String(b)),
   );
 }

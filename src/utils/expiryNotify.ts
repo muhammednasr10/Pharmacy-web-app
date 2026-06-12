@@ -74,7 +74,7 @@ export function buildExpiryAlertSummary(params: {
     params.medicines,
     params.branches,
     params.fallbackSettings,
-    todayValue
+    todayValue,
   );
 
   const items: ExpiryAlertItem[] = [
@@ -114,7 +114,7 @@ export function formatExpiryAlertMessage(
     pharmacyName: string;
     expiringSoonDays: number;
     isArabic: boolean;
-  }
+  },
 ) {
   const { pharmacyName, expiringSoonDays, isArabic } = params;
 
@@ -164,7 +164,7 @@ export function getExpiryMailtoUrl(
     expiringSoonDays: number;
     email: string;
     isArabic: boolean;
-  }
+  },
 ) {
   if (!params.email) return "";
   const subject = params.isArabic
@@ -188,7 +188,7 @@ export async function requestExpiryNotificationPermission() {
 
 export function showExpiryBrowserNotification(
   summary: ExpiryAlertSummary,
-  params: { pharmacyName: string; isArabic: boolean; onOpen?: () => void }
+  params: { pharmacyName: string; isArabic: boolean; onOpen?: () => void },
 ) {
   if (!("Notification" in window) || Notification.permission !== "granted") return;
 
@@ -293,7 +293,7 @@ export async function notifyExpiryAlerts(params: {
       window.open(
         getExpiryWhatsappUrl(params.isArabic ? messageAr : messageEn, notifyPhone),
         "_blank",
-        "noopener,noreferrer"
+        "noopener,noreferrer",
       );
     } catch (error) {
       console.error("Expiry WhatsApp notify failed:", error);

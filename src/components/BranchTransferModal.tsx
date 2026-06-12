@@ -28,9 +28,18 @@ function formatTransferError(message: string, isArabic: boolean): string {
     empty_items: ["أضف صنفاً واحداً على الأقل", "Add at least one item"],
     invalid_quantity: ["الكمية غير صحيحة", "Invalid quantity"],
     medicine_not_found: ["الدواء غير موجود في الفرع المصدر", "Medicine not found in source branch"],
-    insufficient_stock: ["الكمية غير متوفرة في الفرع المصدر", "Insufficient stock in source branch"],
-    target_medicine_missing: ["تعذر إنشاء الدواء في الفرع الهدف", "Could not create medicine in target branch"],
-    duplicate_item: ["هذا الدواء مضاف بالفعل — عدّل الكمية من الجدول", "Medicine already added — edit quantity in the table"],
+    insufficient_stock: [
+      "الكمية غير متوفرة في الفرع المصدر",
+      "Insufficient stock in source branch",
+    ],
+    target_medicine_missing: [
+      "تعذر إنشاء الدواء في الفرع الهدف",
+      "Could not create medicine in target branch",
+    ],
+    duplicate_item: [
+      "هذا الدواء مضاف بالفعل — عدّل الكمية من الجدول",
+      "Medicine already added — edit quantity in the table",
+    ],
     transfer_not_found: ["طلب النقل غير موجود", "Transfer request not found"],
     not_pending: ["هذا الطلب ليس بانتظار الاعتماد", "This request is not pending approval"],
   };
@@ -62,12 +71,12 @@ export default function BranchTransferModal({
 
   const targetOptions = useMemo(
     () => branches.filter((branch) => branch.id !== fromBranchId),
-    [branches, fromBranchId]
+    [branches, fromBranchId],
   );
 
   const pickedMedicine = useMemo(
     () => sourceMedicines.find((row) => String(row.id) === pickMedicineId),
-    [sourceMedicines, pickMedicineId]
+    [sourceMedicines, pickMedicineId],
   );
 
   const medicineById = useMemo(() => {
@@ -80,7 +89,7 @@ export default function BranchTransferModal({
 
   const draftTotalQty = useMemo(
     () => draftLines.reduce((sum, line) => sum + line.quantity, 0),
-    [draftLines]
+    [draftLines],
   );
 
   useEffect(() => {
@@ -122,8 +131,8 @@ export default function BranchTransferModal({
     if (existing) {
       setDraftLines((prev) =>
         prev.map((line) =>
-          line.medicineId === medicineId ? { ...line, quantity: nextQuantity } : line
-        )
+          line.medicineId === medicineId ? { ...line, quantity: nextQuantity } : line,
+        ),
       );
       return;
     }
@@ -156,7 +165,7 @@ export default function BranchTransferModal({
         const medicine = medicineById.get(line.medicineId);
         const maxQty = medicine?.qty ?? quantity;
         return { ...line, quantity: Math.max(1, Math.min(quantity || 1, maxQty)) };
-      })
+      }),
     );
   }
 
@@ -187,18 +196,18 @@ export default function BranchTransferModal({
         alert(
           isArabic
             ? `تم إرسال طلب نقل ${results.length} صنف (رقم ${transferNumber}) — بانتظار اعتماد الفرع المستلم`
-            : `Transfer request submitted for ${results.length} item(s) (${transferNumber}) — pending approval at receiving branch`
+            : `Transfer request submitted for ${results.length} item(s) (${transferNumber}) — pending approval at receiving branch`,
         );
         return;
       }
       alert(
         isArabic
           ? `تم نقل ${results.length} صنف بنجاح (رقم ${transferNumber})`
-          : `${results.length} item(s) transferred (${transferNumber})`
+          : `${results.length} item(s) transferred (${transferNumber})`,
       );
       if (onPrintTransfer && results.length > 0) {
         const shouldPrint = window.confirm(
-          isArabic ? "هل تريد طباعة سند النقل؟" : "Print the transfer document?"
+          isArabic ? "هل تريد طباعة سند النقل؟" : "Print the transfer document?",
         );
         if (shouldPrint) onPrintTransfer(results);
       }
@@ -212,7 +221,10 @@ export default function BranchTransferModal({
 
   return (
     <div className="modalOverlay" onClick={onClose}>
-      <div className="userFormPanel branchTransferModal" onClick={(event) => event.stopPropagation()}>
+      <div
+        className="userFormPanel branchTransferModal"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="modalHeader">
           <div>
             <h2>{isArabic ? "نقل مخزون بين الفروع" : "Transfer Stock Between Branches"}</h2>
@@ -273,8 +285,8 @@ export default function BranchTransferModal({
                       ? "جارٍ التحميل..."
                       : "Loading..."
                     : isArabic
-                    ? "— اختر دواء —"
-                    : "— Select medicine —"}
+                      ? "— اختر دواء —"
+                      : "— Select medicine —"}
                 </option>
                 {sourceMedicines.map((medicine) => (
                   <option key={medicine.id} value={medicine.id}>
@@ -390,12 +402,12 @@ export default function BranchTransferModal({
             {submitting
               ? "…"
               : requireApproval
-              ? isArabic
-                ? `إرسال طلب (${draftLines.length})`
-                : `Submit request (${draftLines.length})`
-              : isArabic
-              ? `تنفيذ النقل (${draftLines.length})`
-              : `Transfer (${draftLines.length})`}
+                ? isArabic
+                  ? `إرسال طلب (${draftLines.length})`
+                  : `Submit request (${draftLines.length})`
+                : isArabic
+                  ? `تنفيذ النقل (${draftLines.length})`
+                  : `Transfer (${draftLines.length})`}
           </button>
         </div>
       </div>

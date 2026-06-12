@@ -151,11 +151,7 @@ export default function ReturnModal({
               disabled={isDeleting}
               onClick={() => onDelete(selectedReturn)}
             >
-              {isDeleting
-                ? isArabic
-                  ? "جاري الحذف..."
-                  : "Deleting..."
-                : t.delete}
+              {isDeleting ? (isArabic ? "جاري الحذف..." : "Deleting...") : t.delete}
             </button>
           )}
           <button type="button" className="completeBtn" onClick={onClose}>

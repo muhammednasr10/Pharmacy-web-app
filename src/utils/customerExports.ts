@@ -56,7 +56,7 @@ function addPdfHeader(docPdf: jsPDF, ctx: CustomerExportContext, title: string, 
     `${pdfLabel(ctx, "الهاتف", "Phone")}: ${ctx.pharmacySettings?.phone || "-"}`,
     pageWidth / 2,
     y,
-    { align: "center" }
+    { align: "center" },
   );
   y += 6;
 
@@ -64,7 +64,7 @@ function addPdfHeader(docPdf: jsPDF, ctx: CustomerExportContext, title: string, 
     `${pdfLabel(ctx, "العنوان", "Address")}: ${ctx.pharmacySettings?.address || "-"}`,
     pageWidth / 2,
     y,
-    { align: "center" }
+    { align: "center" },
   );
   y += 8;
 
@@ -97,10 +97,7 @@ function addPdfFooter(docPdf: jsPDF, ctx: CustomerExportContext, y: number) {
   docPdf.text(pharmacyName, pageWidth / 2, y, { align: "center" });
 }
 
-export function printCustomerPaymentReceipt(
-  payment: CustomerPayment,
-  ctx: CustomerExportContext
-) {
+export function printCustomerPaymentReceipt(payment: CustomerPayment, ctx: CustomerExportContext) {
   const docPdf = new jsPDF();
   const pageWidth = docPdf.internal.pageSize.getWidth();
   const margin = 10;
@@ -109,50 +106,34 @@ export function printCustomerPaymentReceipt(
     docPdf,
     ctx,
     ctx.isArabic ? "إيصال تحصيل" : "Customer Payment Receipt",
-    `${payment.paymentNumber} - ${payment.date || ""}`
+    `${payment.paymentNumber} - ${payment.date || ""}`,
   );
 
   docPdf.setFontSize(10);
-  docPdf.text(
-    `${pdfLabel(ctx, "رقم الإيصال", "Receipt No")}: ${payment.paymentNumber}`,
-    margin,
-    y
-  );
+  docPdf.text(`${pdfLabel(ctx, "رقم الإيصال", "Receipt No")}: ${payment.paymentNumber}`, margin, y);
   y += 7;
 
-  docPdf.text(
-    `${pdfLabel(ctx, "العميل", "Customer")}: ${payment.customerName}`,
-    margin,
-    y
-  );
+  docPdf.text(`${pdfLabel(ctx, "العميل", "Customer")}: ${payment.customerName}`, margin, y);
   y += 7;
 
   docPdf.text(
     `${pdfLabel(ctx, "المبلغ", "Amount")}: ${safeNumber(payment.amount).toFixed(2)} ${ctx.currency}`,
     margin,
-    y
+    y,
   );
   y += 7;
 
   docPdf.text(
     `${pdfLabel(ctx, "طريقة الدفع", "Payment Method")}: ${ctx.getPaymentLabel(payment.paymentMethod)}`,
     margin,
-    y
+    y,
   );
   y += 7;
 
-  docPdf.text(
-    `${pdfLabel(ctx, "المستخدم", "User")}: ${payment.userName || "-"}`,
-    margin,
-    y
-  );
+  docPdf.text(`${pdfLabel(ctx, "المستخدم", "User")}: ${payment.userName || "-"}`, margin, y);
   y += 7;
 
-  docPdf.text(
-    `${pdfLabel(ctx, "التاريخ", "Date")}: ${payment.date || "-"}`,
-    margin,
-    y
-  );
+  docPdf.text(`${pdfLabel(ctx, "التاريخ", "Date")}: ${payment.date || "-"}`, margin, y);
   y += 10;
 
   if (payment.notes) {
@@ -169,7 +150,7 @@ export function printCustomerPaymentReceipt(
 export function printCustomerStatement(
   customer: CustomerDebt,
   payments: CustomerPayment[],
-  ctx: CustomerExportContext
+  ctx: CustomerExportContext,
 ) {
   const docPdf = new jsPDF();
   const pageWidth = docPdf.internal.pageSize.getWidth();
@@ -179,34 +160,30 @@ export function printCustomerStatement(
     docPdf,
     ctx,
     ctx.isArabic ? "كشف حساب العميل" : "Customer Statement",
-    customer.customerName
+    customer.customerName,
   );
 
   docPdf.setFontSize(10);
   docPdf.text(`${pdfLabel(ctx, "العميل", "Customer")}: ${customer.customerName}`, margin, y);
   y += 7;
-  docPdf.text(
-    `${pdfLabel(ctx, "التاريخ", "Date")}: ${new Date().toLocaleString()}`,
-    margin,
-    y
-  );
+  docPdf.text(`${pdfLabel(ctx, "التاريخ", "Date")}: ${new Date().toLocaleString()}`, margin, y);
   y += 10;
 
   docPdf.rect(margin, y, pageWidth - margin * 2, 28);
   docPdf.text(
     `${pdfLabel(ctx, "إجمالي الآجل", "Total Credit")}: ${safeNumber(customer.totalDebt).toFixed(2)} ${ctx.currency}`,
     margin + 4,
-    y + 8
+    y + 8,
   );
   docPdf.text(
     `${pdfLabel(ctx, "المحصل", "Paid")}: ${safeNumber(customer.paidAmount).toFixed(2)} ${ctx.currency}`,
     margin + 4,
-    y + 16
+    y + 16,
   );
   docPdf.text(
     `${pdfLabel(ctx, "المتبقي", "Remaining")}: ${safeNumber(customer.remainingDebt).toFixed(2)} ${ctx.currency}`,
     margin + 4,
-    y + 24
+    y + 24,
   );
   y += 40;
 
@@ -265,7 +242,7 @@ export function printCustomerStatement(
 export function exportCustomerStatementCSV(
   customer: CustomerDebt,
   payments: CustomerPayment[],
-  ctx: CustomerExportContext
+  ctx: CustomerExportContext,
 ) {
   const rows = [
     [ctx.isArabic ? "كشف حساب العميل" : "Customer Statement"],
@@ -308,14 +285,11 @@ export function exportCustomerStatementCSV(
 
   downloadCSV(
     `customer-statement-${customer.customerName}-${formatDateInput(new Date())}.csv`,
-    rows
+    rows,
   );
 }
 
-export function exportCustomersDebtsCSV(
-  customers: CustomerDebt[],
-  ctx: CustomerExportContext
-) {
+export function exportCustomersDebtsCSV(customers: CustomerDebt[], ctx: CustomerExportContext) {
   const rows = [
     [
       ctx.isArabic ? "اسم العميل" : "Customer Name",

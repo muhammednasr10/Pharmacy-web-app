@@ -54,9 +54,7 @@ export default function MedicineStockDetailModal({
       } catch (loadError) {
         console.error("Load medicine stock movements error:", loadError);
         if (active) {
-          setError(
-            isArabic ? "تعذر تحميل حركات المخزون" : "Could not load stock movements"
-          );
+          setError(isArabic ? "تعذر تحميل حركات المخزون" : "Could not load stock movements");
         }
       } finally {
         if (active) {
@@ -123,8 +121,7 @@ export default function MedicineStockDetailModal({
             <strong className="stockOutTotal">-{totalOut}</strong>
           </span>
           <span>
-            {isArabic ? "صافي الحركات:" : "Net movements:"}{" "}
-            <strong>{totalIn - totalOut}</strong>
+            {isArabic ? "صافي الحركات:" : "Net movements:"} <strong>{totalIn - totalOut}</strong>
           </span>
         </div>
 
@@ -176,9 +173,7 @@ export default function MedicineStockDetailModal({
                     <td>{getMovementReference(movement, isArabic)}</td>
                     <td>{movement.userName || "-"}</td>
                     <td>
-                      {movement.createdAt
-                        ? new Date(movement.createdAt).toLocaleString()
-                        : "-"}
+                      {movement.createdAt ? new Date(movement.createdAt).toLocaleString() : "-"}
                     </td>
                   </tr>
                 ))}

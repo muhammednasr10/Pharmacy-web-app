@@ -1,5 +1,15 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { AppUser, AttendanceRecord, AttendanceStatus, EarlyLeaveOutcome, Employee, EmployeeRequest, PayrollRecord, ShiftId, SystemUser } from "../types";
+import type {
+  AppUser,
+  AttendanceRecord,
+  AttendanceStatus,
+  EarlyLeaveOutcome,
+  Employee,
+  EmployeeRequest,
+  PayrollRecord,
+  ShiftId,
+  SystemUser,
+} from "../types";
 import * as pharmacyService from "../services/pharmacyService";
 import { downloadPayrollPdf } from "../utils/payrollExport";
 import AttendanceBarcodeInput from "../components/AttendanceBarcodeInput";
@@ -106,11 +116,7 @@ function isoToTimeInput(iso?: string) {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-function formatTimeWithOvernight(
-  iso: string | undefined,
-  isArabic: boolean,
-  spansNextDay = false
-) {
+function formatTimeWithOvernight(iso: string | undefined, isArabic: boolean, spansNextDay = false) {
   if (!iso) return "—";
   const time = new Date(iso).toLocaleTimeString(isArabic ? "ar-EG" : "en-GB", {
     hour: "2-digit",
@@ -212,7 +218,7 @@ function attendanceStatusBadge(
     canToggle?: boolean;
     resolving?: boolean;
     onToggle?: (outcome: EarlyLeaveOutcome) => void;
-  }
+  },
 ) {
   if (!status) {
     return (
@@ -224,12 +230,12 @@ function attendanceStatusBadge(
 
   const hasEarlyLeaveUi = Boolean(earlyLeave?.rawEarlyLeave);
   const isWorkAttendance =
-    status === "present" ||
-    status === "late" ||
-    (timing && timing.isLate) ||
-    hasEarlyLeaveUi;
+    status === "present" || status === "late" || (timing && timing.isLate) || hasEarlyLeaveUi;
 
-  if (isWorkAttendance && (status === "present" || status === "late" || timing || hasEarlyLeaveUi)) {
+  if (
+    isWorkAttendance &&
+    (status === "present" || status === "late" || timing || hasEarlyLeaveUi)
+  ) {
     const earlyLeaveIsPermission = earlyLeave?.effectiveOutcome !== "deduction";
     const earlyLeaveLabel = earlyLeaveIsPermission
       ? isArabic
@@ -382,7 +388,7 @@ export default function HrPage({
       if (!hrWriteScopeId) return true;
       return Boolean(branchId && branchId === hrWriteScopeId);
     },
-    [canManage, hrWriteScopeId]
+    [canManage, hrWriteScopeId],
   );
 
   const staffBranchByKey = useMemo(() => {
@@ -397,14 +403,12 @@ export default function HrPage({
   function payrollBranchId(rec: PayrollRecord) {
     return rec.pharmacyId || staffBranchByKey.get(rec.userId) || "";
   }
-  const activeEmployees = useMemo(
-    () => staffRows.filter((row) => row.name),
-    [staffRows]
-  );
+  const activeEmployees = useMemo(() => staffRows.filter((row) => row.name), [staffRows]);
 
   const loadStaff = useCallback(async () => {
     try {
-      const scopeIds = showOrgHr && orgBranchIds.length > 0 ? orgBranchIds : [pharmacyId].filter(Boolean);
+      const scopeIds =
+        showOrgHr && orgBranchIds.length > 0 ? orgBranchIds : [pharmacyId].filter(Boolean);
       const [employees, accounts] = await Promise.all([
         scopeIds.length > 1
           ? pharmacyService.getEmployeesForPharmacies(scopeIds)
@@ -432,7 +436,8 @@ export default function HrPage({
             salary: emp.salary,
             requiredWorkHours: emp.requiredWorkHours ?? 8,
             commissionRate: emp.commissionRate ?? 0,
-            assignedShiftId: (emp.assignedShiftId as ShiftId) || payrollConfigRef.current.defaultShiftId || "A",
+            assignedShiftId:
+              (emp.assignedShiftId as ShiftId) || payrollConfigRef.current.defaultShiftId || "A",
             useCustomWorkSchedule: Boolean(emp.useCustomWorkSchedule),
             workDayStart: emp.workDayStart,
             workDayEnd: emp.workDayEnd,
@@ -481,8 +486,8 @@ export default function HrPage({
       }
       setEmployeeRequests(
         [...byId.values()].sort((a, b) =>
-          String(b.createdAt || "").localeCompare(String(a.createdAt || ""))
-        )
+          String(b.createdAt || "").localeCompare(String(a.createdAt || "")),
+        ),
       );
     } catch {
       setEmployeeRequests([]);
@@ -494,7 +499,8 @@ export default function HrPage({
     setError("");
     try {
       await loadStaff();
-      const scopeIds = showOrgHr && orgBranchIds.length > 0 ? orgBranchIds : [pharmacyId].filter(Boolean);
+      const scopeIds =
+        showOrgHr && orgBranchIds.length > 0 ? orgBranchIds : [pharmacyId].filter(Boolean);
       const [employees, accounts] = await Promise.all([
         scopeIds.length > 1
           ? pharmacyService.getEmployeesForPharmacies(scopeIds)
@@ -587,8 +593,8 @@ export default function HrPage({
             ? "تم تسجيل الحضور مسبقاً"
             : "Already checked in"
           : isArabic
-          ? "تعذر تسجيل الحضور"
-          : "Could not check in"
+            ? "تعذر تسجيل الحضور"
+            : "Could not check in",
       );
     } finally {
       setBusyAction("");
@@ -597,7 +603,7 @@ export default function HrPage({
 
   const attendanceScanScopeIds = useMemo(
     () => (showOrgHr && orgBranchIds.length > 0 ? orgBranchIds : [pharmacyId].filter(Boolean)),
-    [showOrgHr, orgBranchIds, pharmacyId]
+    [showOrgHr, orgBranchIds, pharmacyId],
   );
 
   const showAttendanceScanner = canEditAttendanceLog;
@@ -607,7 +613,9 @@ export default function HrPage({
       return isArabic ? "لم يُعثر على موظف بهذا الكود" : "No employee found for this code";
     }
     if (code === "forbidden_branch") {
-      return isArabic ? "لا يمكنك تسجيل حضور هذا الفرع" : "You cannot record attendance for this branch";
+      return isArabic
+        ? "لا يمكنك تسجيل حضور هذا الفرع"
+        : "You cannot record attendance for this branch";
     }
     if (code === "already_checked_in") {
       return isArabic ? "تم تسجيل الحضور مسبقاً" : "Already checked in";
@@ -636,7 +644,7 @@ export default function HrPage({
     }
 
     const todayRecord = attendanceRecords.find(
-      (row) => row.userId === staff.attendanceKey && row.workDate === todayIso
+      (row) => row.userId === staff.attendanceKey && row.workDate === todayIso,
     );
 
     let action: "check_in" | "check_out";
@@ -656,7 +664,7 @@ export default function HrPage({
       const schedule = resolveWorkSchedule(
         staff,
         payrollConfig.workShifts,
-        payrollConfig.defaultShiftId
+        payrollConfig.defaultShiftId,
       );
       const graceMinutes = resolveAllowedLateMinutes(schedule.shiftId, payrollConfig.workShifts);
       await pharmacyService.recordCheckIn(staff.attendanceKey, staff.name, todayIso, {
@@ -701,12 +709,12 @@ export default function HrPage({
             ? "سجّل الحضور أولاً"
             : "Check in first"
           : code === "already_checked_out"
-          ? isArabic
-            ? "تم تسجيل الانصراف مسبقاً"
-            : "Already checked out"
-          : isArabic
-          ? "تعذر تسجيل الانصراف"
-          : "Could not check out"
+            ? isArabic
+              ? "تم تسجيل الانصراف مسبقاً"
+              : "Already checked out"
+            : isArabic
+              ? "تعذر تسجيل الانصراف"
+              : "Could not check out",
       );
     } finally {
       setBusyAction("");
@@ -717,7 +725,7 @@ export default function HrPage({
     userId: string,
     userName: string,
     status: AttendanceStatus,
-    workDate = todayIso
+    workDate = todayIso,
   ) {
     setBusyAction(`status-${userId}`);
     try {
@@ -737,7 +745,7 @@ export default function HrPage({
       isArabic
         ? `الراتب الأساسي لـ ${record.userName} (${currency}):`
         : `Base salary for ${record.userName} (${currency}):`,
-      String(record.baseSalary)
+      String(record.baseSalary),
     );
     if (input == null) return;
 
@@ -751,7 +759,7 @@ export default function HrPage({
     const confirmed = window.confirm(
       isArabic
         ? `تأكيد تغيير الراتب الأساسي من ${formatMoney(record.baseSalary)} إلى ${formatMoney(newSalary)} ${currency}؟`
-        : `Change base salary from ${formatMoney(record.baseSalary)} to ${formatMoney(newSalary)} ${currency}?`
+        : `Change base salary from ${formatMoney(record.baseSalary)} to ${formatMoney(newSalary)} ${currency}?`,
     );
     if (!confirmed) return;
 
@@ -772,12 +780,12 @@ export default function HrPage({
         {
           absentPct: payrollConfig.absentDeductionPercent,
           sickPct: payrollConfig.sickDeductionPercent,
-        }
+        },
       );
       const calculatedSalary = pharmacyService.computeEarnedSalary(
         newSalary,
         record.workMinutes ?? 0,
-        staff?.requiredWorkHours ?? 8
+        staff?.requiredWorkHours ?? 8,
       );
       const merged: PayrollRecord = {
         ...record,
@@ -826,11 +834,14 @@ export default function HrPage({
       };
     }
 
-    const attendance = await pharmacyService.getAttendanceRecords(record.periodStart, record.periodEnd);
+    const attendance = await pharmacyService.getAttendanceRecords(
+      record.periodStart,
+      record.periodEnd,
+    );
     const empAttendance = pharmacyService.filterAttendanceForEmployee(
       attendance,
       record.userId,
-      staff.employeeId
+      staff.employeeId,
     );
     const schedule = resolveWorkSchedule(staff, config.workShifts, config.defaultShiftId);
     const requiredWorkHours =
@@ -842,7 +853,7 @@ export default function HrPage({
       record.baseSalary,
       empAttendance,
       requiredWorkHours,
-      config.overtimePercent
+      config.overtimePercent,
     );
 
     return {
@@ -868,7 +879,7 @@ export default function HrPage({
             : null,
           periodStart,
           periodEnd,
-          staff?.pharmacyId || pharmacyId
+          staff?.pharmacyId || pharmacyId,
         ),
       ]);
 
@@ -886,7 +897,7 @@ export default function HrPage({
         const { taxes, insurance } = pharmacyService.computeTaxInsuranceFromPercent(
           merged,
           payrollConfigRef.current.defaultTaxes,
-          payrollConfigRef.current.defaultInsurance
+          payrollConfigRef.current.defaultInsurance,
         );
         const netPay = pharmacyService.computePayrollNet({ ...merged, taxes, insurance });
         await pharmacyService.updatePayrollRecord(record.id, {
@@ -913,7 +924,7 @@ export default function HrPage({
           const { taxes, insurance } = pharmacyService.computeTaxInsuranceFromPercent(
             next,
             payrollConfigRef.current.defaultTaxes,
-            payrollConfigRef.current.defaultInsurance
+            payrollConfigRef.current.defaultInsurance,
           );
           return {
             ...next,
@@ -921,7 +932,7 @@ export default function HrPage({
             insurance,
             netPay: pharmacyService.computePayrollNet({ ...next, taxes, insurance }),
           };
-        })
+        }),
       );
       setAdditionsModal({
         record,
@@ -953,7 +964,7 @@ export default function HrPage({
       const { taxes, insurance } = pharmacyService.computeTaxInsuranceFromPercent(
         merged,
         payrollConfigRef.current.defaultTaxes,
-        payrollConfigRef.current.defaultInsurance
+        payrollConfigRef.current.defaultInsurance,
       );
       const mergedWithTax = { ...merged, taxes, insurance };
       const netPay = pharmacyService.computePayrollNet(mergedWithTax);
@@ -982,7 +993,7 @@ export default function HrPage({
     const plannedSchedule = resolveWorkSchedule(
       emp,
       payrollConfig.workShifts,
-      payrollConfig.defaultShiftId
+      payrollConfig.defaultShiftId,
     );
     setAttendanceLogEdit({
       userId: emp.attendanceKey,
@@ -1001,7 +1012,7 @@ export default function HrPage({
     workDate: string,
     record: AttendanceRecord | undefined,
     actualShiftId: ShiftId,
-    plannedShiftId: ShiftId
+    plannedShiftId: ShiftId,
   ) {
     if (!record && actualShiftId === plannedShiftId) return;
 
@@ -1015,10 +1026,7 @@ export default function HrPage({
           shiftId: actualShiftId,
           status: "absent",
         });
-      } else if (
-        isShiftOnlyPresetRecord(record) &&
-        actualShiftId === plannedShiftId
-      ) {
+      } else if (isShiftOnlyPresetRecord(record) && actualShiftId === plannedShiftId) {
         await pharmacyService.deleteAttendanceRecord(record.id);
       } else {
         await pharmacyService.upsertAttendanceRecord({
@@ -1044,7 +1052,7 @@ export default function HrPage({
     emp: HrStaffRow,
     workDate: string,
     record: AttendanceRecord,
-    outcome: EarlyLeaveOutcome
+    outcome: EarlyLeaveOutcome,
   ) {
     setBusyAction(`early-${emp.attendanceKey}-${workDate}`);
     try {
@@ -1069,8 +1077,16 @@ export default function HrPage({
 
   async function saveAttendanceLogEdit() {
     if (!attendanceLogEdit) return;
-    const { userId, userName, workDate, status, checkInTime, checkOutTime, actualShiftId, recordId } =
-      attendanceLogEdit;
+    const {
+      userId,
+      userName,
+      workDate,
+      status,
+      checkInTime,
+      checkOutTime,
+      actualShiftId,
+      recordId,
+    } = attendanceLogEdit;
     setBusyAction(`attendance-log-${userId}-${workDate}`);
     try {
       if (!status) {
@@ -1088,13 +1104,13 @@ export default function HrPage({
         const actualSchedule = resolveScheduleForShiftId(
           actualShiftId,
           payrollConfig.workShifts,
-          payrollConfig.defaultShiftId
+          payrollConfig.defaultShiftId,
         );
         let finalStatus = status;
         if (checkIn && (status === "present" || status === "late")) {
           const graceMinutes = resolveAllowedLateMinutes(
             actualSchedule.shiftId,
-            payrollConfig.workShifts
+            payrollConfig.workShifts,
           );
           finalStatus = isCheckInLate(checkIn, actualSchedule, graceMinutes) ? "late" : "present";
         }
@@ -1120,7 +1136,7 @@ export default function HrPage({
 
   const attendanceMonthBounds = useMemo(
     () => monthBoundsFromDate(monthAnchorDate(attendanceMonth)),
-    [attendanceMonth]
+    [attendanceMonth],
   );
 
   const filteredAttendanceEmployees = useMemo(() => {
@@ -1137,7 +1153,7 @@ export default function HrPage({
     if (!start || !end) return [];
     const days = listDaysInMonth(start, end);
     const recordByKey = new Map(
-      attendanceRecords.map((record) => [`${record.userId}:${record.workDate}`, record])
+      attendanceRecords.map((record) => [`${record.userId}:${record.workDate}`, record]),
     );
     const rows: { emp: HrStaffRow; workDate: string; record?: AttendanceRecord }[] = [];
     for (const emp of filteredAttendanceEmployees) {
@@ -1150,13 +1166,13 @@ export default function HrPage({
       }
     }
     return rows.sort(
-      (a, b) => a.workDate.localeCompare(b.workDate) || a.emp.name.localeCompare(b.emp.name)
+      (a, b) => a.workDate.localeCompare(b.workDate) || a.emp.name.localeCompare(b.emp.name),
     );
   }, [attendanceMonthBounds, attendanceRecords, filteredAttendanceEmployees]);
 
   const attendanceHoursSummary = useMemo(() => {
     const keys = new Set(
-      attendanceTableRows.map(({ emp, workDate }) => `${emp.attendanceKey}:${workDate}`)
+      attendanceTableRows.map(({ emp, workDate }) => `${emp.attendanceKey}:${workDate}`),
     );
     const filteredRecords = attendanceRecords.filter((r) => keys.has(`${r.userId}:${r.workDate}`));
     const recordsByUser = new Map<string, AttendanceRecord[]>();
@@ -1179,26 +1195,26 @@ export default function HrPage({
       const plannedSchedule = resolveWorkSchedule(
         emp,
         payrollConfig.workShifts,
-        payrollConfig.defaultShiftId
+        payrollConfig.defaultShiftId,
       );
       const actualSchedule = resolveScheduleForShiftId(
         record.shiftId || plannedSchedule.shiftId,
         payrollConfig.workShifts,
-        payrollConfig.defaultShiftId
+        payrollConfig.defaultShiftId,
       );
       const graceMinutes = resolveAllowedLateMinutes(
         actualSchedule.shiftId,
-        payrollConfig.workShifts
+        payrollConfig.workShifts,
       );
       const hasApprovedPermission = pharmacyService.hasApprovedPermissionForDate(
         employeeRequests,
         emp.attendanceKey,
         emp.employeeId,
-        workDate
+        workDate,
       );
       const approvedEarlyLeave = isEarlyLeaveApproved(
         record.earlyLeaveOutcome,
-        hasApprovedPermission
+        hasApprovedPermission,
       );
       const rawEarlyLeave = evaluateAttendanceTiming(
         workDate,
@@ -1206,7 +1222,7 @@ export default function HrPage({
         record.checkOut,
         actualSchedule,
         graceMinutes,
-        { approvedEarlyLeave: false }
+        { approvedEarlyLeave: false },
       ).isEarlyLeave;
       const timing = evaluateAttendanceTiming(
         workDate,
@@ -1214,7 +1230,7 @@ export default function HrPage({
         record.checkOut,
         actualSchedule,
         graceMinutes,
-        { approvedEarlyLeave }
+        { approvedEarlyLeave },
       );
       if (timing.isLate) lateCount += 1;
       if (rawEarlyLeave) {
@@ -1233,7 +1249,7 @@ export default function HrPage({
       const schedule = resolveWorkSchedule(
         emp,
         payrollConfig.workShifts,
-        payrollConfig.defaultShiftId
+        payrollConfig.defaultShiftId,
       );
       const standardHoursPerDay =
         computeWorkHoursFromSchedule(schedule) ||
@@ -1241,15 +1257,18 @@ export default function HrPage({
         payrollConfig.standardWorkHours ||
         8;
 
-      const split = pharmacyService.splitRegularAndOvertimeMinutes(
-        empRecords,
-        standardHoursPerDay
-      );
+      const split = pharmacyService.splitRegularAndOvertimeMinutes(empRecords, standardHoursPerDay);
       regularMinutes += split.regularMinutes;
       overtimeMinutes += split.overtimeMinutes;
     }
 
-    return { regularMinutes, overtimeMinutes, lateCount, permissionCount, earlyLeaveDeductionCount };
+    return {
+      regularMinutes,
+      overtimeMinutes,
+      lateCount,
+      permissionCount,
+      earlyLeaveDeductionCount,
+    };
   }, [
     attendanceTableRows,
     attendanceRecords,
@@ -1280,8 +1299,7 @@ export default function HrPage({
     }
     const workingDays = countPeriodDays(periodStart, periodEnd);
     return activeEmployees.map((emp) => {
-      const existing =
-        recordByUser.get(emp.attendanceKey) || recordByUser.get(emp.employeeId);
+      const existing = recordByUser.get(emp.attendanceKey) || recordByUser.get(emp.employeeId);
       if (existing) return existing;
       return {
         id: 0,
@@ -1332,7 +1350,7 @@ export default function HrPage({
     labelEn: string,
     days: number,
     amount: number,
-    percent: number
+    percent: number,
   ) {
     const dayWord = isArabic ? (days === 1 ? "يوم" : "أيام") : days === 1 ? "day" : "days";
     return (
@@ -1354,7 +1372,7 @@ export default function HrPage({
   async function reviewRequest(
     request: EmployeeRequest,
     status: "approved" | "rejected",
-    reviewNote = ""
+    reviewNote = "",
   ) {
     if (!appUser || !canManageHrFor(request.pharmacyId)) return;
     setBusyAction(`request-${request.id}`);
@@ -1363,7 +1381,7 @@ export default function HrPage({
         request.id,
         status,
         { uid: appUser.uid, name: appUser.name || appUser.email || appUser.uid },
-        reviewNote
+        reviewNote,
       );
       await loadEmployeeRequests();
       if (activeTab === "attendance") {
@@ -1518,7 +1536,7 @@ export default function HrPage({
                     await handleAttendanceBarcodeScan(code);
                   } catch (error) {
                     const message = mapAttendanceScanError(
-                      error instanceof Error ? error.message : "scan_failed"
+                      error instanceof Error ? error.message : "scan_failed",
                     );
                     setAttendanceScanFeedback({ text: message, ok: false });
                     window.setTimeout(() => setAttendanceScanFeedback(null), 2800);
@@ -1528,7 +1546,9 @@ export default function HrPage({
               />
 
               {attendanceScanFeedback && (
-                <p className={`posMessage attendanceScanFeedback ${attendanceScanFeedback.ok ? "" : "error"}`}>
+                <p
+                  className={`posMessage attendanceScanFeedback ${attendanceScanFeedback.ok ? "" : "error"}`}
+                >
                   {attendanceScanFeedback.text}
                 </p>
               )}
@@ -1545,7 +1565,9 @@ export default function HrPage({
                   )}
                   {showBranchColumn && <th>{isArabic ? "الفرع" : "Branch"}</th>}
                   <th className="col-shift">{isArabic ? "الشيفت المخطط" : "Planned shift"}</th>
-                  <th className="col-shift col-shift-actual">{isArabic ? "الشيفت الفعلي" : "Actual shift"}</th>
+                  <th className="col-shift col-shift-actual">
+                    {isArabic ? "الشيفت الفعلي" : "Actual shift"}
+                  </th>
                   <th className="col-status">{isArabic ? "الحالة" : "Status"}</th>
                   <th className="col-time">{isArabic ? "حضور" : "Check in"}</th>
                   <th className="col-time">{isArabic ? "انصراف" : "Check out"}</th>
@@ -1584,7 +1606,7 @@ export default function HrPage({
                         ? pharmacyService.buildAttendanceCheckOutIso(
                             workDate,
                             draft.checkInTime,
-                            draft.checkOutTime
+                            draft.checkOutTime,
                           )
                         : record?.checkOut;
                     const overnightPreview =
@@ -1598,7 +1620,7 @@ export default function HrPage({
                     const plannedSchedule = resolveWorkSchedule(
                       emp,
                       payrollConfig.workShifts,
-                      payrollConfig.defaultShiftId
+                      payrollConfig.defaultShiftId,
                     );
                     const actualShiftId =
                       isEditing && draft
@@ -1607,21 +1629,21 @@ export default function HrPage({
                     const actualSchedule = resolveScheduleForShiftId(
                       actualShiftId,
                       payrollConfig.workShifts,
-                      payrollConfig.defaultShiftId
+                      payrollConfig.defaultShiftId,
                     );
                     const graceMinutes = resolveAllowedLateMinutes(
                       actualSchedule.shiftId,
-                      payrollConfig.workShifts
+                      payrollConfig.workShifts,
                     );
                     const hasApprovedPermission = pharmacyService.hasApprovedPermissionForDate(
                       employeeRequests,
                       emp.attendanceKey,
                       emp.employeeId,
-                      workDate
+                      workDate,
                     );
                     const approvedEarlyLeave = isEarlyLeaveApproved(
                       record?.earlyLeaveOutcome,
-                      hasApprovedPermission
+                      hasApprovedPermission,
                     );
                     const rawEarlyLeave = evaluateAttendanceTiming(
                       workDate,
@@ -1629,7 +1651,7 @@ export default function HrPage({
                       previewCheckOut ?? record?.checkOut,
                       actualSchedule,
                       graceMinutes,
-                      { approvedEarlyLeave: false }
+                      { approvedEarlyLeave: false },
                     ).isEarlyLeave;
                     const attendanceTiming = evaluateAttendanceTiming(
                       workDate,
@@ -1637,7 +1659,7 @@ export default function HrPage({
                       previewCheckOut ?? record?.checkOut,
                       actualSchedule,
                       graceMinutes,
-                      { approvedEarlyLeave }
+                      { approvedEarlyLeave },
                     );
                     const earlyLeaveBusyKey = `early-${emp.attendanceKey}-${workDate}`;
 
@@ -1653,14 +1675,18 @@ export default function HrPage({
                         </td>
                         {showEmployeeColumn && <td className="col-name">{emp.name}</td>}
                         {showBranchColumn && (
-                          <td>{resolveBranchLabel ? resolveBranchLabel(emp.pharmacyId) : emp.pharmacyId}</td>
+                          <td>
+                            {resolveBranchLabel
+                              ? resolveBranchLabel(emp.pharmacyId)
+                              : emp.pharmacyId}
+                          </td>
                         )}
                         <td className="col-shift">
                           <span className="hrShiftBadge hrShiftBadgePlanned">
                             {getShiftDisplayName(
                               plannedSchedule.shiftId,
                               payrollConfig.workShifts,
-                              isArabic
+                              isArabic,
                             )}
                           </span>
                           <small className="hrShiftWindow">
@@ -1696,7 +1722,7 @@ export default function HrPage({
                                   workDate,
                                   record,
                                   e.target.value as ShiftId,
-                                  plannedSchedule.shiftId
+                                  plannedSchedule.shiftId,
                                 )
                               }
                             >
@@ -1712,7 +1738,7 @@ export default function HrPage({
                                 {getShiftDisplayName(
                                   actualSchedule.shiftId,
                                   payrollConfig.workShifts,
-                                  isArabic
+                                  isArabic,
                                 )}
                               </span>
                               <small className="hrShiftWindow">
@@ -1730,10 +1756,14 @@ export default function HrPage({
                                 setAttendanceLogEdit({
                                   ...draft,
                                   status: e.target.value as AttendanceStatus | "",
-                                  checkInTime: statusClearsTimes(e.target.value as AttendanceStatus | "")
+                                  checkInTime: statusClearsTimes(
+                                    e.target.value as AttendanceStatus | "",
+                                  )
                                     ? ""
                                     : draft.checkInTime,
-                                  checkOutTime: statusClearsTimes(e.target.value as AttendanceStatus | "")
+                                  checkOutTime: statusClearsTimes(
+                                    e.target.value as AttendanceStatus | "",
+                                  )
                                     ? ""
                                     : draft.checkOutTime,
                                 })
@@ -1741,7 +1771,9 @@ export default function HrPage({
                             >
                               <option value="">{isArabic ? "لم يسجل" : "Not recorded"}</option>
                               <option value="present">{isArabic ? "حاضر" : "Present"}</option>
-                              <option value="late">{isArabic ? "حضور (تأخير)" : "Present (late)"}</option>
+                              <option value="late">
+                                {isArabic ? "حضور (تأخير)" : "Present (late)"}
+                              </option>
                               <option value="absent">{isArabic ? "غائب" : "Absent"}</option>
                               <option value="leave">{isArabic ? "إجازة" : "Leave"}</option>
                               <option value="sick">{isArabic ? "مرضي" : "Sick leave"}</option>
@@ -1750,14 +1782,12 @@ export default function HrPage({
                             attendanceStatusBadge(
                               isShiftOnlyPresetRecord(record) ? undefined : record?.status,
                               isArabic,
-                              isAttendanceWorkDay(record)
-                                ? attendanceTiming
-                                : undefined,
+                              isAttendanceWorkDay(record) ? attendanceTiming : undefined,
                               isAttendanceWorkDay(record) && rawEarlyLeave
                                 ? {
                                     rawEarlyLeave: true,
                                     effectiveOutcome: resolveEarlyLeaveOutcome(
-                                      record?.earlyLeaveOutcome
+                                      record?.earlyLeaveOutcome,
                                     ),
                                     canToggle: canEditAttendanceLog,
                                     resolving: busyAction === earlyLeaveBusyKey,
@@ -1767,7 +1797,7 @@ export default function HrPage({
                                       }
                                     },
                                   }
-                                : undefined
+                                : undefined,
                             )
                           )}
                         </td>
@@ -1808,7 +1838,7 @@ export default function HrPage({
                             formatTimeWithOvernight(
                               record?.checkOut,
                               isArabic,
-                              attendanceSpansNextDay(record?.checkIn, record?.checkOut)
+                              attendanceSpansNextDay(record?.checkIn, record?.checkOut),
                             )
                           )}
                         </td>
@@ -1872,7 +1902,7 @@ export default function HrPage({
                                             emp.attendanceKey,
                                             emp.name,
                                             "absent",
-                                            workDate
+                                            workDate,
                                           )
                                         }
                                       >
@@ -1887,7 +1917,7 @@ export default function HrPage({
                                             emp.attendanceKey,
                                             emp.name,
                                             "leave",
-                                            workDate
+                                            workDate,
                                           )
                                         }
                                       >
@@ -1902,7 +1932,7 @@ export default function HrPage({
                                             emp.attendanceKey,
                                             emp.name,
                                             "sick",
-                                            workDate
+                                            workDate,
                                           )
                                         }
                                       >
@@ -2017,7 +2047,9 @@ export default function HrPage({
                                 disabled={!!busyAction}
                                 onClick={() => {
                                   const note = window.prompt(
-                                    isArabic ? "سبب الرفض (اختياري)" : "Rejection reason (optional)"
+                                    isArabic
+                                      ? "سبب الرفض (اختياري)"
+                                      : "Rejection reason (optional)",
                                   );
                                   if (note === null) return;
                                   void reviewRequest(req, "rejected", note);
@@ -2062,7 +2094,12 @@ export default function HrPage({
                   onChange={(e) => setPeriodEnd(e.target.value)}
                 />
               </label>
-              <button type="button" className="printBtn" onClick={() => void loadPayroll()} disabled={loading}>
+              <button
+                type="button"
+                className="printBtn"
+                onClick={() => void loadPayroll()}
+                disabled={loading}
+              >
                 {isArabic ? "تحديث" : "Refresh"}
               </button>
               <button
@@ -2116,7 +2153,9 @@ export default function HrPage({
                     <tr key={rec.userId}>
                       <td className="col-name">{rec.userName}</td>
                       <td className="col-attendance">{rec.workingDays}</td>
-                      <td className="col-attendance">{formatWorkMinutes(rec.workMinutes ?? 0, isArabic)}</td>
+                      <td className="col-attendance">
+                        {formatWorkMinutes(rec.workMinutes ?? 0, isArabic)}
+                      </td>
                       <td className="col-attendance">{rec.presentDays}</td>
                       <td className="col-attendance">{rec.absentDays}</td>
                       <td className="col-attendance">{rec.sickDays ?? 0}</td>
@@ -2131,9 +2170,7 @@ export default function HrPage({
                             rec.status !== "draft"
                           }
                           title={
-                            rec.id &&
-                            canManageHrFor(payrollBranchId(rec)) &&
-                            rec.status === "draft"
+                            rec.id && canManageHrFor(payrollBranchId(rec)) && rec.status === "draft"
                               ? isArabic
                                 ? "تعديل الراتب الأساسي"
                                 : "Edit base salary"
@@ -2202,7 +2239,6 @@ export default function HrPage({
       )}
     </>
   );
-
 
   const additionsModalView = additionsModal && (
     <div className="modalOverlay" onClick={() => setAdditionsModal(null)}>
@@ -2325,7 +2361,7 @@ export default function HrPage({
             pharmacyService.sumPayrollAdditions({
               ...additionsModal.record,
               ...additionsModal.draft,
-            })
+            }),
           )}{" "}
           {currency}
         </div>
@@ -2380,7 +2416,7 @@ export default function HrPage({
             "Absence",
             deductionsModal.breakdown.absentDays,
             deductionsModal.breakdown.absentAmount,
-            payrollConfig.absentDeductionPercent
+            payrollConfig.absentDeductionPercent,
           )}
           <p className="returnsSectionHint">
             {isArabic
@@ -2392,7 +2428,7 @@ export default function HrPage({
             "Sick leave",
             deductionsModal.breakdown.sickDays,
             deductionsModal.breakdown.sickAmount,
-            payrollConfig.sickDeductionPercent
+            payrollConfig.sickDeductionPercent,
           )}
           <div className="hrDeductionLine">
             <span>
@@ -2403,8 +2439,8 @@ export default function HrPage({
                   ? "يوم"
                   : "أيام"
                 : deductionsModal.breakdown.leaveDays === 1
-                ? "day"
-                : "days"}
+                  ? "day"
+                  : "days"}
             </span>
             <span>
               = {formatMoney(0)} {currency}
@@ -2425,7 +2461,8 @@ export default function HrPage({
               {formatMoney(deductionsModal.record.taxes ?? 0)} {currency}
               <small>
                 {" "}
-                ({payrollConfig.defaultTaxes}% {isArabic ? "من المستحق + الزيادات" : "of earned + additions"})
+                ({payrollConfig.defaultTaxes}%{" "}
+                {isArabic ? "من المستحق + الزيادات" : "of earned + additions"})
               </small>
             </span>
           </div>
@@ -2435,7 +2472,8 @@ export default function HrPage({
               {formatMoney(deductionsModal.record.insurance ?? 0)} {currency}
               <small>
                 {" "}
-                ({payrollConfig.defaultInsurance}% {isArabic ? "من المستحق + الزيادات" : "of earned + additions"})
+                ({payrollConfig.defaultInsurance}%{" "}
+                {isArabic ? "من المستحق + الزيادات" : "of earned + additions"})
               </small>
             </span>
           </div>
@@ -2448,8 +2486,7 @@ export default function HrPage({
 
         <div className="hrDeductionsTotal cardInner">
           <strong>{isArabic ? "إجمالي الخصومات:" : "Total deductions:"}</strong>{" "}
-          {formatMoney(pharmacyService.sumPayrollDeductions(deductionsModal.record))}{" "}
-          {currency}
+          {formatMoney(pharmacyService.sumPayrollDeductions(deductionsModal.record))} {currency}
         </div>
 
         <div className="modalActions">
@@ -2473,35 +2510,35 @@ export default function HrPage({
 
   return (
     <>
-    <section className="card settingsPage hrPage">
-      <div className="cardHeader">
-        <div>
-          <h2>{isArabic ? "الموظفين والمرتبات" : "Employees & Payroll"}</h2>
-          <p className="returnsSectionHint">
-            {isArabic
-              ? "تسجيل حضور وانصراف الموظفين وحساب المرتبات الشهرية"
-              : "Track attendance and calculate monthly payroll"}
-          </p>
+      <section className="card settingsPage hrPage">
+        <div className="cardHeader">
+          <div>
+            <h2>{isArabic ? "الموظفين والمرتبات" : "Employees & Payroll"}</h2>
+            <p className="returnsSectionHint">
+              {isArabic
+                ? "تسجيل حضور وانصراف الموظفين وحساب المرتبات الشهرية"
+                : "Track attendance and calculate monthly payroll"}
+            </p>
+          </div>
         </div>
-      </div>
 
-      <nav className="settingsTabsNav" aria-label={isArabic ? "أقسام الموظفين" : "HR sections"}>
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            className={`settingsTabBtn ${activeTab === tab.id ? "active" : ""}`}
-            onClick={() => setInternalTab(tab.id)}
-          >
-            {isArabic ? tab.ar : tab.en}
-          </button>
-        ))}
-      </nav>
+        <nav className="settingsTabsNav" aria-label={isArabic ? "أقسام الموظفين" : "HR sections"}>
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              className={`settingsTabBtn ${activeTab === tab.id ? "active" : ""}`}
+              onClick={() => setInternalTab(tab.id)}
+            >
+              {isArabic ? tab.ar : tab.en}
+            </button>
+          ))}
+        </nav>
 
-      {panelContent}
-    </section>
-    {additionsModalView}
-    {deductionsModalView}
-  </>
+        {panelContent}
+      </section>
+      {additionsModalView}
+      {deductionsModalView}
+    </>
   );
 }

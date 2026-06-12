@@ -23,9 +23,7 @@ export default function WorkScheduleEditor({
   const computedHours = computeWorkHoursFromSchedule(schedule);
 
   function updateBreak(index: number, patch: Partial<WorkBreak>) {
-    const breaks = schedule.breaks.map((item, i) =>
-      i === index ? { ...item, ...patch } : item
-    );
+    const breaks = schedule.breaks.map((item, i) => (i === index ? { ...item, ...patch } : item));
     onChange({ ...schedule, breaks });
   }
 

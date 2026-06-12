@@ -24,7 +24,7 @@ export function getExpiryLimitValue(days: number, fromDate = new Date()) {
 export function resolveBranchSettings(
   branchId: string | undefined,
   branches: PharmacySettings[],
-  fallback?: PharmacySettings | null
+  fallback?: PharmacySettings | null,
 ): PharmacySettings | null {
   if (branchId) {
     const found = branches.find((branch) => branch.id === branchId);
@@ -36,7 +36,7 @@ export function resolveBranchSettings(
 export function getLowStockThresholdForBranch(
   branchId: string | undefined,
   branches: PharmacySettings[],
-  fallback?: PharmacySettings | null
+  fallback?: PharmacySettings | null,
 ) {
   return getLowStockThreshold(resolveBranchSettings(branchId, branches, fallback));
 }
@@ -44,7 +44,7 @@ export function getLowStockThresholdForBranch(
 export function getExpiringSoonDaysForBranch(
   branchId: string | undefined,
   branches: PharmacySettings[],
-  fallback?: PharmacySettings | null
+  fallback?: PharmacySettings | null,
 ) {
   return getExpiringSoonDays(resolveBranchSettings(branchId, branches, fallback));
 }
@@ -52,7 +52,7 @@ export function getExpiringSoonDaysForBranch(
 export function isLowStockMedicine(
   medicine: Medicine,
   branches: PharmacySettings[],
-  fallback?: PharmacySettings | null
+  fallback?: PharmacySettings | null,
 ) {
   return medicine.qty <= getLowStockThresholdForBranch(medicine.pharmacyId, branches, fallback);
 }
@@ -61,7 +61,7 @@ export function isExpiringSoonMedicine(
   medicine: Medicine,
   branches: PharmacySettings[],
   fallback: PharmacySettings | null | undefined,
-  todayValue: string
+  todayValue: string,
 ) {
   const expiry = medicine.expiry || "";
   if (!expiry || expiry < todayValue) return false;
@@ -77,7 +77,7 @@ export function isExpiredMedicine(medicine: Medicine, todayValue: string) {
 export function filterLowStockMedicines(
   medicines: Medicine[],
   branches: PharmacySettings[],
-  fallback?: PharmacySettings | null
+  fallback?: PharmacySettings | null,
 ) {
   return medicines.filter((medicine) => isLowStockMedicine(medicine, branches, fallback));
 }
@@ -86,10 +86,10 @@ export function filterExpiringSoonMedicines(
   medicines: Medicine[],
   branches: PharmacySettings[],
   fallback: PharmacySettings | null | undefined,
-  todayValue: string
+  todayValue: string,
 ) {
   return medicines.filter((medicine) =>
-    isExpiringSoonMedicine(medicine, branches, fallback, todayValue)
+    isExpiringSoonMedicine(medicine, branches, fallback, todayValue),
   );
 }
 
@@ -121,16 +121,18 @@ export function buildBranchInventoryAlertRows(params: {
 
   return branchIds
     .map((branchId) => {
-      const branchMedicines = params.medicines.filter((medicine) => medicine.pharmacyId === branchId);
+      const branchMedicines = params.medicines.filter(
+        (medicine) => medicine.pharmacyId === branchId,
+      );
       const lowStockCount = branchMedicines.filter((medicine) =>
-        isLowStockMedicine(medicine, params.branches, params.fallbackSettings)
+        isLowStockMedicine(medicine, params.branches, params.fallbackSettings),
       ).length;
       const outOfStockCount = branchMedicines.filter((medicine) => medicine.qty <= 0).length;
       const expiringCount = branchMedicines.filter((medicine) =>
-        isExpiringSoonMedicine(medicine, params.branches, params.fallbackSettings, todayValue)
+        isExpiringSoonMedicine(medicine, params.branches, params.fallbackSettings, todayValue),
       ).length;
       const expiredCount = branchMedicines.filter((medicine) =>
-        isExpiredMedicine(medicine, todayValue)
+        isExpiredMedicine(medicine, todayValue),
       ).length;
 
       return {

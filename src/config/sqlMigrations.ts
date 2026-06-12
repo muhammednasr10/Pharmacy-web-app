@@ -16,16 +16,14 @@ export type SqlMigrationDefinition = {
   probe: MigrationProbe;
 };
 
-export const SQL_MIGRATION_GROUPS: Record<
-  SqlMigrationGroup,
-  { labelAr: string; labelEn: string }
-> = {
-  core: { labelAr: "الأساسيات", labelEn: "Core" },
-  saas: { labelAr: "SaaS والاشتراك", labelEn: "SaaS & subscription" },
-  branches: { labelAr: "الفروع والنقل", labelEn: "Branches & transfers" },
-  pos: { labelAr: "نقطة البيع", labelEn: "Point of sale" },
-  hr: { labelAr: "الموظفين والحضور", labelEn: "HR & attendance" },
-};
+export const SQL_MIGRATION_GROUPS: Record<SqlMigrationGroup, { labelAr: string; labelEn: string }> =
+  {
+    core: { labelAr: "الأساسيات", labelEn: "Core" },
+    saas: { labelAr: "SaaS والاشتراك", labelEn: "SaaS & subscription" },
+    branches: { labelAr: "الفروع والنقل", labelEn: "Branches & transfers" },
+    pos: { labelAr: "نقطة البيع", labelEn: "Point of sale" },
+    hr: { labelAr: "الموظفين والحضور", labelEn: "HR & attendance" },
+  };
 
 /** Recommended run order — newest features at the bottom. */
 export const SQL_MIGRATIONS: SqlMigrationDefinition[] = [
@@ -188,5 +186,21 @@ export const SQL_MIGRATIONS: SqlMigrationDefinition[] = [
     titleAr: "تنبيهات انتهاء الصلاحية",
     titleEn: "Expiry notifications",
     probe: { type: "column", table: "pharmacies", column: "expiry_notify_enabled" },
+  },
+  {
+    id: "custom-roles",
+    file: "pharmacy-custom-roles.sql",
+    group: "hr",
+    titleAr: "أدوار مخصصة للصيدلية",
+    titleEn: "Pharmacy custom roles",
+    probe: { type: "table", name: "pharmacy_custom_roles" },
+  },
+  {
+    id: "role-configs",
+    file: "pharmacy-role-configs.sql",
+    group: "hr",
+    titleAr: "تخصيص صلاحيات الأدوار",
+    titleEn: "Role permission overrides",
+    probe: { type: "table", name: "pharmacy_role_configs" },
   },
 ];

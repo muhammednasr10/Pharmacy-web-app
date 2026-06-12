@@ -26,7 +26,7 @@ export type NavItem = { page: Page; label: string };
 export function buildNavigationItems(
   allowedPages: Page[],
   isArabic: boolean,
-  t: Record<string, string>
+  t: Record<string, string>,
 ): NavItem[] {
   return allowedPages.map((page) => {
     switch (page) {

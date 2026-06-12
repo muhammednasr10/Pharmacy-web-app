@@ -2,9 +2,7 @@ import type { PharmacySettings } from "../types";
 import { clonePharmacyShifts, parseWorkBreaks } from "./workSchedule";
 
 /** Operational settings copied to a new branch (not identity or subscription). */
-export function extractCopyableBranchSettings(
-  source: PharmacySettings
-): Partial<PharmacySettings> {
+export function extractCopyableBranchSettings(source: PharmacySettings): Partial<PharmacySettings> {
   const workShifts =
     Array.isArray(source.workShifts) && source.workShifts.length > 0
       ? clonePharmacyShifts(source.workShifts)

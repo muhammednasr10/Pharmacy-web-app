@@ -45,26 +45,26 @@ export function buildBranchReportRows(params: {
     const branchInvoices = params.invoices.filter(
       (invoice) =>
         resolveBranchId(invoice.pharmacyId, fallback) === branchId &&
-        inReportRange(invoice.createdAt || invoice.date, params.reportFrom, params.reportTo)
+        inReportRange(invoice.createdAt || invoice.date, params.reportFrom, params.reportTo),
     );
 
     const salesTotal = branchInvoices.reduce((sum, invoice) => sum + Number(invoice.total || 0), 0);
     const profitTotal = branchInvoices.reduce(
       (sum, invoice) => sum + Number(invoice.totalProfit || 0),
-      0
+      0,
     );
     const returnsTotal = params.returns
       .filter(
         (record) =>
           resolveBranchId(record.pharmacyId, fallback) === branchId &&
-          inReportRange(record.createdAt || record.date, params.reportFrom, params.reportTo)
+          inReportRange(record.createdAt || record.date, params.reportFrom, params.reportTo),
       )
       .reduce((sum, record) => sum + Number(record.total || 0), 0);
     const costsTotal = params.costs
       .filter(
         (cost) =>
           resolveBranchId(cost.pharmacyId, fallback) === branchId &&
-          inReportRange(cost.createdAt || cost.date, params.reportFrom, params.reportTo)
+          inReportRange(cost.createdAt || cost.date, params.reportFrom, params.reportTo),
       )
       .reduce((sum, cost) => sum + Number(cost.amount || 0), 0);
 

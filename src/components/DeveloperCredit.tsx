@@ -17,7 +17,15 @@ export default function DeveloperCredit({ isArabic, variant = "inline" }: Develo
           <div className="devCreditTopbarHead">
             <span className="devCreditTopbarIcon" aria-hidden="true">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="4" width="18" height="12" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
+                <rect
+                  x="3"
+                  y="4"
+                  width="18"
+                  height="12"
+                  rx="2.5"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                />
                 <path d="M8 20h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
                 <path d="M12 16v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
               </svg>

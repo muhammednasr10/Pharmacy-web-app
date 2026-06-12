@@ -78,7 +78,7 @@ function formatDateInput(date: Date) {
 
 function groupPurchasesByNumber(
   records: PurchaseRecord[],
-  safeNumber: (value: unknown) => number
+  safeNumber: (value: unknown) => number,
 ): PurchaseGroup[] {
   const map = new Map<string, PurchaseGroup>();
 
@@ -90,7 +90,8 @@ function groupPurchasesByNumber(
       existing.items.push(record);
       existing.totalCost += safeNumber(record.totalCost);
       existing.totalQuantity += safeNumber(record.quantity);
-      if (!existing.supplierName && record.supplierName) existing.supplierName = record.supplierName;
+      if (!existing.supplierName && record.supplierName)
+        existing.supplierName = record.supplierName;
       if (!existing.notes && record.notes) existing.notes = record.notes;
     } else {
       map.set(key, {
@@ -111,7 +112,7 @@ function groupPurchasesByNumber(
   return Array.from(map.values()).sort(
     (a, b) =>
       new Date(b.createdAt || b.date || 0).getTime() -
-      new Date(a.createdAt || a.date || 0).getTime()
+      new Date(a.createdAt || a.date || 0).getTime(),
   );
 }
 
@@ -160,7 +161,9 @@ export default function PurchasesPage({
 
   const branchOptions = useMemo(() => {
     if (branches.length > 0) return branches;
-    return [{ id: defaultBranchId, name: defaultBranchId, name_en: defaultBranchId } as PharmacySettings];
+    return [
+      { id: defaultBranchId, name: defaultBranchId, name_en: defaultBranchId } as PharmacySettings,
+    ];
   }, [branches, defaultBranchId]);
 
   const loadPurchases = useCallback(async () => {
@@ -196,7 +199,7 @@ export default function PurchasesPage({
       draft.items.map((item, index) => ({
         key: `reorder-${index}-${Date.now()}`,
         ...item,
-      }))
+      })),
     );
     setItemLookupResetKey((key) => key + 1);
     setShowPurchaseModal(true);
@@ -214,15 +217,14 @@ export default function PurchasesPage({
 
   const purchaseGroups = useMemo(
     () => groupPurchasesByNumber(allPurchases, safeNumber),
-    [allPurchases, safeNumber]
+    [allPurchases, safeNumber],
   );
 
   const filteredPurchaseGroups = useMemo(() => {
     const searchValue = purchaseSearch.trim().toLowerCase();
 
     return purchaseGroups.filter((group) => {
-      const matchesBranch =
-        branchFilter === "all" || group.pharmacyId === branchFilter;
+      const matchesBranch = branchFilter === "all" || group.pharmacyId === branchFilter;
 
       const matchesSearch =
         !searchValue ||
@@ -231,9 +233,15 @@ export default function PurchasesPage({
         group.userName.toLowerCase().includes(searchValue) ||
         group.items.some(
           (item) =>
-            String(item.medicineName_ar || "").toLowerCase().includes(searchValue) ||
-            String(item.medicineName_en || "").toLowerCase().includes(searchValue) ||
-            String(item.barcode || "").toLowerCase().includes(searchValue)
+            String(item.medicineName_ar || "")
+              .toLowerCase()
+              .includes(searchValue) ||
+            String(item.medicineName_en || "")
+              .toLowerCase()
+              .includes(searchValue) ||
+            String(item.barcode || "")
+              .toLowerCase()
+              .includes(searchValue),
         );
 
       const groupDate = new Date(group.createdAt || group.date);
@@ -290,7 +298,7 @@ export default function PurchasesPage({
           price: safeNumber(item.sellPrice),
           expiry: medicine?.expiry || "",
         };
-      })
+      }),
     );
     setBranchMedicines(branchMeds);
     setShowPurchaseModal(true);
@@ -302,7 +310,7 @@ export default function PurchasesPage({
     const confirmed = window.confirm(
       isArabic
         ? `حذف توريد رقم ${group.purchaseNumber}؟\nسيتم خصم الكميات من مخزون الفرع.`
-        : `Delete purchase ${group.purchaseNumber}?\nQuantities will be deducted from branch stock.`
+        : `Delete purchase ${group.purchaseNumber}?\nQuantities will be deducted from branch stock.`,
     );
     if (!confirmed) return;
 
@@ -312,7 +320,7 @@ export default function PurchasesPage({
         group.purchaseNumber,
         group.pharmacyId || defaultBranchId,
         userId,
-        userName
+        userName,
       );
 
       await onActivityLog({
@@ -339,7 +347,7 @@ export default function PurchasesPage({
           ? error.message
           : isArabic
             ? "تعذر حذف التوريد"
-            : "Could not delete purchase"
+            : "Could not delete purchase",
       );
     } finally {
       setDeletingPurchaseNumber(null);
@@ -383,7 +391,7 @@ export default function PurchasesPage({
             : "أكمل بيانات الصنف قبل الإضافة"
           : editingDraftKey
             ? "Complete item details before saving"
-            : "Complete item details before adding"
+            : "Complete item details before adding",
       );
       return;
     }
@@ -400,9 +408,7 @@ export default function PurchasesPage({
     };
 
     if (editingDraftKey) {
-      setDraftItems((prev) =>
-        prev.map((row) => (row.key === editingDraftKey ? nextItem : row))
-      );
+      setDraftItems((prev) => prev.map((row) => (row.key === editingDraftKey ? nextItem : row)));
       setEditingDraftKey(null);
     } else {
       setDraftItems((prev) => [...prev, nextItem]);
@@ -418,7 +424,9 @@ export default function PurchasesPage({
       return;
     }
     if (draftItems.length === 0) {
-      alert(isArabic ? "أضف صنفاً واحداً على الأقل للتوريد" : "Add at least one item to the purchase");
+      alert(
+        isArabic ? "أضف صنفاً واحداً على الأقل للتوريد" : "Add at least one item to the purchase",
+      );
       return;
     }
 
@@ -467,7 +475,7 @@ export default function PurchasesPage({
             : "Purchase updated successfully"
           : isArabic
             ? "تم تسجيل التوريد بنجاح"
-            : "Purchase saved successfully"
+            : "Purchase saved successfully",
       );
       setShowPurchaseModal(false);
       await onRefreshMedicines();
@@ -670,8 +678,7 @@ export default function PurchasesPage({
                           type="button"
                           className="deleteSmallBtn"
                           disabled={
-                            isSubscriptionExpired ||
-                            deletingPurchaseNumber === group.purchaseNumber
+                            isSubscriptionExpired || deletingPurchaseNumber === group.purchaseNumber
                           }
                           onClick={() => void handleDeletePurchase(group)}
                         >
@@ -866,7 +873,7 @@ export default function PurchasesPage({
                                     cancelDraftItemEdit();
                                   }
                                   setDraftItems((prev) =>
-                                    prev.filter((row) => row.key !== item.key)
+                                    prev.filter((row) => row.key !== item.key),
                                   );
                                 }}
                                 disabled={saving}
@@ -949,9 +956,7 @@ export default function PurchasesPage({
                 <tbody>
                   {viewGroup.items.map((item) => (
                     <tr key={item.id}>
-                      <td>
-                        {isArabic ? item.medicineName_ar : item.medicineName_en}
-                      </td>
+                      <td>{isArabic ? item.medicineName_ar : item.medicineName_en}</td>
                       <td>{item.barcode}</td>
                       <td>{item.quantity}</td>
                       <td>
@@ -977,8 +982,8 @@ export default function PurchasesPage({
                 {isArabic ? "إجمالي الكمية:" : "Total qty:"} {viewGroup.totalQuantity}
               </span>
               <strong>
-                {isArabic ? "إجمالي التكلفة:" : "Total cost:"}{" "}
-                {viewGroup.totalCost.toFixed(2)} {currency}
+                {isArabic ? "إجمالي التكلفة:" : "Total cost:"} {viewGroup.totalCost.toFixed(2)}{" "}
+                {currency}
               </strong>
             </div>
 

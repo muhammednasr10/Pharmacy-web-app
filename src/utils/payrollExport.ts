@@ -80,12 +80,9 @@ function addHeader(docPdf: jsPDF, snapshot: PayrollExportSnapshot) {
   y += 7;
 
   docPdf.setFontSize(11);
-  docPdf.text(
-    label(snapshot, "كشف المرتبات", "Payroll Statement"),
-    pageWidth / 2,
-    y,
-    { align: "center" }
-  );
+  docPdf.text(label(snapshot, "كشف المرتبات", "Payroll Statement"), pageWidth / 2, y, {
+    align: "center",
+  });
   y += 6;
 
   docPdf.setFontSize(9);
@@ -93,14 +90,14 @@ function addHeader(docPdf: jsPDF, snapshot: PayrollExportSnapshot) {
     `${label(snapshot, "من", "From")}: ${snapshot.periodStart}  |  ${label(snapshot, "إلى", "To")}: ${snapshot.periodEnd}`,
     pageWidth / 2,
     y,
-    { align: "center" }
+    { align: "center" },
   );
   y += 5;
   docPdf.text(
     `${label(snapshot, "تاريخ التصدير", "Exported")}: ${new Date().toLocaleString(snapshot.isArabic ? "ar-EG" : "en-GB")}`,
     pageWidth / 2,
     y,
-    { align: "center" }
+    { align: "center" },
   );
 
   return y + 8;
@@ -134,7 +131,9 @@ export function downloadPayrollPdf(snapshot: PayrollExportSnapshot) {
   const colWeights = showBranch
     ? [16, 11, 5, 6, 5, 5, 5, 5, 8, 8, 7, 7, 8, 7]
     : [18, 6, 7, 6, 6, 6, 6, 9, 9, 8, 8, 9, 7];
-  const colWidths = colWeights.map((weight) => (tableWidth * weight) / colWeights.reduce((a, b) => a + b, 0));
+  const colWidths = colWeights.map(
+    (weight) => (tableWidth * weight) / colWeights.reduce((a, b) => a + b, 0),
+  );
   const xPositions: number[] = [];
   let x = margin;
   colWidths.forEach((width) => {
@@ -158,9 +157,7 @@ export function downloadPayrollPdf(snapshot: PayrollExportSnapshot) {
     const branchId = record.pharmacyId || "";
     const row = [
       truncateText(record.userName, showBranch ? 18 : 24),
-      ...(showBranch
-        ? [truncateText(snapshot.getBranchLabel!(branchId) || branchId, 14)]
-        : []),
+      ...(showBranch ? [truncateText(snapshot.getBranchLabel!(branchId) || branchId, 14)] : []),
       String(record.workingDays ?? 0),
       formatWorkMinutes(record.workMinutes ?? 0, snapshot.isArabic),
       String(record.presentDays ?? 0),
@@ -190,13 +187,13 @@ export function downloadPayrollPdf(snapshot: PayrollExportSnapshot) {
   docPdf.text(
     `${label(snapshot, "عدد الموظفين", "Employees")}: ${snapshot.records.length}`,
     margin,
-    y
+    y,
   );
   y += 5;
   docPdf.text(
     `${label(snapshot, "إجمالي الصافي", "Total net pay")}: ${money(snapshot.totalNetPay, snapshot.currency)}`,
     margin,
-    y
+    y,
   );
 
   docPdf.save(`payroll-${snapshot.periodStart}_${snapshot.periodEnd}.pdf`);

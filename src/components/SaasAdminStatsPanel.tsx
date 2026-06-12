@@ -149,7 +149,9 @@ export default function SaasAdminStatsPanel({
               <article key={tierId} className={`saasTierStatCard ${tierId}`}>
                 <div className="saasTierStatTop">
                   <strong>{getSubscriptionTierLabel(tierId, isArabic)}</strong>
-                  <span>{isArabic ? `${tier.maxBranches} فروع` : `${tier.maxBranches} branches`}</span>
+                  <span>
+                    {isArabic ? `${tier.maxBranches} فروع` : `${tier.maxBranches} branches`}
+                  </span>
                 </div>
                 <div className="saasTierStatCounts">
                   <div>
@@ -193,7 +195,7 @@ export default function SaasAdminStatsPanel({
                     <td>
                       {request.reviewedAt || request.createdAt
                         ? new Date(request.reviewedAt || request.createdAt || "").toLocaleString(
-                            isArabic ? "ar-EG" : "en-GB"
+                            isArabic ? "ar-EG" : "en-GB",
                           )
                         : "—"}
                     </td>

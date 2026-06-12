@@ -57,8 +57,13 @@ export function buildSaasAdminStats(params: {
   pendingLoginAccountRequests: number;
   isPharmacyActive: (pharmacy: PharmacySettings) => boolean;
 }): SaasAdminStats {
-  const { pharmacies, systemUsers, subscriptionRequests, pendingLoginAccountRequests, isPharmacyActive } =
-    params;
+  const {
+    pharmacies,
+    systemUsers,
+    subscriptionRequests,
+    pendingLoginAccountRequests,
+    isPharmacyActive,
+  } = params;
 
   const now = new Date();
   const monthAgo = new Date(now);
@@ -74,7 +79,7 @@ export function buildSaasAdminStats(params: {
 
   organizationIds.forEach((organizationId) => {
     const orgPharmacies = pharmacies.filter(
-      (pharmacy) => resolveOrganizationId(pharmacy) === organizationId
+      (pharmacy) => resolveOrganizationId(pharmacy) === organizationId,
     );
     const representative = orgPharmacies[0];
     if (!representative) return;
@@ -92,14 +97,17 @@ export function buildSaasAdminStats(params: {
 
   const approvedRevenueTotal = approved.reduce(
     (sum, request) => sum + Number(request.amount || 0),
-    0
+    0,
   );
   const approvedRevenueLast30Days = approved.reduce((sum, request) => {
     const stamp = new Date(request.reviewedAt || request.createdAt || 0);
     if (Number.isNaN(stamp.getTime()) || stamp < monthAgo) return sum;
     return sum + Number(request.amount || 0);
   }, 0);
-  const pendingRevenueTotal = pending.reduce((sum, request) => sum + Number(request.amount || 0), 0);
+  const pendingRevenueTotal = pending.reduce(
+    (sum, request) => sum + Number(request.amount || 0),
+    0,
+  );
 
   const recentApprovedRequests = [...approved]
     .sort((a, b) => {
@@ -124,7 +132,8 @@ export function buildSaasAdminStats(params: {
     pendingRevenueTotal,
     tierCounts,
     activeTierCounts,
-    expiringWithin7Days: pharmacies.filter((pharmacy) => isPharmacyExpiringSoon(pharmacy, now)).length,
+    expiringWithin7Days: pharmacies.filter((pharmacy) => isPharmacyExpiringSoon(pharmacy, now))
+      .length,
     expiredSubscriptions: pharmacies.filter((pharmacy) => isPharmacyExpired(pharmacy, now)).length,
     recentApprovedRequests,
   };

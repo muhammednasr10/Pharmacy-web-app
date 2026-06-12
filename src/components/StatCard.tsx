@@ -5,12 +5,7 @@ type StatCardProps = {
   onClick?: () => void;
 };
 
-export default function StatCard({
-  title,
-  value,
-  colorClass,
-  onClick,
-}: StatCardProps) {
+export default function StatCard({ title, value, colorClass, onClick }: StatCardProps) {
   return (
     <div className={`statCard ${colorClass ?? ""}`} onClick={onClick}>
       <span>{title}</span>

@@ -33,7 +33,7 @@ export { supabaseUrl, supabaseAnonKey };
 
 export const supabase = createClient(
   supabaseConfigError ? "http://invalid.local" : supabaseUrl,
-  supabaseConfigError ? "invalid" : supabaseAnonKey
+  supabaseConfigError ? "invalid" : supabaseAnonKey,
 );
 
 /** Used for signUp so the admin session is not replaced. */

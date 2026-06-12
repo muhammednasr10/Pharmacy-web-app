@@ -104,11 +104,16 @@ export function parseWorkBreaks(raw: unknown): WorkBreak[] {
 }
 
 function normalizeShiftId(value: unknown, fallback: ShiftId): ShiftId {
-  const id = String(value || "").trim().toUpperCase();
+  const id = String(value || "")
+    .trim()
+    .toUpperCase();
   return SHIFT_IDS.includes(id as ShiftId) ? (id as ShiftId) : fallback;
 }
 
-function normalizeAllowedLateMinutes(value: unknown, fallback = DEFAULT_ALLOWED_LATE_MINUTES): number {
+function normalizeAllowedLateMinutes(
+  value: unknown,
+  fallback = DEFAULT_ALLOWED_LATE_MINUTES,
+): number {
   const minutes = Number(value ?? fallback);
   if (!Number.isFinite(minutes)) return fallback;
   return Math.min(180, Math.max(0, Math.round(minutes)));
@@ -116,7 +121,7 @@ function normalizeAllowedLateMinutes(value: unknown, fallback = DEFAULT_ALLOWED_
 
 export function resolveAllowedLateMinutes(
   shiftId: ShiftId,
-  pharmacyShifts: PharmacyShift[]
+  pharmacyShifts: PharmacyShift[],
 ): number {
   const shift = pharmacyShifts.find((item) => item.id === shiftId);
   return normalizeAllowedLateMinutes(shift?.allowedLateMinutes, DEFAULT_ALLOWED_LATE_MINUTES);
@@ -154,7 +159,7 @@ export function parsePharmacyShifts(raw: unknown, legacySchedule?: WorkSchedule)
       breaks: parseWorkBreaks(row.breaks),
       allowedLateMinutes: normalizeAllowedLateMinutes(
         row.allowedLateMinutes,
-        template.allowedLateMinutes
+        template.allowedLateMinutes,
       ),
     });
   }
@@ -182,7 +187,7 @@ export function clonePharmacyShifts(shifts: PharmacyShift[]): PharmacyShift[] {
 export function getShiftDisplayName(
   shiftId: ShiftId,
   shifts: PharmacyShift[],
-  isArabic: boolean
+  isArabic: boolean,
 ): string {
   const shift = shifts.find((item) => item.id === shiftId);
   if (!shift) return isArabic ? `شيفت ${shiftId}` : `Shift ${shiftId}`;
@@ -229,7 +234,7 @@ export type ResolvedWorkSchedule = WorkSchedule & {
 export function resolveScheduleForShiftId(
   shiftId: ShiftId | string | null | undefined,
   pharmacyShifts: PharmacyShift[],
-  fallbackShiftId: ShiftId = "A"
+  fallbackShiftId: ShiftId = "A",
 ): ResolvedWorkSchedule {
   const normalized = normalizeShiftId(shiftId, fallbackShiftId);
   const shiftTemplate =
@@ -248,15 +253,18 @@ export function resolveScheduleForShiftId(
 }
 
 export function resolveWorkSchedule(
-  employee: {
-    useCustomWorkSchedule?: boolean;
-    assignedShiftId?: string | null;
-    workDayStart?: string | null;
-    workDayEnd?: string | null;
-    workBreaks?: unknown;
-  } | null | undefined,
+  employee:
+    | {
+        useCustomWorkSchedule?: boolean;
+        assignedShiftId?: string | null;
+        workDayStart?: string | null;
+        workDayEnd?: string | null;
+        workBreaks?: unknown;
+      }
+    | null
+    | undefined,
   pharmacyShifts: PharmacyShift[],
-  defaultShiftId: ShiftId = "A"
+  defaultShiftId: ShiftId = "A",
 ): ResolvedWorkSchedule {
   const shiftId = normalizeShiftId(employee?.assignedShiftId, defaultShiftId);
   const shiftTemplate =
@@ -306,7 +314,11 @@ function normalizeCheckInMinutes(checkIn: Date, schedule: WorkSchedule): number 
 }
 
 /** Returns true if check-in is after scheduled start + grace minutes (only within shift window). */
-export function isCheckInLate(checkInIso: string, schedule: WorkSchedule, graceMinutes = 15): boolean {
+export function isCheckInLate(
+  checkInIso: string,
+  schedule: WorkSchedule,
+  graceMinutes = 15,
+): boolean {
   const checkIn = new Date(checkInIso);
   if (Number.isNaN(checkIn.getTime())) return false;
 
@@ -322,7 +334,7 @@ export function isCheckOutEarly(
   checkOutIso: string,
   schedule: WorkSchedule,
   workDate: string,
-  graceMinutes = DEFAULT_ALLOWED_LATE_MINUTES
+  graceMinutes = DEFAULT_ALLOWED_LATE_MINUTES,
 ): boolean {
   const checkOut = new Date(checkOutIso);
   if (Number.isNaN(checkOut.getTime())) return false;
@@ -366,14 +378,14 @@ export type AttendanceTimingFlags = {
 
 export function isEarlyLeaveApproved(
   earlyLeaveOutcome: "permission" | "deduction" | undefined,
-  hasApprovedPermissionRequest: boolean
+  hasApprovedPermissionRequest: boolean,
 ): boolean {
   if (hasApprovedPermissionRequest) return true;
   return earlyLeaveOutcome !== "deduction";
 }
 
 export function resolveEarlyLeaveOutcome(
-  earlyLeaveOutcome: "permission" | "deduction" | undefined
+  earlyLeaveOutcome: "permission" | "deduction" | undefined,
 ): "permission" | "deduction" {
   return earlyLeaveOutcome === "deduction" ? "deduction" : "permission";
 }
@@ -384,7 +396,7 @@ export function evaluateAttendanceTiming(
   checkOutIso: string | undefined,
   schedule: WorkSchedule,
   allowedLateMinutes = DEFAULT_ALLOWED_LATE_MINUTES,
-  options?: { approvedEarlyLeave?: boolean }
+  options?: { approvedEarlyLeave?: boolean },
 ): AttendanceTimingFlags {
   return {
     isLate: checkInIso ? isCheckInLate(checkInIso, schedule, allowedLateMinutes) : false,
@@ -398,7 +410,7 @@ export function evaluateAttendanceTiming(
 /** Infer shift from current local time (fallback when employee has no assignment). */
 export function inferShiftIdFromTime(
   date = new Date(),
-  shifts: PharmacyShift[] = DEFAULT_PHARMACY_SHIFTS
+  shifts: PharmacyShift[] = DEFAULT_PHARMACY_SHIFTS,
 ): ShiftId {
   const nowMinutes = date.getHours() * 60 + date.getMinutes();
 

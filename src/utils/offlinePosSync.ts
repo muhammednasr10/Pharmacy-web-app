@@ -14,11 +14,7 @@ export type OfflineSyncResult = {
 
 async function syncOnePendingSale(sale: PendingOfflineSale): Promise<void> {
   await updatePendingOfflineSale(sale.localId, { status: "syncing", lastError: undefined });
-  await pharmacyService.completeSaleWithStockDeduction(
-    sale.cart,
-    sale.invoice,
-    undefined
-  );
+  await pharmacyService.completeSaleWithStockDeduction(sale.cart, sale.invoice, undefined);
   await removePendingOfflineSale(sale.localId);
 }
 
@@ -28,7 +24,7 @@ export async function syncPendingOfflineSales(pharmacyId?: string): Promise<Offl
   }
 
   const pending = (await listPendingOfflineSales(pharmacyId)).filter(
-    (sale) => sale.status === "pending" || sale.status === "failed"
+    (sale) => sale.status === "pending" || sale.status === "failed",
   );
 
   const result: OfflineSyncResult = { synced: 0, failed: 0, errors: [] };

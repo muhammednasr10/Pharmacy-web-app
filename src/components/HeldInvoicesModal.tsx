@@ -46,9 +46,7 @@ export default function HeldInvoicesModal({
         </div>
 
         {heldInvoices.length === 0 ? (
-          <p className="empty">
-            {isArabic ? "لا توجد فواتير معلقة حالياً" : "No held invoices"}
-          </p>
+          <p className="empty">{isArabic ? "لا توجد فواتير معلقة حالياً" : "No held invoices"}</p>
         ) : (
           <div className="tableWrap">
             <table>

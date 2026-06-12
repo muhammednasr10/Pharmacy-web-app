@@ -79,8 +79,16 @@ export default function InvoiceTable({
           <option value="wallet">{getPaymentLabel("wallet")}</option>
           <option value="credit">{getPaymentLabel("credit")}</option>
         </select>
-        <input type="date" value={invoiceFromDate} onChange={(e) => setInvoiceFromDate(e.target.value)} />
-        <input type="date" value={invoiceToDate} onChange={(e) => setInvoiceToDate(e.target.value)} />
+        <input
+          type="date"
+          value={invoiceFromDate}
+          onChange={(e) => setInvoiceFromDate(e.target.value)}
+        />
+        <input
+          type="date"
+          value={invoiceToDate}
+          onChange={(e) => setInvoiceToDate(e.target.value)}
+        />
         <button
           className="clearCartBtn"
           onClick={() => {
@@ -116,7 +124,11 @@ export default function InvoiceTable({
               {filteredInvoices.map((invoice) => (
                 <tr key={`${invoice.pharmacyId || "main"}-${invoice.id}`}>
                   {showBranchColumn && (
-                    <td>{getBranchLabel ? getBranchLabel(invoice.pharmacyId) : invoice.pharmacyId || "—"}</td>
+                    <td>
+                      {getBranchLabel
+                        ? getBranchLabel(invoice.pharmacyId)
+                        : invoice.pharmacyId || "—"}
+                    </td>
                   )}
                   <td>
                     {embedded ? (
@@ -130,19 +142,30 @@ export default function InvoiceTable({
                   <td>{invoice.date}</td>
                   <td>{getPaymentLabel(invoice.paymentMethod || "cash")}</td>
                   <td>{invoice.customerName || "-"}</td>
-                  <td>{(invoice.subtotal || invoice.total || 0).toFixed(2)} {t.currency}</td>
-                  <td>{(invoice.discount || 0).toFixed(2)} {t.currency}</td>
-                  <td>{(invoice.total || 0).toFixed(2)} {t.currency}</td>
+                  <td>
+                    {(invoice.subtotal || invoice.total || 0).toFixed(2)} {t.currency}
+                  </td>
+                  <td>
+                    {(invoice.discount || 0).toFixed(2)} {t.currency}
+                  </td>
+                  <td>
+                    {(invoice.total || 0).toFixed(2)} {t.currency}
+                  </td>
                   <td>{invoice.items?.length || 0}</td>
                   <td>
                     <div className="actionButtons">
-                      <button className="smallBtn" onClick={() => onViewInvoice(invoice)}>{t.view}</button>
+                      <button className="smallBtn" onClick={() => onViewInvoice(invoice)}>
+                        {t.view}
+                      </button>
                       {canUseReturns && (
                         <button className="editBtn" onClick={() => onReturnInvoice(invoice)}>
                           {isArabic ? "مرتجع" : "Return"}
                         </button>
                       )}
-                      <button className="printBtn" onClick={() => onPrintInvoice(invoice)}><span aria-hidden="true">🖨️</span><span>{t.print}</span></button>
+                      <button className="printBtn" onClick={() => onPrintInvoice(invoice)}>
+                        <span aria-hidden="true">🖨️</span>
+                        <span>{t.print}</span>
+                      </button>
                     </div>
                   </td>
                 </tr>

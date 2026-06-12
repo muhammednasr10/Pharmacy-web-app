@@ -46,7 +46,7 @@ function openOfflineDb(): Promise<IDBDatabase> {
 function runTransaction<T>(
   storeName: string,
   mode: IDBTransactionMode,
-  runner: (store: IDBObjectStore) => IDBRequest<T> | void
+  runner: (store: IDBObjectStore) => IDBRequest<T> | void,
 ): Promise<T | void> {
   return openOfflineDb().then(
     (db) =>
@@ -62,7 +62,7 @@ function runTransaction<T>(
           resolve();
         };
         tx.onerror = () => reject(tx.error ?? new Error("indexeddb_tx_failed"));
-      })
+      }),
   );
 }
 
@@ -84,7 +84,7 @@ export async function loadCachedMedicines(pharmacyId: string): Promise<{
   const row = (await runTransaction<MedicinesCacheRow | undefined>(
     "medicines",
     "readonly",
-    (store) => store.get(pharmacyId)
+    (store) => store.get(pharmacyId),
   )) as MedicinesCacheRow | undefined;
   return {
     medicines: row?.medicines ?? [],
@@ -110,10 +110,8 @@ export async function queueOfflineSale(input: {
 }
 
 export async function listPendingOfflineSales(pharmacyId?: string): Promise<PendingOfflineSale[]> {
-  const rows = (await runTransaction<PendingOfflineSale[]>(
-    "pendingSales",
-    "readonly",
-    (store) => store.getAll()
+  const rows = (await runTransaction<PendingOfflineSale[]>("pendingSales", "readonly", (store) =>
+    store.getAll(),
   )) as PendingOfflineSale[] | void;
   const all = rows ?? [];
   return pharmacyId ? all.filter((row) => row.pharmacyId === pharmacyId) : all;
@@ -126,16 +124,16 @@ export async function countPendingOfflineSales(pharmacyId?: string): Promise<num
 
 export async function updatePendingOfflineSale(
   localId: string,
-  updates: Partial<PendingOfflineSale>
+  updates: Partial<PendingOfflineSale>,
 ): Promise<void> {
   const existing = (await runTransaction<PendingOfflineSale | undefined>(
     "pendingSales",
     "readonly",
-    (store) => store.get(localId)
+    (store) => store.get(localId),
   )) as PendingOfflineSale | undefined;
   if (!existing) return;
   await runTransaction("pendingSales", "readwrite", (store) =>
-    store.put({ ...existing, ...updates })
+    store.put({ ...existing, ...updates }),
   );
 }
 

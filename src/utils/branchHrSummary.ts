@@ -21,7 +21,9 @@ export function buildBranchHrSummaryRows(params: {
 
   return branchIds
     .map((branchId) => {
-      const branchEmployees = params.employees.filter((employee) => employee.pharmacyId === branchId);
+      const branchEmployees = params.employees.filter(
+        (employee) => employee.pharmacyId === branchId,
+      );
       const activeEmployees = branchEmployees.filter((employee) => employee.isActive).length;
       return {
         branchId,
@@ -31,5 +33,7 @@ export function buildBranchHrSummaryRows(params: {
         inactiveEmployees: branchEmployees.length - activeEmployees,
       };
     })
-    .sort((a, b) => b.totalEmployees - a.totalEmployees || a.branchLabel.localeCompare(b.branchLabel));
+    .sort(
+      (a, b) => b.totalEmployees - a.totalEmployees || a.branchLabel.localeCompare(b.branchLabel),
+    );
 }

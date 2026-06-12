@@ -1,12 +1,15 @@
 export type Lang = "ar" | "en";
 
-export type UserRole =
+export type BuiltinUserRole =
   | "super_admin"
   | "pharmacy_admin"
   | "branch_manager"
   | "cashier"
   | "inventory"
   | "accountant";
+
+/** Built-in roles plus pharmacy-defined keys like custom_pharmacist */
+export type UserRole = BuiltinUserRole | (string & {});
 
 export type AppUser = {
   uid: string;
@@ -445,6 +448,47 @@ export type LoginAccountRequest = {
 
 export type PharmacyLoginAccountStatus = "pending" | "approved" | "rejected";
 
+export type RolePermissionFlags = Partial<
+  Record<
+    | "delete_medicines"
+    | "delete_returns"
+    | "delete_purchases"
+    | "delete_customer_payments"
+    | "manage_users"
+    | "edit_org_settings"
+    | "edit_branch_settings"
+    | "view_org_activity_logs"
+    | "export_backup"
+    | "manage_org_branches"
+    | "review_branch_transfers",
+    boolean
+  >
+>;
+
+export type PharmacyCustomRole = {
+  id: string;
+  pharmacyId: string;
+  roleKey: string;
+  nameAr: string;
+  nameEn: string;
+  baseRole: BuiltinUserRole;
+  allowedPages: Page[];
+  permissions?: RolePermissionFlags;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type PharmacyRoleConfig = {
+  id: string;
+  pharmacyId: string;
+  roleKey: string;
+  allowedPages: Page[];
+  permissions: RolePermissionFlags;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export type PharmacyLoginAccount = {
   id: string;
   pharmacyId: string;
@@ -578,11 +622,7 @@ export type PayrollRecord = {
   updatedAt?: string;
 };
 
-export type PayrollAdditionField =
-  | "specialAllowances"
-  | "bonuses"
-  | "incentives"
-  | "commission";
+export type PayrollAdditionField = "specialAllowances" | "bonuses" | "incentives" | "commission";
 
 export type PayrollEditableField = PayrollAdditionField | "deductions" | "taxes" | "insurance";
 

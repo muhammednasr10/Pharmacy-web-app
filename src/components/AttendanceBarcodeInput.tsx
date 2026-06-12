@@ -41,7 +41,7 @@ export default function AttendanceBarcodeInput({
         setBusy(false);
       }
     },
-    [busy, focusInput, onBarcodeScan]
+    [busy, focusInput, onBarcodeScan],
   );
 
   useEffect(() => {
@@ -91,9 +91,7 @@ export default function AttendanceBarcodeInput({
           onChange={(event) => setValue(event.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={
-            isArabic
-              ? "امسح الكود أو اكتبه واضغط Enter"
-              : "Scan code or type and press Enter"
+            isArabic ? "امسح الكود أو اكتبه واضغط Enter" : "Scan code or type and press Enter"
           }
         />
         {cameraSupported && (

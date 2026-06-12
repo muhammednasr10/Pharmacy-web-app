@@ -1,6 +1,12 @@
 type SalesPoint = { date: string; total: number };
 type PaymentSlice = { method: string; total: number };
-type TopItem = { medicineId: number; name_ar: string; name_en: string; quantity: number; total: number };
+type TopItem = {
+  medicineId: number;
+  name_ar: string;
+  name_en: string;
+  quantity: number;
+  total: number;
+};
 
 type DashboardChartsProps = {
   isArabic: boolean;
@@ -23,7 +29,15 @@ function formatMoney(value: number) {
   return value.toLocaleString(undefined, { maximumFractionDigits: 0 });
 }
 
-function SalesTrendChart({ isArabic, currency, salesTrend }: { isArabic: boolean; currency: string; salesTrend: SalesPoint[] }) {
+function SalesTrendChart({
+  isArabic,
+  currency,
+  salesTrend,
+}: {
+  isArabic: boolean;
+  currency: string;
+  salesTrend: SalesPoint[];
+}) {
   const hasData = salesTrend.some((p) => p.total > 0);
   const maxVal = Math.max(1, ...salesTrend.map((p) => p.total));
 
@@ -39,7 +53,9 @@ function SalesTrendChart({ isArabic, currency, salesTrend }: { isArabic: boolean
         <h2>{isArabic ? "اتجاه المبيعات" : "Sales Trend"}</h2>
       </div>
       {!hasData ? (
-        <p className="empty">{isArabic ? "لا توجد مبيعات في هذه الفترة" : "No sales in this period"}</p>
+        <p className="empty">
+          {isArabic ? "لا توجد مبيعات في هذه الفترة" : "No sales in this period"}
+        </p>
       ) : (
         <div className="chartScroll">
           <svg
@@ -61,7 +77,13 @@ function SalesTrendChart({ isArabic, currency, salesTrend }: { isArabic: boolean
                     <title>{`${point.date}: ${formatMoney(point.total)} ${currency}`}</title>
                   </rect>
                   {showLabel && (
-                    <text x={x + barW / 2} y={chartH + 18} textAnchor="middle" fontSize="11" fill="#667085">
+                    <text
+                      x={x + barW / 2}
+                      y={chartH + 18}
+                      textAnchor="middle"
+                      fontSize="11"
+                      fill="#667085"
+                    >
                       {day}
                     </text>
                   )}
@@ -75,7 +97,15 @@ function SalesTrendChart({ isArabic, currency, salesTrend }: { isArabic: boolean
   );
 }
 
-function PaymentDonut({ isArabic, currency, paymentBreakdown }: { isArabic: boolean; currency: string; paymentBreakdown: PaymentSlice[] }) {
+function PaymentDonut({
+  isArabic,
+  currency,
+  paymentBreakdown,
+}: {
+  isArabic: boolean;
+  currency: string;
+  paymentBreakdown: PaymentSlice[];
+}) {
   const total = paymentBreakdown.reduce((sum, slice) => sum + slice.total, 0);
   const radius = 60;
   const circumference = 2 * Math.PI * radius;
@@ -145,7 +175,15 @@ function PaymentDonut({ isArabic, currency, paymentBreakdown }: { isArabic: bool
   );
 }
 
-function TopSellingBars({ isArabic, currency, topSelling }: { isArabic: boolean; currency: string; topSelling: TopItem[] }) {
+function TopSellingBars({
+  isArabic,
+  currency,
+  topSelling,
+}: {
+  isArabic: boolean;
+  currency: string;
+  topSelling: TopItem[];
+}) {
   const maxQty = Math.max(1, ...topSelling.map((item) => item.quantity));
 
   return (

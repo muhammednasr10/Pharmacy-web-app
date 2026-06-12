@@ -77,7 +77,12 @@ export default function SqlMigrationsPage({ isArabic }: SqlMigrationsPageProps) 
               : "Probes tables, columns, and RPCs in Supabase — run missing files in SQL Editor in the recommended order."}
           </p>
         </div>
-        <button type="button" className="printBtn" onClick={() => void refresh()} disabled={loading}>
+        <button
+          type="button"
+          className="printBtn"
+          onClick={() => void refresh()}
+          disabled={loading}
+        >
           {loading
             ? isArabic
               ? "جارٍ الفحص..."
@@ -149,9 +154,14 @@ export default function SqlMigrationsPage({ isArabic }: SqlMigrationsPageProps) 
                 </thead>
                 <tbody>
                   {section.items.map((row) => (
-                    <tr key={row.id} className={row.status === "missing" ? "sqlMigrationRowMissing" : ""}>
+                    <tr
+                      key={row.id}
+                      className={row.status === "missing" ? "sqlMigrationRowMissing" : ""}
+                    >
                       <td>
-                        <span className={`badge ${row.status === "ok" ? "ok" : row.status === "missing" ? "danger" : "warn"}`}>
+                        <span
+                          className={`badge ${row.status === "ok" ? "ok" : row.status === "missing" ? "danger" : "warn"}`}
+                        >
                           {statusLabel(row.status, isArabic)}
                         </span>
                       </td>

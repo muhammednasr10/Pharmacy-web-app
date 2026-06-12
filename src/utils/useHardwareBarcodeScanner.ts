@@ -30,10 +30,7 @@ export function useHardwareBarcodeScanner({
       if (!allowScanWhileEditing) {
         const tag = target?.tagName || "";
         const isEditable =
-          tag === "INPUT" ||
-          tag === "TEXTAREA" ||
-          tag === "SELECT" ||
-          target?.isContentEditable;
+          tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable;
         if (isEditable) return;
       }
 

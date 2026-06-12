@@ -27,9 +27,7 @@ export default function WorkShiftsEditor({
   const [activeShiftId, setActiveShiftId] = useState<ShiftId>(SHIFT_IDS[0]);
 
   function updateShift(shiftId: ShiftId, patch: Partial<PharmacyShift>) {
-    onShiftsChange(
-      shifts.map((shift) => (shift.id === shiftId ? { ...shift, ...patch } : shift))
-    );
+    onShiftsChange(shifts.map((shift) => (shift.id === shiftId ? { ...shift, ...patch } : shift)));
   }
 
   const activeShift = shifts.find((shift) => shift.id === activeShiftId) || shifts[0];

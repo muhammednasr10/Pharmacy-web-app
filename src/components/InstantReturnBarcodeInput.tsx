@@ -44,16 +44,13 @@ export default function InstantReturnBarcodeInput({
         focusInput();
         return true;
       } catch {
-        showMessage(
-          isArabic ? "تعذر البحث بالباركود" : "Could not search by barcode",
-          true
-        );
+        showMessage(isArabic ? "تعذر البحث بالباركود" : "Could not search by barcode", true);
         return false;
       } finally {
         setBusy(false);
       }
     },
-    [busy, focusInput, isArabic, onBarcodeScan, showMessage]
+    [busy, focusInput, isArabic, onBarcodeScan, showMessage],
   );
 
   useEffect(() => {
@@ -91,7 +88,7 @@ export default function InstantReturnBarcodeInput({
         isArabic
           ? "مسح الكاميرا غير مدعوم هنا — استخدم Chrome على الجوال"
           : "Camera scan is not supported here — use Chrome on mobile",
-        true
+        true,
       );
       return;
     }

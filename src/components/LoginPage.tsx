@@ -1,6 +1,8 @@
 import type { FormEvent } from "react";
 import { TRIAL_SUBSCRIPTION_DAYS } from "../config/subscription";
+import type { FontScale, ThemeMode } from "../utils/displayPreferences";
 import DeveloperCredit from "./DeveloperCredit";
+import DisplayPreferencesPanel from "./DisplayPreferencesPanel";
 
 type LoginPageProps = {
   status: "loading" | "login" | "denied";
@@ -24,6 +26,12 @@ type LoginPageProps = {
   onRegisterSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onGoogleSignIn: () => void;
   onToggleLang: () => void;
+  themeMode: ThemeMode;
+  fontScale: FontScale;
+  resolvedTheme: "light" | "dark";
+  onThemeModeChange: (mode: ThemeMode) => void;
+  onFontScaleChange: (scale: FontScale) => void;
+  onToggleTheme: () => void;
   onLogout?: () => void;
 };
 
@@ -72,6 +80,12 @@ export default function LoginPage({
   onRegisterSubmit,
   onGoogleSignIn,
   onToggleLang,
+  themeMode,
+  fontScale,
+  resolvedTheme,
+  onThemeModeChange,
+  onFontScaleChange,
+  onToggleTheme,
   onLogout,
 }: LoginPageProps) {
   if (status === "loading") {
@@ -107,12 +121,17 @@ export default function LoginPage({
 
   return (
     <div className="loginPage" dir={isArabic ? "rtl" : "ltr"}>
-      <form
-        className="loginCard"
-        onSubmit={isRegister ? onRegisterSubmit : onSubmit}
-      >
+      <form className="loginCard" onSubmit={isRegister ? onRegisterSubmit : onSubmit}>
         <div className="loginLogo logoImageBox" />
-        <h1>{isRegister ? (isArabic ? "إنشاء حساب" : "Create account") : isArabic ? "تسجيل الدخول" : "Login"}</h1>
+        <h1>
+          {isRegister
+            ? isArabic
+              ? "إنشاء حساب"
+              : "Create account"
+            : isArabic
+              ? "تسجيل الدخول"
+              : "Login"}
+        </h1>
         <p>
           {isRegister
             ? isArabic
@@ -224,7 +243,30 @@ export default function LoginPage({
         <button type="button" className="loginLangBtn" onClick={onToggleLang}>
           {t.langButton}
         </button>
+
+        <button type="button" className="loginLangBtn" onClick={onToggleTheme}>
+          {resolvedTheme === "dark"
+            ? isArabic
+              ? "☀️ الوضع الفاتح"
+              : "☀️ Light mode"
+            : isArabic
+              ? "🌙 الوضع الداكن"
+              : "🌙 Dark mode"}
+        </button>
       </form>
+
+      <div className="loginDisplayPrefs">
+        <DisplayPreferencesPanel
+          isArabic={isArabic}
+          themeMode={themeMode}
+          fontScale={fontScale}
+          resolvedTheme={resolvedTheme}
+          onThemeModeChange={onThemeModeChange}
+          onFontScaleChange={onFontScaleChange}
+          compact
+        />
+      </div>
+
       <DeveloperCredit isArabic={isArabic} variant="login" />
     </div>
   );

@@ -157,7 +157,9 @@ export default function ReportsPage({
       key: "sales",
       label: isArabic ? "إجمالي المبيعات" : "Total Sales",
       value: `${formatMoney(filteredReportTotal)} ${currency}`,
-      sub: isArabic ? `${filteredReportInvoicesCount} فاتورة` : `${filteredReportInvoicesCount} invoices`,
+      sub: isArabic
+        ? `${filteredReportInvoicesCount} فاتورة`
+        : `${filteredReportInvoicesCount} invoices`,
       tone: "sales",
     },
     {
@@ -361,10 +363,12 @@ export default function ReportsPage({
                     {formatMoney(branchReportRows.reduce((s, r) => s + r.salesTotal, 0))} {currency}
                   </td>
                   <td>
-                    {formatMoney(branchReportRows.reduce((s, r) => s + r.profitTotal, 0))} {currency}
+                    {formatMoney(branchReportRows.reduce((s, r) => s + r.profitTotal, 0))}{" "}
+                    {currency}
                   </td>
                   <td>
-                    {formatMoney(branchReportRows.reduce((s, r) => s + r.returnsTotal, 0))} {currency}
+                    {formatMoney(branchReportRows.reduce((s, r) => s + r.returnsTotal, 0))}{" "}
+                    {currency}
                   </td>
                   <td>
                     {formatMoney(branchReportRows.reduce((s, r) => s + r.costsTotal, 0))} {currency}
@@ -404,7 +408,9 @@ export default function ReportsPage({
         <div className="reportBox">
           <h3>{isArabic ? "التكاليف حسب التصنيف" : "Costs by Category"}</h3>
           {reportCostsByCategory.length === 0 ? (
-            <p className="empty">{isArabic ? "لا توجد تكاليف في الفترة" : "No costs in this period"}</p>
+            <p className="empty">
+              {isArabic ? "لا توجد تكاليف في الفترة" : "No costs in this period"}
+            </p>
           ) : (
             <div className="cashierBars">
               {reportCostsByCategory.map((item) => {

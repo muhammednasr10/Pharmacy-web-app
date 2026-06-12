@@ -45,7 +45,12 @@ export default function SubscriptionPaymentInstructions({
           </p>
         </div>
         {onClose ? (
-          <button type="button" className="closeBtn" onClick={onClose} aria-label={isArabic ? "إغلاق" : "Close"}>
+          <button
+            type="button"
+            className="closeBtn"
+            onClick={onClose}
+            aria-label={isArabic ? "إغلاق" : "Close"}
+          >
             ×
           </button>
         ) : null}

@@ -34,13 +34,27 @@ export default function StockMovementsPage({
     return movements.filter((movement) => {
       const matchesSearch =
         !searchValue ||
-        String(movement.medicineName_ar || "").toLowerCase().includes(searchValue) ||
-        String(movement.medicineName_en || "").toLowerCase().includes(searchValue) ||
-        String(movement.barcode || "").toLowerCase().includes(searchValue) ||
-        String(movement.invoiceNumber || "").toLowerCase().includes(searchValue) ||
-        String(movement.returnNumber || "").toLowerCase().includes(searchValue) ||
-        String(movement.purchaseNumber || "").toLowerCase().includes(searchValue) ||
-        String(movement.userName || "").toLowerCase().includes(searchValue);
+        String(movement.medicineName_ar || "")
+          .toLowerCase()
+          .includes(searchValue) ||
+        String(movement.medicineName_en || "")
+          .toLowerCase()
+          .includes(searchValue) ||
+        String(movement.barcode || "")
+          .toLowerCase()
+          .includes(searchValue) ||
+        String(movement.invoiceNumber || "")
+          .toLowerCase()
+          .includes(searchValue) ||
+        String(movement.returnNumber || "")
+          .toLowerCase()
+          .includes(searchValue) ||
+        String(movement.purchaseNumber || "")
+          .toLowerCase()
+          .includes(searchValue) ||
+        String(movement.userName || "")
+          .toLowerCase()
+          .includes(searchValue);
 
       const matchesType = typeFilter === "all" || movement.type === typeFilter;
 
@@ -115,9 +129,15 @@ export default function StockMovementsPage({
           <option value="sale">{getMovementTypeLabel("sale", isArabic)}</option>
           <option value="return">{getMovementTypeLabel("return", isArabic)}</option>
           <option value="purchase">{getMovementTypeLabel("purchase", isArabic)}</option>
-          <option value="medicine_create">{getMovementTypeLabel("medicine_create", isArabic)}</option>
-          <option value="medicine_update">{getMovementTypeLabel("medicine_update", isArabic)}</option>
-          <option value="medicine_delete">{getMovementTypeLabel("medicine_delete", isArabic)}</option>
+          <option value="medicine_create">
+            {getMovementTypeLabel("medicine_create", isArabic)}
+          </option>
+          <option value="medicine_update">
+            {getMovementTypeLabel("medicine_update", isArabic)}
+          </option>
+          <option value="medicine_delete">
+            {getMovementTypeLabel("medicine_delete", isArabic)}
+          </option>
           <option value="branch_transfer_out">
             {getMovementTypeLabel("branch_transfer_out", isArabic)}
           </option>
@@ -168,7 +188,9 @@ export default function StockMovementsPage({
                   key={`${movement.pharmacyId || "main"}-${movement.createdAt}-${movement.medicineId}-${index}`}
                 >
                   {showBranchColumn && (
-                    <td>{getBranchLabel ? getBranchLabel(movement.pharmacyId) : movement.pharmacyId}</td>
+                    <td>
+                      {getBranchLabel ? getBranchLabel(movement.pharmacyId) : movement.pharmacyId}
+                    </td>
                   )}
                   <td>{getMovementTypeLabel(movement.type, isArabic)}</td>
                   <td>{isArabic ? movement.medicineName_ar : movement.medicineName_en}</td>

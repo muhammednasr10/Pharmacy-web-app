@@ -51,11 +51,9 @@ export function parseEmployeeAttendanceCode(raw: string): {
   return { employeeCode: normalizeAttendanceCode(clean) };
 }
 
-export function resolveStaffFromAttendanceCode<T extends { employeeCode?: string; pharmacyId: string }>(
-  staffRows: T[],
-  rawCode: string,
-  options?: { pharmacyIds?: string[] }
-): T | null {
+export function resolveStaffFromAttendanceCode<
+  T extends { employeeCode?: string; pharmacyId: string },
+>(staffRows: T[], rawCode: string, options?: { pharmacyIds?: string[] }): T | null {
   const parsed = parseEmployeeAttendanceCode(rawCode);
   if (!parsed.employeeCode) return null;
 
@@ -70,7 +68,7 @@ export function resolveStaffFromAttendanceCode<T extends { employeeCode?: string
     (row) =>
       row.employeeCode &&
       (normalizeAttendanceCode(row.employeeCode) === parsed.employeeCode ||
-        buildEmployeeAttendanceToken(row.pharmacyId, row.employeeCode) === tokenMatch)
+        buildEmployeeAttendanceToken(row.pharmacyId, row.employeeCode) === tokenMatch),
   );
   return direct || null;
 }

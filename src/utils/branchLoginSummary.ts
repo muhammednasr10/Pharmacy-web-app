@@ -6,13 +6,12 @@ export type BranchLoginSummaryRow = {
   branchLabel: string;
   approvedAccounts: number;
   pendingAccounts: number;
-  totalSlots: number;
+  totalAccounts: number;
 };
 
 export function buildBranchLoginSummaryRows(params: {
   accounts: PharmacyLoginAccount[];
   branches: PharmacySettings[];
-  roleSlotCount: number;
   isArabic: boolean;
 }): BranchLoginSummaryRow[] {
   const branchIds =
@@ -23,10 +22,12 @@ export function buildBranchLoginSummaryRows(params: {
   return branchIds
     .map((branchId) => {
       const branchAccounts = params.accounts.filter((account) => account.pharmacyId === branchId);
-      const approvedAccounts = branchAccounts.filter((account) => account.status === "approved").length;
+      const approvedAccounts = branchAccounts.filter(
+        (account) => account.status === "approved",
+      ).length;
       const pendingAccounts = branchAccounts.filter(
         (account) =>
-          account.status === "pending" || account.editPending || account.linkRequestPending
+          account.status === "pending" || account.editPending || account.linkRequestPending,
       ).length;
 
       return {
@@ -34,13 +35,13 @@ export function buildBranchLoginSummaryRows(params: {
         branchLabel: getBranchLabel(branchId, params.branches, params.isArabic),
         approvedAccounts,
         pendingAccounts,
-        totalSlots: params.roleSlotCount,
+        totalAccounts: branchAccounts.length,
       };
     })
     .sort(
       (a, b) =>
         b.pendingAccounts - a.pendingAccounts ||
         b.approvedAccounts - a.approvedAccounts ||
-        a.branchLabel.localeCompare(b.branchLabel)
+        a.branchLabel.localeCompare(b.branchLabel),
     );
 }

@@ -50,7 +50,7 @@ export default function ActivityLogsPage({
         fromDate,
         toDate,
       }),
-    [logs, search, typeFilter, branchFilter, userFilter, fromDate, toDate]
+    [logs, search, typeFilter, branchFilter, userFilter, fromDate, toDate],
   );
 
   const summary = useMemo(() => buildActivityLogSummary(filteredLogs), [filteredLogs]);
@@ -125,7 +125,12 @@ export default function ActivityLogsPage({
         </div>
         <div className="returnsHeaderBtns">
           {onRefresh && (
-            <button type="button" className="editBtn" disabled={refreshing} onClick={() => void handleRefresh()}>
+            <button
+              type="button"
+              className="editBtn"
+              disabled={refreshing}
+              onClick={() => void handleRefresh()}
+            >
               {refreshing ? (isArabic ? "..." : "...") : isArabic ? "تحديث" : "Refresh"}
             </button>
           )}
@@ -137,13 +142,19 @@ export default function ActivityLogsPage({
       </div>
 
       <div className="stockCountSummaryRow activityAuditSummary">
-        <span>{isArabic ? "السجلات" : "Records"}: {summary.total}</span>
-        <span>{isArabic ? "اليوم" : "Today"}: {summary.todayCount}</span>
-        <span>{isArabic ? "مستخدمون" : "Users"}: {summary.uniqueUsers}</span>
+        <span>
+          {isArabic ? "السجلات" : "Records"}: {summary.total}
+        </span>
+        <span>
+          {isArabic ? "اليوم" : "Today"}: {summary.todayCount}
+        </span>
+        <span>
+          {isArabic ? "مستخدمون" : "Users"}: {summary.uniqueUsers}
+        </span>
         {summary.topTypes[0] && (
           <span>
-            {isArabic ? "الأكثر" : "Top"}: {getActivityTypeLabel(summary.topTypes[0][0], isArabic)} (
-            {summary.topTypes[0][1]})
+            {isArabic ? "الأكثر" : "Top"}: {getActivityTypeLabel(summary.topTypes[0][0], isArabic)}{" "}
+            ({summary.topTypes[0][1]})
           </span>
         )}
       </div>
@@ -210,9 +221,7 @@ export default function ActivityLogsPage({
       </div>
 
       {filteredLogs.length === 0 ? (
-        <p className="empty">
-          {isArabic ? "لا توجد سجلات مطابقة" : "No matching audit records"}
-        </p>
+        <p className="empty">{isArabic ? "لا توجد سجلات مطابقة" : "No matching audit records"}</p>
       ) : (
         <div className="tableWrap">
           <table>
@@ -232,7 +241,9 @@ export default function ActivityLogsPage({
                 <tr key={log.id}>
                   <td>{getActivityTypeLabel(log.type, isArabic)}</td>
                   {showBranchFilter && (
-                    <td>{getBranchLabel ? getBranchLabel(log.pharmacyId) : log.pharmacyId || "-"}</td>
+                    <td>
+                      {getBranchLabel ? getBranchLabel(log.pharmacyId) : log.pharmacyId || "-"}
+                    </td>
                   )}
                   <td>{log.title}</td>
                   <td>{log.description}</td>

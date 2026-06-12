@@ -48,7 +48,7 @@ export function computeCashierCommissionFromInvoices(
     periodStart?: string;
     periodEnd?: string;
     basis?: "total" | "profit";
-  }
+  },
 ) {
   const rate = Math.max(0, Number(commissionRate) || 0);
   const basis = options?.basis || "total";
@@ -72,7 +72,7 @@ export function computeCashierCommissionFromInvoices(
   }
 
   const baseAmount = basis === "profit" ? profitTotal : salesTotal;
-  const commission = Math.round((baseAmount * rate) / 100 * 100) / 100;
+  const commission = Math.round(((baseAmount * rate) / 100) * 100) / 100;
 
   return {
     commission,

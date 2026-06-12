@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { AppUser, AttendanceRecord, Employee, EmployeeRequest, ShiftId, SystemUser } from "../types";
+import type {
+  AppUser,
+  AttendanceRecord,
+  Employee,
+  EmployeeRequest,
+  ShiftId,
+  SystemUser,
+} from "../types";
 import * as pharmacyService from "../services/pharmacyService";
 import {
   evaluateAttendanceTiming,
@@ -83,7 +90,9 @@ export default function EmployeePortalPage({
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | undefined>();
   const [monthRecords, setMonthRecords] = useState<AttendanceRecord[]>([]);
   const [requests, setRequests] = useState<EmployeeRequest[]>([]);
-  const [activePanel, setActivePanel] = useState<"attendance" | "leave" | "permission">("attendance");
+  const [activePanel, setActivePanel] = useState<"attendance" | "leave" | "permission">(
+    "attendance",
+  );
 
   const [leaveForm, setLeaveForm] = useState({ workDate: "", endDate: "", reason: "" });
   const [permissionForm, setPermissionForm] = useState({
@@ -106,11 +115,8 @@ export default function EmployeePortalPage({
   }, [schedule, payrollConfig]);
 
   const approvedPermissions = useMemo(
-    () =>
-      requests.filter(
-        (req) => req.status === "approved" && req.requestType === "permission"
-      ),
-    [requests]
+    () => requests.filter((req) => req.status === "approved" && req.requestType === "permission"),
+    [requests],
   );
 
   const todayTiming = useMemo(() => {
@@ -121,8 +127,8 @@ export default function EmployeePortalPage({
         approvedPermissions,
         staff.attendanceKey,
         staff.employeeId,
-        todayIso
-      )
+        todayIso,
+      ),
     );
     return evaluateAttendanceTiming(
       todayIso,
@@ -130,7 +136,7 @@ export default function EmployeePortalPage({
       todayRecord.checkOut,
       schedule,
       graceMinutes,
-      { approvedEarlyLeave }
+      { approvedEarlyLeave },
     );
   }, [schedule, todayRecord, approvedPermissions, staff, todayIso, graceMinutes]);
 
@@ -142,7 +148,7 @@ export default function EmployeePortalPage({
       todayRecord.checkOut,
       schedule,
       graceMinutes,
-      { approvedEarlyLeave: false }
+      { approvedEarlyLeave: false },
     ).isEarlyLeave;
     if (!rawEarlyLeave) return null;
     return resolveEarlyLeaveOutcome(todayRecord.earlyLeaveOutcome);
@@ -171,7 +177,7 @@ export default function EmployeePortalPage({
         employees,
         accounts,
         loginRequests,
-        catalogAccounts
+        catalogAccounts,
       );
 
       if (!employee || !employee.isActive) {
@@ -237,7 +243,7 @@ export default function EmployeePortalPage({
             : "Already checked in"
           : isArabic
             ? "تعذر تسجيل الحضور"
-            : "Could not check in"
+            : "Could not check in",
       );
     } finally {
       setBusy("");
@@ -258,7 +264,7 @@ export default function EmployeePortalPage({
             : "Already checked out"
           : isArabic
             ? "تعذر تسجيل الانصراف"
-            : "Could not check out"
+            : "Could not check out",
       );
     } finally {
       setBusy("");
@@ -409,7 +415,11 @@ export default function EmployeePortalPage({
               </div>
               <div>
                 <span className="employeePortalLabel">{isArabic ? "الحالة" : "Status"}</span>
-                <strong>{todayRecord ? statusLabel(todayRecord.status, isArabic) : statusLabel("", isArabic)}</strong>
+                <strong>
+                  {todayRecord
+                    ? statusLabel(todayRecord.status, isArabic)
+                    : statusLabel("", isArabic)}
+                </strong>
                 {todayTiming?.isLate && (
                   <span className="hrAttendanceFlag hrAttendanceFlagLate">
                     {isArabic ? "تأخير" : "Late"}
@@ -483,8 +493,8 @@ export default function EmployeePortalPage({
                             approvedPermissions,
                             staff.attendanceKey,
                             staff.employeeId,
-                            record.workDate
-                          )
+                            record.workDate,
+                          ),
                         );
                         const timing = evaluateAttendanceTiming(
                           record.workDate,
@@ -492,7 +502,7 @@ export default function EmployeePortalPage({
                           record.checkOut,
                           rowSchedule,
                           graceMinutes,
-                          { approvedEarlyLeave }
+                          { approvedEarlyLeave },
                         );
                         const rawEarlyLeave = evaluateAttendanceTiming(
                           record.workDate,
@@ -500,7 +510,7 @@ export default function EmployeePortalPage({
                           record.checkOut,
                           rowSchedule,
                           graceMinutes,
-                          { approvedEarlyLeave: false }
+                          { approvedEarlyLeave: false },
                         ).isEarlyLeave;
                         const earlyLeaveBadge = rawEarlyLeave
                           ? resolveEarlyLeaveOutcome(record.earlyLeaveOutcome)
@@ -557,7 +567,9 @@ export default function EmployeePortalPage({
                       <tr key={req.id}>
                         <td>{requestTypeLabel(req.requestType, isArabic)}</td>
                         <td>
-                          {req.requestType === "leave" && req.endDate && req.endDate !== req.workDate
+                          {req.requestType === "leave" &&
+                          req.endDate &&
+                          req.endDate !== req.workDate
                             ? `${req.workDate} → ${req.endDate}`
                             : req.workDate}
                         </td>
@@ -633,9 +645,7 @@ export default function EmployeePortalPage({
               type="date"
               className="tableInput"
               value={permissionForm.workDate}
-              onChange={(e) =>
-                setPermissionForm((prev) => ({ ...prev, workDate: e.target.value }))
-              }
+              onChange={(e) => setPermissionForm((prev) => ({ ...prev, workDate: e.target.value }))}
             />
           </label>
           <label>

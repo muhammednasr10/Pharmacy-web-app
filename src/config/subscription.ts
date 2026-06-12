@@ -54,7 +54,10 @@ export function getTierUpgradeAmount(targetTier: SubscriptionTier): number {
   return 0;
 }
 
-export function getTierUpgradePricingLabel(targetTier: SubscriptionTier, isArabic: boolean): string {
+export function getTierUpgradePricingLabel(
+  targetTier: SubscriptionTier,
+  isArabic: boolean,
+): string {
   if (targetTier === "professional") {
     return isArabic
       ? tierUpgradePricing.professional.labelAr
@@ -95,9 +98,7 @@ export function planToSubscriptionPlan(days: number) {
 }
 
 export function computeSubscriptionEndDate(currentEndDateStr: string | undefined, days: number) {
-  const currentEndDate = currentEndDateStr
-    ? new Date(`${currentEndDateStr}T23:59:59`)
-    : new Date();
+  const currentEndDate = currentEndDateStr ? new Date(`${currentEndDateStr}T23:59:59`) : new Date();
   const today = new Date();
   const startDate = currentEndDate > today ? currentEndDate : today;
   startDate.setDate(startDate.getDate() + days);

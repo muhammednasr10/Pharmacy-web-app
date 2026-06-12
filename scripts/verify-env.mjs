@@ -36,13 +36,13 @@ if (!url || !key) {
         "Vercel → Project → Settings → Environment Variables:\n" +
         "  1. Add both variables for Production AND Preview.\n" +
         "  2. Use values from Supabase → Settings → API (Project URL + anon public key).\n" +
-        "  3. Redeploy from Deployments → Redeploy (env vars apply on the next build only)."
+        "  3. Redeploy from Deployments → Redeploy (env vars apply on the next build only).",
     );
   }
   fail(
     `${base}\n` +
       "Local: copy .env.example to .env and fill in your Supabase credentials.\n" +
-      "Vercel: add the same variables in Project Settings → Environment Variables."
+      "Vercel: add the same variables in Project Settings → Environment Variables.",
   );
 }
 
@@ -56,7 +56,7 @@ if (/aBcDe/i.test(url)) {
 
 if (!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(url)) {
   console.warn(
-    "[env] VITE_SUPABASE_URL does not look like a standard Supabase URL — verify it in Supabase → Settings → API."
+    "[env] VITE_SUPABASE_URL does not look like a standard Supabase URL — verify it in Supabase → Settings → API.",
   );
 }
 
@@ -68,6 +68,12 @@ if (key.length < 40) {
   fail("VITE_SUPABASE_ANON_KEY looks too short — paste the full anon key from Supabase.");
 }
 
+const vercelEnv = process.env.VERCEL_ENV || "";
 console.log(
-  `[env] Supabase variables present${isVercel ? ` (Vercel ${process.env.VERCEL_ENV || "build"})` : ""} — build can continue.`
+  `[env] Supabase variables present${isVercel ? ` (Vercel ${vercelEnv || "build"})` : ""} — build can continue.`,
 );
+if (isVercel && vercelEnv === "preview") {
+  console.log(
+    "[env] Preview deployment — ensure VITE_SUPABASE_* are enabled for the Preview scope in Vercel env settings.",
+  );
+}

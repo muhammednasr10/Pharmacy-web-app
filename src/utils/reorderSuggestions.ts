@@ -1,8 +1,5 @@
 import { getBranchLabel } from "./branchLabel";
-import {
-  filterLowStockMedicines,
-  getLowStockThresholdForBranch,
-} from "./inventoryAlerts";
+import { filterLowStockMedicines, getLowStockThresholdForBranch } from "./inventoryAlerts";
 import type { Medicine, PharmacySettings } from "../types";
 
 export type ReorderSuggestion = {
@@ -57,7 +54,7 @@ export function buildReorderSuggestions(params: {
     ? params.medicines.filter(
         (medicine) =>
           medicine.pharmacyId === params.branchId ||
-          (!medicine.pharmacyId && params.branchId === "main")
+          (!medicine.pharmacyId && params.branchId === "main"),
       )
     : params.medicines;
 
@@ -66,7 +63,7 @@ export function buildReorderSuggestions(params: {
       const threshold = getLowStockThresholdForBranch(
         medicine.pharmacyId,
         params.branches,
-        params.fallbackSettings
+        params.fallbackSettings,
       );
       const suggestedQty = suggestReorderQty(medicine.qty, threshold);
       const buyPrice = Number(medicine.buyPrice) || 0;
@@ -93,19 +90,17 @@ export function buildReorderSuggestions(params: {
       (a, b) =>
         a.currentQty - b.currentQty ||
         b.suggestedQty - a.suggestedQty ||
-        a.name_ar.localeCompare(b.name_ar)
+        a.name_ar.localeCompare(b.name_ar),
     );
 }
 
 export function suggestionsToPurchaseDraft(
   suggestions: ReorderSuggestion[],
-  params: { branchId: string; notes?: string }
+  params: { branchId: string; notes?: string },
 ): ReorderPurchaseDraft {
   return {
     branchId: params.branchId,
-    notes:
-      params.notes ||
-      `Reorder suggestions — ${suggestions.length} low-stock items`,
+    notes: params.notes || `Reorder suggestions — ${suggestions.length} low-stock items`,
     items: suggestions.map((item) => ({
       barcode: item.barcode,
       name_ar: item.name_ar,

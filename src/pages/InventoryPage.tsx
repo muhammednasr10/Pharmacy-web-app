@@ -97,9 +97,9 @@ export default function InventoryPage({
         (medicine) =>
           !pharmacyId ||
           medicine.pharmacyId === pharmacyId ||
-          (!medicine.pharmacyId && pharmacyId === "main")
+          (!medicine.pharmacyId && pharmacyId === "main"),
       ),
-    [medicines, pharmacyId]
+    [medicines, pharmacyId],
   );
 
   useEffect(() => {
@@ -151,8 +151,8 @@ export default function InventoryPage({
         error instanceof Error
           ? error.message
           : isArabic
-          ? "حدث خطأ أثناء حفظ الدواء"
-          : "Failed to save medicine"
+            ? "حدث خطأ أثناء حفظ الدواء"
+            : "Failed to save medicine",
       );
     } finally {
       setIsSaving(false);
@@ -297,8 +297,8 @@ export default function InventoryPage({
                       ? "عدّل بيانات الدواء ثم احفظ أو ألغِ"
                       : "Edit medicine details, then save or cancel"
                     : isArabic
-                    ? "أدخل بيانات الدواء الجديد"
-                    : "Enter new medicine details"}
+                      ? "أدخل بيانات الدواء الجديد"
+                      : "Enter new medicine details"}
                 </p>
               </div>
               <button type="button" className="closeBtn" onClick={closeForm} aria-label={t.close}>

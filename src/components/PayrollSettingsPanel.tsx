@@ -50,54 +50,63 @@ export default function PayrollSettingsPanel({
       await pharmacyService.updatePharmacySettings(pharmacyId, {
         payrollPayDay: Math.min(
           31,
-          Math.max(1, Number(payrollConfig.payDay) || pharmacyService.PAYROLL_DEFAULTS.payDay)
+          Math.max(1, Number(payrollConfig.payDay) || pharmacyService.PAYROLL_DEFAULTS.payDay),
         ),
         payrollSickDeductionPercent: Math.min(
           100,
           Math.max(
             0,
             Number(payrollConfig.sickDeductionPercent) ||
-              pharmacyService.PAYROLL_DEFAULTS.sickDeductionPercent
-          )
+              pharmacyService.PAYROLL_DEFAULTS.sickDeductionPercent,
+          ),
         ),
         payrollAbsentDeductionPercent: Math.min(
           100,
           Math.max(
             0,
             Number(payrollConfig.absentDeductionPercent) ||
-              pharmacyService.PAYROLL_DEFAULTS.absentDeductionPercent
-          )
+              pharmacyService.PAYROLL_DEFAULTS.absentDeductionPercent,
+          ),
         ),
         payrollMaxLeaveDays: Math.max(
           0,
-          Math.floor(Number(payrollConfig.maxLeaveDays) || pharmacyService.PAYROLL_DEFAULTS.maxLeaveDays)
+          Math.floor(
+            Number(payrollConfig.maxLeaveDays) || pharmacyService.PAYROLL_DEFAULTS.maxLeaveDays,
+          ),
         ),
         payrollStandardWorkHours: Math.max(
           0,
-          Number(payrollConfig.standardWorkHours) || pharmacyService.PAYROLL_DEFAULTS.standardWorkHours
+          Number(payrollConfig.standardWorkHours) ||
+            pharmacyService.PAYROLL_DEFAULTS.standardWorkHours,
         ),
         payrollOvertimePercent: Math.max(
           0,
-          Number(payrollConfig.overtimePercent) || pharmacyService.PAYROLL_DEFAULTS.overtimePercent
+          Number(payrollConfig.overtimePercent) || pharmacyService.PAYROLL_DEFAULTS.overtimePercent,
         ),
         payrollDefaultTaxes: Math.min(
           100,
-          Math.max(0, Number(payrollConfig.defaultTaxes) || pharmacyService.PAYROLL_DEFAULTS.defaultTaxes)
+          Math.max(
+            0,
+            Number(payrollConfig.defaultTaxes) || pharmacyService.PAYROLL_DEFAULTS.defaultTaxes,
+          ),
         ),
         payrollDefaultInsurance: Math.min(
           100,
           Math.max(
             0,
-            Number(payrollConfig.defaultInsurance) || pharmacyService.PAYROLL_DEFAULTS.defaultInsurance
-          )
+            Number(payrollConfig.defaultInsurance) ||
+              pharmacyService.PAYROLL_DEFAULTS.defaultInsurance,
+          ),
         ),
         payrollWorkDayStart:
           payrollConfig.workShifts.find((item) => item.id === "A")?.dayStart ||
           payrollConfig.workDayStart,
         payrollWorkDayEnd:
-          payrollConfig.workShifts.find((item) => item.id === "A")?.dayEnd || payrollConfig.workDayEnd,
+          payrollConfig.workShifts.find((item) => item.id === "A")?.dayEnd ||
+          payrollConfig.workDayEnd,
         payrollWorkBreaks:
-          payrollConfig.workShifts.find((item) => item.id === "A")?.breaks || payrollConfig.workBreaks,
+          payrollConfig.workShifts.find((item) => item.id === "A")?.breaks ||
+          payrollConfig.workBreaks,
         workShifts: payrollConfig.workShifts,
         defaultShiftId: payrollConfig.defaultShiftId,
       });

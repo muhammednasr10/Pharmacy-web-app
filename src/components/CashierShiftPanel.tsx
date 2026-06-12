@@ -72,9 +72,7 @@ export default function CashierShiftPanel({
   if (!appUser || !pharmacyId) return null;
 
   const canManageShift =
-    appUser.role === "cashier" ||
-    isPharmacyManager(appUser) ||
-    appUser.role === "super_admin";
+    appUser.role === "cashier" || isPharmacyManager(appUser) || appUser.role === "super_admin";
 
   if (!canManageShift) return null;
 
@@ -106,7 +104,7 @@ export default function CashierShiftPanel({
         alert(
           isArabic
             ? "جدول ورديات الكاشير غير مفعّل. شغّل supabase/cashier-shifts.sql"
-            : "Cashier shifts table missing. Run supabase/cashier-shifts.sql"
+            : "Cashier shifts table missing. Run supabase/cashier-shifts.sql",
         );
       } else {
         alert(message);
@@ -181,8 +179,8 @@ export default function CashierShiftPanel({
               {summary && (
                 <>
                   <span>
-                    {isArabic ? "مبيعات:" : "Sales:"}{" "}
-                    {formatMoney(summary.totalSales, currency)} ({summary.invoiceCount})
+                    {isArabic ? "مبيعات:" : "Sales:"} {formatMoney(summary.totalSales, currency)} (
+                    {summary.invoiceCount})
                   </span>
                   <span>
                     {isArabic ? "نقد متوقع:" : "Expected cash:"}{" "}
@@ -227,7 +225,11 @@ export default function CashierShiftPanel({
           >
             <div className="modalHeader">
               <h3>{isArabic ? "فتح وردية كاشير" : "Open cashier shift"}</h3>
-              <button type="button" className="deleteSmallBtn" onClick={() => setShowOpenModal(false)}>
+              <button
+                type="button"
+                className="deleteSmallBtn"
+                onClick={() => setShowOpenModal(false)}
+              >
                 {isArabic ? "إغلاق" : "Close"}
               </button>
             </div>
@@ -271,7 +273,11 @@ export default function CashierShiftPanel({
           >
             <div className="modalHeader">
               <h3>{isArabic ? "إغلاق الوردية" : "Close shift"}</h3>
-              <button type="button" className="deleteSmallBtn" onClick={() => setShowCloseModal(false)}>
+              <button
+                type="button"
+                className="deleteSmallBtn"
+                onClick={() => setShowCloseModal(false)}
+              >
                 {isArabic ? "إلغاء" : "Cancel"}
               </button>
             </div>

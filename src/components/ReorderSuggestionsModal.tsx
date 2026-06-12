@@ -53,7 +53,7 @@ export default function ReorderSuggestionsModal({
         isArabic,
         branchId: allowBranchPicker ? branchId : defaultBranchId,
       }),
-    [medicines, branches, fallbackSettings, isArabic, allowBranchPicker, branchId, defaultBranchId]
+    [medicines, branches, fallbackSettings, isArabic, allowBranchPicker, branchId, defaultBranchId],
   );
 
   useEffect(() => {
@@ -135,9 +135,7 @@ export default function ReorderSuggestionsModal({
       String(item.threshold),
       String(qtyOverrides[item.medicineId] ?? item.suggestedQty),
       String(item.buyPrice),
-      String(
-        (qtyOverrides[item.medicineId] ?? item.suggestedQty) * item.buyPrice
-      ),
+      String((qtyOverrides[item.medicineId] ?? item.suggestedQty) * item.buyPrice),
     ]);
     const csv = [header, ...rows]
       .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
@@ -186,9 +184,15 @@ export default function ReorderSuggestionsModal({
         )}
 
         <div className="stockCountSummaryRow">
-          <span>{isArabic ? "نواقص" : "Low stock"}: {suggestions.length}</span>
-          <span>{isArabic ? "محدد" : "Selected"}: {selectedSuggestions.length}</span>
-          <span>{isArabic ? "كمية مقترحة" : "Suggested qty"}: {totalSuggestedQty}</span>
+          <span>
+            {isArabic ? "نواقص" : "Low stock"}: {suggestions.length}
+          </span>
+          <span>
+            {isArabic ? "محدد" : "Selected"}: {selectedSuggestions.length}
+          </span>
+          <span>
+            {isArabic ? "كمية مقترحة" : "Suggested qty"}: {totalSuggestedQty}
+          </span>
           <span>
             {isArabic ? "تكلفة تقديرية" : "Est. cost"}: {formatMoney(totalEstimatedCost)}
           </span>
@@ -240,7 +244,12 @@ export default function ReorderSuggestionsModal({
         )}
 
         <div className="stockCountActions">
-          <button type="button" className="editBtn" onClick={exportCsv} disabled={suggestions.length === 0}>
+          <button
+            type="button"
+            className="editBtn"
+            onClick={exportCsv}
+            disabled={suggestions.length === 0}
+          >
             {isArabic ? "تصدير CSV" : "Export CSV"}
           </button>
           <button
