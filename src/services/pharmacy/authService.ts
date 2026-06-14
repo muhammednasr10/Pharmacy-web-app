@@ -8,6 +8,7 @@ import {
   normalizeRole,
 } from "../../utils/roles";
 import { ALL_BRANCHES_ID } from "../../constants/branches";
+import { consumePendingGoogleTrialSignup } from "../../constants/googleAuth";
 import { notifySuperAdminOfSubscriptionRequest } from "../../utils/superAdminNotify";
 import { isActiveSubscriptionStatus, TRIAL_SUBSCRIPTION_DAYS } from "../../config/subscription";
 import {
@@ -93,7 +94,7 @@ import {
 import { prepareInvoicePayload, prepareInvoiceItemPayload } from "./payloads";
 import { getRows, subscribeTable } from "./dbHelpers";
 
-import { getEmployees, syncPharmacyLoginAccountToUser, linkUserToEmployee } from "./hrService";
+import { getEmployees, syncPharmacyLoginAccountToUser, linkUserToEmployee, deletePharmacyEmployeeCascade } from "./hrService";
 
 export function signInWithPassword(email: string, password: string) {
   return supabase.auth.signInWithPassword({ email, password });
@@ -271,10 +272,15 @@ export async function ensureTrialPharmacyFromAuth(authUser: {
   id: string;
   user_metadata?: Record<string, unknown>;
 }): Promise<boolean> {
+  const pending = consumePendingGoogleTrialSignup();
   const meta = authUser.user_metadata || {};
-  if (meta.signup_type !== "trial_pharmacy") return false;
-
-  const pharmacyName = String(meta.pharmacy_name || "").trim();
+  if (!pending && meta.signup_type !== "trial_pharmacy") {
+    return false;
+  }
+  const pharmacyName = (
+    pending?.pharmacyName ||
+    String(meta.pharmacy_name || "")
+  ).trim();
   if (!pharmacyName) return false;
 
   const existing = await getAppUserByUid(authUser.id);
@@ -285,6 +291,12 @@ export async function ensureTrialPharmacyFromAuth(authUser: {
   await provisionTrialPharmacy(pharmacyName);
   return true;
 }
+
+export {
+  savePendingGoogleTrialSignup,
+  consumePendingGoogleTrialSignup,
+  clearPendingGoogleTrialSignup,
+} from "../../constants/googleAuth";
 
 export async function getPharmacySettings(pharmacyId: string): Promise<PharmacySettings | null> {
   const { data, error } = await supabase
@@ -323,12 +335,16 @@ async function attachOrganizationBranchLimits(
   ] as string[];
 
   if (organizationIds.length === 0) {
-    return pharmacies.map((pharmacy) => ({ ...pharmacy, maxBranches: pharmacy.maxBranches ?? 1 }));
+    return pharmacies.map((pharmacy) => ({
+      ...pharmacy,
+      maxBranches: pharmacy.maxBranches ?? 1,
+      maxUsers: pharmacy.maxUsers ?? getSubscriptionTier(pharmacy.subscriptionTier).maxUsers,
+    }));
   }
 
   const { data: organizations, error } = await supabase
     .from("organizations")
-    .select("id, max_branches")
+    .select("id, max_branches, max_users")
     .in("id", organizationIds);
 
   if (error) {
@@ -336,22 +352,41 @@ async function attachOrganizationBranchLimits(
     return pharmacies;
   }
 
-  const maxByOrg = new Map(
-    (organizations || []).map((row) => [String(row.id), Number(row.max_branches) || 1]),
-  );
+  const maxBranchesByOrg = new Map<string, number>();
+  const maxUsersByOrg = new Map<string, number>();
+  for (const row of organizations || []) {
+    const orgId = String(row.id);
+    maxBranchesByOrg.set(orgId, Number(row.max_branches) || 1);
+    maxUsersByOrg.set(orgId, Number(row.max_users) || 0);
+  }
 
   return pharmacies.map((pharmacy) => {
-    const fromPharmacy = Number(pharmacy.maxBranches);
-    const fromOrg = pharmacy.organizationId ? maxByOrg.get(pharmacy.organizationId) : undefined;
-    const tierDefault = getSubscriptionTier(
-      pharmacy.subscriptionTier || pharmacy.subscriptionPlan,
-    ).maxBranches;
-    const resolved =
-      Number.isFinite(fromPharmacy) && fromPharmacy > 0 ? fromPharmacy : (fromOrg ?? tierDefault);
+    const tierConfig = getSubscriptionTier(pharmacy.subscriptionTier || pharmacy.subscriptionPlan);
+    const fromPharmacyBranches = Number(pharmacy.maxBranches);
+    const fromOrgBranches = pharmacy.organizationId
+      ? maxBranchesByOrg.get(pharmacy.organizationId)
+      : undefined;
+    const resolvedBranches =
+      Number.isFinite(fromPharmacyBranches) && fromPharmacyBranches > 0
+        ? fromPharmacyBranches
+        : (fromOrgBranches ?? tierConfig.maxBranches);
+
+    const fromPharmacyUsers = Number(pharmacy.maxUsers);
+    const fromOrgUsers = pharmacy.organizationId ? maxUsersByOrg.get(pharmacy.organizationId) : undefined;
+    const resolvedUsers =
+      Number.isFinite(fromPharmacyUsers) && fromPharmacyUsers > 0
+        ? fromPharmacyUsers
+        : (fromOrgUsers && fromOrgUsers > 0 ? fromOrgUsers : tierConfig.maxUsers);
+
     const subscriptionTier = parseSubscriptionTier(
       pharmacy.subscriptionTier || pharmacy.subscriptionPlan,
     );
-    return { ...pharmacy, subscriptionTier, maxBranches: resolved };
+    return {
+      ...pharmacy,
+      subscriptionTier,
+      maxBranches: resolvedBranches,
+      maxUsers: resolvedUsers,
+    };
   });
 }
 
@@ -424,6 +459,113 @@ export async function updateOrganizationMaxBranches(
     .eq("id", organizationId);
 }
 
+export async function updateOrganizationMaxUsers(
+  organizationId: string,
+  maxUsers: number,
+  actingUser: AppUser | null = getCurrentAppUser(),
+): Promise<void> {
+  if (!isSuperAdmin(actingUser)) {
+    throw new Error("forbidden");
+  }
+
+  const normalized = Math.max(1, Math.floor(Number(maxUsers)));
+  const { error: rpcError } = await supabase.rpc("set_organization_max_users", {
+    target_organization_id: organizationId,
+    new_max_users: normalized,
+  });
+
+  if (!rpcError) {
+    return;
+  }
+
+  const rpcMessage = rpcError.message || "";
+  const rpcMissing =
+    rpcMessage.includes("set_organization_max_users") &&
+    (rpcMessage.includes("does not exist") || rpcMessage.includes("Could not find"));
+
+  if (!rpcMissing && !rpcMessage.includes("forbidden")) {
+    throw new Error(rpcMessage);
+  }
+
+  const { data: updatedPharmacies, error: pharmacyError } = await supabase
+    .from("pharmacies")
+    .update({ max_users: normalized })
+    .eq("organization_id", organizationId)
+    .select("id");
+
+  if (pharmacyError) {
+    if (
+      pharmacyError.message.includes("max_users") &&
+      pharmacyError.message.includes("does not exist")
+    ) {
+      throw new Error("sql_migration_required");
+    }
+    throw new Error(pharmacyError.message);
+  }
+
+  if (!updatedPharmacies || updatedPharmacies.length === 0) {
+    throw new Error("organization_not_found");
+  }
+
+  await supabase.from("organizations").update({ max_users: normalized }).eq("id", organizationId);
+}
+
+export async function assertOrganizationUserCapacity(
+  pharmacyId: string,
+  excludeUid?: string,
+): Promise<void> {
+  const { error } = await supabase.rpc("assert_organization_user_capacity", {
+    p_pharmacy_id: pharmacyId,
+    p_uid: excludeUid || null,
+  });
+
+  if (!error) {
+    return;
+  }
+
+  if (error.message.includes("user_limit_reached")) {
+    throw new Error("user_limit_reached");
+  }
+
+  if (
+    error.message.includes("assert_organization_user_capacity") &&
+    (error.message.includes("does not exist") || error.message.includes("Could not find"))
+  ) {
+    const pharmacies = await getPharmacies();
+    const pharmacy = pharmacies.find((item) => item.id === pharmacyId);
+    if (!pharmacy) {
+      throw new Error("organization_not_found");
+    }
+    const organizationId = pharmacy.organizationId || `org-${pharmacyId}`;
+    const orgPharmacyIds = pharmacies
+      .filter((item) => (item.organizationId || `org-${item.id}`) === organizationId)
+      .map((item) => item.id);
+    let countQuery = supabase
+      .from("users")
+      .select("uid", { count: "exact", head: true })
+      .in("pharmacy_id", orgPharmacyIds)
+      .eq("is_active", true)
+      .neq("role", "super_admin");
+    if (excludeUid) {
+      countQuery = countQuery.neq("uid", excludeUid);
+    }
+    const { count, error: countError } = await countQuery;
+    if (countError) {
+      throw new Error(countError.message);
+    }
+    const maxUsers =
+      Number(pharmacy.maxUsers) > 0
+        ? Number(pharmacy.maxUsers)
+        : getSubscriptionTier(pharmacy.subscriptionTier || pharmacy.subscriptionPlan).maxUsers;
+    if ((count || 0) >= maxUsers) {
+      throw new Error("user_limit_reached");
+    }
+    return;
+  }
+
+  throw new Error(error.message);
+}
+
 export async function updateOrganizationSubscriptionTier(
   organizationId: string,
   tier: SubscriptionTier,
@@ -435,6 +577,7 @@ export async function updateOrganizationSubscriptionTier(
 
   const tierConfig = getSubscriptionTier(tier);
   const maxBranches = tierConfig.maxBranches;
+  const maxUsers = tierConfig.maxUsers;
 
   const { data: orgPharmacies, error: fetchError } = await supabase
     .from("pharmacies")
@@ -453,11 +596,28 @@ export async function updateOrganizationSubscriptionTier(
     throw new Error("below_current_branches");
   }
 
+  const pharmacyIds = orgPharmacies.map((row) => String(row.id));
+  const { count: activeUserCount, error: userCountError } = await supabase
+    .from("users")
+    .select("uid", { count: "exact", head: true })
+    .in("pharmacy_id", pharmacyIds)
+    .eq("is_active", true)
+    .neq("role", "super_admin");
+
+  if (userCountError) {
+    throw new Error(userCountError.message);
+  }
+
+  if ((activeUserCount || 0) > maxUsers) {
+    throw new Error("below_current_users");
+  }
+
   const { error: pharmacyError } = await supabase
     .from("pharmacies")
     .update({
       subscription_tier: tier,
       max_branches: maxBranches,
+      max_users: maxUsers,
     })
     .eq("organization_id", organizationId);
 
@@ -476,6 +636,7 @@ export async function updateOrganizationSubscriptionTier(
     .update({
       subscription_tier: tier,
       max_branches: maxBranches,
+      max_users: maxUsers,
     })
     .eq("id", organizationId);
 }
@@ -743,6 +904,25 @@ export function subscribeLoginAccountRequests(
   };
 }
 
+/** Live refresh for الموظفين → حسابات الدخول when Auth/catalog rows change. */
+export function subscribePharmacyLoginCatalog(
+  onChange: () => void,
+): () => void {
+  const channel = supabase
+    .channel("realtime-pharmacy-login-catalog")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "pharmacy_login_accounts" },
+      onChange,
+    )
+    .on("postgres_changes", { event: "*", schema: "public", table: "users" }, onChange);
+
+  void channel.subscribe();
+  return () => {
+    void supabase.removeChannel(channel);
+  };
+}
+
 export async function createLoginAccountRequest(input: {
   pharmacyId: string;
   pharmacyName: string;
@@ -935,6 +1115,10 @@ export async function createPharmacyLoginAccount(input: {
   requestedByName?: string;
 }): Promise<PharmacyLoginAccount> {
   const status = input.status ?? (isSuperAdmin(getCurrentAppUser()) ? "approved" : "pending");
+
+  if (status === "approved") {
+    await assertOrganizationUserCapacity(input.pharmacyId);
+  }
 
   const payload = stampPharmacy(
     toSnakeCase({
@@ -1328,7 +1512,6 @@ export async function assignPharmacyLoginAccountToEmployee(
     await supabase
       .from("pharmacy_login_accounts")
       .update({ employee_id: null, updated_at: new Date().toISOString() })
-      .eq("pharmacy_id", pharmacyId)
       .eq("employee_id", employeeId);
   }
 
@@ -1349,10 +1532,27 @@ export async function assignPharmacyLoginAccountToEmployee(
     throw new Error("login_account_not_approved");
   }
 
+  const targetPharmacyId = pharmacyId.trim();
+  if (employeeId && catalogAccount.pharmacyId !== targetPharmacyId) {
+    const email = catalogAccount.email.trim().toLowerCase();
+    const { data: emailConflict } = await supabase
+      .from("pharmacy_login_accounts")
+      .select("id")
+      .eq("pharmacy_id", targetPharmacyId)
+      .ilike("email", email)
+      .neq("id", accountId)
+      .maybeSingle();
+
+    if (emailConflict?.id) {
+      throw new Error("login_account_email_exists_on_branch");
+    }
+  }
+
   const { error } = await supabase
     .from("pharmacy_login_accounts")
     .update({
       employee_id: employeeId,
+      pharmacy_id: employeeId ? targetPharmacyId : catalogAccount.pharmacyId,
       updated_at: new Date().toISOString(),
     })
     .eq("id", accountId);
@@ -1361,15 +1561,22 @@ export async function assignPharmacyLoginAccountToEmployee(
     throw new Error(error.message);
   }
 
+  const syncedAccount = {
+    ...catalogAccount,
+    pharmacyId: employeeId ? targetPharmacyId : catalogAccount.pharmacyId,
+    employeeId: employeeId || undefined,
+  };
+
   if (employeeId) {
-    const employees = await getEmployees();
-    const employee = employees.find((item) => item.id === employeeId);
-    await syncPharmacyLoginAccountToUser(
-      { ...catalogAccount, employeeId },
-      { name: employee?.name },
-    );
+    const { data: employeeRow } = await supabase
+      .from("employees")
+      .select("name")
+      .eq("id", employeeId)
+      .maybeSingle();
+    const employeeName = employeeRow ? String((employeeRow as { name?: string }).name || "") : "";
+    await syncPharmacyLoginAccountToUser(syncedAccount, { name: employeeName || undefined });
   } else {
-    await syncPharmacyLoginAccountToUser(catalogAccount);
+    await syncPharmacyLoginAccountToUser(syncedAccount);
   }
 }
 
@@ -1408,16 +1615,47 @@ export async function createPharmacy(data: CreatePharmacyInput) {
   const subscriptionTier = parseSubscriptionTier(data.subscriptionTier);
   const tierConfig = getSubscriptionTier(subscriptionTier);
   const maxBranches = Math.max(1, Math.floor(Number(data.maxBranches) || tierConfig.maxBranches));
+  const maxUsers = Math.max(1, Math.floor(Number(data.maxUsers) || tierConfig.maxUsers));
+  const isNewTenant = !data.organizationId || data.organizationId === `org-${data.id}`;
 
-  await supabase.from("organizations").upsert(
+  if (isNewTenant) {
+    const { error: rpcError } = await supabase.rpc("create_saas_pharmacy", {
+      p_id: data.id,
+      p_name: data.name,
+      p_name_en: data.name_en || data.name,
+      p_phone: data.phone || "",
+      p_address: data.address || "",
+      p_subscription_tier: subscriptionTier,
+      p_subscription_plan: data.subscriptionPlan || "monthly",
+      p_subscription_status: data.subscriptionStatus || "active",
+      p_max_branches: maxBranches,
+      p_max_users: maxUsers,
+    });
+    if (!rpcError) {
+      return;
+    }
+
+    const rpcMissing =
+      rpcError.code === "PGRST202" ||
+      /create_saas_pharmacy|could not find the function/i.test(rpcError.message);
+    if (!rpcMissing) {
+      throw new Error(rpcError.message);
+    }
+  }
+
+  const { error: orgError } = await supabase.from("organizations").upsert(
     {
       id: organizationId,
       name: orgName,
       max_branches: maxBranches,
+      max_users: maxUsers,
       subscription_tier: subscriptionTier,
     },
     { onConflict: "id" },
   );
+  if (orgError) {
+    throw new Error(orgError.message);
+  }
 
   const payload = toSnakeCase({
     id: data.id,
@@ -1429,6 +1667,7 @@ export async function createPharmacy(data: CreatePharmacyInput) {
     isActive: true,
     organizationId,
     maxBranches,
+    maxUsers,
     subscriptionTier,
     subscriptionPlan: data.subscriptionPlan || "monthly",
     subscriptionStatus: data.subscriptionStatus || "active",
@@ -1452,25 +1691,57 @@ async function resolveOrganizationIdForScope(pharmacyId: string): Promise<string
   return String(data.organization_id);
 }
 
-/** @deprecated use createPharmacy — kept for branch UI compatibility */
-export async function createPharmacyBranch(branch: Partial<PharmacySettings> & { id: string }) {
-  const scopeId = resolveStampPharmacyId();
-  const organizationId = await resolveOrganizationIdForScope(scopeId);
+function resolveOrgIdFromPharmacy(pharmacy: PharmacySettings): string {
+  return pharmacy.organizationId || `org-${pharmacy.id}`;
+}
+
+export async function createPharmacyBranchForAnchor(
+  anchorPharmacyId: string,
+  branch: Partial<PharmacySettings> & { id: string; name: string },
+) {
   const pharmacies = await getPharmacies();
-  const branchCount = pharmacies.filter((row) => row.organizationId === organizationId).length;
-  const maxBranches =
-    pharmacies.find((row) => row.organizationId === organizationId)?.maxBranches ?? 1;
+  const organizationId = await resolveOrganizationIdForScope(anchorPharmacyId);
+  const orgPharmacies = pharmacies.filter(
+    (row) => resolveOrgIdFromPharmacy(row) === organizationId,
+  );
+  const anchor =
+    orgPharmacies.find((row) => row.id === anchorPharmacyId) || orgPharmacies[0];
+  if (!anchor) {
+    throw new Error("anchor_not_found");
+  }
+
+  const branchCount = orgPharmacies.length;
+  const maxBranches = Math.max(1, Number(anchor.maxBranches) || 1);
   if (branchCount >= maxBranches) {
     throw new Error("branch_limit_reached");
   }
+
+  const subscriptionTier = parseSubscriptionTier(
+    anchor.subscriptionTier || anchor.subscriptionPlan,
+  );
+
   return createPharmacy({
     id: branch.id,
-    name: branch.name || branch.id,
-    name_en: branch.name_en,
+    name: branch.name,
+    name_en: branch.name_en || branch.name,
     phone: branch.phone,
     address: branch.address,
-    currency: branch.currency,
+    currency: branch.currency || anchor.currency || "ج.م",
     organizationId,
+    subscriptionTier,
+    maxBranches: anchor.maxBranches,
+    maxUsers: anchor.maxUsers,
+    subscriptionPlan: anchor.subscriptionPlan || "monthly",
+    subscriptionStatus: anchor.subscriptionStatus || "active",
+  });
+}
+
+/** @deprecated use createPharmacy — kept for branch UI compatibility */
+export async function createPharmacyBranch(branch: Partial<PharmacySettings> & { id: string }) {
+  const scopeId = resolveStampPharmacyId();
+  return createPharmacyBranchForAnchor(scopeId, {
+    ...branch,
+    name: branch.name || branch.id,
   });
 }
 
@@ -1506,6 +1777,8 @@ export async function linkPharmacyUser(params: {
   role: UserRole;
   pharmacyId: string;
 }) {
+  await assertOrganizationUserCapacity(params.pharmacyId, params.uid);
+
   const { error } = await supabase.from("users").insert([
     {
       uid: params.uid,
@@ -1544,11 +1817,41 @@ export async function createPharmacyUser(params: CreatePharmacyUserInput): Promi
   });
 }
 
+function isMissingRpcError(message: string, rpcName: string) {
+  const msg = message.toLowerCase();
+  return (
+    msg.includes("could not find the function") ||
+    (msg.includes("schema cache") && msg.includes(rpcName.toLowerCase()))
+  );
+}
+
 export async function deletePharmacy(id: string) {
+  const { error: rpcError } = await supabase.rpc("delete_pharmacy_cascade", {
+    p_pharmacy_id: id,
+  });
+  if (!rpcError) return;
+
+  if (!isMissingRpcError(rpcError.message, "delete_pharmacy_cascade")) {
+    throw new Error(rpcError.message);
+  }
+
   const { error } = await supabase.from("pharmacies").delete().eq("id", id);
   if (error) {
     throw new Error(error.message);
   }
+}
+
+export async function deleteOrganization(organizationId: string) {
+  const { error: rpcError } = await supabase.rpc("delete_organization_cascade", {
+    p_organization_id: organizationId,
+  });
+  if (!rpcError) return;
+
+  if (!isMissingRpcError(rpcError.message, "delete_organization_cascade")) {
+    throw new Error(rpcError.message);
+  }
+
+  throw new Error("delete_organization_cascade_missing");
 }
 
 export async function getAllSystemUsers(): Promise<SystemUser[]> {
@@ -1640,6 +1943,8 @@ export async function createSystemUser(params: {
   if (emailIssue === "invalid_format") {
     throw new Error("email_address_invalid_format");
   }
+
+  await assertOrganizationUserCapacity(params.pharmacyId);
 
   const ephemeral = createEphemeralSupabase();
 
@@ -1780,6 +2085,77 @@ export async function deleteSystemUser(uid: string) {
   const { error } = await supabase.from("users").delete().eq("uid", uid);
   if (error) {
     throw new Error(error.message);
+  }
+}
+
+export async function deletePharmacyUserCascade(
+  uid: string,
+  options?: { revokedBy?: string },
+): Promise<void> {
+  if (!isSuperAdmin(getCurrentAppUser())) {
+    throw new Error("forbidden");
+  }
+
+  const { data: userRow, error: userError } = await supabase
+    .from("users")
+    .select("*")
+    .eq("uid", uid)
+    .maybeSingle();
+
+  if (userError) {
+    throw new Error(userError.message);
+  }
+  if (!userRow) return;
+
+  const user = normalizeAppUser(toCamelCase<AppUser>(userRow));
+  if (user.role === "super_admin") {
+    throw new Error("cannot_delete_super_admin");
+  }
+
+  if (user.employeeId) {
+    await deletePharmacyEmployeeCascade(user.employeeId, options);
+    return;
+  }
+
+  const pharmacyId = user.pharmacyId;
+  const email = user.email.trim().toLowerCase();
+  const { data: accountRows, error: accountsError } = await supabase
+    .from("pharmacy_login_accounts")
+    .select("id")
+    .eq("pharmacy_id", pharmacyId)
+    .ilike("email", email);
+
+  if (accountsError) {
+    throw new Error(accountsError.message);
+  }
+
+  const accountIds = (accountRows || []).map((row) => String(row.id)).filter(Boolean);
+
+  try {
+    await unlinkLoginAccountFromSystem(uid, accountIds[0], options?.revokedBy);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "revoke_rpc_not_configured") {
+      await deleteSystemUser(uid);
+    } else {
+      throw error;
+    }
+  }
+
+  for (const accountId of accountIds) {
+    const { error } = await supabase.from("pharmacy_login_accounts").delete().eq("id", accountId);
+    if (error) {
+      throw new Error(error.message);
+    }
+  }
+
+  const { data: remainingUser } = await supabase
+    .from("users")
+    .select("uid")
+    .eq("uid", uid)
+    .maybeSingle();
+  if (remainingUser?.uid) {
+    await deleteSystemUser(uid);
   }
 }
 

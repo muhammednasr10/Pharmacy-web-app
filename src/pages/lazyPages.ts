@@ -17,5 +17,6 @@ export const CustomersPage = lazy(() => import("./CustomersPage"));
 export const EmployeePortalPage = lazy(() => import("./EmployeePortalPage"));
 export const StockMovementsPage = lazy(() => import("./StockMovementsPage"));
 export const SqlMigrationsPage = lazy(() => import("./SqlMigrationsPage"));
+export const UserGuidePage = lazy(() => import("./UserGuidePage"));
 
 export type { SettingsTab } from "./SettingsPage";

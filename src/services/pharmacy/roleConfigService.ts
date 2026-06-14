@@ -24,6 +24,8 @@ function normalizeRoleConfig(row: Record<string, unknown>): PharmacyRoleConfig {
       .toLowerCase(),
     allowedPages: allowedPages as Page[],
     permissions: (camel.permissions ?? row.permissions ?? {}) as RolePermissionFlags,
+    labelAr: String(camel.labelAr ?? row.label_ar ?? "").trim() || undefined,
+    labelEn: String(camel.labelEn ?? row.label_en ?? "").trim() || undefined,
   };
 }
 
@@ -61,6 +63,8 @@ export async function upsertPharmacyRoleConfig(input: {
   roleKey: string;
   allowedPages: Page[];
   permissions: RolePermissionFlags;
+  labelAr?: string;
+  labelEn?: string;
 }): Promise<PharmacyRoleConfig> {
   const roleKey = input.roleKey.trim().toLowerCase();
   const { data: existing } = await supabase
@@ -76,6 +80,8 @@ export async function upsertPharmacyRoleConfig(input: {
     roleKey,
     allowedPages: input.allowedPages,
     permissions: input.permissions,
+    labelAr: input.labelAr?.trim() || null,
+    labelEn: input.labelEn?.trim() || null,
     updatedAt: new Date().toISOString(),
   });
 

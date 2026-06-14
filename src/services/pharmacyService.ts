@@ -8,6 +8,7 @@ export * from "./pharmacy/salesService";
 export * from "./pharmacy/hrService";
 export * from "./pharmacy/customRoleService";
 export * from "./pharmacy/roleConfigService";
+export * from "./pharmacy/subscriptionTierService";
 
 export {
   setActivePharmacy,

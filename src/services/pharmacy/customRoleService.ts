@@ -151,6 +151,36 @@ export async function createPharmacyCustomRole(input: {
   return normalizeCustomRole(data as Record<string, unknown>);
 }
 
+export async function updatePharmacyCustomRoleNames(
+  id: string,
+  input: { nameAr: string; nameEn: string },
+): Promise<PharmacyCustomRole> {
+  const nameAr = input.nameAr.trim();
+  const nameEn = input.nameEn.trim();
+  if (!nameAr || !nameEn) {
+    throw new Error("custom_role_name_required");
+  }
+
+  const { data, error } = await supabase
+    .from("pharmacy_custom_roles")
+    .update(
+      toSnakeCase({
+        nameAr,
+        nameEn,
+        updatedAt: new Date().toISOString(),
+      }),
+    )
+    .eq("id", id)
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message || "custom_role_not_found");
+  }
+
+  return normalizeCustomRole(data as Record<string, unknown>);
+}
+
 export async function deletePharmacyCustomRole(id: string): Promise<void> {
   const { data: roleRow, error: loadError } = await supabase
     .from("pharmacy_custom_roles")
@@ -164,7 +194,7 @@ export async function deletePharmacyCustomRole(id: string): Promise<void> {
 
   const role = normalizeCustomRole(roleRow as Record<string, unknown>);
 
-  const [{ count: userCount }, { count: accountCount }] = await Promise.all([
+  const [{ count: userCount }, { count: accountCount }, { count: employeeCount }] = await Promise.all([
     supabase
       .from("users")
       .select("uid", { count: "exact", head: true })
@@ -175,9 +205,14 @@ export async function deletePharmacyCustomRole(id: string): Promise<void> {
       .select("id", { count: "exact", head: true })
       .eq("pharmacy_id", role.pharmacyId)
       .eq("role", role.roleKey),
+    supabase
+      .from("employees")
+      .select("id", { count: "exact", head: true })
+      .eq("pharmacy_id", role.pharmacyId)
+      .eq("job_title", role.roleKey),
   ]);
 
-  if ((userCount || 0) > 0 || (accountCount || 0) > 0) {
+  if ((userCount || 0) > 0 || (accountCount || 0) > 0 || (employeeCount || 0) > 0) {
     throw new Error("custom_role_in_use");
   }
 

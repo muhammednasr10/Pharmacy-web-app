@@ -34,6 +34,11 @@ export function formatUserCreationError(message: string, isArabic: boolean): str
   if (message.includes("already registered") || message.includes("already been registered")) {
     return isArabic ? "هذا الإيميل مسجل بالفعل" : "This email is already registered";
   }
+  if (message === "user_limit_reached") {
+    return isArabic
+      ? "تم الوصول للحد الأقصى لمستخدمي الصيدلية. تواصل مع الدعم لزيادة الباقة."
+      : "Pharmacy user limit reached. Contact support to upgrade the plan.";
+  }
   if (message === "auth_pending_confirmation") {
     return isArabic
       ? "تم إنشاء الحساب. قد يحتاج المستخدم لتأكيد البريد قبل أول تسجيل دخول."

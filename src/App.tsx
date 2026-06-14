@@ -12,6 +12,7 @@ import * as pharmacyService from "./services/pharmacyService";
 import LoginPage from "./components/LoginPage";
 import type { SettingsTab } from "./pages/lazyPages";
 import AppShell from "./components/AppShell";
+import PageLoadingCard from "./components/PageLoadingCard";
 import { LazyAppModals, LazyAppPageRouter } from "./components/lazyAppModules";
 import { useAppBindings } from "./hooks/useAppBindings";
 import { getShiftDisplayName } from "./utils/workSchedule";
@@ -180,14 +181,17 @@ function App() {
   } | null>(null);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [selectedTenantId, setSelectedTenantId] = useState("main");
+  const [employeesPageTenantScope, setEmployeesPageTenantScope] = useState<string | null>(null);
   const [tenantForm, setTenantForm] = useState({
     id: "",
     name: "",
     name_en: "",
     phone: "",
     address: "",
+    packageChoice: "basic" as SubscriptionTier | "custom",
     subscriptionTier: "basic" as SubscriptionTier,
     maxBranches: 1,
+    maxUsers: 5,
   });
   const [tenantUserForm, setTenantUserForm] = useState({
     name: "",
@@ -483,10 +487,17 @@ function App() {
     resetTenantUserForm,
     handleCreateTenant,
     handleCreateTenantUser,
+    handleCreateOrganizationBranch,
+    handleUpdateOrganizationBranch,
+    handleDeleteOrganization,
+    handleDeleteOrganizationBranch,
+    handleDeleteTenantStaff,
     handleUpdateSubscriptionTier,
     handleUpdateOrganizationMaxBranches,
+    handleUpdateOrganizationMaxUsers,
     handleUpdateTenantStatus,
     handleSwitchTenantView,
+    handleOpenTenantUsers,
   } = useSuperAdminTenants({
     isArabic,
     appUser,
@@ -506,6 +517,20 @@ function App() {
     setActivePage,
   });
 
+  const openTenantEmployeesPage = useCallback(
+    (pharmacyId: string) => {
+      setEmployeesPageTenantScope(pharmacyId);
+      handleOpenTenantUsers(pharmacyId);
+    },
+    [handleOpenTenantUsers],
+  );
+
+  useEffect(() => {
+    if (activePage !== "users") {
+      setEmployeesPageTenantScope(null);
+    }
+  }, [activePage]);
+
   useEffect(() => {
     if (!appUser) {
       pharmacyService.setPharmacyCustomRoles([]);
@@ -515,6 +540,16 @@ function App() {
       console.error("[RoleAccess] load failed", error);
     });
   }, [appUser?.uid, appUser?.pharmacyId, branches]);
+
+  useEffect(() => {
+    if (!appUser) return;
+    void pharmacyService.loadSubscriptionTierConfigs().catch((error) => {
+      console.error("[SubscriptionTiers] load failed", error);
+    });
+    return pharmacyService.subscribeSubscriptionTierConfigs(() => {
+      /* cache updated globally */
+    });
+  }, [appUser?.uid]);
 
   useEffect(() => {
     if (!appUser) return;
@@ -678,6 +713,11 @@ function App() {
         pendingApproval: true,
       }),
     );
+  }, [appUser?.uid]);
+
+  const refreshSystemUsersStable = useCallback(async () => {
+    if (!isSuperAdmin(appUser)) return;
+    setSystemUsers(await pharmacyService.getAllSystemUsers());
   }, [appUser?.uid]);
 
   useEffect(() => {
@@ -1240,15 +1280,24 @@ function App() {
     setTenantUserForm,
     resetTenantUserForm,
     handleCreateTenantUser,
+    handleCreateOrganizationBranch,
+    handleUpdateOrganizationBranch,
+    handleDeleteOrganization,
+    handleDeleteOrganizationBranch,
+    handleDeleteTenantStaff,
     handleSwitchTenantView,
+    handleOpenTenantUsers: openTenantEmployeesPage,
+    employeesPageTenantScope,
     handleUpdateTenantStatus,
     handleUpdateOrganizationMaxBranches,
+    handleUpdateOrganizationMaxUsers,
     handleUpdateSubscriptionTier,
     handleApproveSubscriptionRequest,
     handleRejectSubscriptionRequest,
     handleApprovePharmacyLoginAccount,
     handleRejectPharmacyLoginAccount,
     refreshAdminRequestsStable,
+    refreshSystemUsersStable,
     setBranches,
     lang,
     invoices,
@@ -1310,13 +1359,7 @@ function App() {
     <AppShell
       {...appShellProps}
       children={
-        <Suspense
-          fallback={
-            <div className="card pageSuspenseFallback">
-              {isArabic ? "جاري تحميل الصفحة..." : "Loading page..."}
-            </div>
-          }
-        >
+        <Suspense fallback={<PageLoadingCard isArabic={isArabic} />}>
           <LazyAppPageRouter {...pageRouterProps} />
         </Suspense>
       }

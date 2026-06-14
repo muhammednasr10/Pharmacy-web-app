@@ -7,6 +7,8 @@ create table if not exists pharmacy_role_configs (
   role_key text not null,
   allowed_pages jsonb not null default '[]'::jsonb,
   permissions jsonb not null default '{}'::jsonb,
+  label_ar text,
+  label_en text,
   created_at timestamptz default now(),
   updated_at timestamptz default now(),
   constraint pharmacy_role_configs_role_key_check check (
@@ -77,5 +79,9 @@ create policy "pharmacy_role_configs_delete" on pharmacy_role_configs
       or (public.is_pharmacy_manager() and public.can_write_pharmacy_row(pharmacy_id))
     )
   );
+
+alter table pharmacy_role_configs
+  add column if not exists label_ar text,
+  add column if not exists label_en text;
 
 notify pgrst, 'reload schema';

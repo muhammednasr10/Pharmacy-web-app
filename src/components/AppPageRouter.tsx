@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import PageLoadingCard from "./PageLoadingCard";
 import type { Dispatch, SetStateAction } from "react";
 import {
   ActivityLogsPage,
@@ -18,6 +19,7 @@ import {
   SqlMigrationsPage,
   StockMovementsPage,
   SuperAdminPage,
+  UserGuidePage,
   type SettingsTab,
 } from "../pages/lazyPages";
 import type { AppTranslation } from "../i18n/appTranslations";
@@ -215,8 +217,10 @@ export type AppPageRouterProps = {
     name_en: string;
     phone: string;
     address: string;
+    packageChoice: SubscriptionTier | "custom";
     subscriptionTier: SubscriptionTier;
     maxBranches: number;
+    maxUsers: number;
   };
   tenantUserForm: {
     name: string;
@@ -303,7 +307,20 @@ export type AppPageRouterProps = {
   setTenantUserForm: Dispatch<SetStateAction<AppPageRouterProps["tenantUserForm"]>>;
   resetTenantUserForm: () => void;
   handleCreateTenantUser: () => Promise<boolean>;
+  handleCreateOrganizationBranch: (
+    anchorPharmacyId: string,
+    branch: { id: string; name: string; name_en?: string; phone?: string; address?: string },
+  ) => Promise<boolean>;
+  handleUpdateOrganizationBranch: (
+    branchId: string,
+    branch: { name: string; name_en?: string; phone?: string; address?: string },
+  ) => Promise<boolean>;
+  handleDeleteOrganization: (organizationId: string) => Promise<boolean>;
+  handleDeleteOrganizationBranch: (branchId: string, organizationId: string) => Promise<boolean>;
+  handleDeleteTenantStaff: (target: { uid?: string; employeeId?: string }) => Promise<boolean>;
   handleSwitchTenantView: (pharmacyId: string) => void | Promise<void>;
+  handleOpenTenantUsers: (pharmacyId: string) => void | Promise<void>;
+  employeesPageTenantScope: string | null;
   handleUpdateTenantStatus: (
     pharmacyId: string,
     status: "active" | "suspended",
@@ -311,6 +328,10 @@ export type AppPageRouterProps = {
   handleUpdateOrganizationMaxBranches: (
     organizationId: string,
     maxBranches: number,
+  ) => Promise<boolean>;
+  handleUpdateOrganizationMaxUsers: (
+    organizationId: string,
+    maxUsers: number,
   ) => Promise<boolean>;
   handleUpdateSubscriptionTier: (
     organizationId: string,
@@ -321,6 +342,7 @@ export type AppPageRouterProps = {
   handleApprovePharmacyLoginAccount: (accountId: string) => Promise<boolean>;
   handleRejectPharmacyLoginAccount: (accountId: string, note?: string) => Promise<boolean>;
   refreshAdminRequestsStable: () => Promise<void>;
+  refreshSystemUsersStable: () => Promise<void>;
   setBranches: Dispatch<SetStateAction<PharmacySettings[]>>;
 };
 
@@ -528,24 +550,31 @@ export default function AppPageRouter(props: AppPageRouterProps) {
     setTenantUserForm,
     resetTenantUserForm,
     handleCreateTenantUser,
+    handleCreateOrganizationBranch,
+    handleUpdateOrganizationBranch,
+    handleDeleteOrganization,
+    handleDeleteOrganizationBranch,
+    handleDeleteTenantStaff,
     handleSwitchTenantView,
+    handleOpenTenantUsers,
+    employeesPageTenantScope,
     handleUpdateTenantStatus,
     handleUpdateOrganizationMaxBranches,
+    handleUpdateOrganizationMaxUsers,
     handleUpdateSubscriptionTier,
     handleApproveSubscriptionRequest,
     handleRejectSubscriptionRequest,
     handleApprovePharmacyLoginAccount,
     handleRejectPharmacyLoginAccount,
     refreshAdminRequestsStable,
+    refreshSystemUsersStable,
     setBranches,
   } = props;
 
   return (
     <Suspense
       fallback={
-        <div className="card pageSuspenseFallback">
-          {isArabic ? "جاري تحميل الصفحة..." : "Loading page..."}
-        </div>
+        <PageLoadingCard isArabic={isArabic} />
       }
     >
       {displayPage === "dashboard" && (
@@ -616,7 +645,6 @@ export default function AppPageRouter(props: AppPageRouterProps) {
           pendingBranchTransferGroups={pendingBranchTransferGroups}
           onApproveBranchTransfer={handleApproveBranchTransfer}
           onRejectBranchTransfer={handleRejectBranchTransfer}
-          tierUpgradePrompt={tierUpgradePrompt}
         />
       )}
 
@@ -656,6 +684,7 @@ export default function AppPageRouter(props: AppPageRouterProps) {
           onEditMedicine={startEditMedicine}
           onDeleteMedicine={deleteMedicine}
           pharmacyId={getPharmacyId()}
+          onReloadMedicines={refreshMedicinesFromDb}
           lowStockThreshold={lowStockThreshold}
           expiringSoonDays={expiringSoonDays}
           branchAwareAlerts={isViewingAllBranches}
@@ -909,6 +938,7 @@ export default function AppPageRouter(props: AppPageRouterProps) {
           appUser={appUser}
           pharmacyId={getPharmacyId()}
           pharmacies={branches}
+          tenantScopePharmacyId={employeesPageTenantScope}
           currency={settingsForm.currency || "ج.م"}
           currentUid={user?.uid}
           onActivityLog={addActivityLog}
@@ -923,6 +953,7 @@ export default function AppPageRouter(props: AppPageRouterProps) {
       {displayPage === "tenants" && canOpenPage("tenants") && (
         <SuperAdminPage
           isArabic={isArabic}
+          operatorUid={appUser?.uid}
           pharmacies={branches}
           systemUsers={systemUsers}
           selectedPharmacyId={selectedTenantId}
@@ -931,18 +962,19 @@ export default function AppPageRouter(props: AppPageRouterProps) {
             setTenantUserForm((prev) => ({ ...prev, pharmacyId: id }));
           }}
           onSwitchTenant={handleSwitchTenantView}
+          onOpenTenantUsers={handleOpenTenantUsers}
           tenantForm={tenantForm}
           onTenantFormChange={(updates) => setTenantForm({ ...tenantForm, ...updates })}
           onResetTenantForm={resetTenantForm}
           onCreateTenant={handleCreateTenant}
           creatingTenant={creatingTenant}
-          userForm={tenantUserForm}
-          onUserFormChange={(updates) => setTenantUserForm({ ...tenantUserForm, ...updates })}
-          onResetUserForm={resetTenantUserForm}
-          onCreateTenantUser={handleCreateTenantUser}
-          creatingTenantUser={creatingTenantUser}
+          onCreateOrganizationBranch={handleCreateOrganizationBranch}
+          onUpdateOrganizationBranch={handleUpdateOrganizationBranch}
+          onDeleteOrganization={handleDeleteOrganization}
+          onDeleteOrganizationBranch={handleDeleteOrganizationBranch}
           onUpdateTenantStatus={handleUpdateTenantStatus}
           onUpdateMaxBranches={handleUpdateOrganizationMaxBranches}
+          onUpdateMaxUsers={handleUpdateOrganizationMaxUsers}
           onUpdateSubscriptionTier={handleUpdateSubscriptionTier}
           subscriptionRequests={subscriptionRequests}
           onApproveSubscriptionRequest={handleApproveSubscriptionRequest}
@@ -951,6 +983,7 @@ export default function AppPageRouter(props: AppPageRouterProps) {
           onApprovePharmacyLoginAccount={handleApprovePharmacyLoginAccount}
           onRejectPharmacyLoginAccount={handleRejectPharmacyLoginAccount}
           onRefreshAdminRequests={refreshAdminRequestsStable}
+          onRefreshSystemUsers={refreshSystemUsersStable}
         />
       )}
 
@@ -978,6 +1011,10 @@ export default function AppPageRouter(props: AppPageRouterProps) {
           resolveBranchLabel={resolveBranchLabel}
           onActivityLog={addActivityLog}
         />
+      )}
+
+      {displayPage === "userGuide" && canOpenPage("userGuide") && (
+        <UserGuidePage isArabic={isArabic} />
       )}
 
       {displayPage === "settings" && canOpenPage("settings") && (

@@ -6,6 +6,7 @@ import MedicineStockDetailModal from "../components/MedicineStockDetailModal";
 import BranchTransferModal from "../components/BranchTransferModal";
 import ReorderSuggestionsModal from "../components/ReorderSuggestionsModal";
 import StockCountModal from "../components/StockCountModal";
+import MedicineCatalogImportModal from "../components/MedicineCatalogImportModal";
 import TierUpgradeNotice from "../components/TierUpgradeNotice";
 import { saveReorderPurchaseDraft, type ReorderPurchaseDraft } from "../utils/reorderSuggestions";
 import type { PharmacySettings } from "../types";
@@ -42,6 +43,7 @@ type InventoryPageProps = {
   onEditMedicine: (medicine: Medicine) => void;
   onDeleteMedicine: (medicine: Medicine) => void;
   pharmacyId: string;
+  onReloadMedicines?: () => void | Promise<void>;
   lowStockThreshold: number;
   expiringSoonDays: number;
   branchAwareAlerts?: boolean;
@@ -79,6 +81,7 @@ export default function InventoryPage({
   onEditMedicine,
   onDeleteMedicine,
   pharmacyId,
+  onReloadMedicines,
   lowStockThreshold,
   expiringSoonDays,
   branchAwareAlerts = false,
@@ -90,6 +93,7 @@ export default function InventoryPage({
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showStockCountModal, setShowStockCountModal] = useState(false);
   const [showReorderModal, setShowReorderModal] = useState(false);
+  const [showCatalogImportModal, setShowCatalogImportModal] = useState(false);
 
   const branchMedicines = useMemo(
     () =>
@@ -186,6 +190,11 @@ export default function InventoryPage({
           {canManageInventory && !isSubscriptionExpired && onApplyStockCount && (
             <button type="button" className="editBtn" onClick={() => setShowStockCountModal(true)}>
               {isArabic ? "📋 جرد مخزون" : "📋 Stock count"}
+            </button>
+          )}
+          {canManageInventory && !isSubscriptionExpired && (
+            <button type="button" className="editBtn" onClick={() => setShowCatalogImportModal(true)}>
+              {isArabic ? "📥 استيراد كتالوج" : "📥 Import catalog"}
             </button>
           )}
           {canManageInventory && !isSubscriptionExpired && (
@@ -323,6 +332,17 @@ export default function InventoryPage({
           </div>
         </div>
       )}
+
+      <MedicineCatalogImportModal
+        isArabic={isArabic}
+        open={showCatalogImportModal}
+        pharmacyId={pharmacyId}
+        currentMedicineCount={branchMedicines.length}
+        onClose={() => setShowCatalogImportModal(false)}
+        onComplete={async () => {
+          if (onReloadMedicines) await onReloadMedicines();
+        }}
+      />
     </section>
   );
 }

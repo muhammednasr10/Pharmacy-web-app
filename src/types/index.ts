@@ -84,6 +84,7 @@ export type Page =
   | "sqlMigrations"
   | "branches"
   | "settings"
+  | "userGuide"
   | "hr"
   | "employeePortal";
 
@@ -106,6 +107,7 @@ export type PharmacySettings = {
   id: string;
   organizationId?: string;
   maxBranches?: number;
+  maxUsers?: number;
   name: string;
   name_en: string;
   phone: string;
@@ -485,6 +487,8 @@ export type PharmacyRoleConfig = {
   roleKey: string;
   allowedPages: Page[];
   permissions: RolePermissionFlags;
+  labelAr?: string;
+  labelEn?: string;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -548,6 +552,7 @@ export type CreatePharmacyInput = {
   currency?: string;
   organizationId?: string;
   maxBranches?: number;
+  maxUsers?: number;
   subscriptionTier?: string;
   subscriptionPlan?: string;
   subscriptionStatus?: string;

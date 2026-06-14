@@ -237,6 +237,8 @@ export function useAppBindings(input: UseAppBindingsInput): AppBindingsResult {
     },
     onCloseMenu: () => setIsMenuOpen(false),
     resolveBranchLabel: input.resolveBranchLabel,
+    onOpenSubscriptionSettings: input.openSubscriptionSettings,
+    tierUpgradePrompt: input.tierUpgradePrompt,
   };
 
   return { pageRouterProps, appModalsProps, appShellProps };

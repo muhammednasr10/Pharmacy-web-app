@@ -4,6 +4,7 @@ import * as pharmacyService from "../services/pharmacyService";
 import { TRIAL_SUBSCRIPTION_DAYS } from "../config/subscription";
 import { branchPreferenceStorageKey } from "../constants/branches";
 import { clearSessionNavigationState } from "../utils/sessionNavigation";
+import { clearPendingGoogleTrialSignup, savePendingGoogleTrialSignup } from "../constants/googleAuth";
 import { formatUserCreationError } from "../utils/userCreationErrors";
 import { isAccountant, isOrgPharmacyAdmin, isSuperAdmin } from "../utils/roles";
 import type { AppUser } from "../types";
@@ -78,10 +79,6 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
           if (provisioned) {
             data = await pharmacyService.getAppUserByUid(currentUser.uid);
           }
-        }
-
-        if (!data && pharmacyService.getAuthProvider(authUser) === "google") {
-          data = await pharmacyService.ensureGoogleAppUser(authUser);
         }
 
         if (!data) {
@@ -225,20 +222,37 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
     setGoogleLoading(true);
 
     try {
+      if (authMode === "register") {
+        const name = registerName.trim();
+        const pharmacyName = registerPharmacyName.trim();
+        if (!name) {
+          throw new Error("name_required");
+        }
+        if (pharmacyName.length < 2) {
+          throw new Error("pharmacy_name_required");
+        }
+        savePendingGoogleTrialSignup({ name, pharmacyName });
+      } else {
+        clearPendingGoogleTrialSignup();
+      }
+
       const { error } = await pharmacyService.signInWithGoogle();
       if (error) {
+        clearPendingGoogleTrialSignup();
         throw error;
       }
     } catch (error) {
       console.error(error);
       setGoogleLoading(false);
+      const raw = error instanceof Error ? error.message : "";
       setLoginError(
-        isArabic
-          ? "تعذر الدخول عبر Google. تأكد من تفعيل Google في Supabase → Authentication → Providers."
-          : "Google sign-in failed. Enable Google in Supabase → Authentication → Providers.",
+        formatUserCreationError(raw, isArabic) ||
+          (isArabic
+            ? "تعذر الدخول عبر Google. تأكد من تفعيل Google في Supabase → Authentication → Providers."
+            : "Google sign-in failed. Enable Google in Supabase → Authentication → Providers."),
       );
     }
-  }, [isArabic]);
+  }, [authMode, isArabic, registerName, registerPharmacyName]);
 
   const handleLogin = useCallback(
     async (e: FormEvent<HTMLFormElement>) => {
@@ -276,6 +290,7 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
       setLoginError("");
       setRegisterSuccess("");
       setRegistering(true);
+      clearPendingGoogleTrialSignup();
 
       try {
         const result = await pharmacyService.registerPublicUser({
@@ -319,6 +334,7 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
     setAuthMode(mode);
     setLoginError("");
     setRegisterSuccess("");
+    clearPendingGoogleTrialSignup();
   }, []);
 
   const handleLogout = useCallback(async () => {

@@ -6,7 +6,7 @@ import Sidebar from "./Sidebar";
 import Topbar, { type AlertItem } from "./Topbar";
 import type { AppTranslation } from "../i18n/appTranslations";
 import type { SubscriptionTier } from "../config/subscriptionTiers";
-import { canSwitchBranchesWithTier } from "../utils/subscriptionFeatures";
+import { canSwitchBranchesWithTier, type TierUpgradePrompt } from "../utils/subscriptionFeatures";
 import type { AppUser, Lang, Page, PharmacySettings } from "../types";
 
 export type AppShellProps = {
@@ -40,6 +40,8 @@ export type AppShellProps = {
   onAlertNavigate: (filter: "low" | "expiring" | "expired") => void;
   onCloseMenu: () => void;
   resolveBranchLabel: (branchId?: string) => string;
+  onOpenSubscriptionSettings: () => void;
+  tierUpgradePrompt: TierUpgradePrompt | null;
   children: ReactNode;
   modals?: ReactNode;
 };
@@ -75,6 +77,8 @@ export default function AppShell({
   onAlertNavigate,
   onCloseMenu,
   resolveBranchLabel,
+  onOpenSubscriptionSettings,
+  tierUpgradePrompt,
   children,
   modals,
 }: AppShellProps) {
@@ -94,6 +98,9 @@ export default function AppShell({
             pharmacyPhone={pharmacySettings?.phone || ""}
             pharmacyAddress={pharmacySettings?.address || ""}
             pharmacyLogo={appLogo}
+            subscriptionTier={orgSubscriptionTier}
+            tierUpgradePrompt={tierUpgradePrompt}
+            onOpenSubscriptionSettings={onOpenSubscriptionSettings}
             appUser={appUser}
             isArabic={isArabic}
             t={t}

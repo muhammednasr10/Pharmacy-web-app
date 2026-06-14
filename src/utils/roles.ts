@@ -95,6 +95,22 @@ export function canManageUsers(appUser: AppUser | null | undefined): boolean {
   return userHasPermission(appUser, "manage_users");
 }
 
+/** Org general manager (or platform admin) — edit role/page permissions for staff. */
+export function canManageStaffRolePermissions(appUser: AppUser | null | undefined): boolean {
+  if (!appUser) return false;
+  return isOrgPharmacyAdmin(appUser) || isSuperAdmin(appUser);
+}
+
+/** Whether this role's permission template may be edited (org admin cannot edit pharmacy_admin). */
+export function canEditRolePermissionsForRole(
+  appUser: AppUser | null | undefined,
+  roleKey: string,
+): boolean {
+  if (!canManageStaffRolePermissions(appUser)) return false;
+  if (isSuperAdmin(appUser)) return true;
+  return normalizeRole(roleKey) !== "pharmacy_admin";
+}
+
 /** Org-wide settings: subscription, alert rules, payroll, backup. */
 export function canEditOrgWideSettings(appUser: AppUser | null | undefined): boolean {
   return userHasPermission(appUser, "edit_org_settings");
@@ -252,7 +268,11 @@ export const allowedPagesByRole: Record<BuiltinUserRole, Page[]> = {
 
 export function getAllowedPages(appUser: AppUser | null): Page[] {
   if (!appUser) return [];
-  return getEffectiveRoleAccess(normalizeRole(appUser.role), appUser.pharmacyId).allowedPages;
+  const pages = getEffectiveRoleAccess(
+    normalizeRole(appUser.role),
+    appUser.pharmacyId,
+  ).allowedPages;
+  return pages.includes("userGuide") ? pages : [...pages, "userGuide"];
 }
 
 export const pharmacyAdminRoleOptions: UserRole[] = [

@@ -16,7 +16,6 @@ export const CUSTOM_ROLE_TEMPLATE_OPTIONS: UserRole[] = [
   "inventory",
   "accountant",
   "branch_manager",
-  "pharmacy_admin",
 ];
 
 export function defaultPagesForCustomRoleTemplate(baseRole: UserRole): Page[] {

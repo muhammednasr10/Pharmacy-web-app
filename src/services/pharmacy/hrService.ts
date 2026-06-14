@@ -1232,6 +1232,208 @@ export async function updateEmployee(id: string, updates: Partial<Employee>) {
   }
 }
 
+async function resolveTransferEmployeeCode(
+  employee: Employee,
+  targetPharmacyId: string,
+): Promise<string> {
+  const code = (employee.employeeCode || "").trim();
+  if (!code) {
+    return suggestNextEmployeeCode(targetPharmacyId);
+  }
+
+  const { data: conflict } = await supabase
+    .from("employees")
+    .select("id")
+    .eq("pharmacy_id", targetPharmacyId)
+    .ilike("employee_code", code)
+    .neq("id", employee.id)
+    .maybeSingle();
+
+  if (conflict?.id) {
+    return suggestNextEmployeeCode(targetPharmacyId);
+  }
+
+  return code;
+}
+
+async function findLoginAccountForEmployee(
+  employee: Employee,
+): Promise<PharmacyLoginAccount | null> {
+  const { data: byEmployee, error: byEmployeeError } = await supabase
+    .from("pharmacy_login_accounts")
+    .select("*")
+    .eq("employee_id", employee.id)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (byEmployeeError) {
+    throw new Error(byEmployeeError.message);
+  }
+  if (byEmployee) {
+    return toCamelCase<PharmacyLoginAccount>(byEmployee);
+  }
+
+  const { data: userRow } = await supabase
+    .from("users")
+    .select("email")
+    .eq("employee_id", employee.id)
+    .maybeSingle();
+
+  const email = String(userRow?.email || "")
+    .trim()
+    .toLowerCase();
+  if (!email) return null;
+
+  const { data: byEmail, error: byEmailError } = await supabase
+    .from("pharmacy_login_accounts")
+    .select("*")
+    .eq("pharmacy_id", employee.pharmacyId)
+    .ilike("email", email)
+    .maybeSingle();
+
+  if (byEmailError) {
+    throw new Error(byEmailError.message);
+  }
+
+  return byEmail ? toCamelCase<PharmacyLoginAccount>(byEmail) : null;
+}
+
+export type TransferEmployeeToBranchResult = {
+  fromPharmacyId: string;
+  toPharmacyId: string;
+  employeeCode: string;
+  loginEmail?: string;
+  loginSynced: boolean;
+};
+
+/** Move employee (+ linked login catalog / Auth user) to another branch in the same org. */
+export async function transferEmployeeToBranch(
+  employeeId: string,
+  targetPharmacyId: string,
+): Promise<TransferEmployeeToBranchResult> {
+  const trimmedTarget = targetPharmacyId.trim();
+  if (!trimmedTarget) {
+    throw new Error("branch_required");
+  }
+
+  const { data: employeeRow, error: employeeError } = await supabase
+    .from("employees")
+    .select("*")
+    .eq("id", employeeId)
+    .maybeSingle();
+
+  if (employeeError) {
+    throw new Error(employeeError.message);
+  }
+  if (!employeeRow) {
+    throw new Error("employee_not_found");
+  }
+
+  const employee = toCamelCase<Employee>(employeeRow);
+  const fromPharmacyId = employee.pharmacyId;
+  if (!fromPharmacyId) {
+    throw new Error("employee_branch_missing");
+  }
+  if (fromPharmacyId === trimmedTarget) {
+    throw new Error("employee_already_in_branch");
+  }
+
+  const targetPharmacy = await getPharmacySettings(trimmedTarget);
+  if (!targetPharmacy) {
+    throw new Error("branch_not_found");
+  }
+
+  const employeeCode = await resolveTransferEmployeeCode(employee, trimmedTarget);
+  const loginAccount = await findLoginAccountForEmployee(employee);
+
+  if (loginAccount) {
+    const email = loginAccount.email.trim().toLowerCase();
+    const { data: emailConflict } = await supabase
+      .from("pharmacy_login_accounts")
+      .select("id")
+      .eq("pharmacy_id", trimmedTarget)
+      .ilike("email", email)
+      .neq("id", loginAccount.id)
+      .maybeSingle();
+
+    if (emailConflict?.id) {
+      throw new Error("login_account_email_exists_on_branch");
+    }
+  }
+
+  await updateEmployee(employeeId, {
+    pharmacyId: trimmedTarget,
+    employeeCode,
+  });
+
+  let loginEmail: string | undefined;
+  let loginSynced = false;
+
+  if (loginAccount) {
+    loginEmail = loginAccount.email.trim().toLowerCase();
+    const { error: accountError } = await supabase
+      .from("pharmacy_login_accounts")
+      .update({
+        pharmacy_id: trimmedTarget,
+        employee_id: employeeId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", loginAccount.id);
+
+    if (accountError) {
+      throw new Error(accountError.message);
+    }
+
+    try {
+      await syncPharmacyLoginAccountToUser(
+        {
+          email: loginAccount.email,
+          role: loginAccount.role,
+          pharmacyId: trimmedTarget,
+          employeeId,
+        },
+        { name: employee.name },
+      );
+      loginSynced = true;
+    } catch (error) {
+      if (!(error instanceof Error && error.message === "auth_user_not_found")) {
+        throw error;
+      }
+    }
+  } else {
+    const { data: userRow } = await supabase
+      .from("users")
+      .select("uid, email")
+      .eq("employee_id", employeeId)
+      .maybeSingle();
+
+    if (userRow?.uid) {
+      loginEmail = String(userRow.email || "").trim().toLowerCase() || undefined;
+      const { error: userError } = await supabase
+        .from("users")
+        .update({
+          pharmacy_id: trimmedTarget,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("uid", userRow.uid);
+
+      if (userError) {
+        throw new Error(userError.message);
+      }
+      loginSynced = true;
+    }
+  }
+
+  return {
+    fromPharmacyId,
+    toPharmacyId: trimmedTarget,
+    employeeCode,
+    loginEmail,
+    loginSynced,
+  };
+}
+
 export async function setEmployeeActive(id: string, isActive: boolean) {
   await updateEmployee(id, { isActive });
 }
@@ -1241,6 +1443,80 @@ export async function deleteEmployee(id: string) {
   if (error) {
     throw new Error(error.message);
   }
+}
+
+export async function deletePharmacyEmployeeCascade(
+  employeeId: string,
+  options?: { revokedBy?: string },
+): Promise<void> {
+  if (!isSuperAdmin(getCurrentAppUser())) {
+    throw new Error("forbidden");
+  }
+
+  const { data: employeeRow, error: employeeError } = await supabase
+    .from("employees")
+    .select("*")
+    .eq("id", employeeId)
+    .maybeSingle();
+
+  if (employeeError) {
+    throw new Error(employeeError.message);
+  }
+  if (!employeeRow) return;
+
+  const employee = toCamelCase<Employee>(employeeRow);
+  const loginAccount = await findLoginAccountForEmployee(employee);
+
+  const { data: linkedUsers, error: usersError } = await supabase
+    .from("users")
+    .select("uid")
+    .eq("employee_id", employeeId);
+
+  if (usersError) {
+    throw new Error(usersError.message);
+  }
+
+  for (const row of linkedUsers || []) {
+    const uid = String(row.uid || "").trim();
+    if (!uid) continue;
+    const { error: revokeError } = await supabase.rpc("revoke_user_app_access", {
+      p_uid: uid,
+      p_account_id: loginAccount?.id || null,
+      p_revoked_by: options?.revokedBy || null,
+      p_reason: "delete",
+    });
+    if (revokeError) {
+      const { error: deleteUserError } = await supabase.from("users").delete().eq("uid", uid);
+      if (deleteUserError) {
+        throw new Error(deleteUserError.message);
+      }
+    }
+  }
+
+  const { data: accountRows, error: accountsError } = await supabase
+    .from("pharmacy_login_accounts")
+    .select("id")
+    .eq("employee_id", employeeId);
+
+  if (accountsError) {
+    throw new Error(accountsError.message);
+  }
+
+  const accountIds = new Set<string>(
+    (accountRows || []).map((row) => String(row.id)).filter(Boolean),
+  );
+  if (loginAccount?.id) {
+    accountIds.add(loginAccount.id);
+  }
+
+  for (const accountId of accountIds) {
+    const { error } = await supabase.from("pharmacy_login_accounts").delete().eq("id", accountId);
+    if (error) {
+      throw new Error(error.message);
+    }
+  }
+
+  await deleteEmployee(employeeId);
 }
 
 export async function linkUserToEmployee(uid: string, employeeId: string | null) {

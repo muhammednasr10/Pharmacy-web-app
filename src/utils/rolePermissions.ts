@@ -114,13 +114,8 @@ export const ROLE_PERMISSION_OPTIONS: {
 
 const ALL_PERMISSION_KEYS = ROLE_PERMISSION_OPTIONS.map((item) => item.key);
 
-export const EDITABLE_BUILTIN_ROLES: BuiltinUserRole[] = [
-  "pharmacy_admin",
-  "branch_manager",
-  "cashier",
-  "inventory",
-  "accountant",
-];
+/** Built-in roles whose labels/permissions appear in admin UI (only GM is fixed). */
+export const EDITABLE_BUILTIN_ROLES: BuiltinUserRole[] = ["pharmacy_admin"];
 
 function flags(keys: RolePermissionKey[]): RolePermissionFlags {
   return Object.fromEntries(keys.map((key) => [key, true])) as RolePermissionFlags;

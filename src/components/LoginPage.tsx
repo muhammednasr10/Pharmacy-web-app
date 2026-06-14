@@ -1,6 +1,8 @@
 import type { FormEvent } from "react";
+import { VICTORY_BRAND_LOGO, VICTORY_BRAND_TITLE } from "../config/brand";
 import { TRIAL_SUBSCRIPTION_DAYS } from "../config/subscription";
 import type { FontScale, ThemeMode } from "../utils/displayPreferences";
+import AuthLoadingScreen from "./AuthLoadingScreen";
 import DeveloperCredit from "./DeveloperCredit";
 import DisplayPreferencesPanel from "./DisplayPreferencesPanel";
 
@@ -89,21 +91,18 @@ export default function LoginPage({
   onLogout,
 }: LoginPageProps) {
   if (status === "loading") {
-    return (
-      <div className="loginPage" dir={isArabic ? "rtl" : "ltr"}>
-        <div className="loginCard">
-          <div className="loginLogo logoImageBox" />
-          <h1>{isArabic ? "جاري التحميل..." : "Loading..."}</h1>
-        </div>
-      </div>
-    );
+    return <AuthLoadingScreen isArabic={isArabic} />;
   }
 
   if (status === "denied") {
     return (
       <div className="loginPage" dir={isArabic ? "rtl" : "ltr"}>
         <div className="loginCard">
-          <div className="loginLogo logoImageBox" />
+          <img
+            src={VICTORY_BRAND_LOGO}
+            alt={VICTORY_BRAND_TITLE}
+            className="loginBrandLogo"
+          />
           <h1>{isArabic ? "غير مسموح بالدخول" : "Access denied"}</h1>
           <p>
             {isArabic
@@ -122,7 +121,11 @@ export default function LoginPage({
   return (
     <div className="loginPage" dir={isArabic ? "rtl" : "ltr"}>
       <form className="loginCard" onSubmit={isRegister ? onRegisterSubmit : onSubmit}>
-        <div className="loginLogo logoImageBox" />
+        <img
+          src={VICTORY_BRAND_LOGO}
+          alt={VICTORY_BRAND_TITLE}
+          className="loginBrandLogo"
+        />
         <h1>
           {isRegister
             ? isArabic
@@ -138,8 +141,8 @@ export default function LoginPage({
               ? `سجّل صيدليتك واحصل على تجربة مجانية ${TRIAL_SUBSCRIPTION_DAYS} يوماً`
               : `Register your pharmacy and get a free ${TRIAL_SUBSCRIPTION_DAYS}-day trial`
             : isArabic
-              ? "ادخل اسم المستخدم أو البريد وكلمة المرور"
-              : "Enter username or email and password"}
+              ? "ادخل بالإيميل وكلمة المرور أو عبر Google"
+              : "Sign in with email and password or Google"}
         </p>
 
         <button
@@ -153,9 +156,13 @@ export default function LoginPage({
             ? isArabic
               ? "جاري التحويل..."
               : "Redirecting..."
-            : isArabic
-              ? "المتابعة مع Google"
-              : "Continue with Google"}
+            : isRegister
+              ? isArabic
+                ? "المتابعة مع Google"
+                : "Continue with Google"
+              : isArabic
+                ? "الدخول مع Google"
+                : "Sign in with Google"}
         </button>
 
         <div className="loginDivider">{isArabic ? "أو" : "or"}</div>
@@ -183,7 +190,7 @@ export default function LoginPage({
           type="text"
           value={loginEmail}
           onChange={(e) => onEmailChange(e.target.value)}
-          placeholder={isArabic ? "اسم المستخدم أو البريد الإلكتروني" : "Username or email"}
+          placeholder={isArabic ? "البريد الإلكتروني" : "Email"}
           autoComplete="username"
         />
         <input
@@ -217,11 +224,11 @@ export default function LoginPage({
               : "Creating..."
             : isRegister
               ? isArabic
-                ? "إنشاء حساب"
-                : "Create account"
+                ? "إنشاء حساب بالإيميل"
+                : "Create account with email"
               : isArabic
-                ? "دخول"
-                : "Login"}
+                ? "دخول بالإيميل"
+                : "Sign in with email"}
         </button>
 
         <button
@@ -234,7 +241,7 @@ export default function LoginPage({
           {isRegister
             ? isArabic
               ? "لديك حساب؟ تسجيل الدخول"
-              : "Already have an account? Login"
+              : "Already have an account? Sign in"
             : isArabic
               ? "مستخدم جديد؟ إنشاء حساب"
               : "New user? Create account"}

@@ -731,3 +731,22 @@ code,
 .catalogPasswordCode {
   font-weight: var(--font-weight-emphasis);
 }
+
+html[data-theme="dark"] .staffActionIconBtn--edit {
+  background: rgba(251, 146, 60, 0.12);
+  border-color: rgba(251, 146, 60, 0.35);
+  color: #fdba74;
+}
+
+html[data-theme="dark"] .staffActionIconBtn--danger,
+html[data-theme="dark"] .staffActionIconBtn--delete {
+  background: rgba(240, 68, 56, 0.12);
+  border-color: rgba(240, 68, 56, 0.35);
+  color: #fda29b;
+}
+
+html[data-theme="dark"] .staffActionIconBtn--success {
+  background: rgba(18, 183, 106, 0.12);
+  border-color: rgba(18, 183, 106, 0.35);
+  color: #6ce9a6;
+}

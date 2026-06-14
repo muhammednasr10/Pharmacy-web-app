@@ -41,3 +41,54 @@ export function getOrganizationBranchUsage(
   const max = resolveMaxBranches(pharmacy);
   return { organizationId, used, max, canAdd: used < max };
 }
+
+export type SaasOrganizationGroup = {
+  organizationId: string;
+  primary: PharmacySettings;
+  branches: PharmacySettings[];
+  childBranches: PharmacySettings[];
+};
+
+export function resolveOrganizationPrimaryPharmacy(
+  branches: PharmacySettings[],
+  organizationId: string,
+): PharmacySettings {
+  if (organizationId.startsWith("org-")) {
+    const slug = organizationId.slice(4);
+    const match = branches.find((pharmacy) => pharmacy.id === slug);
+    if (match) return match;
+  }
+  return [...branches].sort((a, b) => a.id.localeCompare(b.id))[0];
+}
+
+export function groupPharmaciesByOrganization(
+  pharmacies: PharmacySettings[],
+): SaasOrganizationGroup[] {
+  const byOrg = new Map<string, PharmacySettings[]>();
+  for (const pharmacy of pharmacies) {
+    const organizationId = resolveOrganizationId(pharmacy);
+    const list = byOrg.get(organizationId) ?? [];
+    list.push(pharmacy);
+    byOrg.set(organizationId, list);
+  }
+
+  const groups: SaasOrganizationGroup[] = [];
+  for (const [organizationId, branches] of byOrg) {
+    const primary = resolveOrganizationPrimaryPharmacy(branches, organizationId);
+    const childBranches = branches
+      .filter((pharmacy) => pharmacy.id !== primary.id)
+      .sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id));
+    groups.push({
+      organizationId,
+      primary,
+      branches: [primary, ...childBranches],
+      childBranches,
+    });
+  }
+
+  return groups.sort((a, b) => {
+    const nameA = a.primary.name || a.primary.name_en || a.primary.id;
+    const nameB = b.primary.name || b.primary.name_en || b.primary.id;
+    return nameA.localeCompare(nameB);
+  });
+}

@@ -1,8 +1,13 @@
 export function formatLoginAccountSyncError(message: string, isArabic: boolean) {
   if (message === "auth_user_not_found") {
     return isArabic
-      ? "لا يوجد حساب بهذا الإيميل في Supabase Auth. أنشئه أولاً من Authentication → Users."
-      : "No Auth user with this email. Create it in Supabase Authentication → Users first.";
+      ? "لا يوجد حساب Auth بهذا الإيميل. اطلب من الموظف تسجيل الدخول مرة واحدة من صفحة الدخول (Google أو إيميل) أولاً."
+      : "No Auth account with this email. Ask the employee to sign in once from the login page (Google or email) first.";
+  }
+  if (message === "user_limit_reached") {
+    return isArabic
+      ? "تم الوصول للحد الأقصى لمستخدمي الصيدلية. تواصل مع الدعم لزيادة الباقة."
+      : "Pharmacy user limit reached. Contact support to upgrade the plan.";
   }
   if (message === "not_authorized") {
     return isArabic ? "ليس لديك صلاحية الربط" : "You are not allowed to sync users";

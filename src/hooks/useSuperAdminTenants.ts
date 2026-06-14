@@ -6,6 +6,12 @@ import type { SubscriptionTier } from "../config/subscriptionTiers";
 import { isSuperAdmin } from "../utils/roles";
 import { formatUserCreationError } from "../utils/userCreationErrors";
 import { formatBranchLimitError } from "../utils/orgAdminErrors";
+import { formatCreatePharmacyError } from "../utils/createPharmacyErrors";
+import {
+  resolveOrganizationId,
+  resolveOrganizationPrimaryPharmacy,
+} from "../utils/branchLimits";
+import { countOrganizationUsers } from "../utils/userLimits";
 
 export type TenantFormState = {
   id: string;
@@ -13,8 +19,10 @@ export type TenantFormState = {
   name_en: string;
   phone: string;
   address: string;
+  packageChoice: SubscriptionTier | "custom";
   subscriptionTier: SubscriptionTier;
   maxBranches: number;
+  maxUsers: number;
 };
 
 export type TenantUserFormState = {
@@ -79,8 +87,10 @@ export function useSuperAdminTenants({
       name_en: "",
       phone: "",
       address: "",
+      packageChoice: "basic",
       subscriptionTier: "basic",
       maxBranches: 1,
+      maxUsers: 5,
     });
   }, [setTenantForm]);
 
@@ -111,18 +121,29 @@ export function useSuperAdminTenants({
       alert(isArabic ? "أدخل المعرف واسم الصيدلية" : "Enter pharmacy ID and name");
       return false;
     }
+    if (tenantForm.maxBranches < 1 || tenantForm.maxUsers < 1) {
+      alert(
+        isArabic
+          ? "حدود الفروع والمستخدمين يجب أن تكون أكبر من صفر"
+          : "Branch and user limits must be greater than zero",
+      );
+      return false;
+    }
     setCreatingTenant(true);
     try {
+      const subscriptionTier =
+        tenantForm.packageChoice === "custom" ? "premium" : tenantForm.subscriptionTier;
       await pharmacyService.createPharmacy({
         id,
         name,
         name_en: tenantForm.name_en.trim() || name,
         phone: tenantForm.phone.trim(),
         address: tenantForm.address.trim(),
-        subscriptionTier: tenantForm.subscriptionTier,
+        subscriptionTier,
         subscriptionPlan: "monthly",
         subscriptionStatus: "active",
         maxBranches: tenantForm.maxBranches,
+        maxUsers: tenantForm.maxUsers,
       });
       setBranches(await pharmacyService.getPharmacies());
       setSelectedTenantId(id);
@@ -131,7 +152,13 @@ export function useSuperAdminTenants({
       return true;
     } catch (error) {
       console.error(error);
-      alert(isArabic ? "تعذر إنشاء الصيدلية" : "Could not create pharmacy");
+      const message =
+        error instanceof Error
+          ? formatCreatePharmacyError(error.message, isArabic)
+          : isArabic
+            ? "تعذر إنشاء الصيدلية"
+            : "Could not create pharmacy";
+      alert(message);
       return false;
     } finally {
       setCreatingTenant(false);
@@ -195,6 +222,45 @@ export function useSuperAdminTenants({
     setSystemUsers,
     tenantUserForm,
   ]);
+
+  const handleUpdateOrganizationMaxUsers = useCallback(
+    async (organizationId: string, maxUsers: number): Promise<boolean> => {
+      if (!isSuperAdmin(appUser)) return false;
+      const orgPharmacyIds = branches
+        .filter((branch) => (branch.organizationId || `org-${branch.id}`) === organizationId)
+        .map((branch) => branch.id);
+      const used = countOrganizationUsers(
+        (await pharmacyService.getAllSystemUsers()).filter((user) =>
+          orgPharmacyIds.includes(user.pharmacyId || ""),
+        ),
+        branches,
+        organizationId,
+      );
+      if (maxUsers < used) {
+        alert(
+          isArabic
+            ? `لا يمكن تقليل الحد عن المستخدمين الحاليين (${used})`
+            : `Cannot set limit below current users (${used})`,
+        );
+        return false;
+      }
+      try {
+        await pharmacyService.updateOrganizationMaxUsers(organizationId, maxUsers, appUser);
+        setBranches(await pharmacyService.getPharmacies());
+        alert(isArabic ? "تم تحديث حد المستخدمين" : "User limit updated");
+        return true;
+      } catch (error) {
+        console.error(error);
+        const message = error instanceof Error ? error.message : "";
+        alert(
+          formatBranchLimitError(message, isArabic) ||
+            (isArabic ? "تعذر تحديث حد المستخدمين" : "Could not update user limit"),
+        );
+        return false;
+      }
+    },
+    [appUser, branches, isArabic, setBranches],
+  );
 
   const handleUpdateSubscriptionTier = useCallback(
     async (organizationId: string, tier: SubscriptionTier): Promise<boolean> => {
@@ -288,14 +354,210 @@ export function useSuperAdminTenants({
     [appUser, setActiveBranchId, setActivePage, setSelectedTenantId],
   );
 
+  const handleOpenTenantUsers = useCallback(
+    (pharmacyId: string) => {
+      if (!isSuperAdmin(appUser)) return;
+      setActiveBranchId(pharmacyId);
+      setSelectedTenantId(pharmacyId);
+      pharmacyService.setActivePharmacy(pharmacyId);
+      setActivePage("users");
+    },
+    [appUser, setActiveBranchId, setActivePage, setSelectedTenantId],
+  );
+
+  const handleUpdateOrganizationBranch = useCallback(
+    async (
+      branchId: string,
+      branch: { name: string; name_en?: string; phone?: string; address?: string },
+    ): Promise<boolean> => {
+      if (!isSuperAdmin(appUser)) return false;
+      const name = branch.name.trim();
+      if (!name) {
+        alert(isArabic ? "أدخل اسم الفرع" : "Enter branch name");
+        return false;
+      }
+      try {
+        await pharmacyService.updatePharmacySettings(branchId, {
+          name,
+          name_en: branch.name_en?.trim() || name,
+          phone: branch.phone?.trim() || "",
+          address: branch.address?.trim() || "",
+        });
+        setBranches(await pharmacyService.getPharmacies());
+        alert(isArabic ? "تم تحديث الفرع" : "Branch updated");
+        return true;
+      } catch (error) {
+        console.error(error);
+        alert(isArabic ? "تعذر تحديث الفرع" : "Could not update branch");
+        return false;
+      }
+    },
+    [appUser, isArabic, setBranches],
+  );
+
+  const handleDeleteOrganization = useCallback(
+    async (organizationId: string): Promise<boolean> => {
+      if (!isSuperAdmin(appUser)) return false;
+      const orgBranches = branches.filter(
+        (branch) => resolveOrganizationId(branch) === organizationId,
+      );
+      if (orgBranches.length === 0) return false;
+
+      try {
+        await pharmacyService.deleteOrganization(organizationId);
+        const deletedIds = new Set(orgBranches.map((branch) => branch.id));
+        if (deletedIds.has(selectedTenantId)) {
+          const remaining = branches.filter((branch) => !deletedIds.has(branch.id));
+          setSelectedTenantId(remaining[0]?.id || "");
+        }
+        if (activeBranchId && deletedIds.has(activeBranchId)) {
+          setActiveBranchId(appUser?.pharmacyId || null);
+        }
+        setSystemUsers(await pharmacyService.getAllSystemUsers());
+        setBranches(await pharmacyService.getPharmacies());
+        alert(
+          isArabic
+            ? "تم حذف الصيدلية وجميع فروعها"
+            : "Pharmacy and all branches were deleted",
+        );
+        return true;
+      } catch (error) {
+        console.error(error);
+        setBranches(await pharmacyService.getPharmacies());
+        const message = error instanceof Error ? error.message : "";
+        alert(
+          message === "delete_organization_cascade_missing"
+            ? isArabic
+              ? "شغّل ملف delete-pharmacy-cascade.sql في Supabase ثم أعد المحاولة"
+              : "Run delete-pharmacy-cascade.sql in Supabase, then try again"
+            : isArabic
+              ? "تعذر الحذف — قد تكون الصيدلية مرتبطة ببيانات (مستخدمين/أدوية/فواتير)"
+              : "Could not delete — pharmacy may still have linked data (users/medicines/invoices)",
+        );
+        return false;
+      }
+    },
+    [
+      activeBranchId,
+      appUser,
+      branches,
+      isArabic,
+      selectedTenantId,
+      setActiveBranchId,
+      setBranches,
+      setSelectedTenantId,
+      setSystemUsers,
+    ],
+  );
+
+  const handleDeleteOrganizationBranch = useCallback(
+    async (branchId: string, organizationId: string): Promise<boolean> => {
+      if (!isSuperAdmin(appUser)) return false;
+      const used = branches.filter(
+        (branch) => resolveOrganizationId(branch) === organizationId,
+      ).length;
+      if (used <= 1) {
+        alert(
+          isArabic ? "لا يمكن حذف آخر فرع في الصيدلية" : "Cannot delete the last branch in this pharmacy",
+        );
+        return false;
+      }
+      try {
+        await pharmacyService.deletePharmacy(branchId);
+        setBranches(await pharmacyService.getPharmacies());
+        alert(isArabic ? "تم حذف الفرع" : "Branch deleted");
+        return true;
+      } catch (error) {
+        console.error(error);
+        const message = error instanceof Error ? error.message : "";
+        alert(
+          message.includes("delete_pharmacy_cascade") ||
+            message.includes("could not find the function")
+            ? isArabic
+              ? "شغّل ملف delete-pharmacy-cascade.sql في Supabase ثم أعد المحاولة"
+              : "Run delete-pharmacy-cascade.sql in Supabase, then try again"
+            : isArabic
+              ? "تعذر حذف الفرع — قد يكون مرتبطاً ببيانات (أدوية أو فواتير)"
+              : "Could not delete branch — it may still contain medicines or invoices",
+        );
+        return false;
+      }
+    },
+    [appUser, branches, isArabic, setBranches],
+  );
+
+  const handleCreateOrganizationBranch = useCallback(
+    async (
+      anchorPharmacyId: string,
+      branch: { id: string; name: string; name_en?: string; phone?: string; address?: string },
+    ): Promise<boolean> => {
+      if (!isSuperAdmin(appUser)) return false;
+      try {
+        await pharmacyService.createPharmacyBranchForAnchor(anchorPharmacyId, branch);
+        setBranches(await pharmacyService.getPharmacies());
+        alert(isArabic ? "تم إضافة الفرع بنجاح" : "Branch added successfully");
+        return true;
+      } catch (error) {
+        console.error(error);
+        const message = error instanceof Error ? error.message : "";
+        alert(
+          formatBranchLimitError(message, isArabic) ||
+            (isArabic ? "تعذر إضافة الفرع" : "Could not add branch"),
+        );
+        return false;
+      }
+    },
+    [appUser, isArabic, setBranches],
+  );
+
+  const handleDeleteTenantStaff = useCallback(
+    async (target: { uid?: string; employeeId?: string }): Promise<boolean> => {
+      if (!isSuperAdmin(appUser)) return false;
+      if (!target.employeeId && !target.uid) return false;
+      try {
+        if (target.employeeId) {
+          await pharmacyService.deletePharmacyEmployeeCascade(target.employeeId, {
+            revokedBy: appUser.uid,
+          });
+        } else if (target.uid) {
+          await pharmacyService.deletePharmacyUserCascade(target.uid, {
+            revokedBy: appUser.uid,
+          });
+        }
+        setSystemUsers(await pharmacyService.getAllSystemUsers());
+        alert(isArabic ? "تم الحذف من الصيدلية" : "Removed from pharmacy");
+        return true;
+      } catch (error) {
+        console.error(error);
+        const message = error instanceof Error ? error.message : "";
+        alert(
+          message === "cannot_delete_super_admin"
+            ? isArabic
+              ? "لا يمكن حذف مالك النظام"
+              : "Cannot delete system owner"
+            : message || (isArabic ? "تعذر الحذف" : "Could not delete"),
+        );
+        return false;
+      }
+    },
+    [appUser, isArabic, setSystemUsers],
+  );
+
   return {
     resetTenantForm,
     resetTenantUserForm,
     handleCreateTenant,
     handleCreateTenantUser,
+    handleCreateOrganizationBranch,
+    handleUpdateOrganizationBranch,
+    handleDeleteOrganization,
+    handleDeleteOrganizationBranch,
+    handleDeleteTenantStaff,
     handleUpdateSubscriptionTier,
     handleUpdateOrganizationMaxBranches,
+    handleUpdateOrganizationMaxUsers,
     handleUpdateTenantStatus,
     handleSwitchTenantView,
+    handleOpenTenantUsers,
   };
 }

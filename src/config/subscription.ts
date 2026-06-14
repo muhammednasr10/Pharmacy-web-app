@@ -1,6 +1,6 @@
 import { developerInfo } from "../branding";
 import { formatDateInput } from "../utils/date";
-import type { SubscriptionTier } from "./subscriptionTiers";
+import { getSubscriptionTier, type SubscriptionTier } from "./subscriptionTiers";
 
 export type SubscriptionPlanKey = "monthly" | "quarterly" | "yearly" | "custom" | "trial";
 
@@ -49,9 +49,7 @@ export const tierUpgradePricing = {
 } as const;
 
 export function getTierUpgradeAmount(targetTier: SubscriptionTier): number {
-  if (targetTier === "professional") return tierUpgradePricing.professional.amount;
-  if (targetTier === "premium") return tierUpgradePricing.premium.amount;
-  return 0;
+  return getSubscriptionTier(targetTier).upgradeAmount;
 }
 
 export function getTierUpgradePricingLabel(

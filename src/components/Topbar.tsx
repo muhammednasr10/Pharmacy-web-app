@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { getSubscriptionTierLabel } from "../config/subscriptionTiers";
+import type { SubscriptionTier } from "../config/subscriptionTiers";
 import type { AppUser } from "../types";
 import { canSwitchOrganizationBranches, getRoleLabel, isSuperAdmin } from "../utils/roles";
+import type { TierUpgradePrompt } from "../utils/subscriptionFeatures";
 import { ALL_BRANCHES_ID } from "../constants/branches";
 
 export type AlertKind = "expired" | "low" | "expiring";
@@ -24,6 +27,9 @@ type TopbarProps = {
   pharmacyLogo?: string;
   pharmacyPhone?: string;
   pharmacyAddress?: string;
+  subscriptionTier?: SubscriptionTier;
+  tierUpgradePrompt?: TierUpgradePrompt | null;
+  onOpenSubscriptionSettings?: () => void;
   appUser: AppUser | null;
   isArabic: boolean;
   t: Record<string, string>;
@@ -56,6 +62,9 @@ export default function Topbar({
   pharmacyLogo = "",
   pharmacyPhone = "",
   pharmacyAddress = "",
+  subscriptionTier = "basic",
+  tierUpgradePrompt = null,
+  onOpenSubscriptionSettings,
   appUser,
   isArabic,
   t,
@@ -98,6 +107,8 @@ export default function Topbar({
     allowBranchSwitch ?? canSwitchOrganizationBranches(appUser, branches.length);
   const showBranchSwitch = (isSuperAdmin(appUser) || canSwitchBranches) && branches.length > 0;
   const branchSelectValue = activeBranchId || appUser?.pharmacyId || branches[0]?.id || "";
+  const showSubscriptionTier = !isSuperAdmin(appUser);
+  const tierBadgeClass = `saasTierBadge ${subscriptionTier}`;
 
   return (
     <header className="topbar">
@@ -130,7 +141,25 @@ export default function Topbar({
             <span className="topbarSectionLabel topbarPharmacyLabel">
               {isArabic ? "الصيدلية" : "Pharmacy"}
             </span>
-            <h1 className="topbarPharmacyName">{title}</h1>
+            <div className="topbarPharmacyTitleRow">
+              <h1 className="topbarPharmacyName">{title}</h1>
+              {showSubscriptionTier && (
+                <div className="topbarPharmacyTier">
+                  <span className={tierBadgeClass}>
+                    {getSubscriptionTierLabel(subscriptionTier, isArabic)}
+                  </span>
+                  {tierUpgradePrompt && onOpenSubscriptionSettings ? (
+                    <button
+                      type="button"
+                      className="topbarTierUpgradeBtn"
+                      onClick={onOpenSubscriptionSettings}
+                    >
+                      {isArabic ? "ترقية" : "Upgrade"}
+                    </button>
+                  ) : null}
+                </div>
+              )}
+            </div>
             {subtitle ? <p className="topbarPharmacySubtitle">{subtitle}</p> : null}
             {(pharmacyPhone || pharmacyAddress) && (
               <div className="topbarPharmacyMeta">

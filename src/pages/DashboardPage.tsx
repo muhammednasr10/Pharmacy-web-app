@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import type { BranchInventoryAlertRow } from "../utils/inventoryAlerts";
 import type { BranchReportRow } from "../utils/branchReports";
 import type { BranchStockTransfer, Medicine, Page } from "../types";
-import type { TierUpgradePrompt } from "../utils/subscriptionFeatures";
 
 type PendingBranchTransferGroup = {
   transferNumber: string;
@@ -56,7 +55,6 @@ type DashboardPageProps = {
   pendingBranchTransferGroups?: PendingBranchTransferGroup[];
   onApproveBranchTransfer?: (transferNumber: string) => void | Promise<void>;
   onRejectBranchTransfer?: (transferNumber: string) => void | Promise<void>;
-  tierUpgradePrompt?: TierUpgradePrompt | null;
 };
 
 type ModuleCard = {
@@ -125,7 +123,6 @@ export default function DashboardPage({
   pendingBranchTransferGroups = [],
   onApproveBranchTransfer,
   onRejectBranchTransfer,
-  tierUpgradePrompt,
 }: DashboardPageProps) {
   const canAccess = (page: Page) => allowedPages.includes(page);
 
@@ -337,30 +334,6 @@ export default function DashboardPage({
             : "Quick summary for your role — click any card to navigate"}
         </p>
       </section>
-
-      {tierUpgradePrompt && (
-        <section className="card subscriptionTierUpgradeCard">
-          <div className="subscriptionTierUpgradeHeader">
-            <div>
-              <h3>{tierUpgradePrompt.title}</h3>
-              <p className="returnsSectionHint">{tierUpgradePrompt.summary}</p>
-            </div>
-            <button type="button" className="completeBtn" onClick={onOpenSubscriptionSettings}>
-              {tierUpgradePrompt.ctaLabel}
-            </button>
-          </div>
-          <ul className="subscriptionTierFeatureList">
-            {tierUpgradePrompt.features.map((feature) => (
-              <li key={feature}>{feature}</li>
-            ))}
-          </ul>
-          <p className="returnsSectionHint">
-            {isArabic
-              ? "يمكنك إرسال طلب ترقية مباشرة من قسم الاشتراك في الإعدادات."
-              : "You can submit an upgrade request directly from Subscription in Settings."}
-          </p>
-        </section>
-      )}
 
       {modules.length > 0 ? (
         <section className="moduleGrid">

@@ -99,12 +99,12 @@ export default function SaasAdminStatsPanel({
           tone="green"
         />
         <StatCard
-          label={isArabic ? "طلبات قيد المراجعة" : "Pending requests"}
-          value={String(stats.pendingSubscriptionRequests)}
+          label={isArabic ? "طلبات العملاء قيد المراجعة" : "Pending customer requests"}
+          value={String(stats.pendingSubscriptionRequests + stats.pendingLoginAccountRequests)}
           sub={
             isArabic
-              ? `${formatSaasMoney(stats.pendingRevenueTotal)} متوقعة · ${stats.pendingLoginAccountRequests} حساب`
-              : `${formatSaasMoney(stats.pendingRevenueTotal)} expected · ${stats.pendingLoginAccountRequests} accounts`
+              ? `${stats.pendingSubscriptionRequests} اشتراك · ${stats.pendingLoginAccountRequests} حساب · ${formatSaasMoney(stats.pendingRevenueTotal)} متوقعة`
+              : `${stats.pendingSubscriptionRequests} subscription · ${stats.pendingLoginAccountRequests} login · ${formatSaasMoney(stats.pendingRevenueTotal)} expected`
           }
           tone="warn"
         />
