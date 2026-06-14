@@ -128,6 +128,16 @@ export const SQL_MIGRATIONS: SqlMigrationDefinition[] = [
     probe: { type: "rpc", name: "provision_trial_pharmacy", args: { p_pharmacy_name: "" } },
   },
   {
+    id: "medicine-active-ingredient",
+    file: "medicine-active-ingredient.sql",
+    group: "core",
+    titleAr: "المادة الفعالة للأدوية",
+    titleEn: "Medicine active ingredient",
+    noteAr: "للبحث في المخزون بالمادة الفعالة — شغّله بعد run-in-sql-editor.sql",
+    noteEn: "Enables inventory search by active ingredient — run after run-in-sql-editor.sql",
+    probe: { type: "column", table: "medicines", column: "active_ingredient" },
+  },
+  {
     id: "medicine-catalog-import",
     file: "medicine-catalog-import.sql",
     group: "core",

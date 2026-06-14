@@ -1101,7 +1101,7 @@ export default function SettingsPage({
       )}
 
       {paymentRequest && (
-        <div className="modalOverlay" onClick={() => setPaymentRequest(null)}>
+        <div className="modalOverlay">
           <div
             className="invoiceModal subscriptionPaymentModal"
             onClick={(e) => e.stopPropagation()}

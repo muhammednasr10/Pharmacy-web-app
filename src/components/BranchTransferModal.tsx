@@ -220,7 +220,7 @@ export default function BranchTransferModal({
   }
 
   return (
-    <div className="modalOverlay" onClick={onClose}>
+    <div className="modalOverlay">
       <div
         className="userFormPanel branchTransferModal"
         onClick={(event) => event.stopPropagation()}

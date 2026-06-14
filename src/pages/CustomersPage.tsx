@@ -512,7 +512,7 @@ export default function CustomersPage({
       )}
 
       {showCustomerPaymentModal && (
-        <div className="modalOverlay" onClick={() => setShowCustomerPaymentModal(false)}>
+        <div className="modalOverlay">
           <div className="invoiceModal purchaseModal" onClick={(e) => e.stopPropagation()}>
             <div className="modalHeader">
               <div>
@@ -607,7 +607,7 @@ export default function CustomersPage({
       )}
 
       {selectedCustomer && (
-        <div className="modalOverlay" onClick={() => setSelectedCustomer(null)}>
+        <div className="modalOverlay">
           <div className="invoiceModal" onClick={(e) => e.stopPropagation()}>
             <div className="modalHeader">
               <div>

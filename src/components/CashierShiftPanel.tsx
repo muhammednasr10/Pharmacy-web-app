@@ -217,7 +217,7 @@ export default function CashierShiftPanel({
       </div>
 
       {showOpenModal && (
-        <div className="modalOverlay" onClick={() => setShowOpenModal(false)}>
+        <div className="modalOverlay">
           <div
             className="invoiceModal userModal cashierShiftModal"
             onClick={(event) => event.stopPropagation()}
@@ -265,7 +265,7 @@ export default function CashierShiftPanel({
       )}
 
       {showCloseModal && activeShift && summary && (
-        <div className="modalOverlay" onClick={() => setShowCloseModal(false)}>
+        <div className="modalOverlay">
           <div
             className="invoiceModal userModal cashierShiftModal"
             onClick={(event) => event.stopPropagation()}

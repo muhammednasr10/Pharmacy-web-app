@@ -150,7 +150,7 @@ export default function ReorderSuggestionsModal({
   }
 
   return (
-    <div className="modalOverlay" onClick={onClose}>
+    <div className="modalOverlay">
       <div
         className="modalCard reorderSuggestionsModal"
         dir={isArabic ? "rtl" : "ltr"}

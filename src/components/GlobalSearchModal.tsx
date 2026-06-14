@@ -114,7 +114,7 @@ export default function GlobalSearchModal({
   let flatIndex = -1;
 
   return (
-    <div className="modalOverlay globalSearchOverlay" onClick={onClose}>
+    <div className="modalOverlay globalSearchOverlay">
       <div
         className="globalSearchModal"
         onClick={(event) => event.stopPropagation()}

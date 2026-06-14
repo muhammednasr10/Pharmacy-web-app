@@ -285,7 +285,7 @@ export default function InstantReturnModal({
   }
 
   return (
-    <div className="modalOverlay" onClick={onClose}>
+    <div className="modalOverlay">
       <div className="invoiceModal posModalWide" onClick={(e) => e.stopPropagation()}>
         <div className="modalHeader">
           <div>

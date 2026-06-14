@@ -1778,7 +1778,7 @@ export default function SuperAdminPage({
       )}
 
       {addModalOpen && (
-        <div className="modalOverlay" onClick={closeAddModal}>
+        <div className="modalOverlay">
           <div
             className="invoiceModal saasModal saasModalWide saasAddTenantModal"
             onClick={(e) => e.stopPropagation()}
@@ -1986,7 +1986,7 @@ export default function SuperAdminPage({
       )}
 
       {manageModalOpen && selected && (
-        <div className="modalOverlay" onClick={() => setManageModalOpen(false)}>
+        <div className="modalOverlay">
           <div
             className="invoiceModal saasModal saasModalWide"
             onClick={(e) => e.stopPropagation()}
@@ -2591,7 +2591,7 @@ export default function SuperAdminPage({
       )}
 
       {loginAccountModalOpen && selected && (
-        <div className="modalOverlay" onClick={() => !savingLoginAccount && closeLoginAccountModal()}>
+        <div className="modalOverlay">
           <div className="invoiceModal saasModal" onClick={(e) => e.stopPropagation()}>
             <div className="modalHeader">
               <div>
@@ -2741,7 +2741,7 @@ export default function SuperAdminPage({
       )}
 
       {tierEditModalOpen && editingTierId && (
-        <div className="modalOverlay" onClick={() => !savingTierConfig && closeTierEditModal()}>
+        <div className="modalOverlay">
           <div className="invoiceModal saasModal saasModalWide" onClick={(e) => e.stopPropagation()}>
             <div className="modalHeader">
               <div>
@@ -2869,7 +2869,7 @@ export default function SuperAdminPage({
       )}
 
       {roleModalOpen && selected && (
-        <div className="modalOverlay" onClick={() => !savingRole && closeRoleModal()}>
+        <div className="modalOverlay">
           <div className="invoiceModal saasModal" onClick={(e) => e.stopPropagation()}>
             <div className="modalHeader">
               <div>
@@ -2963,7 +2963,7 @@ export default function SuperAdminPage({
       )}
 
       {branchModalMode && selected && (
-        <div className="modalOverlay" onClick={() => !creatingBranch && closeBranchModal()}>
+        <div className="modalOverlay">
           <div className="invoiceModal saasModal" onClick={(e) => e.stopPropagation()}>
             <div className="modalHeader">
               <div>
@@ -3078,7 +3078,7 @@ export default function SuperAdminPage({
       )}
 
       {deleteTarget && (
-        <div className="modalOverlay" onClick={() => !deleteUpdating && setDeleteTarget(null)}>
+        <div className="modalOverlay">
           <div
             className="invoiceModal saasModal saasConfirmModal"
             onClick={(e) => e.stopPropagation()}
@@ -3162,7 +3162,7 @@ export default function SuperAdminPage({
       )}
 
       {statusTarget && (
-        <div className="modalOverlay" onClick={() => !statusUpdating && setStatusTarget(null)}>
+        <div className="modalOverlay">
           <div
             className="invoiceModal saasModal saasConfirmModal"
             onClick={(e) => e.stopPropagation()}

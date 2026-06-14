@@ -2241,7 +2241,7 @@ export default function HrPage({
   );
 
   const additionsModalView = additionsModal && (
-    <div className="modalOverlay" onClick={() => setAdditionsModal(null)}>
+    <div className="modalOverlay">
       <div
         className="invoiceModal userModal hrAdditionsModal"
         onClick={(e) => e.stopPropagation()}
@@ -2386,7 +2386,7 @@ export default function HrPage({
   );
 
   const deductionsModalView = deductionsModal && (
-    <div className="modalOverlay" onClick={() => setDeductionsModal(null)}>
+    <div className="modalOverlay">
       <div
         className="invoiceModal userModal hrDeductionsModal"
         onClick={(e) => e.stopPropagation()}

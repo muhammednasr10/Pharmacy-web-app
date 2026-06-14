@@ -37,7 +37,7 @@ export default function EmployeeAttendanceBadgeModal({
   }
 
   return (
-    <div className="modalOverlay employeeBadgeOverlay" onClick={onClose}>
+    <div className="modalOverlay employeeBadgeOverlay">
       <div
         className="employeeAttendanceBadgeModal"
         onClick={(event) => event.stopPropagation()}

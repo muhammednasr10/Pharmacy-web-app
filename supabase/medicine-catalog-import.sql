@@ -96,6 +96,7 @@ declare
   v_barcode text;
   v_name_ar text;
   v_name_en text;
+  v_active_ingredient text;
   v_price numeric;
   v_buy_price numeric;
   v_expiry date;
@@ -155,6 +156,18 @@ begin
       500
     );
 
+    v_active_ingredient := left(
+      coalesce(
+        case jsonb_typeof(v_row -> 'active_ingredient')
+          when 'string' then nullif(btrim(v_row ->> 'active_ingredient'), '')
+          when 'number' then v_row ->> 'active_ingredient'
+          else null
+        end,
+        nullif(trim(split_part(v_name_en, '·', 2)), '')
+      ),
+      500
+    );
+
     v_price := greatest(
       0::numeric,
       coalesce(
@@ -200,6 +213,7 @@ begin
       id,
       name_ar,
       name_en,
+      active_ingredient,
       barcode,
       qty,
       price,
@@ -211,6 +225,7 @@ begin
       v_id,
       v_name_ar,
       v_name_en,
+      v_active_ingredient,
       v_barcode,
       v_qty,
       v_price,

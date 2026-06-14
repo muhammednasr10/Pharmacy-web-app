@@ -442,7 +442,7 @@ export default function CostsPage({
       )}
 
       {showModal && (
-        <div className="modalOverlay" onClick={closeModal}>
+        <div className="modalOverlay">
           <div className="invoiceModal costModal" onClick={(e) => e.stopPropagation()}>
             <div className="modalHeader">
               <div>

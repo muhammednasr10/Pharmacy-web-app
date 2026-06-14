@@ -2543,7 +2543,7 @@ export default function EmployeesUsersPage({
       )}
 
       {employeeModal && (
-        <div className="modalOverlay" onClick={() => setEmployeeModal(null)}>
+        <div className="modalOverlay">
           <div
             className="invoiceModal userModal"
             onClick={(e) => e.stopPropagation()}
@@ -2817,7 +2817,7 @@ export default function EmployeesUsersPage({
       )}
 
       {customRoleModal && (
-        <div className="modalOverlay" onClick={() => setCustomRoleModal(false)}>
+        <div className="modalOverlay">
           <div
             className="invoiceModal userModal loginRequestModal customRoleModal"
             onClick={(e) => e.stopPropagation()}
@@ -2914,13 +2914,7 @@ export default function EmployeesUsersPage({
       )}
 
       {transferEmployee && (
-        <div
-          className="modalOverlay"
-          onClick={() => {
-            setTransferEmployee(null);
-            setTransferTargetBranchId("");
-          }}
-        >
+        <div className="modalOverlay">
           <div
             className="invoiceModal userModal staffTransferModal"
             onClick={(e) => e.stopPropagation()}
@@ -3005,7 +2999,7 @@ export default function EmployeesUsersPage({
       )}
 
       {accountModal && (
-        <div className="modalOverlay" onClick={() => setAccountModal(null)}>
+        <div className="modalOverlay">
           <div
             className="invoiceModal userModal loginRequestModal"
             onClick={(e) => e.stopPropagation()}

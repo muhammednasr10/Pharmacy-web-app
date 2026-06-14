@@ -1917,10 +1917,110 @@ th {
   vertical-align: middle;
 }
 
+.inventoryOnlyPage .medicineTableSplitNames .medicineNameCell {
+  text-align: start;
+}
+
 .inventoryOnlyPage .actionButtons {
   flex-direction: row;
   flex-wrap: nowrap;
   justify-content: center;
+}
+
+.medicineTableSplitNames {
+  overflow-x: auto;
+}
+
+.medicineTableSplitNames table {
+  table-layout: fixed;
+  min-width: 1280px;
+  width: 100%;
+}
+
+.medicineTableSplitNames .medicineColBranch {
+  width: 90px;
+}
+
+.medicineTableSplitNames .medicineColNameAr {
+  width: 150px;
+}
+
+.medicineTableSplitNames .medicineColNameEn {
+  width: 170px;
+}
+
+.medicineTableSplitNames .medicineColIngredient {
+  width: 150px;
+}
+
+.medicineTableSplitNames .medicineColBarcode {
+  width: 118px;
+}
+
+.medicineTableSplitNames .medicineColQty {
+  width: 72px;
+}
+
+.medicineTableSplitNames .medicineColExpiry {
+  width: 96px;
+}
+
+.medicineTableSplitNames .medicineColBuy,
+.medicineTableSplitNames .medicineColSell,
+.medicineTableSplitNames .medicineColProfit {
+  width: 92px;
+}
+
+.medicineTableSplitNames .medicineColAction {
+  width: 132px;
+}
+
+.medicineTableSplitNames th,
+.medicineTableSplitNames td {
+  overflow: hidden;
+  vertical-align: top;
+}
+
+.medicineTableSplitNames .medicineNameCell {
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+  text-align: start;
+  line-height: 1.45;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.medicineTableSplitNames .medicineNameCellAr {
+  font-weight: 600;
+}
+
+.medicineTableSplitNames .medicineNameCellEn,
+.medicineTableSplitNames .medicineNameCellIngredient {
+  color: #475467;
+  font-size: 13px;
+}
+
+.medicineTableSplitNames .medicineColBarcode,
+.medicineTableSplitNames td.medicineColBarcode {
+  word-break: break-all;
+  font-size: 12px;
+  white-space: normal;
+}
+
+.medicineTableSplitNames .medicineColQty,
+.medicineTableSplitNames .medicineColExpiry,
+.medicineTableSplitNames .medicineColBuy,
+.medicineTableSplitNames .medicineColSell,
+.medicineTableSplitNames .medicineColProfit {
+  white-space: nowrap;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.medicineTableSplitNames .medicineColAction {
+  vertical-align: middle;
 }
 
 .inventoryFilterPanel {
@@ -2282,6 +2382,7 @@ th {
   margin-bottom: 18px;
 }
 
+/* Backdrop only — dialogs close via explicit close/cancel buttons, not outside clicks */
 .modalOverlay {
   position: fixed;
   inset: 0;

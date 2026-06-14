@@ -132,7 +132,7 @@ export default function BarcodeCameraScanner({
   }, [isArabic]);
 
   return (
-    <div className="modalOverlay barcodeScannerOverlay" onClick={onClose}>
+    <div className="modalOverlay barcodeScannerOverlay">
       <div
         className="barcodeScannerModal"
         onClick={(event) => event.stopPropagation()}

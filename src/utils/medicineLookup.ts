@@ -14,6 +14,67 @@ export function normalizeMedicineText(value: unknown) {
   return String(value ?? "").trim();
 }
 
+/** المادة الفعالة — من الحقل المخصص أو من صيغة الكتالوج: تجاري · علمي · مصنع */
+export function resolveMedicineActiveIngredient(
+  medicine: Pick<Medicine, "activeIngredient" | "name_en" | "name_ar">,
+): string {
+  const explicit = normalizeMedicineText(medicine.activeIngredient);
+  if (explicit) return explicit;
+
+  const segments = normalizeMedicineText(medicine.name_en)
+    .split("·")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (segments.length >= 2) {
+    return segments[1];
+  }
+
+  return "";
+}
+
+/** الاسم التجاري بالإنجليزي — الجزء الأول من name_en في صيغة الكتالوج */
+export function resolveMedicineEnglishName(
+  medicine: Pick<Medicine, "name_en" | "name_ar">,
+): string {
+  const raw = normalizeMedicineText(medicine.name_en);
+  if (!raw) return normalizeMedicineText(medicine.name_ar);
+
+  const segments = raw
+    .split("·")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  return segments[0] || raw;
+}
+
+export function resolveMedicineArabicName(medicine: Pick<Medicine, "name_ar" | "name_en">): string {
+  return normalizeMedicineText(medicine.name_ar) || resolveMedicineEnglishName(medicine);
+}
+
+export function medicineMatchesInventorySearch(medicine: Medicine, query: string): boolean {
+  const value = normalizeMedicineText(query).toLowerCase();
+  if (!value) return true;
+
+  const activeIngredient = resolveMedicineActiveIngredient(medicine);
+  const nameEnSegments = normalizeMedicineText(medicine.name_en)
+    .split("·")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  const haystack = [
+    medicine.name_ar,
+    medicine.name_en,
+    medicine.barcode,
+    activeIngredient,
+    ...nameEnSegments,
+  ]
+    .map((part) => normalizeMedicineText(part).toLowerCase())
+    .filter(Boolean);
+
+  return haystack.some((part) => part.includes(value));
+}
+
 export function findMedicineByBarcode(medicines: Medicine[], barcode: string) {
   const code = normalizeMedicineText(barcode);
   if (!code) return undefined;
@@ -36,12 +97,7 @@ export function searchMedicines(medicines: Medicine[], query: string, limit = 8)
   if (value.length < 1) return [];
 
   return medicines
-    .filter((medicine) => {
-      const barcode = normalizeMedicineText(medicine.barcode).toLowerCase();
-      const nameAr = normalizeMedicineText(medicine.name_ar).toLowerCase();
-      const nameEn = normalizeMedicineText(medicine.name_en).toLowerCase();
-      return barcode.includes(value) || nameAr.includes(value) || nameEn.includes(value);
-    })
+    .filter((medicine) => medicineMatchesInventorySearch(medicine, query))
     .slice(0, limit);
 }
 

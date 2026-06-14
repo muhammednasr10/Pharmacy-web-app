@@ -1,4 +1,5 @@
 import type { Invoice } from "../types";
+import ModalOverlay from "./ModalOverlay";
 
 type InvoiceModalProps = {
   selectedInvoice: Invoice;
@@ -22,8 +23,8 @@ export default function InvoiceModal({
   safeNumber,
 }: InvoiceModalProps) {
   return (
-    <div className="modalOverlay" onClick={onClose}>
-      <div className="invoiceModal" onClick={(e) => e.stopPropagation()}>
+    <ModalOverlay>
+      <div className="invoiceModal">
         <div className="modalHeader">
           <div>
             <h2>{t.invoiceDetails}</h2>
@@ -107,6 +108,6 @@ export default function InvoiceModal({
           </button>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

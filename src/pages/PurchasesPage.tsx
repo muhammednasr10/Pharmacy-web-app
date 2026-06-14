@@ -699,7 +699,7 @@ export default function PurchasesPage({
       )}
 
       {showPurchaseModal && (
-        <div className="modalOverlay" onClick={() => !saving && setShowPurchaseModal(false)}>
+        <div className="modalOverlay">
           <div className="invoiceModal purchaseModal" onClick={(e) => e.stopPropagation()}>
             <div className="modalHeader">
               <div>
@@ -923,7 +923,7 @@ export default function PurchasesPage({
       )}
 
       {viewGroup && (
-        <div className="modalOverlay" onClick={() => setViewGroup(null)}>
+        <div className="modalOverlay">
           <div className="invoiceModal purchaseViewModal" onClick={(e) => e.stopPropagation()}>
             <div className="modalHeader">
               <div>

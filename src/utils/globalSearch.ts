@@ -1,6 +1,7 @@
 import type { CustomerDebt, Invoice, Medicine, Page } from "../types";
 import { buildNavigationItems } from "./navigation";
 import { pageIcons } from "./navigation";
+import { medicineMatchesInventorySearch } from "./medicineLookup";
 
 export type GlobalSearchResultType = "page" | "medicine" | "invoice" | "customer";
 
@@ -115,12 +116,7 @@ export function buildGlobalSearchResults({
 
   if (canSearchMedicines) {
     medicines
-      .filter(
-        (medicine) =>
-          matches(medicine.name_ar, q) ||
-          matches(medicine.name_en, q) ||
-          medicine.barcode.includes(q),
-      )
+      .filter((medicine) => medicineMatchesInventorySearch(medicine, q))
       .slice(0, 8)
       .forEach((medicine) => {
         results.push({

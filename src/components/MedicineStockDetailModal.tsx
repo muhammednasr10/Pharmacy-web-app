@@ -75,7 +75,7 @@ export default function MedicineStockDetailModal({
   const totalOut = summary.sold + summary.wastage + summary.adjustmentsOut;
 
   return (
-    <div className="modalOverlay" onClick={onClose}>
+    <div className="modalOverlay">
       <div
         className="invoiceModal medicineStockDetailModal"
         onClick={(event) => event.stopPropagation()}

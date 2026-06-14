@@ -94,6 +94,7 @@ export type Medicine = {
   id: number;
   name_ar: string;
   name_en: string;
+  activeIngredient?: string;
   barcode: string;
   qty: number;
   price: number;

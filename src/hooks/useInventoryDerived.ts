@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { formatDateInput } from "../utils/date";
+import { medicineMatchesInventorySearch } from "../utils/medicineLookup";
 import {
   buildBranchInventoryAlertRows,
   filterExpiredMedicines,
@@ -53,15 +54,10 @@ export function useInventoryDerived({
   const alertMedicineSource = useBranchAwareInventoryAlerts ? orgAlertMedicines : medicines;
 
   const filteredMedicines = useMemo(() => {
-    const value = query.trim().toLowerCase();
     const todayValue = formatDateInput(new Date());
 
     return medicines.filter((medicine) => {
-      const matchesSearch =
-        !value ||
-        medicine.name_ar.toLowerCase().includes(value) ||
-        medicine.name_en.toLowerCase().includes(value) ||
-        medicine.barcode.includes(value);
+      const matchesSearch = medicineMatchesInventorySearch(medicine, query);
 
       const expiry = medicine.expiry || "";
       const branchLowThreshold = isViewingAllBranches

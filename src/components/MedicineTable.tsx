@@ -8,6 +8,12 @@ import {
   getExpiringSoonDaysForBranch,
   getLowStockThresholdForBranch,
 } from "../utils/inventoryAlerts";
+import {
+  medicineMatchesInventorySearch,
+  resolveMedicineActiveIngredient,
+  resolveMedicineArabicName,
+  resolveMedicineEnglishName,
+} from "../utils/medicineLookup";
 
 type MedicineTableProps = {
   medicines: Medicine[];
@@ -16,6 +22,7 @@ type MedicineTableProps = {
   currency: string;
   showManagementActions: boolean;
   showColumnFilters?: boolean;
+  showSplitNameColumns?: boolean;
   showBranchColumn?: boolean;
   getBranchLabel?: (branchId: string | undefined) => string;
   canUsePOS: boolean;
@@ -49,6 +56,7 @@ export default function MedicineTable({
   currency,
   showManagementActions,
   showColumnFilters = false,
+  showSplitNameColumns,
   showBranchColumn = false,
   getBranchLabel,
   canUsePOS,
@@ -78,6 +86,10 @@ export default function MedicineTable({
   const [sellMax, setSellMax] = useState("");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
+  const splitNameColumns = showSplitNameColumns ?? showColumnFilters;
+  const tableColumnCount =
+    (showBranchColumn ? 1 : 0) + (splitNameColumns ? 3 : 1) + 7;
+
   const todayValue = formatDateInput(new Date());
   const defaultExpiringLimitValue = getExpiryLimitValue(expiringSoonDays);
 
@@ -94,17 +106,12 @@ export default function MedicineTable({
       : defaultExpiringLimitValue;
 
   const filteredMedicines = useMemo(() => {
-    const nameQ = nameFilter.trim().toLowerCase();
-    const barcodeQ = barcodeFilter.trim().toLowerCase();
+    const nameQ = nameFilter.trim();
 
     return medicines.filter((medicine) => {
-      const displayName = (isArabic ? medicine.name_ar : medicine.name_en) || "";
-      const matchesName =
-        !nameQ ||
-        medicine.name_ar.toLowerCase().includes(nameQ) ||
-        medicine.name_en.toLowerCase().includes(nameQ) ||
-        displayName.toLowerCase().includes(nameQ);
+      const matchesName = medicineMatchesInventorySearch(medicine, nameQ);
 
+      const barcodeQ = barcodeFilter.trim().toLowerCase();
       const matchesBarcode = !barcodeQ || medicine.barcode.toLowerCase().includes(barcodeQ);
 
       const qty = medicine.qty;
@@ -258,12 +265,16 @@ export default function MedicineTable({
 
           <div className="inventoryFilterMain">
             <div className="inventoryFilterField inventoryFilterFieldWide">
-              <label>{isArabic ? "بحث بالاسم" : "Search by name"}</label>
+              <label>{isArabic ? "بحث بالاسم أو المادة الفعالة" : "Search by name or active ingredient"}</label>
               <input
                 className="inventoryFilterInput"
                 value={nameFilter}
                 onChange={(e) => setNameFilter(e.target.value)}
-                placeholder={isArabic ? "اكتب اسم الدواء..." : "Type medicine name..."}
+                placeholder={
+                  isArabic
+                    ? "مثال: paracetamol أو بانادول..."
+                    : "e.g. Paracetamol or Panadol..."
+                }
               />
             </div>
             <div className="inventoryFilterField">
@@ -338,12 +349,41 @@ export default function MedicineTable({
         </div>
       )}
 
-      <div className="tableWrap">
+      <div className={`tableWrap${splitNameColumns ? " medicineTableSplitNames" : ""}`}>
         <table>
+          {splitNameColumns && (
+            <colgroup>
+              {showBranchColumn && <col className="medicineColBranch" />}
+              <col className="medicineColNameAr" />
+              <col className="medicineColNameEn" />
+              <col className="medicineColIngredient" />
+              <col className="medicineColBarcode" />
+              <col className="medicineColQty" />
+              <col className="medicineColExpiry" />
+              <col className="medicineColBuy" />
+              <col className="medicineColSell" />
+              <col className="medicineColProfit" />
+              <col className="medicineColAction" />
+            </colgroup>
+          )}
           <thead>
             <tr>
               {showBranchColumn && <th>{isArabic ? "الفرع" : "Branch"}</th>}
-              <th>{t.medicine}</th>
+              {splitNameColumns ? (
+                <>
+                  <th className="medicineNameCell medicineNameCellAr">
+                    {isArabic ? "الدواء بالعربي" : "Medicine (Arabic)"}
+                  </th>
+                  <th className="medicineNameCell medicineNameCellEn">
+                    {isArabic ? "الدواء بالإنجليزي" : "Medicine (English)"}
+                  </th>
+                  <th className="medicineNameCell medicineNameCellIngredient">
+                    {isArabic ? "المادة الفعالة" : "Active ingredient"}
+                  </th>
+                </>
+              ) : (
+                <th>{t.medicine}</th>
+              )}
               <th>{t.barcode}</th>
               <th>{t.qty}</th>
               <th>{t.expiry}</th>
@@ -356,7 +396,7 @@ export default function MedicineTable({
           <tbody>
             {filteredMedicines.length === 0 ? (
               <tr>
-                <td colSpan={showBranchColumn ? 9 : 8} className="empty">
+                <td colSpan={tableColumnCount} className="empty">
                   {isArabic ? "لا توجد نتائج مطابقة للفلاتر" : "No rows match the filters"}
                 </td>
               </tr>
@@ -370,8 +410,35 @@ export default function MedicineTable({
                         : medicine.pharmacyId || "—"}
                     </td>
                   )}
-                  <td>{isArabic ? medicine.name_ar : medicine.name_en}</td>
-                  <td>{medicine.barcode}</td>
+                  {splitNameColumns ? (
+                    <>
+                      <td
+                        className="medicineNameCell medicineNameCellAr"
+                        title={resolveMedicineArabicName(medicine)}
+                      >
+                        {resolveMedicineArabicName(medicine) || "—"}
+                      </td>
+                      <td
+                        className="medicineNameCell medicineNameCellEn"
+                        dir="ltr"
+                        title={resolveMedicineEnglishName(medicine)}
+                      >
+                        {resolveMedicineEnglishName(medicine) || "—"}
+                      </td>
+                      <td
+                        className="medicineNameCell medicineNameCellIngredient"
+                        dir="ltr"
+                        title={resolveMedicineActiveIngredient(medicine)}
+                      >
+                        {resolveMedicineActiveIngredient(medicine) || "—"}
+                      </td>
+                    </>
+                  ) : (
+                    <td>{isArabic ? medicine.name_ar : medicine.name_en}</td>
+                  )}
+                  <td className="medicineColBarcode" title={medicine.barcode}>
+                    {medicine.barcode}
+                  </td>
                   <td>
                     {onViewStockDetail ? (
                       <button

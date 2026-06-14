@@ -150,7 +150,7 @@ export default function MedicineCatalogImportModal({
     progress && progress.total > 0 ? Math.min(100, Math.round((progress.done / progress.total) * 100)) : 0;
 
   return (
-    <div className="modalOverlay" onClick={() => !importing && onClose()}>
+    <div className="modalOverlay">
       <div className="invoiceModal saasModal saasModalWide medicineCatalogImportModal" onClick={(e) => e.stopPropagation()}>
         <div className="modalHeader">
           <div>

@@ -177,7 +177,7 @@ export default function StockCountModal({
   }
 
   return (
-    <div className="modalOverlay" onClick={onClose}>
+    <div className="modalOverlay">
       <div
         className="modalCard stockCountModal"
         dir={isArabic ? "rtl" : "ltr"}

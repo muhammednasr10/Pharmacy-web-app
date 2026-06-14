@@ -135,7 +135,7 @@ export default function AppModals({
   return (
     <>
       {availabilityModal && (
-        <div className="modalOverlay" onClick={onCloseAvailability}>
+        <div className="modalOverlay">
           <div className="availabilityModal" onClick={(e) => e.stopPropagation()}>
             <div className="modalHeader">
               <div>
@@ -242,7 +242,7 @@ export default function AppModals({
       )}
 
       {returnInvoice && (
-        <div className="modalOverlay" onClick={onCloseReturnInvoice}>
+        <div className="modalOverlay">
           <div className="invoiceModal" onClick={(e) => e.stopPropagation()}>
             <div className="modalHeader">
               <div>

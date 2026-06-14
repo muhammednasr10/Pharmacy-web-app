@@ -11,6 +11,7 @@ export type EgyptianDrugRecord = {
 export type MedicineCatalogImportRow = {
   name_ar: string;
   name_en: string;
+  active_ingredient?: string;
   barcode: string;
   qty: number;
   price: number;
@@ -88,6 +89,7 @@ export function mapEgyptianDrugToCatalogRow(
   return {
     name_ar: nameAr.slice(0, 500),
     name_en: nameEnParts.join(" · ").slice(0, 500),
+    active_ingredient: scientific ? scientific.slice(0, 500) : undefined,
     barcode: buildCatalogBarcode(commercialEn || commercialAr, index),
     qty: 0,
     price,

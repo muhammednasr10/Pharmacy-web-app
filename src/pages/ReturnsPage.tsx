@@ -333,7 +333,7 @@ export default function ReturnsPage({
       </section>
 
       {showNewReturnPicker && canUseReturns && (
-        <div className="modalOverlay" onClick={() => setShowNewReturnPicker(false)}>
+        <div className="modalOverlay">
           <div className="invoiceModal returnsPickerModal" onClick={(e) => e.stopPropagation()}>
             <div className="modalHeader">
               <div>

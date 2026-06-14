@@ -416,7 +416,7 @@ export default function BranchesPage({
   return (
     <section className="card branchesPage">
       {branchModal && (
-        <div className="modalOverlay" onClick={() => setBranchModal(null)}>
+        <div className="modalOverlay">
           <div className="userFormPanel" onClick={(event) => event.stopPropagation()}>
             <div className="modalHeader">
               <h2>

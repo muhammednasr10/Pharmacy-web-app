@@ -33,7 +33,7 @@ export default function ReturnModal({
   const totalQty = items.reduce((sum, item) => sum + safeNumber(item.quantity), 0);
 
   return (
-    <div className="modalOverlay" onClick={onClose}>
+    <div className="modalOverlay">
       <div className="invoiceModal returnDetailModal" onClick={(e) => e.stopPropagation()}>
         <div className="modalHeader">
           <div>

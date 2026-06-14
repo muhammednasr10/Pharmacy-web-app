@@ -295,7 +295,7 @@ export default function InventoryPage({
       )}
 
       {showMedicineForm && canManageInventory && (
-        <div className="modalOverlay" onClick={closeForm}>
+        <div className="modalOverlay">
           <div className="medicineFormModal" onClick={(event) => event.stopPropagation()}>
             <div className="modalHeader">
               <div>

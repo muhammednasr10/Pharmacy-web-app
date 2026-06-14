@@ -64,7 +64,7 @@ export default function RolePermissionsEditorModal({
   }
 
   return (
-    <div className="modalOverlay" onClick={onClose}>
+    <div className="modalOverlay">
       <div
         className="invoiceModal userModal loginRequestModal rolePermissionsModal"
         onClick={(e) => e.stopPropagation()}
