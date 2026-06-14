@@ -11,7 +11,12 @@ import "./theme.css";
 initDisplayPreferences();
 
 if (typeof window !== "undefined" && !supabaseConfigError) {
-  registerSW({ immediate: true });
+  registerSW({
+    immediate: true,
+    onNeedRefresh() {
+      // لا نُعيد تحميل الصفحة تلقائياً — التحديث يُطبَّق عند زيارة لاحقة أو تحديث يدوي
+    },
+  });
 }
 
 function ConfigErrorScreen({ message }: { message: string }) {

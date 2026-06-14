@@ -22,6 +22,7 @@
   --color-topbar-border: #dcefe4;
   --color-table-head: #f9fafb;
   --color-modal-overlay: rgba(15, 23, 42, 0.55);
+  --color-input-focus-ring: rgba(0, 123, 73, 0.12);
 }
 
 html[data-font-scale="large"] {
@@ -36,18 +37,19 @@ html[data-theme="dark"] {
   --color-bg-app: #0c1117;
   --color-bg-surface: #151d2b;
   --color-bg-muted: #1c2636;
-  --color-bg-input: #1c2636;
-  --color-text: #f0f4fa;
-  --color-text-secondary: #c5cedd;
-  --color-text-muted: #a3aec0;
+  --color-bg-input: #243044;
+  --color-text: #f8fafc;
+  --color-text-secondary: #d1dae8;
+  --color-text-muted: #9aa8bc;
   --color-border: #2a3548;
-  --color-border-strong: #3a4a62;
+  --color-border-strong: #4a5d78;
   --color-shadow: rgba(0, 0, 0, 0.35);
   --color-header-fade: rgba(12, 17, 23, 0);
   --color-topbar-bg: linear-gradient(180deg, #1a2433 0%, #151d2b 100%);
   --color-topbar-border: #2d3d52;
   --color-table-head: #1c2636;
   --color-modal-overlay: rgba(0, 0, 0, 0.72);
+  --color-input-focus-ring: rgba(61, 206, 160, 0.28);
   color-scheme: dark;
 }
 
@@ -114,6 +116,16 @@ textarea {
 .settingsForm input,
 .settingsForm select,
 .settingsForm textarea,
+.settingsField input,
+.settingsField textarea,
+.formGrid input,
+.reportFilters input,
+.inventoryFilterInput,
+.inventoryFilterRangeCard input,
+.saasField input,
+.saasField select,
+.medicineEntryField input,
+.medicineBarcodeInputRow input,
 .posBarcodeInput,
 .paymentBox input,
 .paymentBox select,
@@ -121,6 +133,7 @@ textarea {
   background: var(--color-bg-input);
   border-color: var(--color-border-strong);
   color: var(--color-text);
+  caret-color: var(--color-text);
 }
 
 .topbarActionChip:hover,
@@ -146,8 +159,19 @@ td {
 .settingsForm input:focus,
 .settingsForm select:focus,
 .settingsForm textarea:focus,
+.settingsField input:focus,
+.settingsField textarea:focus,
+.formGrid input:focus,
+.reportFilters input:focus,
+.inventoryFilterInput:focus,
+.saasField input:focus,
+.saasField select:focus,
+.medicineEntryField input:focus,
+.paymentBox input:focus,
+.paymentBox select:focus,
 .loginCard input:focus {
-  border-color: #007b49;
+  border-color: #3dcea0;
+  box-shadow: 0 0 0 3px var(--color-input-focus-ring);
 }
 
 .invoiceModal,
@@ -749,4 +773,107 @@ html[data-theme="dark"] .staffActionIconBtn--success {
   background: rgba(18, 183, 106, 0.12);
   border-color: rgba(18, 183, 106, 0.35);
   color: #6ce9a6;
+}
+
+/* ===== Dark mode — readable inputs, labels, placeholders ===== */
+html[data-theme="dark"] .app input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]),
+html[data-theme="dark"] .app select,
+html[data-theme="dark"] .app textarea {
+  background-color: var(--color-bg-input) !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-border-strong) !important;
+  -webkit-text-fill-color: var(--color-text);
+}
+
+html[data-theme="dark"] .app input::placeholder,
+html[data-theme="dark"] .app textarea::placeholder {
+  color: var(--color-text-muted) !important;
+  opacity: 1;
+}
+
+html[data-theme="dark"] .app select option {
+  background: var(--color-bg-surface);
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .app input:-webkit-autofill,
+html[data-theme="dark"] .app input:-webkit-autofill:hover,
+html[data-theme="dark"] .app input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--color-bg-input) inset !important;
+  -webkit-text-fill-color: var(--color-text) !important;
+  caret-color: var(--color-text);
+}
+
+html[data-theme="dark"] .paymentBox label,
+html[data-theme="dark"] .inventoryFilterField label,
+html[data-theme="dark"] .inventoryFilterRangeLabel,
+html[data-theme="dark"] .saasField span,
+html[data-theme="dark"] .settingsField label,
+html[data-theme="dark"] .medicineEntryField label,
+html[data-theme="dark"] .posBarcodeLabel,
+html[data-theme="dark"] .formGrid label {
+  color: var(--color-text-secondary) !important;
+}
+
+html[data-theme="dark"] .inventoryFilterPanel {
+  background: linear-gradient(180deg, var(--color-bg-muted) 0%, var(--color-bg-surface) 100%);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .inventoryFilterChip {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .inventoryFilterChip.isActive {
+  background: rgba(18, 183, 106, 0.18);
+  border-color: #3dcea0;
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .inventoryFilterRangeCard {
+  background: var(--color-bg-muted);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .posBarcodeRow {
+  background: linear-gradient(180deg, rgba(18, 183, 106, 0.14) 0%, var(--color-bg-input) 100%);
+  border-color: rgba(61, 206, 160, 0.45);
+}
+
+html[data-theme="dark"] .posBarcodeInput {
+  background: transparent !important;
+  color: var(--color-text) !important;
+}
+
+html[data-theme="dark"] .posBarcodeInput::placeholder {
+  color: var(--color-text-muted) !important;
+}
+
+html[data-theme="dark"] .medicineFormModal,
+html[data-theme="dark"] .invoiceModal,
+html[data-theme="dark"] .purchaseModal {
+  background: var(--color-bg-surface);
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .loginGoogleBtn {
+  background: var(--color-bg-input) !important;
+  border-color: var(--color-border-strong) !important;
+  color: var(--color-text) !important;
+}
+
+html[data-theme="dark"] .loginGoogleBtn:hover:not(:disabled) {
+  background: var(--color-bg-muted) !important;
+}
+
+html[data-theme="dark"] td,
+html[data-theme="dark"] .medicineNameCellEn,
+html[data-theme="dark"] .medicineNameCellIngredient {
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .medicineNameCellAr {
+  color: var(--color-text);
 }

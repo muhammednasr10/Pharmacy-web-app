@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
       includeAssets: ["victory-logo.png", "victory-logo-transparent.png", "icon.svg"],
       manifest: {
         name: "Victory Management Systems",
@@ -42,6 +42,8 @@ export default defineConfig(({ mode }) => ({
         globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
         navigateFallback: "/index.html",
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+        skipWaiting: false,
+        clientsClaim: false,
       },
       devOptions: {
         enabled: false,
