@@ -7,6 +7,7 @@ import { initDisplayPreferences } from "./utils/displayPreferences";
 import { initErrorReporting } from "./utils/errorReporting";
 import "./styles.css";
 import "./theme.css";
+import "./mobile.css";
 
 initDisplayPreferences();
 initErrorReporting();

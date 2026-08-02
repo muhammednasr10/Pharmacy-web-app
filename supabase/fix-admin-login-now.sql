@@ -115,6 +115,8 @@ end;
 $$;
 
 revoke all on function public.sign_app_access_token(text) from public;
+revoke all on function public.sign_app_access_token(text) from anon;
+revoke all on function public.sign_app_access_token(text) from authenticated;
 
 -- -----------------------------------------------------------------------------
 -- 3) Login RPC (يستدعيه التطبيق مباشرة — بدون Edge Function)

@@ -44,8 +44,34 @@ create index if not exists customer_activities_status_idx on customer_activities
 alter table customers enable row level security;
 alter table customer_activities enable row level security;
 
-create policy "Allow read/write for testing" on customers
-  for all using (true) with check (true);
+-- Tenant policies — run rls-remove-dev-policies.sql or multi-tenant-saas pattern after this file.
+drop policy if exists "Allow read/write for testing" on customers;
+drop policy if exists "Allow read/write for testing" on customer_activities;
 
-create policy "Allow read/write for testing" on customer_activities
-  for all using (true) with check (true);
+create policy "tenant_select" on customers for select to authenticated
+  using (public.is_active_user() and public.can_read_pharmacy_row(pharmacy_id));
+create policy "tenant_insert" on customers for insert to authenticated
+  with check (public.is_active_user() and public.can_access_pharmacy_row(pharmacy_id));
+create policy "tenant_update" on customers for update to authenticated
+  using (public.is_active_user() and public.can_access_pharmacy_row(pharmacy_id))
+  with check (public.is_active_user() and public.can_access_pharmacy_row(pharmacy_id));
+create policy "tenant_delete" on customers for delete to authenticated
+  using (
+    public.is_active_user()
+    and public.can_access_pharmacy_row(pharmacy_id)
+    and (public.is_super_admin() or public.is_pharmacy_admin())
+  );
+
+create policy "tenant_select" on customer_activities for select to authenticated
+  using (public.is_active_user() and public.can_read_pharmacy_row(pharmacy_id));
+create policy "tenant_insert" on customer_activities for insert to authenticated
+  with check (public.is_active_user() and public.can_access_pharmacy_row(pharmacy_id));
+create policy "tenant_update" on customer_activities for update to authenticated
+  using (public.is_active_user() and public.can_access_pharmacy_row(pharmacy_id))
+  with check (public.is_active_user() and public.can_access_pharmacy_row(pharmacy_id));
+create policy "tenant_delete" on customer_activities for delete to authenticated
+  using (
+    public.is_active_user()
+    and public.can_access_pharmacy_row(pharmacy_id)
+    and (public.is_super_admin() or public.is_pharmacy_admin())
+  );

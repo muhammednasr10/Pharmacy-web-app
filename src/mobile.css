@@ -1,0 +1,480 @@
+/* =============================================================================
+   Mobile layout — professional phone/tablet experience
+   Loaded after styles.css; overrides desktop-first rules at ≤768px / ≤480px
+   ============================================================================= */
+
+@media (max-width: 768px) {
+  .content {
+    padding: 12px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .appStickyHeader {
+    margin: -12px -12px 12px;
+    padding: max(12px, env(safe-area-inset-top, 0px)) 12px 0;
+  }
+
+  /* Sidebar nav is primary on phones — avoid double navigation chrome */
+  .appNavBar {
+    display: none;
+  }
+
+  .mobilePageBar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 12px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(5, 105, 59, 0.08), rgba(14, 159, 110, 0.04));
+    border: 1px solid #ccebd8;
+    box-shadow: 0 4px 14px rgba(5, 105, 59, 0.06);
+  }
+
+  .mobilePageBarIcon {
+    font-size: 1.15rem;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  .mobilePageBarLabel {
+    font-size: 14px;
+    font-weight: 800;
+    color: #05693b;
+    line-height: 1.35;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Compact topbar */
+  .topbar {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .topbarPharmacyMeta,
+  .topbarPharmacySubtitle,
+  .topbarSectionLabel,
+  .topbarIdentityDivider {
+    display: none;
+  }
+
+  .topbarIdentityCard {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .topbarPharmacyBlock {
+    width: 100%;
+  }
+
+  .topbarPharmacyTitleRow {
+    flex-wrap: wrap;
+    gap: 6px 8px;
+  }
+
+  .topbarPharmacyName {
+    font-size: 1.05rem;
+    line-height: 1.25;
+  }
+
+  .topbarPharmacyAvatar {
+    width: 38px;
+    height: 38px;
+    font-size: 0.95rem;
+  }
+
+  .topbarControlsBlock,
+  .topbarActionRow,
+  .topbarActionRow--controls {
+    width: 100%;
+  }
+
+  .topbarActionRow--controls {
+    flex-direction: column;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .topbarControlGroup,
+  .topbarControlItems,
+  .topbarBranchChip {
+    width: 100%;
+  }
+
+  .topbarBranchChip select {
+    max-width: none;
+    width: 100%;
+  }
+
+  .topbarSearchColumn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .topbarAccountFieldLabel {
+    display: none;
+  }
+
+  .topbarAccountInline {
+    gap: 8px;
+  }
+
+  .topbarAccountInlineMain {
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 8px;
+  }
+
+  .topbarAccountName {
+    max-width: min(42vw, 140px);
+    font-size: 13px;
+  }
+
+  .topbarAccountRoleValue {
+    max-width: min(32vw, 100px);
+    font-size: 12px;
+  }
+
+  .topbarUtilityStack {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .topbarUtilityIcons {
+    display: flex;
+    gap: 6px;
+  }
+
+  .topbarUtilityLogout span {
+    display: none;
+  }
+
+  .topbarUtilityLogout {
+    min-width: 44px;
+    padding-inline: 12px;
+    justify-content: center;
+  }
+
+  .topbarGlobalSearch,
+  .topbarSearchWrap {
+    width: 100%;
+    max-width: none;
+  }
+
+  .topbarSearchKbd {
+    display: none;
+  }
+
+  .alertDropdown {
+    position: fixed;
+    inset-inline: 12px;
+    top: auto;
+    bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    width: auto;
+    max-width: none;
+    max-height: min(70vh, 520px);
+  }
+
+  /* Cards & page sections */
+  .card {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .cardHeader {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .cardHeader h2 {
+    margin: 0;
+    font-size: 1.05rem;
+    line-height: 1.35;
+  }
+
+  .cardHeader .actionButtons {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .statCard {
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .statCard strong {
+    font-size: 1.25rem;
+  }
+
+  .moduleGrid {
+    gap: 12px;
+  }
+
+  .alertsGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .formGrid,
+  .workGrid,
+  .chartsGrid,
+  .reportsGrid,
+  .ownerStatsGrid,
+  .quickActionsGrid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Tables — touch scroll with visual hint */
+  .tableWrap {
+    position: relative;
+    margin-inline: -2px;
+    border: 1px solid #eaecf0;
+    border-radius: 12px;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .tableWrap::after {
+    content: "";
+    position: sticky;
+    inset-inline-end: 0;
+    top: 0;
+    bottom: 0;
+    width: 28px;
+    pointer-events: none;
+    background: linear-gradient(to left, rgba(255, 255, 255, 0.95), transparent);
+  }
+
+  html[dir="rtl"] .tableWrap::after {
+    inset-inline-end: auto;
+    inset-inline-start: 0;
+    background: linear-gradient(to right, rgba(255, 255, 255, 0.95), transparent);
+  }
+
+  table {
+    min-width: 560px;
+  }
+
+  th,
+  td {
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+
+  .actionButtons {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 6px;
+  }
+
+  .smallBtn,
+  .editBtn,
+  .deleteSmallBtn,
+  .printBtn {
+    min-height: 40px;
+    padding: 8px 12px;
+  }
+
+  /* Modals — bottom sheet style on phones */
+  .modalOverlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .invoiceModal,
+  .crmFormModal,
+  .upgradePlanModal,
+  .branchTransferModal,
+  .staffAccessModal {
+    width: 100%;
+    max-width: none;
+    max-height: min(92vh, 900px);
+    border-radius: 18px 18px 0 0;
+    padding: 16px;
+    margin: 0;
+  }
+
+  .modalHeader {
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .modalHeader h2 {
+    font-size: 1.05rem;
+    line-height: 1.35;
+  }
+
+  .invoiceInfo {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .modalActions {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .modalActions > button {
+    min-height: 44px;
+  }
+
+  /* POS */
+  .posLayoutStack {
+    gap: 12px;
+  }
+
+  .posQuickSaleOverlay {
+    padding: 0;
+  }
+
+  .posQuickSaleCard {
+    width: 100%;
+    max-width: none;
+    min-height: 100vh;
+    border-radius: 0;
+  }
+
+  /* Settings / tabs */
+  .settingsTabsNav {
+    gap: 6px;
+    padding-bottom: 6px;
+  }
+
+  .settingsTabBtn {
+    padding: 10px 14px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  /* Branch transfer pick rows */
+  .branchTransferPickRow {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .branchTransferAddBtn {
+    width: 100%;
+  }
+
+  /* Inventory filters already collapse at 1000px — tighten spacing */
+  .filtersBar {
+    gap: 8px;
+    margin: 10px 0;
+  }
+
+  /* Touch targets */
+  .menuBtn,
+  .topbarIconBtn,
+  .closeBtn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Login */
+  .loginPage {
+    padding: 16px;
+    padding-top: max(16px, env(safe-area-inset-top, 0px));
+    padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+    align-items: flex-start;
+  }
+
+  .loginCard {
+    padding: 22px 18px;
+    border-radius: 18px;
+    margin-top: 8vh;
+  }
+
+  .loginBrandLogo {
+    height: 72px;
+  }
+}
+
+@media (max-width: 480px) {
+  .content {
+    padding: 10px;
+  }
+
+  .appStickyHeader {
+    margin: -10px -10px 10px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .topbarAccountRoleValue {
+    display: none;
+  }
+
+  .topbarPharmacyTier .saasTierBadge {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+
+  table {
+    min-width: 480px;
+  }
+
+  .invoiceInfo {
+    grid-template-columns: 1fr;
+  }
+
+  .mobilePageBar {
+    padding: 9px 12px;
+  }
+
+  .mobilePageBarLabel {
+    font-size: 13px;
+  }
+}
+
+/* Hidden on desktop — only shown inside mobile media query above */
+.mobilePageBar {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobilePageBar {
+    display: flex;
+  }
+}
+
+@media (max-width: 768px) {
+  html[data-theme="dark"] .tableWrap::after {
+    background: linear-gradient(to left, rgba(15, 23, 42, 0.95), transparent);
+  }
+
+  html[data-theme="dark"][dir="rtl"] .tableWrap::after {
+    background: linear-gradient(to right, rgba(15, 23, 42, 0.95), transparent);
+  }
+
+  html[data-theme="dark"] .mobilePageBar {
+    background: linear-gradient(135deg, rgba(14, 159, 110, 0.14), rgba(5, 105, 59, 0.06));
+    border-color: rgba(61, 206, 160, 0.22);
+  }
+
+  html[data-theme="dark"] .mobilePageBarLabel {
+    color: #6ee7b7;
+  }
+}

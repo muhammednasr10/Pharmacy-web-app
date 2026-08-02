@@ -11,7 +11,7 @@ import type { SubscriptionTier } from "../config/subscriptionTiers";
 import { canSwitchBranchesWithTier, type TierUpgradePrompt } from "../utils/subscriptionFeatures";
 import type { AppUser, CustomerDebt, Invoice, Lang, Medicine, Page, PharmacySettings } from "../types";
 import type { GlobalSearchResult } from "../utils/globalSearch";
-import { resolveBranchDisplay } from "../utils/branchDisplay";
+import { getPageLabel, pageIcons } from "../utils/navigation";
 import * as pharmacyService from "../services/pharmacyService";
 
 export type AppShellProps = {
@@ -206,6 +206,13 @@ export default function AppShell({
             pageBadges={adminNavBadges}
             onSelectPage={onSelectPage}
           />
+
+          <div className="mobilePageBar" aria-label={isArabic ? "الصفحة الحالية" : "Current page"}>
+            <span className="mobilePageBarIcon" aria-hidden="true">
+              {pageIcons[displayPage]}
+            </span>
+            <span className="mobilePageBarLabel">{getPageLabel(displayPage, isArabic, t)}</span>
+          </div>
         </div>
 
         <PreviewDeployBanner isArabic={isArabic} />

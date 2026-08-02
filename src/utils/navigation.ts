@@ -39,7 +39,7 @@ export type NavGroupEntry = {
 
 export type NavEntry = NavPageEntry | NavGroupEntry;
 
-function getPageLabel(page: Page, isArabic: boolean, t: Record<string, string>): string {
+export function getPageLabel(page: Page, isArabic: boolean, t: Record<string, string>): string {
   switch (page) {
     case "dashboard":
       return t.dashboard;
