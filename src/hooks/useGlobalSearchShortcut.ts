@@ -2,17 +2,10 @@ import { useEffect } from "react";
 
 type UseGlobalSearchShortcutOptions = {
   enabled: boolean;
-  isOpen: boolean;
-  onOpen: () => void;
-  onClose: () => void;
+  onFocus: () => void;
 };
 
-export function useGlobalSearchShortcut({
-  enabled,
-  isOpen,
-  onOpen,
-  onClose,
-}: UseGlobalSearchShortcutOptions) {
+export function useGlobalSearchShortcut({ enabled, onFocus }: UseGlobalSearchShortcutOptions) {
   useEffect(() => {
     if (!enabled) return;
 
@@ -22,19 +15,11 @@ export function useGlobalSearchShortcut({
 
       if (modifier && key === "k") {
         event.preventDefault();
-        if (isOpen) onClose();
-        else onOpen();
-        return;
-      }
-
-      if (isOpen && key === "escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        onClose();
+        onFocus();
       }
     };
 
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [enabled, isOpen, onOpen, onClose]);
+  }, [enabled, onFocus]);
 }

@@ -2,9 +2,9 @@ import type { Lang } from "../types";
 
 const ar = {
   dashboard: "لوحة التحكم",
-  inventory: "المخزون",
+  inventory: "إدارة المخزن",
   pos: "نقطة البيع",
-  invoices: "الفواتير",
+  invoices: "المبيعات",
   reports: "التقارير",
   settings: "الإعدادات",
   search: "ابحث باسم الدواء أو الباركود",
@@ -38,7 +38,7 @@ const ar = {
   addMedicineBtn: "إضافة الدواء",
   latestInvoices: "آخر الفواتير",
   noInvoices: "لا توجد فواتير حتى الآن",
-  allInvoices: "كل الفواتير",
+  allInvoices: "المبيعات",
   invoiceNo: "رقم الفاتورة",
   date: "التاريخ",
   items: "عدد الأصناف",
@@ -61,9 +61,9 @@ const ar = {
 
 const en = {
   dashboard: "Dashboard",
-  inventory: "Inventory",
+  inventory: "Inventory Management",
   pos: "Point of Sale",
-  invoices: "Invoices",
+  invoices: "Sales",
   reports: "Reports",
   settings: "Settings",
   search: "Search by medicine name or barcode",
@@ -97,7 +97,7 @@ const en = {
   addMedicineBtn: "Add Medicine",
   latestInvoices: "Latest Invoices",
   noInvoices: "No invoices yet",
-  allInvoices: "All Invoices",
+  allInvoices: "Sales",
   invoiceNo: "Invoice No.",
   date: "Date",
   items: "Items",

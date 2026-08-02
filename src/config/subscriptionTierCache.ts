@@ -13,6 +13,8 @@ function cloneTierConfigs(
         ...tier,
         featuresAr: [...tier.featuresAr],
         featuresEn: [...tier.featuresEn],
+        enabledPages: [...tier.enabledPages],
+        allowedFeatures: [...tier.allowedFeatures],
       };
       return acc;
     },
@@ -38,6 +40,11 @@ export function setSubscriptionTierConfigs(
       ...override,
       featuresAr: override.featuresAr ? [...override.featuresAr] : merged[tierId].featuresAr,
       featuresEn: override.featuresEn ? [...override.featuresEn] : merged[tierId].featuresEn,
+      enabledPages: override.enabledPages ? [...override.enabledPages] : merged[tierId].enabledPages,
+      allowedFeatures: override.allowedFeatures
+        ? [...override.allowedFeatures]
+        : merged[tierId].allowedFeatures,
+      packagePrice: override.packagePrice ?? merged[tierId].packagePrice,
     };
   });
   cachedTierConfigs = merged;

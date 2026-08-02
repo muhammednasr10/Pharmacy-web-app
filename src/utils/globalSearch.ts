@@ -44,7 +44,7 @@ const PAGE_KEYWORDS: Partial<Record<Page, string[]>> = {
   dashboard: ["لوحة", "home", "رئيسية"],
   inventory: ["مخزون", "stock", "أدوية", "medicines"],
   pos: ["بيع", "كاشير", "cashier", "نقطة"],
-  invoices: ["فواتير", "فاتورة", "sales"],
+  invoices: ["فواتير", "فاتورة", "مبيعات", "sales"],
   returns: ["مرتجع", "return"],
   purchases: ["مشتريات", "شراء", "purchase"],
   costs: ["تكاليف", "مصروف", "costs"],

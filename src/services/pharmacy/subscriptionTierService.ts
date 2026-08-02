@@ -5,6 +5,8 @@ import {
   type SubscriptionTier,
   type SubscriptionTierConfig,
 } from "../../config/subscriptionTiers";
+import { normalizeTierAllowedFeatures } from "../../config/subscriptionTierFeatures";
+import { normalizeTierEnabledPages } from "../../config/subscriptionTierPages";
 import { setSubscriptionTierConfigs } from "../../config/subscriptionTierCache";
 
 type SubscriptionTierConfigRow = {
@@ -18,6 +20,9 @@ type SubscriptionTierConfigRow = {
   features_ar: string[] | null;
   features_en: string[] | null;
   upgrade_amount: number;
+  package_price?: number | null;
+  enabled_pages?: string[] | null;
+  allowed_features?: string[] | null;
 };
 
 function rowToConfig(row: SubscriptionTierConfigRow): SubscriptionTierConfig {
@@ -34,6 +39,9 @@ function rowToConfig(row: SubscriptionTierConfigRow): SubscriptionTierConfig {
     featuresAr: Array.isArray(row.features_ar) ? row.features_ar.map(String) : defaults.featuresAr,
     featuresEn: Array.isArray(row.features_en) ? row.features_en.map(String) : defaults.featuresEn,
     upgradeAmount: Number(row.upgrade_amount ?? defaults.upgradeAmount),
+    packagePrice: Number(row.package_price ?? defaults.packagePrice),
+    enabledPages: normalizeTierEnabledPages(row.enabled_pages, tierId),
+    allowedFeatures: normalizeTierAllowedFeatures(row.allowed_features, tierId),
   };
 }
 
@@ -75,6 +83,9 @@ export type SubscriptionTierConfigInput = {
   featuresAr: string[];
   featuresEn: string[];
   upgradeAmount: number;
+  packagePrice: number;
+  enabledPages: SubscriptionTierConfig["enabledPages"];
+  allowedFeatures: SubscriptionTierConfig["allowedFeatures"];
 };
 
 export async function upsertSubscriptionTierConfig(
@@ -93,6 +104,9 @@ export async function upsertSubscriptionTierConfig(
     features_ar: input.featuresAr.map((line) => line.trim()).filter(Boolean),
     features_en: input.featuresEn.map((line) => line.trim()).filter(Boolean),
     upgrade_amount: Math.max(0, Number(input.upgradeAmount) || 0),
+    package_price: Math.max(0, Number(input.packagePrice) || 0),
+    enabled_pages: input.enabledPages,
+    allowed_features: input.allowedFeatures,
     updated_at: new Date().toISOString(),
     updated_by: operatorUid || null,
   };
@@ -115,22 +129,47 @@ export async function upsertSubscriptionTierConfig(
   return saved;
 }
 
-export function subscribeSubscriptionTierConfigs(
-  callback: (configs: Record<SubscriptionTier, SubscriptionTierConfig>) => void,
-) {
-  const channel = supabase
+let tierConfigRealtimeChannel: ReturnType<typeof supabase.channel> | null = null;
+const tierConfigRealtimeListeners = new Set<
+  (configs: Record<SubscriptionTier, SubscriptionTierConfig>) => void
+>();
+
+function notifyTierConfigListeners(configs: Record<SubscriptionTier, SubscriptionTierConfig>) {
+  tierConfigRealtimeListeners.forEach((listener) => {
+    try {
+      listener(configs);
+    } catch (error) {
+      console.error("subscription tier listener error:", error);
+    }
+  });
+}
+
+function ensureTierConfigRealtimeChannel() {
+  if (tierConfigRealtimeChannel) return;
+
+  tierConfigRealtimeChannel = supabase
     .channel("realtime-subscription-tier-configs")
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "subscription_tier_configs" },
       () => {
-        void loadSubscriptionTierConfigs().then(callback);
+        void loadSubscriptionTierConfigs().then(notifyTierConfigListeners);
       },
-    );
+    )
+    .subscribe();
+}
 
-  void channel.subscribe();
+export function subscribeSubscriptionTierConfigs(
+  callback: (configs: Record<SubscriptionTier, SubscriptionTierConfig>) => void,
+) {
+  tierConfigRealtimeListeners.add(callback);
+  ensureTierConfigRealtimeChannel();
 
   return () => {
-    void channel.unsubscribe();
+    tierConfigRealtimeListeners.delete(callback);
+    if (tierConfigRealtimeListeners.size === 0 && tierConfigRealtimeChannel) {
+      void tierConfigRealtimeChannel.unsubscribe();
+      tierConfigRealtimeChannel = null;
+    }
   };
 }

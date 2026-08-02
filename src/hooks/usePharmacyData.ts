@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, startTransition } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import * as pharmacyService from "../services/pharmacyService";
 import { ALL_BRANCHES_ID, isAllBranchesMode } from "../constants/branches";
@@ -105,7 +105,10 @@ export function usePharmacyData({
         }
       }
 
-      setMedicines(await pharmacyService.getMedicines());
+      const loadedMedicines = await pharmacyService.getMedicines();
+      startTransition(() => {
+        setMedicines(loadedMedicines);
+      });
       setInvoices(await pharmacyService.getInvoices());
       setReturns(await pharmacyService.getReturns());
       setPurchases(await pharmacyService.getPurchases());
@@ -165,7 +168,11 @@ export function usePharmacyData({
       }),
     );
 
-    cleanup.push(pharmacyService.subscribeMedicines(setMedicines));
+    cleanup.push(
+      pharmacyService.subscribeMedicines((rows) => {
+        startTransition(() => setMedicines(rows));
+      }),
+    );
     cleanup.push(pharmacyService.subscribeInvoices(setInvoices));
     cleanup.push(pharmacyService.subscribeReturns(setReturns));
     cleanup.push(pharmacyService.subscribePurchases(setPurchases));

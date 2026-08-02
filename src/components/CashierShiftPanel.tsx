@@ -14,6 +14,7 @@ type CashierShiftPanelProps = {
   workShiftId?: string;
   onShiftChange: (shift: CashierShift | null) => void;
   getPaymentLabel: (method: string) => string;
+  onShiftOpened?: () => void;
 };
 
 function formatMoney(value: number, currency: string) {
@@ -30,6 +31,7 @@ export default function CashierShiftPanel({
   workShiftId,
   onShiftChange,
   getPaymentLabel,
+  onShiftOpened,
 }: CashierShiftPanelProps) {
   const [summary, setSummary] = useState<CashierShiftSummary | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
@@ -96,6 +98,7 @@ export default function CashierShiftPanel({
       onShiftChange(shift);
       setShowOpenModal(false);
       setOpeningCash("0");
+      onShiftOpened?.();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (message.includes("shift_already_open")) {

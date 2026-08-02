@@ -13,7 +13,7 @@ import {
   resolveExpiryNotifyPhone,
 } from "../utils/expiryNotify";
 import { getExpiringSoonDays } from "../utils/inventoryAlerts";
-import { canEditOrgWideSettings, isBranchManager, isSuperAdmin } from "../utils/roles";
+import { parseBranchGeoField } from "../utils/branchGeo";
 import {
   createEmptySettingsForm,
   mergeExpiryNotifySnapshot,
@@ -126,6 +126,28 @@ export function usePharmacySettings({
       return;
     }
 
+    const latitude = parseBranchGeoField(settingsForm.latitude);
+    const longitude = parseBranchGeoField(settingsForm.longitude);
+    const geofenceRadiusM = parseBranchGeoField(settingsForm.geofenceRadiusM) ?? 30;
+
+    if ((latitude != null) !== (longitude != null)) {
+      alert(
+        isArabic
+          ? "أدخل خط العرض وخط الطول معاً لموقع الفرع"
+          : "Enter both latitude and longitude for branch location",
+      );
+      return;
+    }
+
+    if (geofenceRadiusM < 10 || geofenceRadiusM > 500) {
+      alert(
+        isArabic
+          ? "نطاق الحضور يجب أن يكون بين 10 و 500 متر"
+          : "Geofence radius must be between 10 and 500 meters",
+      );
+      return;
+    }
+
     const settingsUpdates: Partial<PharmacySettings> & { id: string } = {
       id: getPharmacyId(),
       name: settingsForm.name,
@@ -133,6 +155,9 @@ export function usePharmacySettings({
       phone: settingsForm.phone,
       address: settingsForm.address,
       isActive: true,
+      latitude,
+      longitude,
+      geofenceRadiusM,
     };
 
     if (isBranchManager(appUser) && !canEditOrgWideSettings(appUser)) {

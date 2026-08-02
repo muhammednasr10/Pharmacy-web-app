@@ -43,6 +43,11 @@ export function isOrgPharmacyAdmin(appUser: AppUser | null | undefined): boolean
   return appUser?.role === "pharmacy_admin" || isSuperAdmin(appUser);
 }
 
+/** صفحة حالة SQL — مالك النظام فقط */
+export function canAccessSqlMigrationsPage(appUser: AppUser | null | undefined): boolean {
+  return isSuperAdmin(appUser);
+}
+
 /** Single-branch manager. */
 export function isBranchManager(appUser: AppUser | null | undefined): boolean {
   return appUser?.role === "branch_manager";
@@ -158,6 +163,19 @@ export function canReviewPendingBranchTransfers(appUser: AppUser | null | undefi
   return userHasPermission(appUser, "review_branch_transfers");
 }
 
+export function canViewInventoryCostProfit(appUser: AppUser | null | undefined): boolean {
+  return userHasPermission(appUser, "view_inventory_cost_profit");
+}
+
+export function canViewPosCostProfit(appUser: AppUser | null | undefined): boolean {
+  if (!appUser) return false;
+  return roleHasConfiguredPermission(
+    normalizeRole(appUser.role),
+    appUser.pharmacyId,
+    "view_pos_cost_profit",
+  );
+}
+
 export function canApproveBranchStockTransfer(
   appUser: AppUser | null | undefined,
   toPharmacyId: string,
@@ -248,7 +266,7 @@ export const allowedPagesByRole: Record<BuiltinUserRole, Page[]> = {
     "settings",
     "branches",
   ],
-  pharmacy_admin: [...branchManagerPages, "branches", "sqlMigrations"],
+  pharmacy_admin: [...branchManagerPages, "branches"],
   branch_manager: branchManagerPages,
   cashier: ["dashboard", "employeePortal", "pos", "invoices", "returns", "customers"],
   inventory: ["dashboard", "employeePortal", "inventory", "purchases", "stockMovements"],
@@ -300,6 +318,26 @@ export function loginAccountRoleOptionsFor(appUser: AppUser | null | undefined):
     return loginAccountRoleOptions.filter((role) => role !== "pharmacy_admin");
   }
   return loginAccountRoleOptions;
+}
+
+/** Fixed roles in pharmacy SaaS — standard job roles from the program catalog. */
+export function pharmacyManagedBuiltinRoles(appUser: AppUser | null | undefined): UserRole[] {
+  if (isOrgPharmacyAdmin(appUser) || isSuperAdmin(appUser)) {
+    return [...loginAccountRoleOptions];
+  }
+  return [];
+}
+
+export function pharmacyManagedRoleKeysForBranch(
+  pharmacyId: string,
+  customRoles: Array<{ pharmacyId: string; roleKey: string; isActive?: boolean | null }>,
+  appUser: AppUser | null | undefined,
+): string[] {
+  const builtin = pharmacyManagedBuiltinRoles(appUser);
+  const custom = customRoles
+    .filter((role) => role.pharmacyId === pharmacyId && role.isActive !== false)
+    .map((role) => role.roleKey);
+  return [...builtin, ...custom];
 }
 
 export const defaultLoginAccountDrafts: Record<

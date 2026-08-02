@@ -1,11 +1,9 @@
 import type { Dispatch, SetStateAction } from "react";
-import GlobalSearchModal from "./GlobalSearchModal";
 import HeldInvoicesModal from "./HeldInvoicesModal";
 import InstantReturnModal from "./InstantReturnModal";
 import InvoiceModal from "./InvoiceModal";
 import ReturnModal from "./ReturnModal";
 import type { AppTranslation } from "../i18n/appTranslations";
-import type { GlobalSearchResult } from "../utils/globalSearch";
 import type {
   AppUser,
   CartItem,
@@ -18,6 +16,7 @@ import type {
   PharmacySettings,
   ReturnRecord,
 } from "../types";
+import { resolveBranchDisplay } from "../utils/branchDisplay";
 
 type AvailabilityModalState = {
   medicine: Medicine;
@@ -76,9 +75,6 @@ export type AppModalsProps = {
     invoiceNumber: string;
   }) => void | Promise<void>;
   getAvailableReturnQtyForInstant: (invoice: Invoice, item: InvoiceItem) => number;
-  globalSearchOpen: boolean;
-  onCloseGlobalSearch: () => void;
-  onGlobalSearchSelect: (result: GlobalSearchResult) => void;
 };
 
 export default function AppModals({
@@ -128,9 +124,6 @@ export default function AppModals({
   onCloseInstantReturn,
   handleInstantReturnSuccess,
   getAvailableReturnQtyForInstant,
-  globalSearchOpen,
-  onCloseGlobalSearch,
-  onGlobalSearchSelect,
 }: AppModalsProps) {
   return (
     <>
@@ -168,12 +161,11 @@ export default function AppModals({
                       const row = availabilityModal.rows.find((r) => r.pharmacyId === branch.id);
                       const qty = row?.qty ?? 0;
                       const isCurrent = branch.id === (activeBranchId || appUser?.pharmacyId);
+                      const display = resolveBranchDisplay(branch.id, branches, isArabic);
                       return (
                         <tr key={branch.id} className={isCurrent ? "branchActiveRow" : ""}>
                           <td>
-                            <strong>
-                              {(isArabic ? branch.name : branch.name_en) || branch.name}
-                            </strong>
+                            <strong>{display.branchName}</strong>
                             {isCurrent && (
                               <span className="badge ok branchCurrentTag">
                                 {isArabic ? "فرعك" : "Yours"}
@@ -374,21 +366,6 @@ export default function AppModals({
         />
       )}
 
-      {globalSearchOpen && (
-        <GlobalSearchModal
-          isArabic={isArabic}
-          t={t}
-          allowedPages={allowedPages}
-          medicines={medicines}
-          invoices={invoices}
-          customerDebts={customerDebts}
-          canSearchMedicines={allowedPages.includes("inventory") || allowedPages.includes("pos")}
-          canSearchInvoices={allowedPages.includes("invoices")}
-          canSearchCustomers={allowedPages.includes("customers")}
-          onClose={onCloseGlobalSearch}
-          onSelect={onGlobalSearchSelect}
-        />
-      )}
     </>
   );
 }

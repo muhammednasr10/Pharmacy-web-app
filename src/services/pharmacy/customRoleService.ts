@@ -40,13 +40,21 @@ function normalizeCustomRole(row: Record<string, unknown>): PharmacyCustomRole {
   };
 }
 
-export async function getPharmacyCustomRoles(pharmacyId: string): Promise<PharmacyCustomRole[]> {
-  const { data, error } = await supabase
+export async function getPharmacyCustomRoles(
+  pharmacyId: string,
+  options?: { includeInactive?: boolean },
+): Promise<PharmacyCustomRole[]> {
+  let query = supabase
     .from("pharmacy_custom_roles")
     .select("*")
     .eq("pharmacy_id", pharmacyId)
-    .eq("is_active", true)
     .order("created_at", { ascending: true });
+
+  if (!options?.includeInactive) {
+    query = query.eq("is_active", true);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(error.message);
@@ -57,6 +65,7 @@ export async function getPharmacyCustomRoles(pharmacyId: string): Promise<Pharma
 
 export async function getPharmacyCustomRolesForPharmacies(
   pharmacyIds: string[],
+  options?: { includeInactive?: boolean },
 ): Promise<PharmacyCustomRole[]> {
   const ids = [...new Set(pharmacyIds.filter(Boolean))];
   if (ids.length === 0) return [];
@@ -64,9 +73,12 @@ export async function getPharmacyCustomRolesForPharmacies(
   let query = supabase
     .from("pharmacy_custom_roles")
     .select("*")
-    .eq("is_active", true)
     .order("pharmacy_id", { ascending: true })
     .order("created_at", { ascending: true });
+
+  if (!options?.includeInactive) {
+    query = query.eq("is_active", true);
+  }
 
   query = applyPharmacyScopeFilter(query, ids);
 
@@ -106,6 +118,7 @@ export async function createPharmacyCustomRole(input: {
   baseRole: UserRole;
   allowedPages: Page[];
   permissions?: RolePermissionFlags;
+  isActive?: boolean;
 }): Promise<PharmacyCustomRole> {
   const nameAr = input.nameAr.trim();
   const nameEn = input.nameEn.trim();
@@ -133,7 +146,7 @@ export async function createPharmacyCustomRole(input: {
     baseRole: input.baseRole,
     allowedPages: pages,
     permissions: normalizeRolePermissionFlags(input.baseRole, input.permissions || {}),
-    isActive: true,
+    isActive: input.isActive !== false,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });
@@ -146,6 +159,41 @@ export async function createPharmacyCustomRole(input: {
 
   if (error) {
     throw new Error(error.message);
+  }
+
+  return normalizeCustomRole(data as Record<string, unknown>);
+}
+
+export async function getAllPendingPharmacyCustomRoles(): Promise<PharmacyCustomRole[]> {
+  const { data, error } = await supabase
+    .from("pharmacy_custom_roles")
+    .select("*")
+    .eq("is_active", false)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("getAllPendingPharmacyCustomRoles error:", error.message);
+    return [];
+  }
+
+  return (data || []).map((row) => normalizeCustomRole(row as Record<string, unknown>));
+}
+
+export async function activatePharmacyCustomRole(id: string): Promise<PharmacyCustomRole> {
+  const { data, error } = await supabase
+    .from("pharmacy_custom_roles")
+    .update(
+      toSnakeCase({
+        isActive: true,
+        updatedAt: new Date().toISOString(),
+      }),
+    )
+    .eq("id", id)
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message || "custom_role_not_found");
   }
 
   return normalizeCustomRole(data as Record<string, unknown>);
@@ -194,26 +242,35 @@ export async function deletePharmacyCustomRole(id: string): Promise<void> {
 
   const role = normalizeCustomRole(roleRow as Record<string, unknown>);
 
-  const [{ count: userCount }, { count: accountCount }, { count: employeeCount }] = await Promise.all([
-    supabase
-      .from("users")
-      .select("uid", { count: "exact", head: true })
-      .eq("pharmacy_id", role.pharmacyId)
-      .eq("role", role.roleKey),
-    supabase
-      .from("pharmacy_login_accounts")
-      .select("id", { count: "exact", head: true })
-      .eq("pharmacy_id", role.pharmacyId)
-      .eq("role", role.roleKey),
+  const { count: accountCount } = await supabase
+    .from("pharmacy_login_accounts")
+    .select("id", { count: "exact", head: true })
+    .eq("pharmacy_id", role.pharmacyId)
+    .eq("role", role.roleKey);
+
+  if ((accountCount || 0) > 0) {
+    throw new Error("custom_role_in_use");
+  }
+
+  const now = new Date().toISOString();
+  const [{ error: employeeCleanupError }, { error: userCleanupError }] = await Promise.all([
     supabase
       .from("employees")
-      .select("id", { count: "exact", head: true })
+      .update({ job_title: "", updated_at: now })
       .eq("pharmacy_id", role.pharmacyId)
       .eq("job_title", role.roleKey),
+    supabase
+      .from("users")
+      .delete()
+      .eq("pharmacy_id", role.pharmacyId)
+      .eq("role", role.roleKey),
   ]);
 
-  if ((userCount || 0) > 0 || (accountCount || 0) > 0 || (employeeCount || 0) > 0) {
-    throw new Error("custom_role_in_use");
+  if (employeeCleanupError) {
+    throw new Error(employeeCleanupError.message);
+  }
+  if (userCleanupError) {
+    throw new Error(userCleanupError.message);
   }
 
   const { error } = await supabase.from("pharmacy_custom_roles").delete().eq("id", id);

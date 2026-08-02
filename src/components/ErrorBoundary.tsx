@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { reportError } from "../utils/errorReporting";
 
 type ErrorBoundaryProps = {
   children: ReactNode;
@@ -17,7 +18,10 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("UI render error:", error, info);
+    reportError(error, {
+      source: "react.error-boundary",
+      componentStack: info.componentStack,
+    });
   }
 
   render() {

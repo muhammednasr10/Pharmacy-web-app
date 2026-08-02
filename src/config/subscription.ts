@@ -34,44 +34,49 @@ export const subscriptionPlanPricing = {
   yearly: { days: 365, amount: 4800, labelAr: "سنوي", labelEn: "Yearly" },
 } as const;
 
-/** One-time upgrade fees (EGP) — charged on top of active subscription. */
-export const tierUpgradePricing = {
-  professional: {
-    amount: 800,
-    labelAr: "ترقية إلى باقة احترافي",
-    labelEn: "Upgrade to Professional",
-  },
-  premium: {
-    amount: 1500,
-    labelAr: "ترقية إلى باقة فاخر",
-    labelEn: "Upgrade to Premium",
-  },
-} as const;
+/** Annual plan is 20% cheaper than paying monthly for 12 months. */
+export const YEARLY_SUBSCRIPTION_DISCOUNT = 0.2;
+
+export function getQuarterlyPlanAmount(monthlyPrice: number): number {
+  const monthly = monthlyPrice > 0 ? monthlyPrice : subscriptionPlanPricing.monthly.amount;
+  return Math.round(monthly * 3);
+}
+
+export function getYearlyPlanAmount(monthlyPrice: number): number {
+  const monthly = monthlyPrice > 0 ? monthlyPrice : subscriptionPlanPricing.monthly.amount;
+  return Math.round(monthly * 12 * (1 - YEARLY_SUBSCRIPTION_DISCOUNT));
+}
 
 export function getTierUpgradeAmount(targetTier: SubscriptionTier): number {
-  return getSubscriptionTier(targetTier).upgradeAmount;
+  return getTierPackagePrice(targetTier);
+}
+
+export function getTierPackagePrice(tier: SubscriptionTier): number {
+  return getSubscriptionTier(tier).packagePrice;
 }
 
 export function getTierUpgradePricingLabel(
   targetTier: SubscriptionTier,
   isArabic: boolean,
 ): string {
-  if (targetTier === "professional") {
-    return isArabic
-      ? tierUpgradePricing.professional.labelAr
-      : tierUpgradePricing.professional.labelEn;
-  }
-  if (targetTier === "premium") {
-    return isArabic ? tierUpgradePricing.premium.labelAr : tierUpgradePricing.premium.labelEn;
-  }
-  return isArabic ? "ترقية باقة" : "Package upgrade";
+  const tier = getSubscriptionTier(targetTier);
+  return isArabic ? `ترقية إلى باقة ${tier.labelAr}` : `Upgrade to ${tier.labelEn}`;
 }
 
-const DAILY_RATE = subscriptionPlanPricing.monthly.amount / subscriptionPlanPricing.monthly.days;
-
-export function getSubscriptionAmountForDays(days: number) {
+export function getSubscriptionAmountForDays(days: number, monthlyPrice?: number) {
   const safeDays = Math.max(1, Math.floor(days));
-  return Math.round(safeDays * DAILY_RATE);
+  const baseMonthly = monthlyPrice && monthlyPrice > 0 ? monthlyPrice : subscriptionPlanPricing.monthly.amount;
+  const dailyRate = baseMonthly / subscriptionPlanPricing.monthly.days;
+  return Math.round(safeDays * dailyRate);
+}
+
+export function getPlanAmountForTier(plan: string, tier: SubscriptionTier, customDays?: number) {
+  const monthly = getTierPackagePrice(tier) || subscriptionPlanPricing.monthly.amount;
+  if (plan === "monthly") return monthly;
+  if (plan === "quarterly") return getQuarterlyPlanAmount(monthly);
+  if (plan === "yearly") return getYearlyPlanAmount(monthly);
+  if (plan === "custom" && customDays) return getSubscriptionAmountForDays(customDays, monthly);
+  return 0;
 }
 
 export function getPlanDays(plan: string) {
@@ -82,9 +87,10 @@ export function getPlanDays(plan: string) {
 }
 
 export function getPlanAmount(plan: string, customDays?: number) {
-  if (plan === "monthly") return subscriptionPlanPricing.monthly.amount;
-  if (plan === "quarterly") return subscriptionPlanPricing.quarterly.amount;
-  if (plan === "yearly") return subscriptionPlanPricing.yearly.amount;
+  const monthly = subscriptionPlanPricing.monthly.amount;
+  if (plan === "monthly") return monthly;
+  if (plan === "quarterly") return getQuarterlyPlanAmount(monthly);
+  if (plan === "yearly") return getYearlyPlanAmount(monthly);
   if (plan === "custom" && customDays) return getSubscriptionAmountForDays(customDays);
   return 0;
 }

@@ -1,4 +1,9 @@
+import type { Page } from "../types";
 import { getCachedSubscriptionTierConfigs } from "./subscriptionTierCache";
+import { defaultTierAllowedFeatures, type TierFeatureKey } from "./subscriptionTierFeatures";
+import { defaultTierEnabledPages } from "./subscriptionTierPages";
+
+export type { TierFeatureKey } from "./subscriptionTierFeatures";
 
 export type SubscriptionTier = "basic" | "professional" | "premium";
 
@@ -13,6 +18,9 @@ export type SubscriptionTierConfig = {
   featuresAr: string[];
   featuresEn: string[];
   upgradeAmount: number;
+  packagePrice: number;
+  enabledPages: Page[];
+  allowedFeatures: TierFeatureKey[];
 };
 
 export const defaultSubscriptionTiers: Record<SubscriptionTier, SubscriptionTierConfig> = {
@@ -27,6 +35,9 @@ export const defaultSubscriptionTiers: Record<SubscriptionTier, SubscriptionTier
     featuresAr: ["فرع واحد", "حتى 5 مستخدمين", "نقطة بيع ومخزون", "فواتير ومرتجعات"],
     featuresEn: ["1 branch", "Up to 5 users", "POS and inventory", "Invoices and returns"],
     upgradeAmount: 0,
+    packagePrice: 500,
+    enabledPages: [...defaultTierEnabledPages.basic],
+    allowedFeatures: [...defaultTierAllowedFeatures.basic],
   },
   professional: {
     id: "professional",
@@ -50,7 +61,10 @@ export const defaultSubscriptionTiers: Record<SubscriptionTier, SubscriptionTier
       "Inter-branch stock transfers",
       "Transfer approvals",
     ],
-    upgradeAmount: 800,
+    upgradeAmount: 0,
+    packagePrice: 1000,
+    enabledPages: [...defaultTierEnabledPages.professional],
+    allowedFeatures: [...defaultTierAllowedFeatures.professional],
   },
   premium: {
     id: "premium",
@@ -74,7 +88,10 @@ export const defaultSubscriptionTiers: Record<SubscriptionTier, SubscriptionTier
       "Central HR across branches",
       "Organization-wide inventory alerts",
     ],
-    upgradeAmount: 1500,
+    upgradeAmount: 0,
+    packagePrice: 1800,
+    enabledPages: [...defaultTierEnabledPages.premium],
+    allowedFeatures: [...defaultTierAllowedFeatures.premium],
   },
 };
 

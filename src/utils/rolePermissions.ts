@@ -36,7 +36,7 @@ const builtinDefaultPages: Record<BuiltinUserRole, Page[]> = {
     "settings",
     "branches",
   ],
-  pharmacy_admin: [...branchManagerPages, "branches", "sqlMigrations"],
+  pharmacy_admin: [...branchManagerPages, "branches"],
   branch_manager: branchManagerPages,
   cashier: ["dashboard", "employeePortal", "pos", "invoices", "returns", "customers"],
   inventory: ["dashboard", "employeePortal", "inventory", "purchases", "stockMovements"],
@@ -65,7 +65,9 @@ export type RolePermissionKey =
   | "view_org_activity_logs"
   | "export_backup"
   | "manage_org_branches"
-  | "review_branch_transfers";
+  | "review_branch_transfers"
+  | "view_inventory_cost_profit"
+  | "view_pos_cost_profit";
 
 export type RolePermissionFlags = Partial<Record<RolePermissionKey, boolean>>;
 
@@ -80,7 +82,7 @@ export const ROLE_PAGE_OPTIONS: RolePageOption[] = [
   { page: "employeePortal", labelAr: "بوابة الموظف", labelEn: "Employee portal" },
   { page: "inventory", labelAr: "المخزون", labelEn: "Inventory" },
   { page: "pos", labelAr: "نقطة البيع", labelEn: "POS" },
-  { page: "invoices", labelAr: "الفواتير", labelEn: "Invoices" },
+  { page: "invoices", labelAr: "المبيعات", labelEn: "Sales" },
   { page: "returns", labelAr: "المرتجعات", labelEn: "Returns" },
   { page: "purchases", labelAr: "المشتريات", labelEn: "Purchases" },
   { page: "costs", labelAr: "التكاليف", labelEn: "Costs" },
@@ -110,20 +112,41 @@ export const ROLE_PERMISSION_OPTIONS: {
   { key: "export_backup", labelAr: "تصدير نسخة احتياطية", labelEn: "Export backup" },
   { key: "manage_org_branches", labelAr: "إدارة الفروع", labelEn: "Manage branches" },
   { key: "review_branch_transfers", labelAr: "اعتماد نقل مخزون بين الفروع", labelEn: "Approve branch transfers" },
+  {
+    key: "view_inventory_cost_profit",
+    labelAr: "عرض سعر الشراء والربح في المخزون",
+    labelEn: "View buy price & profit in inventory",
+  },
+  {
+    key: "view_pos_cost_profit",
+    labelAr: "عرض سعر الشراء والربح في نقطة البيع",
+    labelEn: "View buy price & profit at POS",
+  },
 ];
 
 const ALL_PERMISSION_KEYS = ROLE_PERMISSION_OPTIONS.map((item) => item.key);
 
-/** Built-in roles whose labels/permissions appear in admin UI (only GM is fixed). */
-export const EDITABLE_BUILTIN_ROLES: BuiltinUserRole[] = ["pharmacy_admin"];
+/** Hidden at POS by default for all roles — grant via staff permissions if needed */
+const DEFAULT_WITHOUT_POS_COST_PROFIT = ALL_PERMISSION_KEYS.filter(
+  (key) => key !== "view_pos_cost_profit",
+);
+
+/** Built-in pharmacy roles shown in the program roles catalog and permission UI. */
+export const EDITABLE_BUILTIN_ROLES: BuiltinUserRole[] = [
+  "pharmacy_admin",
+  "branch_manager",
+  "cashier",
+  "accountant",
+  "inventory",
+];
 
 function flags(keys: RolePermissionKey[]): RolePermissionFlags {
   return Object.fromEntries(keys.map((key) => [key, true])) as RolePermissionFlags;
 }
 
 export const defaultPermissionsByRole: Record<BuiltinUserRole, RolePermissionFlags> = {
-  super_admin: flags(ALL_PERMISSION_KEYS),
-  pharmacy_admin: flags(ALL_PERMISSION_KEYS),
+  super_admin: flags(DEFAULT_WITHOUT_POS_COST_PROFIT),
+  pharmacy_admin: flags(DEFAULT_WITHOUT_POS_COST_PROFIT),
   branch_manager: flags([
     "manage_users",
     "edit_branch_settings",

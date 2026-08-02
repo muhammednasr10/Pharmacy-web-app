@@ -72,7 +72,7 @@ function SalesTrendChart({
               const showLabel = index % labelStep === 0;
               return (
                 <g key={point.date}>
-                  <rect x={x} y={0} width={barW} height={chartH} rx={6} fill="#f2f4f7" />
+                  <rect x={x} y={0} width={barW} height={chartH} rx={6} fill="var(--chart-bar-track)" />
                   <rect x={x} y={y} width={barW} height={h} rx={6} fill="#05693b">
                     <title>{`${point.date}: ${formatMoney(point.total)} ${currency}`}</title>
                   </rect>
@@ -82,7 +82,7 @@ function SalesTrendChart({
                       y={chartH + 18}
                       textAnchor="middle"
                       fontSize="11"
-                      fill="#667085"
+                      fill="var(--chart-axis-label)"
                     >
                       {day}
                     </text>
@@ -122,7 +122,7 @@ function PaymentDonut({
         <div className="donutWrap">
           <svg width="150" height="150" viewBox="0 0 150 150" role="img">
             <g transform="rotate(-90 75 75)">
-              <circle cx="75" cy="75" r={radius} fill="none" stroke="#f2f4f7" strokeWidth="18" />
+              <circle cx="75" cy="75" r={radius} fill="none" stroke="var(--chart-donut-ring-bg)" strokeWidth="18" />
               {paymentBreakdown.map((slice) => {
                 const meta = PAYMENT_META[slice.method] || fallbackPayment;
                 const fraction = slice.total / total;
@@ -146,10 +146,10 @@ function PaymentDonut({
                 return seg;
               })}
             </g>
-            <text x="75" y="71" textAnchor="middle" fontSize="13" fill="#667085">
+            <text x="75" y="71" textAnchor="middle" fontSize="13" fill="var(--chart-center-label)">
               {isArabic ? "الإجمالي" : "Total"}
             </text>
-            <text x="75" y="90" textAnchor="middle" fontSize="15" fontWeight="bold" fill="#101828">
+            <text x="75" y="90" textAnchor="middle" fontSize="15" fontWeight="bold" fill="var(--chart-center-value)">
               {formatMoney(total)}
             </text>
           </svg>

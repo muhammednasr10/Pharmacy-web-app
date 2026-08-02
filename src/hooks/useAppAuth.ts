@@ -4,8 +4,8 @@ import * as pharmacyService from "../services/pharmacyService";
 import { TRIAL_SUBSCRIPTION_DAYS } from "../config/subscription";
 import { branchPreferenceStorageKey } from "../constants/branches";
 import { clearSessionNavigationState } from "../utils/sessionNavigation";
-import { clearPendingGoogleTrialSignup, savePendingGoogleTrialSignup } from "../constants/googleAuth";
 import { formatUserCreationError } from "../utils/userCreationErrors";
+import { syncSentryUser } from "../utils/sentryMonitoring";
 import { isAccountant, isOrgPharmacyAdmin, isSuperAdmin } from "../utils/roles";
 import type { AppUser } from "../types";
 
@@ -25,12 +25,11 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
-  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [authMode, setAuthMode] = useState<"login" | "register">("register");
   const [registerName, setRegisterName] = useState("");
   const [registerPharmacyName, setRegisterPharmacyName] = useState("");
   const [registerSuccess, setRegisterSuccess] = useState("");
   const [registering, setRegistering] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [subscriptionBlocked, setSubscriptionBlocked] = useState("");
   const accessRevokedRef = useRef(false);
 
@@ -180,6 +179,10 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
   }, [appUser?.uid]);
 
   useEffect(() => {
+    syncSentryUser(appUser);
+  }, [appUser]);
+
+  useEffect(() => {
     const uid = appUser?.uid;
     if (!uid) return;
 
@@ -216,44 +219,6 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
     };
   }, [appUser?.uid, isArabic]);
 
-  const handleGoogleSignIn = useCallback(async () => {
-    setLoginError("");
-    setRegisterSuccess("");
-    setGoogleLoading(true);
-
-    try {
-      if (authMode === "register") {
-        const name = registerName.trim();
-        const pharmacyName = registerPharmacyName.trim();
-        if (!name) {
-          throw new Error("name_required");
-        }
-        if (pharmacyName.length < 2) {
-          throw new Error("pharmacy_name_required");
-        }
-        savePendingGoogleTrialSignup({ name, pharmacyName });
-      } else {
-        clearPendingGoogleTrialSignup();
-      }
-
-      const { error } = await pharmacyService.signInWithGoogle();
-      if (error) {
-        clearPendingGoogleTrialSignup();
-        throw error;
-      }
-    } catch (error) {
-      console.error(error);
-      setGoogleLoading(false);
-      const raw = error instanceof Error ? error.message : "";
-      setLoginError(
-        formatUserCreationError(raw, isArabic) ||
-          (isArabic
-            ? "تعذر الدخول عبر Google. تأكد من تفعيل Google في Supabase → Authentication → Providers."
-            : "Google sign-in failed. Enable Google in Supabase → Authentication → Providers."),
-      );
-    }
-  }, [authMode, isArabic, registerName, registerPharmacyName]);
-
   const handleLogin = useCallback(
     async (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
@@ -274,6 +239,40 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
             );
             return;
           }
+          if (error.message === "jwt_secret_not_configured") {
+            setLoginError(
+              isArabic
+                ? "شغّل supabase/fix-admin-login-now.sql وضع JWT Secret من Supabase → Settings → API"
+                : "Run supabase/fix-admin-login-now.sql and set JWT Secret from Supabase → Settings → API",
+            );
+            return;
+          }
+          if (error.message === "app_auth_not_deployed") {
+            setLoginError(
+              isArabic
+                ? "دالة تسجيل الدخول غير منشورة. نفّذ: supabase functions deploy app-auth"
+                : "Login function not deployed. Run: supabase functions deploy app-auth",
+            );
+            return;
+          }
+          if (error.message === "user_inactive") {
+            setLoginError(isArabic ? "هذا الحساب موقوف" : "This account is inactive");
+            return;
+          }
+          if (error.message === "invalid_login_identifier") {
+            setLoginError(
+              isArabic ? "الإيميل أو اسم المستخدم غير موجود" : "Email or username not found",
+            );
+            return;
+          }
+          if (error.message === "invalid_credentials") {
+            setLoginError(
+              isArabic
+                ? "الإيميل أو كلمة المرور غير صحيحة. مالك النظام: admin@victory.com — إن فشل الدخول شغّل reset-owner-login.sql في Supabase (وضع JWT Secret)."
+                : "Invalid email or password. System owner: admin@victory.com — if login fails, run reset-owner-login.sql in Supabase (set JWT Secret).",
+            );
+            return;
+          }
           throw error;
         }
       } catch (error) {
@@ -290,7 +289,6 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
       setLoginError("");
       setRegisterSuccess("");
       setRegistering(true);
-      clearPendingGoogleTrialSignup();
 
       try {
         const result = await pharmacyService.registerPublicUser({
@@ -303,8 +301,8 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
         if (result.needsEmailConfirmation) {
           setRegisterSuccess(
             isArabic
-              ? `تم إنشاء الحساب. أكّد بريدك ثم سجّل الدخول لتفعيل التجربة المجانية ${TRIAL_SUBSCRIPTION_DAYS} يوماً.`
-              : `Account created. Confirm your email, then sign in to start your ${TRIAL_SUBSCRIPTION_DAYS}-day free trial.`,
+              ? "تم إنشاء الحساب. سجّل الدخول يدوياً بنفس الإيميل وكلمة المرور."
+              : "Account created. Sign in manually with the same email and password.",
           );
           setAuthMode("login");
           setLoginPassword("");
@@ -313,8 +311,8 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
 
         setRegisterSuccess(
           isArabic
-            ? `تم إنشاء الصيدلية والتجربة ${TRIAL_SUBSCRIPTION_DAYS} يوماً — جاري الدخول...`
-            : `Pharmacy and ${TRIAL_SUBSCRIPTION_DAYS}-day free trial created — signing in...`,
+            ? `تم إنشاء الصيدلية والتجربة ${TRIAL_SUBSCRIPTION_DAYS} يوماً — تم تسجيل الدخول`
+            : `Pharmacy and ${TRIAL_SUBSCRIPTION_DAYS}-day free trial created — you are signed in`,
         );
       } catch (error) {
         console.error(error);
@@ -334,7 +332,6 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
     setAuthMode(mode);
     setLoginError("");
     setRegisterSuccess("");
-    clearPendingGoogleTrialSignup();
   }, []);
 
   const handleLogout = useCallback(async () => {
@@ -354,7 +351,6 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
     loginError,
     registerSuccess,
     registering,
-    googleLoading,
     onEmailChange: setLoginEmail,
     onPasswordChange: setLoginPassword,
     onRegisterNameChange: setRegisterName,
@@ -362,7 +358,6 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
     onAuthModeChange: switchAuthMode,
     onSubmit: handleLogin,
     onRegisterSubmit: handleRegister,
-    onGoogleSignIn: () => void handleGoogleSignIn(),
   };
 
   return {

@@ -9,6 +9,7 @@ import {
   downloadFinancialReportPdf,
   type ReportExportSnapshot,
 } from "../utils/reportExport";
+import { formatMoney } from "../utils/formatMoney";
 
 type SellingMedicine = {
   medicineId: number;
@@ -57,12 +58,6 @@ type ReportsPageProps = {
   pharmacySettings?: PharmacySettings | null;
   medicines?: Medicine[];
 };
-
-function formatMoney(value: number) {
-  const amount = Number(value);
-  if (!Number.isFinite(amount)) return "0";
-  return amount.toLocaleString(undefined, { maximumFractionDigits: 2 });
-}
 
 export default function ReportsPage({
   isArabic,

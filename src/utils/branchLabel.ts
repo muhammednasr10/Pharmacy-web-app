@@ -1,12 +1,13 @@
 import type { PharmacySettings } from "../types";
+import { getOrgBranchLabel } from "./branchDisplay";
 
 export function getBranchLabel(
   branchId: string | undefined | null,
-  branches: Pick<PharmacySettings, "id" | "name" | "name_en">[],
+  branches: Pick<PharmacySettings, "id" | "name" | "name_en" | "organizationId">[],
   isArabic: boolean,
 ): string {
-  if (!branchId) return "—";
-  const branch = branches.find((item) => item.id === branchId);
-  if (!branch) return branchId;
-  return (isArabic ? branch.name : branch.name_en) || branch.name || branchId;
+  return getOrgBranchLabel(branchId, branches, isArabic);
 }
+
+export { getOrgBranchLabel, resolveBranchDisplay, buildBranchSelectGroups } from "./branchDisplay";
+export type { BranchDisplayInfo, BranchSelectGroup } from "./branchDisplay";

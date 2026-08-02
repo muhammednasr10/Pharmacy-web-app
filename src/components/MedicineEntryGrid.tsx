@@ -25,6 +25,7 @@ type MedicineEntryGridProps = {
   resetKey?: string | number;
   showBarcodeCamera?: boolean;
   enableHardwareScanner?: boolean;
+  showBuyPrice?: boolean;
 };
 
 type ActiveField = "barcode" | "name_ar" | "name_en" | null;
@@ -41,6 +42,7 @@ export default function MedicineEntryGrid({
   resetKey = 0,
   showBarcodeCamera = true,
   enableHardwareScanner = true,
+  showBuyPrice = true,
 }: MedicineEntryGridProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
@@ -326,18 +328,20 @@ export default function MedicineEntryGrid({
             disabled={disabled}
           />
         </div>
-        <div className="medicineEntryField">
-          <label>{isArabic ? "سعر الشراء" : "Buy price"}</label>
-          <input
-            type="number"
-            value={value.buyPrice || ""}
-            onChange={(e) =>
-              updateField("buyPrice", e.target.value === "" ? 0 : Number(e.target.value))
-            }
-            placeholder={isArabic ? "سعر الشراء" : "Buy price"}
-            disabled={disabled}
-          />
-        </div>
+        {showBuyPrice ? (
+          <div className="medicineEntryField">
+            <label>{isArabic ? "سعر الشراء" : "Buy price"}</label>
+            <input
+              type="number"
+              value={value.buyPrice || ""}
+              onChange={(e) =>
+                updateField("buyPrice", e.target.value === "" ? 0 : Number(e.target.value))
+              }
+              placeholder={isArabic ? "سعر الشراء" : "Buy price"}
+              disabled={disabled}
+            />
+          </div>
+        ) : null}
         <div className="medicineEntryField">
           <label>{isArabic ? "سعر البيع" : "Sell price"}</label>
           <input

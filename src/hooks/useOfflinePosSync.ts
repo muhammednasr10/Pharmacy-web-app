@@ -14,6 +14,7 @@ import {
   loadCachedMedicines,
 } from "../utils/offlinePosStorage";
 import { syncPendingOfflineSales } from "../utils/offlinePosSync";
+import { OFFLINE_MEDICINES_CACHE_MS } from "../constants/medicineCatalog";
 
 type UseOfflinePosSyncParams = {
   isOnline: boolean;
@@ -144,9 +145,13 @@ export function useOfflinePosSync({
     const pharmacyId = getPharmacyId();
     if (!pharmacyId || isAllBranchesMode(pharmacyId)) return;
 
-    void cacheMedicinesSnapshot(pharmacyId, medicines).then(() => {
-      setOfflineMedicinesCacheAt(new Date().toISOString());
-    });
+    const timer = setTimeout(() => {
+      void cacheMedicinesSnapshot(pharmacyId, medicines).then(() => {
+        setOfflineMedicinesCacheAt(new Date().toISOString());
+      });
+    }, OFFLINE_MEDICINES_CACHE_MS);
+
+    return () => clearTimeout(timer);
   }, [isOnline, medicines, appUser?.uid, activeBranchId, getPharmacyId]);
 
   return {

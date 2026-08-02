@@ -1,8 +1,8 @@
 export function formatLoginAccountSyncError(message: string, isArabic: boolean) {
   if (message === "auth_user_not_found") {
     return isArabic
-      ? "لا يوجد حساب Auth بهذا الإيميل. اطلب من الموظف تسجيل الدخول مرة واحدة من صفحة الدخول (Google أو إيميل) أولاً."
-      : "No Auth account with this email. Ask the employee to sign in once from the login page (Google or email) first.";
+      ? "لا يوجد حساب Auth بهذا الإيميل. اطلب من الموظف تسجيل الدخول مرة واحدة من صفحة الدخول بالإيميل أولاً."
+      : "No Auth account with this email. Ask the employee to sign in once from the login page first.";
   }
   if (message === "user_limit_reached") {
     return isArabic

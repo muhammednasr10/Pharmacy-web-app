@@ -1,53 +1,51 @@
-# Pharmacy Web App
+# Pharmacy Web App (Victory)
 
-React + Vite + TypeScript + Firebase pharmacy management MVP.
-
-## Features
-
-- Arabic / English UI
-- Dashboard
-- Inventory management: add, edit, delete medicines
-- POS selling screen
-- Discount and payment method
-- Firebase Firestore live data
-- Invoices list
-- Invoice details modal
-- PDF invoice printing
-- Low stock and expiring medicine alerts
+React + Vite + TypeScript + Supabase — pharmacy SaaS (POS, inventory, HR, multi-branch).
 
 ## Run locally
 
 ```bash
 npm install
+cp .env.example .env   # fill Supabase URL + anon key
 npm run dev
 ```
 
-## Build
+## Quality checks (before pilot / deploy)
 
 ```bash
-npm run build
+npm test              # unit tests (roles, POS errors, permissions)
+npm run qa:checklist  # manual pilot QA checklist
+npm run build         # production build
 ```
 
-## Firebase setup
+## Supabase setup
 
-Open `src/firebase.ts` and replace the Firebase config with your project config.
+1. Create a Supabase project.
+2. Run migrations from `supabase/` (see in-app **SQL migrations** page for order).
+3. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env` (local) or Vercel env vars.
 
-For testing only, Firestore Rules can be:
+### Sentry (optional)
 
-```js
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
-    }
-  }
-}
-```
+1. Create a project at [sentry.io](https://sentry.io).
+2. Copy the **DSN** from Settings → Client Keys.
+3. Add to Vercel / `.env`:
+   - `VITE_SENTRY_DSN=your-dsn`
+   - `VITE_APP_VERSION=1.0.0` (optional, for release tracking)
+4. Redeploy. Errors in production are sent automatically with user role and pharmacy context.
 
-Do not use these rules for a real client. Add login and secure rules before selling.
+For local Sentry testing: `VITE_SENTRY_DEV=true` in `.env`.
 
-## GitHub Pages
+## Deploy
 
-This project has `base: '/Pharmacy-web-app/'` in `vite.config.ts`.
-If your repository name is different, update that value.
+- **Vercel**: connect repo, add Supabase env vars, deploy.
+- **GitHub Pages**: `npm run deploy` (uses `/Pharmacy-web-app/` base path).
+
+## Pilot launch
+
+Before onboarding a real pharmacy:
+
+1. Run `npm run qa:checklist` and complete every item manually.
+2. Run `npm test` and `npm run build`.
+3. Confirm subscription tier and RLS on production Supabase.
+
+See **User Guide → Pre-launch pilot checklist** in the app.

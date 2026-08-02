@@ -2,49 +2,17 @@ import {
   getSubscriptionTier,
   parseSubscriptionTier,
   type SubscriptionTier,
+  type TierFeatureKey,
 } from "../config/subscriptionTiers";
+import { tierFeaturesToRecord } from "../config/subscriptionTierFeatures";
 import type { AppUser, Page, PharmacySettings } from "../types";
 import { isAccountant, isBranchManager, isOrgPharmacyAdmin, isSuperAdmin } from "./roles";
 
-export type TierFeatureKey =
-  | "branchesPage"
-  | "multiBranchSwitch"
-  | "branchTransfers"
-  | "branchBreakdownReports"
-  | "orgInventoryAlerts"
-  | "centralHr";
-
+export type { TierFeatureKey } from "../config/subscriptionTiers";
 export type TierFeatures = Record<TierFeatureKey, boolean>;
 
-const tierFeatureMatrix: Record<SubscriptionTier, TierFeatures> = {
-  basic: {
-    branchesPage: false,
-    multiBranchSwitch: false,
-    branchTransfers: false,
-    branchBreakdownReports: false,
-    orgInventoryAlerts: false,
-    centralHr: false,
-  },
-  professional: {
-    branchesPage: true,
-    multiBranchSwitch: true,
-    branchTransfers: true,
-    branchBreakdownReports: true,
-    orgInventoryAlerts: false,
-    centralHr: false,
-  },
-  premium: {
-    branchesPage: true,
-    multiBranchSwitch: true,
-    branchTransfers: true,
-    branchBreakdownReports: true,
-    orgInventoryAlerts: true,
-    centralHr: true,
-  },
-};
-
 export function getTierFeatures(tier: SubscriptionTier): TierFeatures {
-  return tierFeatureMatrix[tier];
+  return tierFeaturesToRecord(getSubscriptionTier(tier).allowedFeatures);
 }
 
 export function resolveOrganizationTier(
@@ -71,11 +39,8 @@ export function filterPagesBySubscriptionTier(
   tier: SubscriptionTier,
 ): Page[] {
   if (isSuperAdmin(appUser)) return pages;
-  const features = getTierFeatures(tier);
-  return pages.filter((page) => {
-    if (page === "branches" && !features.branchesPage) return false;
-    return true;
-  });
+  const enabled = new Set(getSubscriptionTier(tier).enabledPages);
+  return pages.filter((page) => enabled.has(page));
 }
 
 export function canSwitchBranchesWithTier(

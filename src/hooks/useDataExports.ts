@@ -34,6 +34,7 @@ type UseDataExportsOptions = {
   getReturnItemsSummary: (record: ReturnRecord) => string;
   setReportFrom: Dispatch<SetStateAction<string>>;
   setReportTo: Dispatch<SetStateAction<string>>;
+  includeInventoryCostProfit?: boolean;
 };
 
 export function useDataExports({
@@ -54,6 +55,7 @@ export function useDataExports({
   getReturnItemsSummary,
   setReportFrom,
   setReportTo,
+  includeInventoryCostProfit = false,
 }: UseDataExportsOptions) {
   const exportBackupCSV = useCallback(() => {
     downloadPharmacyBackupCsv({
@@ -78,8 +80,12 @@ export function useDataExports({
   ]);
 
   const exportInventoryCSV = useCallback(() => {
-    downloadInventoryCsv({ isArabic, medicines: filteredMedicines });
-  }, [filteredMedicines, isArabic]);
+    downloadInventoryCsv({
+      isArabic,
+      medicines,
+      includeCostProfit: includeInventoryCostProfit,
+    });
+  }, [medicines, isArabic, includeInventoryCostProfit]);
 
   const exportInvoicesCSV = useCallback(() => {
     downloadInvoicesCsv({

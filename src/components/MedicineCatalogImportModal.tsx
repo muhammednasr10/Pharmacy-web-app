@@ -1,15 +1,11 @@
 import { useMemo, useState } from "react";
 import * as pharmacyService from "../services/pharmacyService";
 import {
-  fetchEgyptianDrugCatalogRows,
   chunkCatalogRows,
   MEDICINE_CATALOG_IMPORT_BATCH_SIZE,
-  parseEgyptianDrugCsv,
-  parseMedicineCatalogJson,
+  parseMedicineCatalogFile,
   type MedicineCatalogImportRow,
 } from "../utils/medicineCatalogImport";
-
-type ImportSource = "github" | "file";
 
 type MedicineCatalogImportModalProps = {
   isArabic: boolean;
@@ -20,6 +16,25 @@ type MedicineCatalogImportModalProps = {
   onComplete: () => void | Promise<void>;
 };
 
+function formatCatalogImportError(message: string, isArabic: boolean) {
+  if (message === "catalog_reference_sql_required") {
+    return isArabic
+      ? "قاعدة بيانات Victory غير جاهزة للاستيراد — تواصل مع الدعم الفني"
+      : "Victory database is not ready for import — contact support";
+  }
+  if (message === "catalog_reference_empty") {
+    return isArabic
+      ? "الكتالوج في قاعدة Victory فارغ — تواصل مع الدعم الفني"
+      : "Victory medicine catalog is empty — contact support";
+  }
+  if (message === "sql_migration_required") {
+    return isArabic
+      ? "ميزة استيراد الأدوية غير مفعّلة — تواصل مع الدعم الفني"
+      : "Medicine import is not enabled — contact support";
+  }
+  return message || (isArabic ? "تعذر الاستيراد" : "Import failed");
+}
+
 export default function MedicineCatalogImportModal({
   isArabic,
   open,
@@ -28,7 +43,6 @@ export default function MedicineCatalogImportModal({
   onClose,
   onComplete,
 }: MedicineCatalogImportModalProps) {
-  const [source, setSource] = useState<ImportSource>("github");
   const [replaceExisting, setReplaceExisting] = useState(true);
   const [previewRows, setPreviewRows] = useState<MedicineCatalogImportRow[]>([]);
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -42,67 +56,108 @@ export default function MedicineCatalogImportModal({
 
   if (!open) return null;
 
-  async function loadGithubPreview() {
-    setLoadingPreview(true);
-    setError("");
-    try {
-      const rows = await fetchEgyptianDrugCatalogRows();
-      setPreviewRows(rows);
-    } catch (loadError) {
-      console.error(loadError);
-      setError(
-        isArabic
-          ? "تعذر تحميل قاعدة GitHub — تحقق من الاتصال بالإنترنت"
-          : "Could not load GitHub dataset — check your internet connection",
-      );
-      setPreviewRows([]);
-    } finally {
-      setLoadingPreview(false);
-    }
-  }
-
   async function handleFileChange(file: File | null) {
     if (!file) return;
     setLoadingPreview(true);
     setError("");
     try {
       const text = await file.text();
-      const lowerName = file.name.toLowerCase();
-      const rows =
-        lowerName.endsWith(".csv") || text.trimStart().startsWith("commercial_name_en")
-          ? parseEgyptianDrugCsv(text)
-          : parseMedicineCatalogJson(text);
+      const rows = parseMedicineCatalogFile(text, file.name);
       if (rows.length === 0) {
         throw new Error("empty_file");
       }
       setPreviewRows(rows);
     } catch (loadError) {
       console.error(loadError);
-      setError(
-        isArabic
-          ? "ملف غير صالح — استخدم JSON أو CSV من هيئة الدواء / GitHub"
-          : "Invalid file — use JSON or CSV from EDA / GitHub",
-      );
+      setError(isArabic ? "ملف CSV غير صالح" : "Invalid CSV file");
       setPreviewRows([]);
     } finally {
       setLoadingPreview(false);
     }
   }
 
-  async function startImport() {
+  async function syncFromVictoryCatalog() {
+    const confirmed = window.confirm(
+      isArabic
+        ? "سيتم تحديث أسماء وأسعار الأدوية من قاعدة Victory وإضافة أي أدوية جديدة.\n\nالكميات وسعر الشراء وتاريخ الصلاحية الحالية ستبقى كما هي.\n\nمتابعة؟"
+        : "Medicine names and prices will be updated from the Victory database and any new drugs will be added.\n\nCurrent quantities, purchase prices, and expiry dates will be kept.\n\nContinue?",
+    );
+    if (!confirmed) return;
+
+    setImporting(true);
+    setError("");
+    setProgress({ done: 0, total: 1, phase: "importing" });
+
+    try {
+      const result = await pharmacyService.syncPharmacyFromCatalogReference(pharmacyId);
+      setProgress({
+        done: result.updated + result.inserted,
+        total: result.updated + result.inserted,
+        phase: "importing",
+      });
+      await onComplete();
+      onClose();
+      alert(
+        isArabic
+          ? `تم تحديث ${result.updated.toLocaleString()} دواء وإضافة ${result.inserted.toLocaleString()} جديد — الكميات محفوظة`
+          : `Updated ${result.updated.toLocaleString()} medicines and added ${result.inserted.toLocaleString()} new — stock preserved`,
+      );
+    } catch (importError) {
+      console.error(importError);
+      const message = importError instanceof Error ? importError.message : String(importError);
+      setError(formatCatalogImportError(message, isArabic));
+    } finally {
+      setImporting(false);
+      setProgress(null);
+    }
+  }
+
+  async function importFromVictoryCatalog() {
+    const confirmed = window.confirm(
+      isArabic
+        ? `سيتم حذف ${currentMedicineCount.toLocaleString()} دواء في هذا الفرع واستبدالهم بـ ~25,000 دواء من قاعدة بيانات Victory.\n\nمتابعة؟`
+        : `This will delete ${currentMedicineCount.toLocaleString()} medicines in this branch and replace them with ~25,000 drugs from the Victory database.\n\nContinue?`,
+    );
+    if (!confirmed) return;
+
+    setImporting(true);
+    setError("");
+    setProgress({ done: 0, total: 1, phase: "clearing" });
+
+    try {
+      const result = await pharmacyService.seedPharmacyFromCatalogReference(pharmacyId);
+      setProgress({ done: result.inserted, total: result.inserted, phase: "importing" });
+      await onComplete();
+      onClose();
+      alert(
+        isArabic
+          ? `تم استيراد ${result.inserted.toLocaleString()} دواء من قاعدة Victory`
+          : `Imported ${result.inserted.toLocaleString()} medicines from Victory database`,
+      );
+    } catch (importError) {
+      console.error(importError);
+      const message = importError instanceof Error ? importError.message : String(importError);
+      setError(formatCatalogImportError(message, isArabic));
+    } finally {
+      setImporting(false);
+      setProgress(null);
+    }
+  }
+
+  async function startFileImport() {
     if (previewRows.length === 0) {
-      setError(isArabic ? "حمّل المعاينة أولاً" : "Load a preview first");
+      setError(isArabic ? "اختر ملف CSV أولاً" : "Choose a CSV file first");
       return;
     }
 
     const confirmed = window.confirm(
       replaceExisting
         ? isArabic
-          ? `سيتم حذف ${currentMedicineCount} دواء حالياً في هذا الفرع واستبدالهم بـ ${previewRows.length} دواء من الكatalog.\n\nالفواتير القديمة تبقى محفوظة لكن ارتباطها بالأدوية قد يُزال.\n\nمتابعة؟`
-          : `This will delete ${currentMedicineCount} medicines in this branch and replace them with ${previewRows.length} catalog items.\n\nOld invoices stay saved but medicine links may be cleared.\n\nContinue?`
+          ? `سيتم حذف ${currentMedicineCount.toLocaleString()} دواء حالياً في هذا الفرع واستبدالهم بـ ${previewRows.length.toLocaleString()} دواء من الملف.\n\nمتابعة؟`
+          : `This will delete ${currentMedicineCount.toLocaleString()} medicines in this branch and replace them with ${previewRows.length.toLocaleString()} items from the file.\n\nContinue?`
         : isArabic
-          ? `سيتم إضافة ${previewRows.length} دواء إلى الفرع الحالي.\n\nمتابعة؟`
-          : `This will add ${previewRows.length} medicines to the current branch.\n\nContinue?`,
+          ? `سيتم إضافة ${previewRows.length.toLocaleString()} دواء إلى الفرع الحالي.\n\nمتابعة؟`
+          : `This will add ${previewRows.length.toLocaleString()} medicines to the current branch.\n\nContinue?`,
     );
     if (!confirmed) return;
 
@@ -133,13 +188,7 @@ export default function MedicineCatalogImportModal({
     } catch (importError) {
       console.error(importError);
       const message = importError instanceof Error ? importError.message : String(importError);
-      setError(
-        message === "sql_migration_required"
-          ? isArabic
-            ? "شغّل migration medicine-catalog-import.sql في Supabase أولاً"
-            : "Run medicine-catalog-import.sql migration in Supabase first"
-          : message || (isArabic ? "تعذر الاستيراد" : "Import failed"),
-      );
+      setError(formatCatalogImportError(message, isArabic));
     } finally {
       setImporting(false);
       setProgress(null);
@@ -154,11 +203,11 @@ export default function MedicineCatalogImportModal({
       <div className="invoiceModal saasModal saasModalWide medicineCatalogImportModal" onClick={(e) => e.stopPropagation()}>
         <div className="modalHeader">
           <div>
-            <h2>{isArabic ? "استيراد كتالوج الأدوية" : "Import medicine catalog"}</h2>
+            <h2>{isArabic ? "استيراد أدوية من قاعدة Victory" : "Import medicines from Victory database"}</h2>
             <p>
               {isArabic
-                ? "استبدل قائمة الأدوية الحالية ببيانات محدثة من GitHub (مبنية على سجل هيئة الدواء) أو من ملف JSON/CSV"
-                : "Replace the current medicine list with updated data from GitHub (EDA-based registry) or a JSON/CSV file"}
+                ? "حمّل قائمة ~25,000 دواء مصرية (أسماء، مواد فعالة، أسعار) إلى فرعك — الكميات تُسجّل لاحقاً من المشتريات أو الجرد"
+                : "Load ~25,000 Egyptian medicines (names, active ingredients, prices) into your branch — record quantities later via purchases or stock count"}
             </p>
           </div>
           <button type="button" className="closeBtn" disabled={importing} onClick={onClose}>
@@ -168,36 +217,80 @@ export default function MedicineCatalogImportModal({
 
         <div className="medicineCatalogImportBody">
           <div className="medicineCatalogImportSources">
-            <label className={`medicineCatalogImportSource${source === "github" ? " active" : ""}`}>
-              <input
-                type="radio"
-                name="catalogSource"
-                checked={source === "github"}
-                disabled={importing}
-                onChange={() => setSource("github")}
-              />
-              <strong>{isArabic ? "GitHub — قاعدة الأدوية المصرية" : "GitHub — Egyptian drug database"}</strong>
+            <div className="medicineCatalogImportSource active">
+              <strong>{isArabic ? "قاعدة بيانات Victory" : "Victory database"}</strong>
+              {currentMedicineCount > 0 ? (
+                <>
+                  <span>
+                    {isArabic
+                      ? "تحديث الأسماء والأسعار — يحافظ على الكميات وسعر الشراء وتاريخ الصلاحية"
+                      : "Update names and prices — keeps quantities, purchase prices, and expiry dates"}
+                  </span>
+                  <button
+                    type="button"
+                    className="completeBtn"
+                    disabled={importing}
+                    onClick={() => void syncFromVictoryCatalog()}
+                  >
+                    {importing
+                      ? isArabic
+                        ? "جاري التحديث..."
+                        : "Updating..."
+                      : isArabic
+                        ? "تحديث الكتالوج (~25,000 دواء)"
+                        : "Update catalog (~25,000 medicines)"}
+                  </button>
+                  <button
+                    type="button"
+                    className="printBtn medicineCatalogImportDangerBtn"
+                    disabled={importing}
+                    onClick={() => void importFromVictoryCatalog()}
+                  >
+                    {isArabic ? "استيراد من الصفر (يحذف الكميات)" : "Fresh import (deletes stock)"}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span>
+                    {isArabic
+                      ? "الطريقة الموصى بها — استيراد سريع من الكتالوج المركزي"
+                      : "Recommended — fast import from the central catalog"}
+                  </span>
+                  <button
+                    type="button"
+                    className="completeBtn"
+                    disabled={importing}
+                    onClick={() => void importFromVictoryCatalog()}
+                  >
+                    {importing
+                      ? isArabic
+                        ? "جاري الاستيراد..."
+                        : "Importing..."
+                      : isArabic
+                        ? "استيراد ~25,000 دواء"
+                        : "Import ~25,000 medicines"}
+                  </button>
+                </>
+              )}
+            </div>
+
+            <div className="medicineCatalogImportSource">
+              <strong>{isArabic ? "أو رفع ملف CSV" : "Or upload a CSV file"}</strong>
               <span>
                 {isArabic
-                  ? "~25,000 دواء — أسماء تجارية، تركيب، شركة، سعر"
-                  : "~25,000 drugs — trade names, composition, manufacturer, price"}
+                  ? "بديل — استيراد من ملف على جهازك"
+                  : "Alternative — import from a file on your device"}
               </span>
-            </label>
-            <label className={`medicineCatalogImportSource${source === "file" ? " active" : ""}`}>
-              <input
-                type="radio"
-                name="catalogSource"
-                checked={source === "file"}
-                disabled={importing}
-                onChange={() => setSource("file")}
-              />
-              <strong>{isArabic ? "رفع ملف JSON / CSV" : "Upload JSON / CSV file"}</strong>
-              <span>
-                {isArabic
-                  ? "ملف من GitHub أو تصدير خاص بك"
-                  : "File from GitHub or your own export"}
-              </span>
-            </label>
+              <label className="medicineCatalogImportFilePicker">
+                <span>{isArabic ? "اختر ملف CSV" : "Choose CSV file"}</span>
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  disabled={loadingPreview || importing}
+                  onChange={(event) => void handleFileChange(event.target.files?.[0] || null)}
+                />
+              </label>
+            </div>
           </div>
 
           <label className="medicineCatalogImportReplace">
@@ -209,44 +302,17 @@ export default function MedicineCatalogImportModal({
             />
             <span>
               {isArabic
-                ? `حذف الأدوية الحالية في الفرع (${currentMedicineCount}) قبل الاستيراد`
-                : `Delete current branch medicines (${currentMedicineCount}) before import`}
+                ? `حذف الأدوية الحالية في الفرع (${currentMedicineCount.toLocaleString()}) قبل استيراد الملف`
+                : `Delete current branch medicines (${currentMedicineCount.toLocaleString()}) before file import`}
             </span>
           </label>
-
-          {source === "github" ? (
-            <button
-              type="button"
-              className="editBtn"
-              disabled={loadingPreview || importing}
-              onClick={() => void loadGithubPreview()}
-            >
-              {loadingPreview
-                ? isArabic
-                  ? "جاري التحميل..."
-                  : "Loading..."
-                : isArabic
-                  ? "تحميل المعاينة من GitHub"
-                  : "Load preview from GitHub"}
-            </button>
-          ) : (
-            <label className="medicineCatalogImportFilePicker">
-              <span>{isArabic ? "اختر ملف JSON أو CSV" : "Choose JSON or CSV file"}</span>
-              <input
-                type="file"
-                accept=".json,.csv,application/json,text/csv"
-                disabled={loadingPreview || importing}
-                onChange={(event) => void handleFileChange(event.target.files?.[0] || null)}
-              />
-            </label>
-          )}
 
           {previewRows.length > 0 ? (
             <div className="medicineCatalogImportPreview">
               <p>
                 {isArabic
-                  ? `جاهز للاستيراد: ${previewRows.length.toLocaleString()} دواء`
-                  : `Ready to import: ${previewRows.length.toLocaleString()} medicines`}
+                  ? `جاهز للاستيراد من الملف: ${previewRows.length.toLocaleString()} دواء`
+                  : `Ready from file: ${previewRows.length.toLocaleString()} medicines`}
               </p>
               <div className="tableWrap">
                 <table className="dataTable">
@@ -268,6 +334,14 @@ export default function MedicineCatalogImportModal({
                   </tbody>
                 </table>
               </div>
+              <button
+                type="button"
+                className="editBtn"
+                disabled={importing}
+                onClick={() => void startFileImport()}
+              >
+                {isArabic ? "استيراد من الملف" : "Import from file"}
+              </button>
             </div>
           ) : null}
 
@@ -293,21 +367,7 @@ export default function MedicineCatalogImportModal({
 
         <div className="saasModalActions">
           <button type="button" className="printBtn" disabled={importing} onClick={onClose}>
-            {isArabic ? "إلغاء" : "Cancel"}
-          </button>
-          <button
-            type="button"
-            className="completeBtn"
-            disabled={importing || previewRows.length === 0}
-            onClick={() => void startImport()}
-          >
-            {importing
-              ? isArabic
-                ? "جاري الاستيراد..."
-                : "Importing..."
-              : isArabic
-                ? "بدء الاستيراد"
-                : "Start import"}
+            {isArabic ? "إغلاق" : "Close"}
           </button>
         </div>
       </div>

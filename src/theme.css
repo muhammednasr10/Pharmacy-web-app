@@ -23,6 +23,12 @@
   --color-table-head: #f9fafb;
   --color-modal-overlay: rgba(15, 23, 42, 0.55);
   --color-input-focus-ring: rgba(0, 123, 73, 0.12);
+  --chart-bar-track: #f2f4f7;
+  --chart-axis-label: #667085;
+  --chart-center-label: #667085;
+  --chart-center-value: #101828;
+  --chart-donut-ring-bg: #f2f4f7;
+  --report-bar-track-costs: #fff4e5;
 }
 
 html[data-font-scale="large"] {
@@ -50,6 +56,12 @@ html[data-theme="dark"] {
   --color-table-head: #1c2636;
   --color-modal-overlay: rgba(0, 0, 0, 0.72);
   --color-input-focus-ring: rgba(61, 206, 160, 0.28);
+  --chart-bar-track: #243044;
+  --chart-axis-label: #9aa8bc;
+  --chart-center-label: #9aa8bc;
+  --chart-center-value: #f8fafc;
+  --chart-donut-ring-bg: #243044;
+  --report-bar-track-costs: rgba(247, 144, 9, 0.16);
   color-scheme: dark;
 }
 
@@ -129,7 +141,10 @@ textarea {
 .posBarcodeInput,
 .paymentBox input,
 .paymentBox select,
-.loginCard input {
+.loginCard input,
+.stockCountQtyInput,
+.stockCountNotes,
+.reorderBranchPicker select {
   background: var(--color-bg-input);
   border-color: var(--color-border-strong);
   color: var(--color-text);
@@ -169,7 +184,10 @@ td {
 .medicineEntryField input:focus,
 .paymentBox input:focus,
 .paymentBox select:focus,
-.loginCard input:focus {
+.loginCard input:focus,
+.stockCountQtyInput:focus,
+.stockCountNotes:focus,
+.reorderBranchPicker select:focus {
   border-color: #3dcea0;
   box-shadow: 0 0 0 3px var(--color-input-focus-ring);
 }
@@ -218,6 +236,30 @@ html[data-theme="dark"] .loginPage {
   background: radial-gradient(circle at top, #1a2e24 0%, var(--color-bg-app) 55%);
 }
 
+html[data-theme="dark"] .loginCard .loginUtilityIcons .topbarIconBtn {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .loginCard .loginUtilityIcons .topbarIconBtn:hover {
+  background: var(--color-bg-muted);
+  border-color: var(--color-primary-border);
+  color: var(--color-primary);
+}
+
+html[data-theme="dark"] .loginCard .loginUtilityIcons .topbarActionChip--lang {
+  background: rgba(18, 183, 106, 0.12);
+  border-color: rgba(18, 183, 106, 0.35);
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .loginCard .loginUtilityIcons .topbarActionChip--lang:hover {
+  background: rgba(18, 183, 106, 0.2);
+  border-color: rgba(18, 183, 106, 0.5);
+  color: #6ce9a6;
+}
+
 html[data-theme="dark"] .chartCard,
 html[data-theme="dark"] .statCard {
   background: var(--color-bg-surface);
@@ -261,8 +303,16 @@ html[data-theme="dark"] .moduleLabel,
 html[data-theme="dark"] .moduleSub,
 html[data-theme="dark"] .quickActionBtn span,
 html[data-theme="dark"] .empty,
+html[data-theme="dark"] td.empty,
+html[data-theme="dark"] .saasManageEmptyCell,
 html[data-theme="dark"] .mutedCell {
   color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .empty,
+html[data-theme="dark"] td.empty,
+html[data-theme="dark"] .saasManageEmptyCell {
+  background: var(--color-bg-muted);
 }
 
 html[data-theme="dark"] .card h2,
@@ -506,16 +556,32 @@ html[data-font-scale="xlarge"] .loginCard button {
   line-height: 1;
 }
 
-.topbarActionChip--search {
-  gap: 6px;
+.topbarSearchInputRow {
+  background: var(--color-bg-surface);
+  border-color: var(--color-border-strong);
 }
 
-.topbarSearchLabel {
-  font-weight: 600;
+.topbarSearchInputRow:focus-within {
+  background: var(--color-bg-surface);
+  border-color: var(--color-primary-border);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+.topbarSearchInputIcon {
+  color: var(--color-text-muted);
+}
+
+.topbarSearchInput {
+  color: var(--color-text);
+}
+
+.topbarSearchInput::placeholder {
+  color: var(--color-text-muted);
 }
 
 .topbarSearchKbd {
   display: inline-block;
+  flex-shrink: 0;
   padding: 0.1rem 0.35rem;
   border: 1px solid var(--color-border-strong);
   border-radius: 5px;
@@ -524,6 +590,33 @@ html[data-font-scale="xlarge"] .loginCard button {
   font-weight: 600;
   color: var(--color-text-secondary);
   line-height: 1.3;
+}
+
+.topbarSearchDropdown {
+  background: var(--color-bg-surface);
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-lg);
+}
+
+.topbarSearchEmpty {
+  color: var(--color-text-secondary);
+}
+
+.topbarSearchSuggestion {
+  color: var(--color-text);
+}
+
+.topbarSearchSuggestion:hover,
+.topbarSearchSuggestion.active {
+  background: var(--color-primary-soft);
+}
+
+.topbarSearchSuggestionTitle {
+  color: var(--color-text);
+}
+
+.topbarSearchSuggestionSubtitle {
+  color: var(--color-text-secondary);
 }
 
 .globalSearchOverlay {
@@ -679,7 +772,6 @@ html[data-font-scale="xlarge"] .loginCard button {
 }
 
 @media (max-width: 720px) {
-  .topbarSearchLabel,
   .topbarSearchKbd {
     display: none;
   }
@@ -775,6 +867,155 @@ html[data-theme="dark"] .staffActionIconBtn--success {
   color: #6ce9a6;
 }
 
+html[data-theme="dark"] .staffEmployeesTable thead th {
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .staffEmployeesTable tbody td,
+html[data-theme="dark"] .staffEmployeesTable .col-actions {
+  background: var(--color-bg-surface);
+}
+
+html[data-theme="dark"] .staffEmployeesTable thead .col-actions {
+  background: var(--color-table-head);
+}
+
+html[data-theme="dark"] .staffEmployeesTable tbody tr:hover td,
+html[data-theme="dark"] .staffEmployeesTable tbody tr:hover .col-actions {
+  background: var(--color-bg-muted);
+}
+
+html[data-theme="dark"] .staffEmployeesTable .col-actions {
+  box-shadow: none;
+}
+
+html[data-theme="dark"][dir="ltr"] .staffEmployeesTable .col-actions {
+  box-shadow: -1px 0 0 var(--color-border);
+}
+
+html[data-theme="dark"][dir="rtl"] .staffEmployeesTable .col-actions {
+  box-shadow: 1px 0 0 var(--color-border);
+}
+
+html[data-theme="dark"] .staffActionIconBtn:hover:not(:disabled) {
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.28);
+}
+
+html[data-theme="dark"] .collapsibleSummaryHead:hover {
+  background: var(--color-bg-muted);
+}
+
+html[data-theme="dark"] .collapsibleSummaryMeta {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .collapsibleSummaryChevron {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .workScheduleEmployeeSection {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+}
+
+html[data-theme="dark"] .workScheduleEmployeeSection > label:not(.workScheduleCustomRow),
+html[data-theme="dark"] .workScheduleCustomRow,
+html[data-theme="dark"] .workScheduleBreaksHeader {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .workScheduleHint,
+html[data-theme="dark"] .workScheduleEmpty,
+html[data-theme="dark"] .workScheduleTimes label,
+html[data-theme="dark"] .workScheduleBreakRow label {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .workShiftsTab {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .workShiftsTab.active {
+  background: rgba(18, 183, 106, 0.18);
+  border-color: #3dcea0;
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .workShiftDefaultPick,
+html[data-theme="dark"] .workShiftLateGraceField {
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .hrPayrollSettingsSection h4 {
+  color: var(--color-text);
+}
+
+/* ===== Dark mode — Reports page ===== */
+html[data-theme="dark"] .reportsPage .cardHeader h2,
+html[data-theme="dark"] .reportBox h3,
+html[data-theme="dark"] .chartCard .cardHeader h2,
+html[data-theme="dark"] .cashierShiftsReportCard h3 {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .reportHeroCard,
+html[data-theme="dark"] .reportKpiCard,
+html[data-theme="dark"] .reportBox {
+  background: var(--color-bg-surface);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .reportsPeriodBadge {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+}
+
+html[data-theme="dark"] .reportHeroCard.tone-net-negative .reportHeroValue {
+  color: #fda29b;
+}
+
+html[data-theme="dark"] .rangeChip {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .rangeChip:hover {
+  background: #05693b;
+  border-color: #05693b;
+  color: #fff;
+}
+
+html[data-theme="dark"] .secondaryBtn {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .secondaryBtn:hover:not(:disabled) {
+  background: var(--color-bg-muted);
+}
+
+html[data-theme="dark"] .barValue {
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .textDanger {
+  color: #fda29b;
+}
+
+html[data-theme="dark"] .textSuccess {
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .branchReportTotalsRow td {
+  background: var(--color-bg-input);
+}
+
 /* ===== Dark mode — readable inputs, labels, placeholders ===== */
 html[data-theme="dark"] .app input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]),
 html[data-theme="dark"] .app select,
@@ -810,6 +1051,7 @@ html[data-theme="dark"] .inventoryFilterRangeLabel,
 html[data-theme="dark"] .saasField span,
 html[data-theme="dark"] .settingsField label,
 html[data-theme="dark"] .medicineEntryField label,
+html[data-theme="dark"] .purchaseMetaField label,
 html[data-theme="dark"] .posBarcodeLabel,
 html[data-theme="dark"] .formGrid label {
   color: var(--color-text-secondary) !important;
@@ -853,19 +1095,109 @@ html[data-theme="dark"] .posBarcodeInput::placeholder {
 
 html[data-theme="dark"] .medicineFormModal,
 html[data-theme="dark"] .invoiceModal,
-html[data-theme="dark"] .purchaseModal {
+html[data-theme="dark"] .purchaseModal,
+html[data-theme="dark"] .modalCard {
   background: var(--color-bg-surface);
   color: var(--color-text);
 }
 
-html[data-theme="dark"] .loginGoogleBtn {
-  background: var(--color-bg-input) !important;
-  border-color: var(--color-border-strong) !important;
-  color: var(--color-text) !important;
+html[data-theme="dark"] .medicineForm,
+html[data-theme="dark"] .purchaseModalForm .medicineForm {
+  background: var(--color-bg-muted);
+  border-color: var(--color-border);
 }
 
-html[data-theme="dark"] .loginGoogleBtn:hover:not(:disabled) {
+html[data-theme="dark"] .purchaseMetaField input,
+html[data-theme="dark"] .purchaseMetaField select {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .purchaseNumberReadonly {
   background: var(--color-bg-muted) !important;
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .purchaseItemsSection {
+  border-top-color: var(--color-border);
+}
+
+html[data-theme="dark"] .purchaseItemsSection h3,
+html[data-theme="dark"] .purchaseDraftTableWrap h3,
+html[data-theme="dark"] .modalHeader h2,
+html[data-theme="dark"] .medicineForm h3 {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .modalHeader p,
+html[data-theme="dark"] .purchaseScannerHint {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .medicineLookupSuggestions {
+  background: var(--color-bg-surface);
+  border-color: var(--color-border-strong);
+  box-shadow: 0 12px 24px var(--color-shadow);
+}
+
+html[data-theme="dark"] .medicineLookupSuggestion strong {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .medicineLookupSuggestion span {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .medicineLookupSuggestion:hover,
+html[data-theme="dark"] .medicineLookupSuggestion:focus-visible {
+  background: var(--color-bg-muted);
+}
+
+html[data-theme="dark"] .medicineLookupStatus.isExisting {
+  background: rgba(18, 183, 106, 0.12);
+  border-color: rgba(61, 206, 160, 0.35);
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .medicineLookupStatus.isNew {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(96, 165, 250, 0.35);
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .returnsNewCard {
+  background: var(--color-bg-muted);
+  border-color: var(--color-border-strong);
+}
+
+html[data-theme="dark"] .modalCard h2,
+html[data-theme="dark"] .stockCountHeader h2 {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .modalCard .mutedText {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .reorderSuggestionsTable td strong {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .stockCountQtyInput:focus,
+html[data-theme="dark"] .stockCountNotes:focus,
+html[data-theme="dark"] .reorderBranchPicker select:focus {
+  border-color: #3dcea0;
+  box-shadow: 0 0 0 3px var(--color-input-focus-ring);
+  outline: none;
+}
+
+html[data-theme="dark"] .stockCountMessage {
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .stockCountMessage.error {
+  color: #fda29b;
 }
 
 html[data-theme="dark"] td,
@@ -876,4 +1208,839 @@ html[data-theme="dark"] .medicineNameCellIngredient {
 
 html[data-theme="dark"] .medicineNameCellAr {
   color: var(--color-text);
+}
+
+/* ===== SaaS / Super Admin dark mode ===== */
+html[data-theme="dark"] .saasPage .saasTable td,
+html[data-theme="dark"] .saasPage .saasRequestsTable td,
+html[data-theme="dark"] .saasManageBranchesTable tbody td,
+html[data-theme="dark"] .saasManageUnifiedRolesTable td,
+html[data-theme="dark"] .saasRolesReferenceTable td,
+html[data-theme="dark"] .saasRolesCompactTable td,
+html[data-theme="dark"] .saasManageUsersTable td,
+html[data-theme="dark"] .saasRoleUsageTable td {
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .saasOrgPharmacyName {
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .saasOrgBranchName {
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .saasOrgMainSiteBadge {
+  background: rgba(18, 183, 106, 0.15);
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .saasOrgRoleBadge.primary {
+  background: rgba(18, 183, 106, 0.15);
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .saasOrgRoleBadge.branch {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .saasRowSelected {
+  background: rgba(18, 183, 106, 0.12);
+}
+
+html[data-theme="dark"] .saasManageBranchChip.current {
+  background: rgba(18, 183, 106, 0.15);
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .saasManageBranchRowCurrent {
+  background: rgba(18, 183, 106, 0.12);
+}
+
+html[data-theme="dark"] .saasTabBadge {
+  background: var(--color-bg-input);
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .saasTabBadge.active {
+  background: rgba(247, 144, 9, 0.2);
+  color: #fdb022;
+}
+
+html[data-theme="dark"] .settingsTabBtn.active .saasTabBadge.active {
+  background: #007b49;
+  color: #fff;
+}
+
+html[data-theme="dark"] .settingsTabBtn {
+  background: var(--color-bg-muted);
+  border-color: var(--color-border-strong);
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .settingsTabBtn:hover {
+  border-color: #3dcea0;
+  color: #6ce9a6;
+  background: var(--color-bg-input);
+}
+
+html[data-theme="dark"] .settingsTabBtn.active {
+  background: rgba(18, 183, 106, 0.18);
+  border-color: #3dcea0;
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .saasRolesReferenceBlockHead h4,
+html[data-theme="dark"] .saasProgramRolesTableHead {
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .pageHint,
+html[data-theme="dark"] .saasRequestsPanel .pageHint {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .saasRequestsPanel {
+  background: var(--color-bg-surface);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .saasRequestsCount.active {
+  background: rgba(247, 144, 9, 0.2);
+  color: #fdb022;
+}
+
+html[data-theme="dark"] .saasCustomerRequestFilterBtn {
+  background: var(--color-bg-muted);
+  border-color: var(--color-border-strong);
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .saasCustomerRequestFilterBtn:hover {
+  border-color: #3dcea0;
+  color: #6ce9a6;
+  background: var(--color-bg-input);
+}
+
+html[data-theme="dark"] .saasCustomerRequestFilterBtn.active {
+  background: rgba(18, 183, 106, 0.18);
+  border-color: #3dcea0;
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .saasRequestsPanel .empty {
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .saasManageRolesCard,
+html[data-theme="dark"] .saasManageUnifiedRolesCard,
+html[data-theme="dark"] .saasManageLoginAccountsCard {
+  background: var(--color-bg-surface);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .saasManageRolesCard h3,
+html[data-theme="dark"] .saasManageUnifiedRolesCard h3,
+html[data-theme="dark"] .saasManageLoginAccountsCard h3,
+html[data-theme="dark"] .saasPageHeader h2 {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .saasManageRoleTag {
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .saasManageRoleTag.inactive {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .saasUnifiedRoleNameCell strong,
+html[data-theme="dark"] .saasManageBranchNameCell strong {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .saasNumberTag,
+html[data-theme="dark"] .purchaseNumberTag {
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .saasNumberReadonly,
+html[data-theme="dark"] .purchaseNumberReadonly {
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .staffLoginModal {
+  background: var(--color-bg-surface);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+}
+
+html[data-theme="dark"] .staffLoginToolbar,
+html[data-theme="dark"] .staffLoginTableWrap .catalogEmptyCell {
+  background: var(--color-bg-muted);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .staffLoginTableWrap {
+  background: var(--color-bg-surface);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .staffLoginTableWrap .catalogAccountsTable thead th {
+  background: var(--color-table-head);
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .staffLoginTableWrap .catalogAccountsTable tbody td {
+  background: var(--color-bg-surface);
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .staffLoginTableWrap .catalogAccountsTable tbody tr:nth-child(even) td {
+  background: var(--color-bg-muted);
+}
+
+html[data-theme="dark"] .staffLoginTableWrap .catalogAccountsTable tbody tr:hover td {
+  background: rgba(5, 105, 59, 0.18);
+}
+
+html[data-theme="dark"] .staffLoginModal .saasManageRoleSummaryChip strong {
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .staffAccessModal .catalogLinkToolbarHint,
+html[data-theme="dark"] .staffAccessModal .staffAccessModalBranchField {
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .staffAccessModal .staffAccessModalBranchField select {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .staffAccessModal .staffAccessModalControls,
+html[data-theme="dark"] .staffAccessModal .staffAccessToolbar,
+html[data-theme="dark"] .staffAccessModal .staffAccessTableWrap,
+html[data-theme="dark"] .staffAccessModal .staffAccessTableWrap .catalogEmptyCell {
+  background: var(--color-bg-muted);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .staffAccessModal .staffAccessTableWrap {
+  background: var(--color-bg-surface);
+}
+
+html[data-theme="dark"] .staffAccessModal .staffAccessTableWrap .catalogAccountsTable thead th {
+  background: var(--color-table-head);
+  color: var(--color-text-secondary);
+  border-bottom-color: var(--color-border);
+}
+
+html[data-theme="dark"] .staffAccessModal .staffAccessTableWrap .catalogAccountsTable tbody td {
+  background: var(--color-bg-surface);
+  color: var(--color-text-secondary);
+  border-bottom-color: var(--color-border);
+}
+
+html[data-theme="dark"] .staffAccessModal .staffAccessTableWrap .catalogAccountsTable tbody tr:nth-child(even) td {
+  background: var(--color-bg-muted);
+}
+
+html[data-theme="dark"] .staffAccessModal .staffAccessTableWrap .catalogAccountsTable tbody tr:hover td {
+  background: rgba(5, 105, 59, 0.18);
+}
+
+html[data-theme="dark"] .staffAccessModal .saasManageRoleSummaryChip strong {
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .staffAccessLegacyCatalog h3 {
+  color: var(--color-text);
+}
+
+/* SaaS manage pharmacy modal */
+html[data-theme="dark"] .invoiceModal.saasModal .saasManageBranchesTableWrap {
+  background: var(--color-bg-surface);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .invoiceModal.saasModal .saasManageBranchesTable tbody td,
+html[data-theme="dark"] .invoiceModal.saasModal .saasManageUnifiedRolesTable tbody td {
+  color: var(--color-text-secondary);
+  background: var(--color-bg-surface);
+}
+
+html[data-theme="dark"] .invoiceModal.saasModal .saasManageBranchesTable tbody tr:hover td,
+html[data-theme="dark"] .invoiceModal.saasModal .saasManageUnifiedRolesTable tbody tr:hover td {
+  background: var(--color-bg-muted);
+}
+
+html[data-theme="dark"] .invoiceModal.saasModal .saasManageUnifiedRolesTable tbody td strong,
+html[data-theme="dark"] .invoiceModal.saasModal .saasUnifiedRoleNameCell strong {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .invoiceModal.saasModal .saasSub {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .invoiceModal.saasModal .modalHeader p,
+html[data-theme="dark"] .invoiceModal.saasModal .modalHeader code {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .invoiceModal.saasModal .saasManageRoleName {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .invoiceModal.saasModal .saasManageBranchesTable .saasManageRoleTag:not(.inactive) {
+  background: rgba(18, 183, 106, 0.15);
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .invoiceModal.saasModal .saasManageRoleTag:not(.inactive) {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .invoiceModal.saasModal .saasManageRoleTag.inactive {
+  background: rgba(180, 35, 24, 0.15);
+  color: #fda29b;
+}
+
+html[data-theme="dark"] .invoiceModal.saasModal .saasManageRoleSummaryChip strong {
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .invoiceModal.saasModal .saasUnifiedOrphanUsers {
+  background: linear-gradient(
+    180deg,
+    rgba(247, 144, 9, 0.1) 0%,
+    var(--color-bg-muted) 52px
+  );
+}
+
+html[data-theme="dark"] .invoiceModal.saasModal .saasUnifiedOrphanTable tbody tr.saasOrphanUserRow td {
+  background: rgba(247, 144, 9, 0.06);
+}
+
+html[data-theme="dark"] .invoiceModal.saasModal .saasManageRoleItem {
+  background: var(--color-bg-surface);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .invoiceModal.saasModal .saasManageLimitsHint,
+html[data-theme="dark"] .invoiceModal.saasModal .supabaseWorkflowDetails {
+  color: var(--color-text-muted);
+}
+
+/* ===== Dark mode — Settings page ===== */
+html[data-theme="dark"] .settingsSectionTitle,
+html[data-theme="dark"] .settingsLogoBlock,
+html[data-theme="dark"] .devCredit-inline {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+}
+
+html[data-theme="dark"] .settingsSectionTitle h3,
+html[data-theme="dark"] .settingsLogoBlock label,
+html[data-theme="dark"] .settingsPage .cardHeader h2 {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .settingsSectionTitle p,
+html[data-theme="dark"] .settingsFieldHint {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .settingsLogoPreview {
+  background: var(--color-bg-muted);
+  border-color: var(--color-border-strong);
+}
+
+html[data-theme="dark"] .settingsLogoPlaceholder {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .displayPrefsOption.active {
+  background: rgba(18, 183, 106, 0.16);
+  border-color: #3dcea0;
+  box-shadow: inset 0 0 0 1px rgba(61, 206, 160, 0.35);
+}
+
+html[data-theme="dark"] .displayPrefsOption:hover {
+  border-color: #3dcea0;
+}
+
+html[data-theme="dark"] .subscriptionHero {
+  background: linear-gradient(135deg, var(--color-bg-muted) 0%, var(--color-bg-surface) 72%);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .subscriptionHero.active {
+  background: linear-gradient(135deg, rgba(18, 183, 106, 0.14) 0%, var(--color-bg-surface) 72%);
+  border-color: rgba(61, 206, 160, 0.35);
+}
+
+html[data-theme="dark"] .subscriptionHero.warning {
+  background: linear-gradient(135deg, rgba(247, 144, 9, 0.12) 0%, var(--color-bg-surface) 72%);
+  border-color: rgba(253, 176, 34, 0.35);
+}
+
+html[data-theme="dark"] .subscriptionHero.expired {
+  background: linear-gradient(135deg, rgba(240, 68, 56, 0.12) 0%, var(--color-bg-surface) 72%);
+  border-color: rgba(253, 162, 155, 0.35);
+}
+
+html[data-theme="dark"] .subscriptionHeroMain h3,
+html[data-theme="dark"] .subscriptionPanelHeader h3,
+html[data-theme="dark"] .subscriptionTierUpgradeHeader h3,
+html[data-theme="dark"] .subscriptionRenewCard strong,
+html[data-theme="dark"] .subscriptionStatCard strong,
+html[data-theme="dark"] .subscriptionStatusCard strong,
+html[data-theme="dark"] .subscriptionProgressHeader strong,
+html[data-theme="dark"] .subscriptionHeroDays strong {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .subscriptionHeroMain p,
+html[data-theme="dark"] .subscriptionPanelHeader p,
+html[data-theme="dark"] .subscriptionStatCard span,
+html[data-theme="dark"] .subscriptionStatusCard span,
+html[data-theme="dark"] .subscriptionProgressHeader span,
+html[data-theme="dark"] .subscriptionRenewCard small,
+html[data-theme="dark"] .subscriptionHeroDays span,
+html[data-theme="dark"] .subscriptionHeroDays small,
+html[data-theme="dark"] .subscriptionTierFeatureList {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .subscriptionHeroDays {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+}
+
+html[data-theme="dark"] .subscriptionStatCard,
+html[data-theme="dark"] .subscriptionProgressCard,
+html[data-theme="dark"] .subscriptionRenewPanel,
+html[data-theme="dark"] .subscriptionHistoryCard,
+html[data-theme="dark"] .subscriptionRenewCard {
+  background: var(--color-bg-surface);
+  border-color: var(--color-border);
+  box-shadow: 0 4px 14px var(--color-shadow);
+}
+
+html[data-theme="dark"] .subscriptionStatCard.active,
+html[data-theme="dark"] .subscriptionStatusCard.active {
+  background: rgba(18, 183, 106, 0.1);
+  border-color: rgba(61, 206, 160, 0.35);
+}
+
+html[data-theme="dark"] .subscriptionStatCard.warning,
+html[data-theme="dark"] .subscriptionStatusCard.warning {
+  background: rgba(247, 144, 9, 0.1);
+  border-color: rgba(253, 176, 34, 0.35);
+}
+
+html[data-theme="dark"] .subscriptionStatCard.expired,
+html[data-theme="dark"] .subscriptionStatusCard.expired {
+  background: rgba(240, 68, 56, 0.1);
+  border-color: rgba(253, 162, 155, 0.35);
+}
+
+html[data-theme="dark"] .subscriptionEditCard {
+  background: linear-gradient(180deg, rgba(18, 183, 106, 0.1) 0%, var(--color-bg-surface) 140px);
+  border-color: rgba(61, 206, 160, 0.35);
+}
+
+html[data-theme="dark"] .subscriptionTierUpgradeCard,
+html[data-theme="dark"] .tierUpgradeNotice {
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.1) 0%, var(--color-bg-surface) 120px);
+  border-color: rgba(147, 197, 253, 0.35);
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .subscriptionRenewCard.featured {
+  background: linear-gradient(180deg, rgba(18, 183, 106, 0.12) 0%, var(--color-bg-surface) 100%);
+  border-color: #3dcea0;
+}
+
+html[data-theme="dark"] .subscriptionRenewCard:hover {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+html[data-theme="dark"] .subscriptionProgressTrack {
+  background: var(--chart-bar-track);
+}
+
+html[data-theme="dark"] .subscriptionStatusCard {
+  background: var(--color-bg-surface);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .payrollSettingsPanel,
+html[data-theme="dark"] .hrPayrollSettingsSection {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .subscriptionEmptyState {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .subscriptionEmptyState span {
+  background: var(--color-bg-muted);
+}
+
+html[data-theme="dark"] .subscriptionUserBadge {
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .subscriptionEditHeader {
+  border-bottom-color: var(--color-border);
+}
+
+html[data-theme="dark"] .subscriptionEditHeader h3 {
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .subscriptionEditHeader p,
+html[data-theme="dark"] .subscriptionEditField > label {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .subscriptionEditHeaderIcon {
+  background: rgba(18, 183, 106, 0.16);
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .subscriptionPlanOption {
+  background: var(--color-bg-surface);
+  border-color: var(--color-border-strong);
+}
+
+html[data-theme="dark"] .subscriptionPlanOption:hover {
+  border-color: rgba(61, 206, 160, 0.45);
+  background: var(--color-bg-muted);
+}
+
+html[data-theme="dark"] .subscriptionPlanOption.selected {
+  border-color: #3dcea0;
+  background: rgba(18, 183, 106, 0.12);
+  box-shadow: 0 0 0 3px rgba(61, 206, 160, 0.12);
+}
+
+html[data-theme="dark"] .subscriptionPlanCheck {
+  border-color: var(--color-border-strong);
+  background: var(--color-bg-input);
+}
+
+html[data-theme="dark"] .subscriptionPlanOption strong {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .subscriptionPlanOption small {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .settingsCheckboxLabel,
+html[data-theme="dark"] .settingsCheckboxLabel span {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .subscriptionPaymentHeader h3 {
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .subscriptionPaymentHeader p,
+html[data-theme="dark"] .subscriptionPaymentSteps {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .subscriptionPaymentMeta > div {
+  background: rgba(18, 183, 106, 0.1);
+  border-color: rgba(61, 206, 160, 0.3);
+}
+
+html[data-theme="dark"] .subscriptionPaymentMeta span,
+html[data-theme="dark"] .subscriptionPaymentAccount span {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .subscriptionPaymentMeta strong {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .subscriptionPaymentAccount > div {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+}
+
+/* ===== Dark mode — Branches page ===== */
+html[data-theme="dark"] .hintText {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .branchActiveRow td {
+  background: rgba(18, 183, 106, 0.12);
+}
+
+html[data-theme="dark"] .branchActiveRow td strong {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .branchesPage .tableWrap tbody td {
+  color: var(--color-text-secondary);
+  background: var(--color-bg-surface);
+}
+
+html[data-theme="dark"] .branchesPage .tableWrap tbody tr:hover td {
+  background: var(--color-bg-muted);
+}
+
+html[data-theme="dark"] .branchActiveRow:hover td {
+  background: rgba(18, 183, 106, 0.16);
+}
+
+html[data-theme="dark"] .editBtn {
+  background: rgba(251, 146, 60, 0.14);
+  color: #fdba74;
+}
+
+html[data-theme="dark"] .deleteSmallBtn {
+  background: rgba(240, 68, 56, 0.14);
+  color: #fda29b;
+}
+
+html[data-theme="dark"] .printBtn {
+  background: rgba(46, 144, 250, 0.14);
+  color: #84caff;
+}
+
+html[data-theme="dark"] .printBtn:hover {
+  background: rgba(46, 144, 250, 0.22);
+}
+
+html[data-theme="dark"] .ghostBtn {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .ghostBtn:hover {
+  background: var(--color-bg-muted);
+}
+
+html[data-theme="dark"] .modalOverlay .userFormPanel {
+  background: var(--color-bg-surface);
+  border-color: var(--color-border-strong);
+}
+
+html[data-theme="dark"] .userFormPanel h3,
+html[data-theme="dark"] .modalOverlay .userFormPanel .modalHeader h2 {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .userFormGrid label,
+html[data-theme="dark"] .branchGeoHint,
+html[data-theme="dark"] .branchCopyHint {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .userFormModeTab {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .userFormModeTab.active {
+  background: #05693b;
+  color: #fff;
+  border-color: #05693b;
+}
+
+html[data-theme="dark"] .branchSwitch {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+}
+
+html[data-theme="dark"] .branchSwitch select {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .branchAvailBtn {
+  background: rgba(46, 144, 250, 0.14);
+  border-color: rgba(132, 202, 255, 0.35);
+  color: #84caff;
+}
+
+html[data-theme="dark"] .branchAvailBtn:hover {
+  background: rgba(46, 144, 250, 0.22);
+}
+
+html[data-theme="dark"] .branchTransfersTitle,
+html[data-theme="dark"] .branchesPage .cardHeader h2 {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .branchScopeBanner {
+  background: rgba(46, 144, 250, 0.12);
+  border-color: rgba(132, 202, 255, 0.3);
+  color: #84caff;
+}
+
+/* ===== Dark mode — HR attendance ===== */
+html[data-theme="dark"] .attendanceScannerPanel {
+  background: var(--color-bg-surface);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .attendanceScannerHeader h3 {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .hrAttendanceHoursStat strong {
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .hrAttendanceHoursStatOvertime strong,
+html[data-theme="dark"] .hrAttendanceHoursStatLate strong {
+  color: #fdba74;
+}
+
+html[data-theme="dark"] .hrAttendanceHoursStatPermission strong {
+  color: #84caff;
+}
+
+html[data-theme="dark"] .hrAttendanceHoursStatDeduction,
+html[data-theme="dark"] .hrAttendanceHoursStatDeduction strong {
+  color: #fda29b;
+}
+
+html[data-theme="dark"] .hrAttendanceStatusEmpty {
+  background: var(--color-bg-input);
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .hrAttendanceStatus-present {
+  background: rgba(18, 183, 106, 0.18);
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .hrAttendanceStatus-late {
+  background: rgba(247, 144, 9, 0.18);
+  color: #fdba74;
+}
+
+html[data-theme="dark"] .hrAttendanceStatus-absent {
+  background: rgba(240, 68, 56, 0.18);
+  color: #fda29b;
+}
+
+html[data-theme="dark"] .hrAttendanceStatus-leave {
+  background: rgba(46, 144, 250, 0.18);
+  color: #84caff;
+}
+
+html[data-theme="dark"] .hrAttendanceStatus-sick {
+  background: rgba(105, 56, 239, 0.18);
+  color: #c3b5fd;
+}
+
+html[data-theme="dark"] .hrAttendanceFlagLate {
+  background: rgba(247, 144, 9, 0.14);
+  color: #fdba74;
+  border-color: rgba(253, 186, 116, 0.35);
+}
+
+html[data-theme="dark"] .hrAttendanceFlagPermission {
+  background: rgba(46, 144, 250, 0.14);
+  color: #84caff;
+  border-color: rgba(132, 202, 255, 0.35);
+}
+
+html[data-theme="dark"] .hrAttendanceFlagDeduction {
+  background: rgba(240, 68, 56, 0.14);
+  color: #fda29b;
+  border-color: rgba(253, 162, 155, 0.35);
+}
+
+html[data-theme="dark"] .hrAttendanceRowToday td {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+html[data-theme="dark"] .hrAttendanceRowToday:hover td {
+  background: rgba(245, 158, 11, 0.16) !important;
+}
+
+html[data-theme="dark"] .hrAttendanceRowToday .col-date {
+  background: rgba(245, 158, 11, 0.1);
+  box-shadow: inset 3px 0 0 #f59e0b;
+}
+
+html[data-theme="dark"] [dir="rtl"] .hrAttendanceRowToday .col-date {
+  box-shadow: inset -3px 0 0 #f59e0b;
+}
+
+html[data-theme="dark"] .hrAttendanceRowToday:hover .col-date {
+  background: rgba(245, 158, 11, 0.16);
+}
+
+html[data-theme="dark"] .hrAttendanceRowToday .col-actions {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+html[data-theme="dark"] .hrAttendanceRowToday:hover .col-actions {
+  background: rgba(245, 158, 11, 0.16);
+}
+
+html[data-theme="dark"] .hrShiftBadgePlanned {
+  background: var(--color-bg-input);
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .hrShiftBadgeActual {
+  background: rgba(46, 144, 250, 0.18);
+  color: #84caff;
+}
+
+html[data-theme="dark"] .hrActualShiftSelect {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .hrAttendanceLogInput {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .hrAttendanceLogSummary {
+  background: rgba(46, 144, 250, 0.12);
+  border-color: rgba(132, 202, 255, 0.28);
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .hrOvernightHint {
+  color: #84caff;
+}
+
+html[data-theme="dark"] .attendanceMethodBadge.secure {
+  background: rgba(18, 183, 106, 0.18);
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .attendanceMethodBadge.manual {
+  background: var(--color-bg-input);
+  color: var(--color-text-muted);
+  border-color: var(--color-border-strong);
 }

@@ -1,13 +1,3 @@
-export type EgyptianDrugRecord = {
-  commercial_name_en?: string;
-  commercial_name_ar?: string;
-  scientific_name?: string;
-  manufacturer?: string;
-  drug_class?: string;
-  route?: string;
-  price_egp?: number | null;
-};
-
 export type MedicineCatalogImportRow = {
   name_ar: string;
   name_en: string;
@@ -19,11 +9,8 @@ export type MedicineCatalogImportRow = {
   expiry: string;
 };
 
-export const EGYPTIAN_DRUGS_JSON_URL =
-  "https://raw.githubusercontent.com/karem505/egyptian-drug-database/main/data/egyptian-drugs.json";
-
-export const EGYPTIAN_DRUGS_CSV_URL =
-  "https://raw.githubusercontent.com/karem505/egyptian-drug-database/main/data/egyptian-drugs.csv";
+/** App-ready CSV shipped in supabase/egyptian-medicine-catalog.csv */
+export const MEDICINE_CATALOG_CSV_FILENAME = "egyptian-medicine-catalog.csv";
 
 export const MEDICINE_CATALOG_IMPORT_BATCH_SIZE = 250;
 
@@ -65,10 +52,64 @@ export function buildCatalogBarcode(seed: string, index: number) {
   return `EG${String(index + 1).padStart(6, "0")}${normalized ? normalized.slice(0, 6) : "RX"}`;
 }
 
-export function mapEgyptianDrugToCatalogRow(
-  record: EgyptianDrugRecord,
-  index: number,
-): MedicineCatalogImportRow | null {
+function readCsvRow(headers: string[], cells: string[]) {
+  const record: Record<string, string> = {};
+  headers.forEach((header, cellIndex) => {
+    record[header] = cells[cellIndex] ?? "";
+  });
+  return record;
+}
+
+/** Columns: name_ar, name_en, active_ingredient, barcode, qty, price, buy_price, expiry */
+export function parseAppCatalogCsv(text: string): MedicineCatalogImportRow[] {
+  const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).filter(Boolean);
+  if (lines.length < 2) return [];
+
+  const headers = parseCsvLine(lines[0]).map((header) => header.toLowerCase());
+  const rows: MedicineCatalogImportRow[] = [];
+
+  for (let lineIndex = 1; lineIndex < lines.length; lineIndex += 1) {
+    const cells = parseCsvLine(lines[lineIndex]);
+    if (cells.length === 0) continue;
+
+    const record = readCsvRow(headers, cells);
+    const nameAr = cleanText(record.name_ar);
+    const nameEn = cleanText(record.name_en || nameAr);
+    if (!nameAr && !nameEn) continue;
+
+    const price = Math.max(0, Number(record.price ?? 0) || 0);
+    const buyRaw = record.buy_price;
+    const buyPrice =
+      buyRaw != null && buyRaw !== ""
+        ? Math.max(0, Number(buyRaw) || 0)
+        : price > 0
+          ? Math.round(price * 0.85 * 100) / 100
+          : undefined;
+
+    rows.push({
+      name_ar: nameAr.slice(0, 500),
+      name_en: nameEn.slice(0, 500),
+      active_ingredient: cleanText(record.active_ingredient) || undefined,
+      barcode: cleanText(record.barcode) || buildCatalogBarcode(nameEn || nameAr, lineIndex - 1),
+      qty: Math.max(0, Math.floor(Number(record.qty ?? 0) || 0)),
+      price,
+      buy_price: buyPrice,
+      expiry: cleanText(record.expiry) || CATALOG_PLACEHOLDER_EXPIRY,
+    });
+  }
+
+  return rows;
+}
+
+type LegacyEgyptianDrugRecord = {
+  commercial_name_en?: string;
+  commercial_name_ar?: string;
+  scientific_name?: string;
+  manufacturer?: string;
+  price_egp?: number | null;
+};
+
+function mapLegacyEgyptianDrug(record: LegacyEgyptianDrugRecord, index: number): MedicineCatalogImportRow | null {
   const commercialEn = cleanText(record.commercial_name_en);
   const commercialAr = cleanText(record.commercial_name_ar);
   const scientific = cleanText(record.scientific_name);
@@ -98,25 +139,32 @@ export function mapEgyptianDrugToCatalogRow(
   };
 }
 
-export function mapEgyptianDrugRecords(records: EgyptianDrugRecord[]): MedicineCatalogImportRow[] {
-  const rows: MedicineCatalogImportRow[] = [];
-  records.forEach((record, index) => {
-    const mapped = mapEgyptianDrugToCatalogRow(record, index);
-    if (mapped) rows.push(mapped);
-  });
-  return rows;
-}
+function parseLegacyEgyptianDrugCsv(text: string): MedicineCatalogImportRow[] {
+  const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).filter(Boolean);
+  if (lines.length < 2) return [];
 
-export async function fetchEgyptianDrugCatalogRows(): Promise<MedicineCatalogImportRow[]> {
-  const response = await fetch(EGYPTIAN_DRUGS_JSON_URL);
-  if (!response.ok) {
-    throw new Error(`fetch_failed_${response.status}`);
+  const headers = parseCsvLine(lines[0]).map((header) => header.toLowerCase());
+  const rows: MedicineCatalogImportRow[] = [];
+
+  for (let lineIndex = 1; lineIndex < lines.length; lineIndex += 1) {
+    const cells = parseCsvLine(lines[lineIndex]);
+    if (cells.length === 0) continue;
+
+    const record = readCsvRow(headers, cells);
+    const mapped = mapLegacyEgyptianDrug(
+      {
+        commercial_name_en: record.commercial_name_en,
+        commercial_name_ar: record.commercial_name_ar,
+        scientific_name: record.scientific_name,
+        manufacturer: record.manufacturer,
+        price_egp: record.price_egp ? Number(record.price_egp) : null,
+      },
+      lineIndex - 1,
+    );
+    if (mapped) rows.push(mapped);
   }
-  const payload = (await response.json()) as EgyptianDrugRecord[];
-  if (!Array.isArray(payload)) {
-    throw new Error("invalid_json");
-  }
-  return mapEgyptianDrugRecords(payload);
+
+  return rows;
 }
 
 export function parseMedicineCatalogJson(text: string): MedicineCatalogImportRow[] {
@@ -131,7 +179,7 @@ export function parseMedicineCatalogJson(text: string): MedicineCatalogImportRow
     const record = item as Record<string, unknown>;
 
     if ("commercial_name_en" in record || "commercial_name_ar" in record) {
-      const mapped = mapEgyptianDrugToCatalogRow(record as EgyptianDrugRecord, index);
+      const mapped = mapLegacyEgyptianDrug(record as LegacyEgyptianDrugRecord, index);
       if (mapped) rows.push(mapped);
       return;
     }
@@ -144,6 +192,7 @@ export function parseMedicineCatalogJson(text: string): MedicineCatalogImportRow
     rows.push({
       name_ar: nameAr.slice(0, 500),
       name_en: nameEn.slice(0, 500),
+      active_ingredient: cleanText(record.active_ingredient || record.activeIngredient) || undefined,
       barcode: cleanText(record.barcode) || buildCatalogBarcode(nameEn || nameAr, index),
       qty: Math.max(0, Math.floor(Number(record.qty ?? 0) || 0)),
       price,
@@ -160,32 +209,20 @@ export function parseMedicineCatalogJson(text: string): MedicineCatalogImportRow
   return rows;
 }
 
-export function parseEgyptianDrugCsv(text: string): MedicineCatalogImportRow[] {
-  const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).filter(Boolean);
-  if (lines.length < 2) return [];
+export function parseMedicineCatalogFile(text: string, filename = ""): MedicineCatalogImportRow[] {
+  const trimmed = text.trimStart();
+  const lowerName = filename.toLowerCase();
 
-  const headers = parseCsvLine(lines[0]).map((header) => header.toLowerCase());
-  const records: EgyptianDrugRecord[] = [];
-
-  for (let lineIndex = 1; lineIndex < lines.length; lineIndex += 1) {
-    const cells = parseCsvLine(lines[lineIndex]);
-    if (cells.length === 0) continue;
-    const record: Record<string, string> = {};
-    headers.forEach((header, cellIndex) => {
-      record[header] = cells[cellIndex] ?? "";
-    });
-    records.push({
-      commercial_name_en: record.commercial_name_en,
-      commercial_name_ar: record.commercial_name_ar,
-      scientific_name: record.scientific_name,
-      manufacturer: record.manufacturer,
-      drug_class: record.drug_class,
-      route: record.route,
-      price_egp: record.price_egp ? Number(record.price_egp) : null,
-    });
+  if (lowerName.endsWith(".json") || trimmed.startsWith("[") || trimmed.startsWith("{")) {
+    return parseMedicineCatalogJson(text);
   }
 
-  return mapEgyptianDrugRecords(records);
+  const firstLine = text.replace(/^\uFEFF/, "").split(/\r?\n/)[0]?.toLowerCase() ?? "";
+  if (firstLine.includes("commercial_name_en")) {
+    return parseLegacyEgyptianDrugCsv(text);
+  }
+
+  return parseAppCatalogCsv(text);
 }
 
 export function chunkCatalogRows<T>(rows: T[], size = MEDICINE_CATALOG_IMPORT_BATCH_SIZE): T[][] {

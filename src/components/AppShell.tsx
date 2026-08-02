@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
+import ErrorBoundary from "./ErrorBoundary";
 import AppNavBar from "./AppNavBar";
 import BranchScopeBanner from "./BranchScopeBanner";
 import PreviewDeployBanner from "./PreviewDeployBanner";
@@ -7,7 +9,10 @@ import Topbar, { type AlertItem } from "./Topbar";
 import type { AppTranslation } from "../i18n/appTranslations";
 import type { SubscriptionTier } from "../config/subscriptionTiers";
 import { canSwitchBranchesWithTier, type TierUpgradePrompt } from "../utils/subscriptionFeatures";
-import type { AppUser, Lang, Page, PharmacySettings } from "../types";
+import type { AppUser, CustomerDebt, Invoice, Lang, Medicine, Page, PharmacySettings } from "../types";
+import type { GlobalSearchResult } from "../utils/globalSearch";
+import { resolveBranchDisplay } from "../utils/branchDisplay";
+import * as pharmacyService from "../services/pharmacyService";
 
 export type AppShellProps = {
   isArabic: boolean;
@@ -32,7 +37,15 @@ export type AppShellProps = {
   isMenuOpen: boolean;
   onToggleLang: () => void;
   onToggleTheme: () => void;
-  onOpenGlobalSearch: () => void;
+  globalSearchAllowedPages: Page[];
+  medicines: Medicine[];
+  invoices: Invoice[];
+  customerDebts: CustomerDebt[];
+  canSearchMedicines: boolean;
+  canSearchInvoices: boolean;
+  canSearchCustomers: boolean;
+  onGlobalSearchSelect: (result: GlobalSearchResult) => void;
+  globalSearchFocusToken?: number;
   onLogout: () => void;
   onToggleMenu: () => void;
   onSwitchBranch: (branchId: string) => void;
@@ -69,7 +82,15 @@ export default function AppShell({
   isMenuOpen,
   onToggleLang,
   onToggleTheme,
-  onOpenGlobalSearch,
+  globalSearchAllowedPages,
+  medicines,
+  invoices,
+  customerDebts,
+  canSearchMedicines,
+  canSearchInvoices,
+  canSearchCustomers,
+  onGlobalSearchSelect,
+  globalSearchFocusToken,
   onLogout,
   onToggleMenu,
   onSwitchBranch,
@@ -82,6 +103,49 @@ export default function AppShell({
   children,
   modals,
 }: AppShellProps) {
+  const [userPhotoBase64, setUserPhotoBase64] = useState("");
+
+  useEffect(() => {
+    if (!appUser) {
+      setUserPhotoBase64("");
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const [employees, accounts, loginRequests, catalogAccounts] = await Promise.all([
+          pharmacyService.getEmployees(),
+          pharmacyService.getSystemUsers(appUser.pharmacyId),
+          pharmacyService.getPharmacyLoginAccountRequests(appUser.pharmacyId),
+          pharmacyService.getPharmacyLoginAccounts(appUser.pharmacyId),
+        ]);
+        if (cancelled) return;
+
+        const linked = pharmacyService.resolveLinkedEmployeeFromData(
+          appUser,
+          employees,
+          accounts,
+          loginRequests,
+          catalogAccounts,
+        );
+        setUserPhotoBase64(linked?.photoBase64?.trim() || "");
+      } catch {
+        if (!cancelled) setUserPhotoBase64("");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appUser?.uid, appUser?.employeeId, appUser?.pharmacyId]);
+
+  const activeBranchDisplay = resolveBranchDisplay(
+    appUser?.pharmacyId,
+    branches,
+    isArabic,
+  );
   const topbarSubtitle = isViewingAllBranches
     ? isArabic
       ? `عرض مجمّع لـ ${branchesCount} فروع — التسجيل على فرع: ${writeBranchLabel}`
@@ -108,7 +172,15 @@ export default function AppShell({
             onToggleLang={onToggleLang}
             resolvedTheme={resolvedTheme}
             onToggleTheme={onToggleTheme}
-            onOpenGlobalSearch={onOpenGlobalSearch}
+            globalSearchAllowedPages={globalSearchAllowedPages}
+            medicines={medicines}
+            invoices={invoices}
+            customerDebts={customerDebts}
+            canSearchMedicines={canSearchMedicines}
+            canSearchInvoices={canSearchInvoices}
+            canSearchCustomers={canSearchCustomers}
+            onGlobalSearchSelect={onGlobalSearchSelect}
+            globalSearchFocusToken={globalSearchFocusToken}
             onLogout={onLogout}
             onToggleMenu={onToggleMenu}
             isMenuOpen={isMenuOpen}
@@ -123,6 +195,7 @@ export default function AppShell({
             alertItems={alertItems}
             alertTotal={alertTotal}
             onAlertNavigate={onAlertNavigate}
+            userPhotoBase64={userPhotoBase64}
           />
 
           <AppNavBar
@@ -140,10 +213,12 @@ export default function AppShell({
         <BranchScopeBanner
           isArabic={isArabic}
           appUser={appUser}
-          branchLabel={resolveBranchLabel(appUser?.pharmacyId)}
+          branchDisplay={activeBranchDisplay}
         />
 
-        {children}
+        <ErrorBoundary isArabic={isArabic}>
+          {children}
+        </ErrorBoundary>
       </main>
 
       <Sidebar

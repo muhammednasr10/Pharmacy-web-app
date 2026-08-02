@@ -14,6 +14,7 @@ type MedicineFormProps = {
   disabled: boolean;
   showCancel?: boolean;
   hideTitle?: boolean;
+  showBuyPrice?: boolean;
   lookupResetKey?: string | number;
 };
 
@@ -29,6 +30,7 @@ export default function MedicineForm({
   disabled,
   showCancel = false,
   hideTitle = false,
+  showBuyPrice = true,
   isSaving = false,
   lookupResetKey,
 }: MedicineFormProps) {
@@ -44,6 +46,7 @@ export default function MedicineForm({
         disabled={disabled || isSaving}
         excludeMedicineId={editingMedicineId}
         resetKey={lookupResetKey ?? editingMedicineId ?? "new"}
+        showBuyPrice={showBuyPrice}
       />
       <div className="medicineFormActions">
         <button

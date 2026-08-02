@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Medicine, PharmacySettings } from "../types";
+import { MEDICINE_TABLE_PAGE_SIZE } from "../constants/medicineCatalog";
 import {
   buildReorderSuggestions,
   suggestionsToPurchaseDraft,
   type ReorderPurchaseDraft,
   type ReorderSuggestion,
 } from "../utils/reorderSuggestions";
+import BranchScopeSelect from "./BranchScopeSelect";
 
 type ReorderSuggestionsModalProps = {
   isArabic: boolean;
@@ -37,6 +39,7 @@ export default function ReorderSuggestionsModal({
   const [branchId, setBranchId] = useState(defaultBranchId);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [qtyOverrides, setQtyOverrides] = useState<Record<number, number>>({});
+  const [page, setPage] = useState(0);
 
   useEffect(() => {
     if (!open) return;
@@ -59,7 +62,19 @@ export default function ReorderSuggestionsModal({
   useEffect(() => {
     if (!open) return;
     setSelectedIds(new Set(suggestions.map((item) => item.medicineId)));
+    setPage(0);
   }, [open, suggestions]);
+
+  const totalPages = Math.max(1, Math.ceil(suggestions.length / MEDICINE_TABLE_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const pageSuggestions = useMemo(
+    () =>
+      suggestions.slice(
+        safePage * MEDICINE_TABLE_PAGE_SIZE,
+        (safePage + 1) * MEDICINE_TABLE_PAGE_SIZE,
+      ),
+    [suggestions, safePage],
+  );
 
   const selectedSuggestions = useMemo(() => {
     return suggestions
@@ -173,13 +188,12 @@ export default function ReorderSuggestionsModal({
         {allowBranchPicker && branches.length > 1 && (
           <label className="reorderBranchPicker">
             <span>{isArabic ? "الفرع" : "Branch"}</span>
-            <select value={branchId} onChange={(event) => setBranchId(event.target.value)}>
-              {branches.map((branch) => (
-                <option key={branch.id} value={branch.id}>
-                  {(isArabic ? branch.name : branch.name_en) || branch.name || branch.id}
-                </option>
-              ))}
-            </select>
+            <BranchScopeSelect
+              pharmacies={branches}
+              value={branchId}
+              onChange={setBranchId}
+              isArabic={isArabic}
+            />
           </label>
         )}
 
@@ -224,7 +238,7 @@ export default function ReorderSuggestionsModal({
                 </tr>
               </thead>
               <tbody>
-                {suggestions.map((item) => (
+                {pageSuggestions.map((item) => (
                   <ReorderSuggestionRow
                     key={item.medicineId}
                     item={item}
@@ -240,6 +254,45 @@ export default function ReorderSuggestionsModal({
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {suggestions.length > MEDICINE_TABLE_PAGE_SIZE && (
+          <div className="medicineTablePagination">
+            <span className="medicineTablePaginationMeta">
+              {isArabic
+                ? `${safePage * MEDICINE_TABLE_PAGE_SIZE + 1}–${Math.min(
+                    (safePage + 1) * MEDICINE_TABLE_PAGE_SIZE,
+                    suggestions.length,
+                  )} من ${suggestions.length.toLocaleString()}`
+                : `${safePage * MEDICINE_TABLE_PAGE_SIZE + 1}–${Math.min(
+                    (safePage + 1) * MEDICINE_TABLE_PAGE_SIZE,
+                    suggestions.length,
+                  )} of ${suggestions.length.toLocaleString()}`}
+            </span>
+            <div className="medicineTablePaginationActions">
+              <button
+                type="button"
+                className="editBtn"
+                disabled={safePage <= 0}
+                onClick={() => setPage((current) => Math.max(0, current - 1))}
+              >
+                {isArabic ? "السابق" : "Previous"}
+              </button>
+              <span className="medicineTablePaginationPage">
+                {isArabic
+                  ? `صفحة ${safePage + 1} / ${totalPages}`
+                  : `Page ${safePage + 1} / ${totalPages}`}
+              </span>
+              <button
+                type="button"
+                className="editBtn"
+                disabled={safePage >= totalPages - 1}
+                onClick={() => setPage((current) => Math.min(totalPages - 1, current + 1))}
+              >
+                {isArabic ? "التالي" : "Next"}
+              </button>
+            </div>
           </div>
         )}
 

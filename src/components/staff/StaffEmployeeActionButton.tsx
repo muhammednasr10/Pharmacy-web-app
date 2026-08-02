@@ -3,6 +3,8 @@ type StaffActionIcon =
   | "permissions"
   | "transfer"
   | "edit"
+  | "manage"
+  | "view"
   | "deactivate"
   | "activate"
   | "delete";
@@ -87,6 +89,32 @@ function ActionIcon({ icon }: { icon: StaffActionIcon }) {
             strokeWidth="1.75"
             strokeLinecap="round"
           />
+        </svg>
+      );
+    case "manage":
+      return (
+        <svg {...common}>
+          <path
+            d="M4 7h4M4 12h10M4 17h7"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+          />
+          <circle cx="11" cy="7" r="2" stroke="currentColor" strokeWidth="1.75" />
+          <circle cx="17" cy="12" r="2" stroke="currentColor" strokeWidth="1.75" />
+          <circle cx="14" cy="17" r="2" stroke="currentColor" strokeWidth="1.75" />
+        </svg>
+      );
+    case "view":
+      return (
+        <svg {...common}>
+          <path
+            d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12s-3.5 6.5-9.5 6.5S2.5 12 2.5 12Z"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinejoin="round"
+          />
+          <circle cx="12" cy="12" r="2.5" stroke="currentColor" strokeWidth="1.75" />
         </svg>
       );
     case "deactivate":

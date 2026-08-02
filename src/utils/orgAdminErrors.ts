@@ -34,8 +34,16 @@ export function formatBranchLimitError(message: string, isArabic: boolean): stri
       "This pharmacy reached its user limit. Contact support to upgrade the plan.",
     ],
     branch_limit_reached: [
-      "تم الوصول للحد الأقصى للفروع. زِد حد الفروع أو غيّر الباقة أولاً.",
-      "Branch limit reached. Increase the branch cap or upgrade the package first.",
+      "تم الوصول للحد الأقصى للمخازن. زِد حد المخازن أو غيّر الباقة أولاً.",
+      "Warehouse limit reached. Increase the warehouse cap or upgrade the package first.",
+    ],
+    tier_sync_below_current_branches: [
+      "لا يمكن خفض عدد المخازن — بعض العملاء يستخدمون مخازن أكثر من الحد الجديد",
+      "Cannot lower warehouse limit — some customers use more warehouses than the new cap",
+    ],
+    tier_sync_below_current_users: [
+      "لا يمكن خفض حد المستخدمين — بعض العملاء لديهم مستخدمون أكثر من الحد الجديد",
+      "Cannot lower user limit — some customers have more users than the new cap",
     ],
     anchor_not_found: [
       "تعذر تحديد مجموعة الصيدلية",
@@ -46,6 +54,20 @@ export function formatBranchLimitError(message: string, isArabic: boolean): stri
   if (entry) return isArabic ? entry[0] : entry[1];
   for (const [key, labels] of Object.entries(map)) {
     if (message.includes(key)) return isArabic ? labels[0] : labels[1];
+  }
+  if (message.startsWith("tier_sync_below_current_branches:")) {
+    const parts = message.split(":");
+    const used = parts[2] || "?";
+    return isArabic
+      ? `لا يمكن خفض عدد المخازن — أحد العملاء يستخدم ${used} مخازن`
+      : `Cannot lower warehouse limit — a customer already uses ${used} warehouses`;
+  }
+  if (message.startsWith("tier_sync_below_current_users:")) {
+    const parts = message.split(":");
+    const used = parts[2] || "?";
+    return isArabic
+      ? `لا يمكن خفض حد المستخدمين — أحد العملاء لديه ${used} مستخدمين نشطين`
+      : `Cannot lower user limit — a customer already has ${used} active users`;
   }
   return message;
 }

@@ -143,6 +143,9 @@ export type PharmacySettings = {
   defaultShiftId?: ShiftId;
   createdAt?: string;
   updatedAt?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  geofenceRadiusM?: number;
 };
 
 export type NewMedicineForm = Omit<Medicine, "id">;
@@ -202,6 +205,59 @@ export type CustomerDebt = {
   invoicesCount: number;
   lastInvoiceDate: string;
   invoices: Invoice[];
+};
+
+export type CustomerSegment = "regular" | "vip" | "chronic" | "wholesale";
+
+export type CrmCustomer = {
+  id: number;
+  pharmacyId?: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  birthDate?: string;
+  gender?: "" | "male" | "female";
+  segment: CustomerSegment;
+  tags: string[];
+  notes?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type CustomerActivityType = "note" | "call" | "follow_up" | "visit" | "whatsapp";
+
+export type CustomerActivityStatus = "open" | "done" | "cancelled";
+
+export type CustomerActivity = {
+  id: number;
+  pharmacyId?: string;
+  customerId?: number;
+  customerName?: string;
+  activityType: CustomerActivityType;
+  title?: string;
+  body?: string;
+  dueDate?: string;
+  status: CustomerActivityStatus;
+  createdByUid?: string;
+  createdByName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type CrmCustomerProfile = CrmCustomer & {
+  source: "registered" | "inferred";
+  totalPurchases: number;
+  purchaseCount: number;
+  lastPurchaseDate?: string;
+  averageOrderValue: number;
+  totalDebt: number;
+  paidAmount: number;
+  remainingDebt: number;
+  creditInvoicesCount: number;
+  paymentsCount: number;
+  openFollowUps: number;
 };
 
 export type PharmacyCost = {
@@ -463,7 +519,9 @@ export type RolePermissionFlags = Partial<
     | "view_org_activity_logs"
     | "export_backup"
     | "manage_org_branches"
-    | "review_branch_transfers",
+    | "review_branch_transfers"
+    | "view_inventory_cost_profit"
+    | "view_pos_cost_profit",
     boolean
   >
 >;
@@ -596,6 +654,12 @@ export type AttendanceRecord = {
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
+  checkInLat?: number | null;
+  checkInLng?: number | null;
+  checkOutLat?: number | null;
+  checkOutLng?: number | null;
+  checkInDistanceM?: number | null;
+  checkOutDistanceM?: number | null;
 };
 
 export type PayrollRecord = {

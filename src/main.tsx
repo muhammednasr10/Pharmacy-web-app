@@ -1,16 +1,17 @@
-import React from "react";
 import ReactDOM from "react-dom/client";
 import { registerSW } from "virtual:pwa-register";
 import App from "./App";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { supabaseConfigError } from "./services/supabaseClient";
 import { initDisplayPreferences } from "./utils/displayPreferences";
+import { initErrorReporting } from "./utils/errorReporting";
 import "./styles.css";
 import "./theme.css";
 
 initDisplayPreferences();
+initErrorReporting();
 
-if (typeof window !== "undefined" && !supabaseConfigError) {
+if (typeof window !== "undefined" && import.meta.env.PROD && !supabaseConfigError) {
   registerSW({
     immediate: true,
     onNeedRefresh() {
@@ -66,11 +67,5 @@ if (!root) {
 if (supabaseConfigError) {
   ReactDOM.createRoot(root).render(<ConfigErrorScreen message={supabaseConfigError} />);
 } else {
-  ReactDOM.createRoot(root).render(
-    <React.StrictMode>
-      <ErrorBoundary>
-        <App />
-      </ErrorBoundary>
-    </React.StrictMode>,
-  );
+  ReactDOM.createRoot(root).render(<App />);
 }

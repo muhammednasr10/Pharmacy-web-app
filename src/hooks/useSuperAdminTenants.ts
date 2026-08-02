@@ -283,6 +283,49 @@ export function useSuperAdminTenants({
     [appUser, isArabic, setBranches],
   );
 
+  const handleUpdateOrganizationFreeTrial = useCallback(
+    async (
+      organizationId: string,
+      params: { enabled: boolean; endDate: string },
+    ): Promise<boolean> => {
+      if (!isSuperAdmin(appUser)) return false;
+      try {
+        await pharmacyService.updateOrganizationFreeTrial(organizationId, params, appUser);
+        setBranches(await pharmacyService.getPharmacies());
+        alert(
+          params.enabled
+            ? isArabic
+              ? "تم تفعيل النسخة المجانية"
+              : "Free trial enabled"
+            : isArabic
+              ? "تم إيقاف النسخة المجانية"
+              : "Free trial disabled",
+        );
+        return true;
+      } catch (error) {
+        console.error(error);
+        const message = error instanceof Error ? error.message : "";
+        const trialError =
+          message === "trial_end_date_required"
+            ? isArabic
+              ? "حدد تاريخ انتهاء النسخة المجانية"
+              : "Set a free trial end date"
+            : message === "trial_end_date_past"
+              ? isArabic
+                ? "تاريخ الانتهاء يجب أن يكون اليوم أو بعده"
+                : "End date must be today or later"
+              : message === "invalid_end_date"
+                ? isArabic
+                  ? "تاريخ غير صالح"
+                  : "Invalid date"
+                : "";
+        alert(trialError || (isArabic ? "تعذر تحديث النسخة المجانية" : "Could not update free trial"));
+        return false;
+      }
+    },
+    [appUser, isArabic, setBranches],
+  );
+
   const handleUpdateOrganizationMaxBranches = useCallback(
     async (organizationId: string, maxBranches: number): Promise<boolean> => {
       if (!isSuperAdmin(appUser)) return false;
@@ -518,10 +561,12 @@ export function useSuperAdminTenants({
         if (target.employeeId) {
           await pharmacyService.deletePharmacyEmployeeCascade(target.employeeId, {
             revokedBy: appUser.uid,
+            actingUser: appUser,
           });
         } else if (target.uid) {
           await pharmacyService.deletePharmacyUserCascade(target.uid, {
             revokedBy: appUser.uid,
+            actingUser: appUser,
           });
         }
         setSystemUsers(await pharmacyService.getAllSystemUsers());
@@ -543,6 +588,10 @@ export function useSuperAdminTenants({
     [appUser, isArabic, setSystemUsers],
   );
 
+  const refreshPharmacies = useCallback(async () => {
+    setBranches(await pharmacyService.getPharmacies());
+  }, [setBranches]);
+
   return {
     resetTenantForm,
     resetTenantUserForm,
@@ -554,10 +603,12 @@ export function useSuperAdminTenants({
     handleDeleteOrganizationBranch,
     handleDeleteTenantStaff,
     handleUpdateSubscriptionTier,
+    handleUpdateOrganizationFreeTrial,
     handleUpdateOrganizationMaxBranches,
     handleUpdateOrganizationMaxUsers,
     handleUpdateTenantStatus,
     handleSwitchTenantView,
     handleOpenTenantUsers,
+    refreshPharmacies,
   };
 }

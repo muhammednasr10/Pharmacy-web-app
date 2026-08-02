@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { BranchStockTransfer, Medicine, PharmacySettings } from "../types";
 import * as pharmacyService from "../services/pharmacyService";
-import { getBranchLabel } from "../utils/branchLabel";
-import TransferBarcodeInput from "./TransferBarcodeInput";
+import BranchScopeSelect from "./BranchScopeSelect";
 
 type BranchTransferModalProps = {
   branches: PharmacySettings[];
@@ -242,24 +241,22 @@ export default function BranchTransferModal({
         <div className="userFormGrid">
           <label>
             <span>{isArabic ? "من فرع" : "From branch"}</span>
-            <select value={fromBranchId} onChange={(e) => setFromBranchId(e.target.value)}>
-              {branches.map((branch) => (
-                <option key={branch.id} value={branch.id}>
-                  {getBranchLabel(branch.id, branches, isArabic)}
-                </option>
-              ))}
-            </select>
+            <BranchScopeSelect
+              pharmacies={branches}
+              value={fromBranchId}
+              onChange={setFromBranchId}
+              isArabic={isArabic}
+            />
           </label>
 
           <label>
             <span>{isArabic ? "إلى فرع" : "To branch"}</span>
-            <select value={toBranchId} onChange={(e) => setToBranchId(e.target.value)}>
-              {targetOptions.map((branch) => (
-                <option key={branch.id} value={branch.id}>
-                  {getBranchLabel(branch.id, branches, isArabic)}
-                </option>
-              ))}
-            </select>
+            <BranchScopeSelect
+              pharmacies={targetOptions}
+              value={toBranchId}
+              onChange={setToBranchId}
+              isArabic={isArabic}
+            />
           </label>
 
           <div className="userFormFullWidth">

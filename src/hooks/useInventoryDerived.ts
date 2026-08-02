@@ -13,6 +13,7 @@ import {
   getLowStockThresholdForBranch,
 } from "../utils/inventoryAlerts";
 import type { Medicine, PharmacySettings } from "../types";
+import { LARGE_MEDICINE_CATALOG } from "../constants/medicineCatalog";
 
 type InventoryStatusFilter = "all" | "low" | "expired" | "expiring";
 
@@ -54,6 +55,15 @@ export function useInventoryDerived({
   const alertMedicineSource = useBranchAwareInventoryAlerts ? orgAlertMedicines : medicines;
 
   const filteredMedicines = useMemo(() => {
+    const queryTrimmed = query.trim();
+    if (
+      medicines.length > LARGE_MEDICINE_CATALOG &&
+      !queryTrimmed &&
+      inventoryStatusFilter === "all"
+    ) {
+      return [];
+    }
+
     const todayValue = formatDateInput(new Date());
 
     return medicines.filter((medicine) => {

@@ -21,6 +21,9 @@ export type SettingsFormState = {
   expiryNotifyEnabled: boolean;
   expiryNotifyPhone: string;
   expiryNotifyEmail: string;
+  latitude: string;
+  longitude: string;
+  geofenceRadiusM: string;
 };
 
 export function createEmptySettingsForm(): SettingsFormState {
@@ -39,6 +42,9 @@ export function createEmptySettingsForm(): SettingsFormState {
     expiryNotifyEnabled: true,
     expiryNotifyPhone: "",
     expiryNotifyEmail: "",
+    latitude: "",
+    longitude: "",
+    geofenceRadiusM: "30",
   };
 }
 
@@ -58,6 +64,10 @@ export function mapPharmacySettingsToForm(settings: PharmacySettings): SettingsF
     expiryNotifyEnabled: settings.expiryNotifyEnabled !== false,
     expiryNotifyPhone: settings.expiryNotifyPhone || "",
     expiryNotifyEmail: settings.expiryNotifyEmail || "",
+    latitude: settings.latitude != null ? String(settings.latitude) : "",
+    longitude: settings.longitude != null ? String(settings.longitude) : "",
+    geofenceRadiusM:
+      settings.geofenceRadiusM != null ? String(settings.geofenceRadiusM) : "30",
   };
 }
 

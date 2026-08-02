@@ -8,6 +8,7 @@ import {
   listActivityLogUsers,
 } from "../utils/activityLogAudit";
 import { formatDateInput } from "../utils/date";
+import BranchScopeSelect from "../components/BranchScopeSelect";
 
 type ActivityLogsPageProps = {
   isArabic: boolean;
@@ -180,14 +181,16 @@ export default function ActivityLogsPage({
         </select>
 
         {showBranchFilter && branches.length > 1 && (
-          <select value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)}>
-            <option value="all">{isArabic ? "كل الفروع" : "All branches"}</option>
-            {branches.map((branch) => (
-              <option key={branch.id} value={branch.id}>
-                {(isArabic ? branch.name : branch.name_en) || branch.name || branch.id}
-              </option>
-            ))}
-          </select>
+          <BranchScopeSelect
+            pharmacies={branches}
+            value={branchFilter}
+            onChange={setBranchFilter}
+            isArabic={isArabic}
+            includeAllOption={{
+              value: "all",
+              label: isArabic ? "كل الفروع" : "All branches",
+            }}
+          />
         )}
 
         {users.length > 0 && (

@@ -155,31 +155,49 @@ export function downloadPharmacyBackupCsv(input: PharmacyBackupExportInput) {
 export type InventoryExportInput = {
   isArabic: boolean;
   medicines: Medicine[];
+  includeCostProfit?: boolean;
 };
 
 export function downloadInventoryCsv(input: InventoryExportInput) {
-  const { isArabic, medicines } = input;
-  const rows = [
-    [
-      label(isArabic, "اسم الدواء عربي", "Arabic Name"),
-      label(isArabic, "اسم الدواء إنجليزي", "English Name"),
-      label(isArabic, "الباركود", "Barcode"),
-      label(isArabic, "الكمية", "Qty"),
+  const { isArabic, medicines, includeCostProfit = false } = input;
+  const header = [
+    label(isArabic, "اسم الدواء عربي", "Arabic Name"),
+    label(isArabic, "اسم الدواء إنجليزي", "English Name"),
+    label(isArabic, "الباركود", "Barcode"),
+    label(isArabic, "الكمية", "Qty"),
+  ];
+  if (includeCostProfit) {
+    header.push(
       label(isArabic, "سعر الشراء", "Buy Price"),
       label(isArabic, "سعر البيع", "Sell Price"),
       label(isArabic, "ربح الوحدة", "Unit Profit"),
-      label(isArabic, "الصلاحية", "Expiry"),
-    ],
-    ...medicines.map((medicine) => [
-      medicine.name_ar,
-      medicine.name_en,
-      barcodeCSV(medicine.barcode),
-      medicine.qty,
-      safeNumber(medicine.buyPrice).toFixed(2),
-      safeNumber(medicine.price).toFixed(2),
-      (safeNumber(medicine.price) - safeNumber(medicine.buyPrice)).toFixed(2),
-      medicine.expiry,
-    ]),
+    );
+  } else {
+    header.push(label(isArabic, "سعر البيع", "Sell Price"));
+  }
+  header.push(label(isArabic, "الصلاحية", "Expiry"));
+
+  const rows = [
+    header,
+    ...medicines.map((medicine) => {
+      const row = [
+        medicine.name_ar,
+        medicine.name_en,
+        barcodeCSV(medicine.barcode),
+        medicine.qty,
+      ];
+      if (includeCostProfit) {
+        row.push(
+          safeNumber(medicine.buyPrice).toFixed(2),
+          safeNumber(medicine.price).toFixed(2),
+          (safeNumber(medicine.price) - safeNumber(medicine.buyPrice)).toFixed(2),
+        );
+      } else {
+        row.push(safeNumber(medicine.price).toFixed(2));
+      }
+      row.push(medicine.expiry);
+      return row;
+    }),
   ];
 
   downloadCSV(`inventory-${formatDateInput(new Date())}.csv`, rows);

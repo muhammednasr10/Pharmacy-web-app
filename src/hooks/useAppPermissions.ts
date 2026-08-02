@@ -4,15 +4,25 @@ import {
   canDeleteMedicines,
   canDeletePurchases,
   canDeleteReturns,
+  canViewInventoryCostProfit,
+  canViewPosCostProfit,
   canViewOrgActivityLogs,
   getAllowedPages,
   hasRole as checkUserRole,
+  isSuperAdmin,
 } from "../utils/roles";
 
-export function useAppPermissions(appUser: AppUser | null, isSubscriptionExpired: boolean) {
+export function useAppPermissions(
+  appUser: AppUser | null,
+  isSubscriptionExpired: boolean,
+  subscriptionAllowedPages?: Page[],
+) {
   const hasRole = useCallback((roles: UserRole[]) => checkUserRole(appUser, roles), [appUser]);
 
-  const canUseSystemActions = useCallback(() => !isSubscriptionExpired, [isSubscriptionExpired]);
+  const canUseSystemActions = useCallback(
+    () => !isSubscriptionExpired || isSuperAdmin(appUser),
+    [isSubscriptionExpired, appUser],
+  );
 
   const canManageInventory = useCallback(
     () => hasRole(["pharmacy_admin", "branch_manager", "super_admin", "inventory"]),
@@ -72,12 +82,23 @@ export function useAppPermissions(appUser: AppUser | null, isSubscriptionExpired
 
   const canDeletePurchase = useCallback(() => canDeletePurchases(appUser), [appUser]);
 
+  const canViewInventoryCostProfitColumns = useCallback(
+    () => canViewInventoryCostProfit(appUser),
+    [appUser],
+  );
+
+  const canViewPosCostProfitColumns = useCallback(() => canViewPosCostProfit(appUser), [appUser]);
+
   const canOpenPage = useCallback(
     (page: Page) => {
       if (!appUser) return false;
-      return getAllowedPages(appUser).includes(page);
+      if (!getAllowedPages(appUser).includes(page)) return false;
+      if (subscriptionAllowedPages && !isSuperAdmin(appUser)) {
+        return subscriptionAllowedPages.includes(page);
+      }
+      return true;
     },
-    [appUser],
+    [appUser, subscriptionAllowedPages],
   );
 
   return {
@@ -97,6 +118,8 @@ export function useAppPermissions(appUser: AppUser | null, isSubscriptionExpired
     canUseReturns,
     canDeleteReturn,
     canDeletePurchase,
+    canViewInventoryCostProfitColumns,
+    canViewPosCostProfitColumns,
     canOpenPage,
   };
 }

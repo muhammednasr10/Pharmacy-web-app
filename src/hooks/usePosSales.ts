@@ -18,6 +18,13 @@ import {
   queueOfflineSale,
 } from "../utils/offlinePosStorage";
 import { getHeldInvoiceErrorMessage } from "../utils/heldInvoiceErrors";
+import { formatPosSaleError } from "../utils/posSaleErrors";
+import { isPharmacyManager, isSuperAdmin } from "../utils/roles";
+
+function requiresOpenCashierShift(appUser: AppUser | null) {
+  if (!appUser) return false;
+  return appUser.role === "cashier" || isPharmacyManager(appUser) || isSuperAdmin(appUser);
+}
 
 type ActivityLogInput = {
   type: string;
@@ -176,9 +183,22 @@ export function usePosSales({
 
     if (isSelling) return;
 
-    if (
+    const shiftRequired = requiresOpenCashierShift(appUser);
+    let shiftForSale = activeCashierShift;
+
+    if (shiftRequired) {
+      shiftForSale = (await refreshActiveCashierShift()) ?? null;
+      if (!shiftForSale) {
+        alert(
+          isArabic
+            ? "يجب فتح وردية كاشير قبل إتمام البيع."
+            : "Open a cashier shift before completing the sale.",
+        );
+        return;
+      }
+    } else if (
       appUser?.role === "cashier" &&
-      !activeCashierShift &&
+      !shiftForSale &&
       !window.confirm(
         isArabic
           ? "لم تفتح وردية كاشير. هل تريد إتمام البيع بدون وردية؟"
@@ -193,6 +213,7 @@ export function usePosSales({
 
       const invoiceId = Date.now();
       const invoiceNumber = `INV-${invoiceId}`;
+      const cashierId = appUser?.uid || user?.uid || "";
 
       const invoiceItems: InvoiceItem[] = cart.map((item) => {
         const buyPrice = item.buyPrice || 0;
@@ -221,10 +242,10 @@ export function usePosSales({
         id: invoiceId,
         invoiceNumber,
         pharmacyId: getPharmacyId(),
-        cashierId: user?.uid || "",
+        cashierId,
         cashierName: appUser?.name || "",
         shiftId: currentWorkShiftId || undefined,
-        cashierShiftId: activeCashierShift?.id,
+        cashierShiftId: shiftForSale?.id,
         customerName: customerName.trim(),
         date: new Date().toLocaleString(),
         createdAt: new Date().toISOString(),
@@ -249,7 +270,7 @@ export function usePosSales({
         qtyAfter: item.qty - item.cartQty,
         invoiceNumber,
         pharmacyId: getPharmacyId(),
-        userId: user?.uid || "",
+        userId: cashierId,
         userName: appUser?.name || "",
         createdAt: new Date().toISOString(),
       }));
@@ -295,13 +316,13 @@ export function usePosSales({
         stockMovements,
       );
       await refreshMedicinesFromDb();
-      if (activeCashierShift) {
+      if (shiftForSale) {
         await refreshActiveCashierShift();
       }
-      if (user?.uid) {
+      if (cashierId) {
         void pharmacyService
           .syncCashierPayrollCommissionAfterSale({
-            cashierUserId: user.uid,
+            cashierUserId: cashierId,
             cashierName: appUser?.name || "",
             pharmacyId: getPharmacyId(),
           })
@@ -310,34 +331,33 @@ export function usePosSales({
           });
       }
 
-      await addActivityLog({
-        type: "sale",
-        title: isArabic ? "تسجيل بيع" : "Sale Created",
-        description: isArabic
-          ? `تم تسجيل فاتورة بيع رقم ${invoiceNumber} بإجمالي ${total.toFixed(2)} ${t.currency}`
-          : `Sale invoice ${invoiceNumber} created with total ${total.toFixed(2)} ${t.currency}`,
-        referenceType: "invoice",
-        referenceId: invoiceNumber,
-      });
-
-      printSavedInvoice(invoice as Invoice);
+      const savedInvoice = invoice as Invoice;
       resetCart();
-
       alert(isArabic ? `تم تسجيل البيع برقم ${invoiceNumber}` : `Sale ${invoiceNumber} completed`);
+
+      try {
+        await addActivityLog({
+          type: "sale",
+          title: isArabic ? "تسجيل بيع" : "Sale Created",
+          description: isArabic
+            ? `تم تسجيل فاتورة بيع رقم ${invoiceNumber} بإجمالي ${total.toFixed(2)} ${t.currency}`
+            : `Sale invoice ${invoiceNumber} created with total ${total.toFixed(2)} ${t.currency}`,
+          referenceType: "invoice",
+          referenceId: invoiceNumber,
+        });
+      } catch (logError) {
+        console.warn("Sale activity log skipped:", logError);
+      }
+
+      try {
+        await printSavedInvoice(savedInvoice);
+      } catch (printError) {
+        console.warn("Sale invoice PDF skipped:", printError);
+      }
     } catch (error) {
       console.error("Complete sale error:", error);
 
-      alert(
-        error instanceof Error
-          ? error.message === "cashier_shift_invalid"
-            ? isArabic
-              ? "الوردية غير صالحة أو مغلقة. افتح وردية جديدة من نقطة البيع."
-              : "Cashier shift is invalid or closed. Open a new shift from POS."
-            : error.message
-          : isArabic
-            ? "حصل خطأ أثناء تسجيل البيع"
-            : "An error occurred while completing the sale",
-      );
+      alert(formatPosSaleError(error, isArabic));
     } finally {
       setIsSelling(false);
     }

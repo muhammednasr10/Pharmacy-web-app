@@ -13,13 +13,27 @@ export function formatUserCreationError(message: string, isArabic: boolean): str
   if (message === "password_too_short") {
     return isArabic ? "كلمة المرور 6 أحرف على الأقل" : "Password must be at least 6 characters";
   }
+  if (message === "password_required") {
+    return isArabic ? "أدخل كلمة المرور" : "Enter a password";
+  }
+  if (message === "trial_registration_not_configured") {
+    return isArabic
+      ? "تسجيل التجربة غير مفعّل على الخادم. نفّذ fix-trial-registration.sql في Supabase ثم أعد المحاولة."
+      : "Trial signup is not configured on the server. Run fix-trial-registration.sql in Supabase, then try again.";
+  }
+  if (message === "not_authorized" || message === "forbidden") {
+    return isArabic ? "غير مصرح بهذا الإجراء" : "Not authorized for this action";
+  }
+  if (message === "cannot_delete_super_admin") {
+    return isArabic ? "لا يمكن حذف مالك النظام" : "Cannot delete the system owner";
+  }
   if (message === "email_address_invalid_format") {
     return isArabic ? "صيغة الإيميل غير صحيحة" : "Invalid email format";
   }
   if (message === "email_domain_rejected" || message === "email_address_invalid") {
     return isArabic
-      ? "Supabase يرفض هذا الدومين. استخدم بريداً حقيقياً (Gmail، Outlook، Yahoo...) وليس دومين وهمي مثل pharmacy.com"
-      : "This email domain was rejected. Use a real mailbox (Gmail, Outlook, Yahoo...) not a fake domain like pharmacy.com";
+      ? "البريد الإلكتروني غير مقبول. تأكد من صحة العنوان أو جرّب بريداً آخر."
+      : "This email address was rejected. Check the format or try another address.";
   }
   if (message === "email_not_authorized" || message === "email_address_not_authorized") {
     return isArabic
@@ -30,6 +44,9 @@ export function formatUserCreationError(message: string, isArabic: boolean): str
     return isArabic
       ? "تم إرسال عدد كبير من الطلبات. انتظر دقائق ثم حاول مرة أخرى."
       : "Too many requests. Please wait a few minutes and try again.";
+  }
+  if (message === "email_already_registered") {
+    return isArabic ? "هذا الإيميل مسجل بالفعل" : "This email is already registered";
   }
   if (message.includes("already registered") || message.includes("already been registered")) {
     return isArabic ? "هذا الإيميل مسجل بالفعل" : "This email is already registered";

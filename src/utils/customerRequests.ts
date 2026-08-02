@@ -1,9 +1,9 @@
 import { getSubscriptionTierLabel } from "../config/subscriptionTiers";
-import type { PharmacyLoginAccount, SubscriptionRequest } from "../types";
+import type { PharmacyCustomRole, PharmacyLoginAccount, SubscriptionRequest } from "../types";
 import { getRoleLabel } from "./roles";
 import { isTierUpgradePlan, parseTierUpgradePlan } from "./subscriptionFeatures";
 
-export type CustomerRequestCategory = "subscription" | "login";
+export type CustomerRequestCategory = "subscription" | "login" | "role";
 
 export type CustomerRequestFilter = "all" | CustomerRequestCategory;
 
@@ -20,6 +20,7 @@ export type CustomerRequestRow = {
   resultAfterApproval?: string;
   subscriptionRequest?: SubscriptionRequest;
   loginAccount?: PharmacyLoginAccount;
+  customRole?: PharmacyCustomRole;
 };
 
 export function getSubscriptionRequestTypeLabel(
@@ -83,6 +84,7 @@ export function getLoginAccountRequestDetails(
 export function buildCustomerRequestRows(input: {
   subscriptionRequests: SubscriptionRequest[];
   loginAccounts: PharmacyLoginAccount[];
+  customRoles?: PharmacyCustomRole[];
   pharmacyNameById: Map<string, string>;
   isArabic: boolean;
   filter?: CustomerRequestFilter;
@@ -90,6 +92,7 @@ export function buildCustomerRequestRows(input: {
   const {
     subscriptionRequests,
     loginAccounts,
+    customRoles = [],
     pharmacyNameById,
     isArabic,
     filter = "all",
@@ -136,6 +139,22 @@ export function buildCustomerRequestRows(input: {
     });
   }
 
+  if (filter === "all" || filter === "role") {
+    customRoles.forEach((role) => {
+      rows.push({
+        key: `role-${role.id}`,
+        category: "role",
+        pharmacyId: role.pharmacyId,
+        pharmacyName: pharmacyNameById.get(role.pharmacyId) || role.pharmacyId,
+        requestNumber: role.id.slice(0, 8).toUpperCase(),
+        typeLabel: isArabic ? "دور جديد" : "New role",
+        details: isArabic ? role.nameAr : role.nameEn,
+        createdAt: role.createdAt,
+        customRole: role,
+      });
+    });
+  }
+
   return rows.sort((a, b) => {
     const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
     const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -149,6 +168,9 @@ export function getCustomerRequestCategoryLabel(
 ): string {
   if (category === "subscription") {
     return isArabic ? "اشتراك" : "Subscription";
+  }
+  if (category === "role") {
+    return isArabic ? "دور" : "Role";
   }
   return isArabic ? "حساب دخول" : "Login account";
 }

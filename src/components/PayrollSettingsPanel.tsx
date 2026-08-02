@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import * as pharmacyService from "../services/pharmacyService";
-import WorkShiftsEditor from "./WorkShiftsEditor";
 
 type PayrollSettingsPanelProps = {
   isArabic: boolean;
@@ -286,34 +285,6 @@ export default function PayrollSettingsPanel({
             }
           />
         </label>
-      </div>
-
-      <div className="hrPayrollSettingsSection">
-        <h4>{isArabic ? "مواعيد الشيفتات (أ / ب / ج)" : "Shift schedules (A / B / C)"}</h4>
-        <p className="returnsSectionHint">
-          {isArabic
-            ? "حدّد مواعيد كل شيفت. يُربط الموظف بشيفت ويُستخدم في الحضور والمبيعات."
-            : "Configure each shift. Employees are assigned to a shift for attendance and sales."}
-        </p>
-        <WorkShiftsEditor
-          isArabic={isArabic}
-          disabled={!canEdit}
-          shifts={payrollConfig.workShifts}
-          defaultShiftId={payrollConfig.defaultShiftId}
-          onShiftsChange={(workShifts) => {
-            const shiftA = workShifts.find((item) => item.id === "A") || workShifts[0];
-            setPayrollConfig({
-              ...payrollConfig,
-              workShifts,
-              workDayStart: shiftA.dayStart,
-              workDayEnd: shiftA.dayEnd,
-              workBreaks: shiftA.breaks,
-            });
-          }}
-          onDefaultShiftChange={(defaultShiftId) =>
-            setPayrollConfig({ ...payrollConfig, defaultShiftId })
-          }
-        />
       </div>
 
       <p className="settingsFieldHint">

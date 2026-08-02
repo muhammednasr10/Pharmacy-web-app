@@ -14,6 +14,7 @@ import type {
   PharmacySettings,
   ReturnRecord,
 } from "../types";
+import { resolveBranchDisplay } from "../utils/branchDisplay";
 
 type AvailabilityModalState = {
   medicine: Medicine;
@@ -35,8 +36,7 @@ export type UseAppBindingsInput = AppPageRouterProps & {
   showHeldInvoicesModal: boolean;
   setShowHeldInvoicesModal: Dispatch<SetStateAction<boolean>>;
   showInstantReturnModal: boolean;
-  globalSearchOpen: boolean;
-  setGlobalSearchOpen: Dispatch<SetStateAction<boolean>>;
+  globalSearchFocusToken: number;
   isHeldInvoiceProcessing: boolean;
   isReturning: boolean;
   handleResumeHeldInvoice: (held: HeldInvoice) => void | Promise<void>;
@@ -72,7 +72,6 @@ function computeTopbarPharmacyTitle(
   isViewingAllBranches: boolean,
   activeBranchId: string | null,
   branches: PharmacySettings[],
-  appUserPharmacyId?: string,
 ): string {
   const baseName = isArabic
     ? pharmacySettings?.name || "صيدلية Focus"
@@ -80,10 +79,10 @@ function computeTopbarPharmacyTitle(
   if (isViewingAllBranches) {
     return isArabic ? `${baseName} — كل الفروع` : `${baseName} — All branches`;
   }
-  if (activeBranchId && activeBranchId !== appUserPharmacyId) {
-    const branch = branches.find((item) => item.id === activeBranchId);
-    if (branch) {
-      return (isArabic ? branch.name : branch.name_en) || branch.name;
+  if (activeBranchId && branches.length > 1) {
+    const display = resolveBranchDisplay(activeBranchId, branches, isArabic);
+    if (!display.isMainSite) {
+      return `${display.organizationName} — ${display.branchSiteName}`;
     }
   }
   return baseName;
@@ -103,8 +102,7 @@ export function useAppBindings(input: UseAppBindingsInput): AppBindingsResult {
     showHeldInvoicesModal,
     setShowHeldInvoicesModal,
     showInstantReturnModal,
-    globalSearchOpen,
-    setGlobalSearchOpen,
+    globalSearchFocusToken,
     isHeldInvoiceProcessing,
     isReturning,
     handleResumeHeldInvoice,
@@ -136,6 +134,7 @@ export function useAppBindings(input: UseAppBindingsInput): AppBindingsResult {
 
   const pageRouterProps: AppPageRouterProps = {
     ...routerFields,
+    invoices,
     setSelectedReturn,
     setSelectedInvoice,
     setShowInstantReturnModal,
@@ -190,9 +189,6 @@ export function useAppBindings(input: UseAppBindingsInput): AppBindingsResult {
     onCloseInstantReturn: () => setShowInstantReturnModal(false),
     handleInstantReturnSuccess,
     getAvailableReturnQtyForInstant: getAvailableReturnQty,
-    globalSearchOpen,
-    onCloseGlobalSearch: () => setGlobalSearchOpen(false),
-    onGlobalSearchSelect: handleGlobalSearchSelect,
   };
 
   const appShellProps: AppShellBindings = {
@@ -209,7 +205,6 @@ export function useAppBindings(input: UseAppBindingsInput): AppBindingsResult {
       input.isViewingAllBranches,
       input.activeBranchId,
       input.branches,
-      input.appUser?.pharmacyId,
     ),
     writeBranchLabel,
     isViewingAllBranches: input.isViewingAllBranches,
@@ -225,7 +220,16 @@ export function useAppBindings(input: UseAppBindingsInput): AppBindingsResult {
     isMenuOpen,
     onToggleLang: () => setLang(lang === "ar" ? "en" : "ar"),
     onToggleTheme: toggleTheme,
-    onOpenGlobalSearch: () => setGlobalSearchOpen(true),
+    globalSearchAllowedPages: input.allowedPages,
+    medicines: input.medicines,
+    invoices,
+    customerDebts: input.customerDebts,
+    canSearchMedicines:
+      input.allowedPages.includes("inventory") || input.allowedPages.includes("pos"),
+    canSearchInvoices: input.allowedPages.includes("invoices"),
+    canSearchCustomers: input.allowedPages.includes("customers"),
+    onGlobalSearchSelect: handleGlobalSearchSelect,
+    globalSearchFocusToken,
     onLogout: handleLogout,
     onToggleMenu: () => setIsMenuOpen((value) => !value),
     onSwitchBranch: input.switchBranch,

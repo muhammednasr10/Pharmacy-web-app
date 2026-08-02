@@ -14,23 +14,24 @@ type PosBarcodeInputProps = {
   isArabic: boolean;
   onAddToCart: (medicine: Medicine) => void;
   disabled?: boolean;
+  lookupBarcode?: (barcode: string) => Promise<Medicine | null | undefined>;
 };
 
 const PosBarcodeInput = forwardRef<PosBarcodeInputHandle, PosBarcodeInputProps>(
-  function PosBarcodeInput({ medicines, isArabic, onAddToCart, disabled = false }, ref) {
-    const inputRef = useRef<HTMLInputElement>(null);
-    const [value, setValue] = useState("");
+  function PosBarcodeInput({ medicines, isArabic, onAddToCart, disabled = false, lookupBarcode }, ref) {
+    const barcodeInputRef = useRef<HTMLInputElement>(null);
+    const [barcodeValue, setBarcodeValue] = useState("");
     const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
     const [cameraOpen, setCameraOpen] = useState(false);
     const messageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const cameraSupported = canUseBarcodeCameraScanner();
 
-    const focusInput = useCallback(() => {
+    const focusBarcode = useCallback(() => {
       if (disabled) return;
-      requestAnimationFrame(() => inputRef.current?.focus());
+      requestAnimationFrame(() => barcodeInputRef.current?.focus());
     }, [disabled]);
 
-    useImperativeHandle(ref, () => ({ focus: focusInput }), [focusInput]);
+    useImperativeHandle(ref, () => ({ focus: focusBarcode }), [focusBarcode]);
 
     const showMessage = useCallback((text: string, error = false) => {
       if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
@@ -39,21 +40,23 @@ const PosBarcodeInput = forwardRef<PosBarcodeInputHandle, PosBarcodeInputProps>(
     }, []);
 
     const processBarcode = useCallback(
-      (raw: string) => {
+      async (raw: string) => {
         const clean = raw.trim();
         if (!clean) return false;
 
-        const found = findMedicineByBarcode(medicines, clean);
+        const found = lookupBarcode
+          ? (await lookupBarcode(clean)) || findMedicineByBarcode(medicines, clean)
+          : findMedicineByBarcode(medicines, clean);
         if (found) {
           onAddToCart(found);
-          setValue("");
+          setBarcodeValue("");
           playBarcodeBeep(true);
           showMessage(
             isArabic
               ? `تمت إضافة ${found.name_ar} للسلة`
               : `${found.name_en || found.name_ar} added to cart`,
           );
-          focusInput();
+          focusBarcode();
           return true;
         }
 
@@ -64,40 +67,35 @@ const PosBarcodeInput = forwardRef<PosBarcodeInputHandle, PosBarcodeInputProps>(
         );
         return false;
       },
-      [focusInput, isArabic, medicines, onAddToCart, showMessage],
+      [focusBarcode, isArabic, lookupBarcode, medicines, onAddToCart, showMessage],
     );
 
     useEffect(() => {
-      focusInput();
+      focusBarcode();
       return () => {
         if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
       };
-    }, [focusInput, medicines]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- autofocus once on mount
+    }, []);
 
     useHardwareBarcodeScanner({
       disabled,
-      onScan: processBarcode,
-      ignoreInputRef: inputRef,
+      onScan: (code) => {
+        void processBarcode(code);
+      },
+      ignoreInputRef: barcodeInputRef,
     });
 
-    function handleChange(nextValue: string) {
-      setValue(nextValue);
-      const found = findMedicineByBarcode(medicines, nextValue);
-      if (found) {
-        processBarcode(nextValue);
-      }
-    }
-
-    function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    function handleBarcodeKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
       if (event.key !== "Enter") return;
       event.preventDefault();
-      processBarcode(value);
+      void processBarcode(barcodeValue);
     }
 
     function handleCameraDetected(code: string) {
       setCameraOpen(false);
-      processBarcode(code);
-      focusInput();
+      void processBarcode(code);
+      focusBarcode();
     }
 
     function openCameraScanner() {
@@ -115,59 +113,62 @@ const PosBarcodeInput = forwardRef<PosBarcodeInputHandle, PosBarcodeInputProps>(
     }
 
     return (
-      <div className="posBarcodeBlock">
-        <label className="posBarcodeLabel" htmlFor="pos-barcode-input">
-          {isArabic ? "مسح الباركود للبيع" : "Scan barcode to sell"}
-        </label>
-        <div className="posBarcodeRow">
-          <span className="posBarcodeIcon" aria-hidden="true">
-            📷
-          </span>
-          <input
-            id="pos-barcode-input"
-            ref={inputRef}
-            className="posBarcodeInput"
-            type="text"
-            inputMode="numeric"
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
-            disabled={disabled}
-            value={value}
-            onChange={(event) => handleChange(event.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={
-              isArabic
-                ? "امسح الباركود أو اكتبه واضغط Enter"
-                : "Scan barcode or type and press Enter"
-            }
-          />
-          {cameraSupported && (
-            <button
-              type="button"
-              className="posBarcodeCameraBtn"
-              disabled={disabled}
-              onClick={openCameraScanner}
-              aria-label={isArabic ? "مسح بالكاميرا" : "Scan with camera"}
-              title={isArabic ? "مسح بالكاميرا" : "Scan with camera"}
-            >
+      <div className="posBarcodeBlock posBarcodeOnly">
+        <div className="posSearchField">
+          <label className="posBarcodeLabel" htmlFor="pos-barcode-input">
+            {isArabic ? "مسح الباركود للبيع" : "Scan barcode to sell"}
+          </label>
+          <div className="posBarcodeRow">
+            <span className="posBarcodeIcon" aria-hidden="true">
               📷
-            </button>
-          )}
-          {value && (
-            <button
-              type="button"
-              className="posBarcodeClearBtn"
-              onClick={() => {
-                setValue("");
-                focusInput();
-              }}
-              aria-label={isArabic ? "مسح" : "Clear"}
-            >
-              ✕
-            </button>
-          )}
+            </span>
+            <input
+              id="pos-barcode-input"
+              ref={barcodeInputRef}
+              className="posBarcodeInput"
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              disabled={disabled}
+              value={barcodeValue}
+              onChange={(event) => setBarcodeValue(event.target.value)}
+              onKeyDown={handleBarcodeKeyDown}
+              placeholder={
+                isArabic
+                  ? "امسح الباركود أو اكتبه واضغط Enter"
+                  : "Scan barcode or type and press Enter"
+              }
+            />
+            {cameraSupported && (
+              <button
+                type="button"
+                className="posBarcodeCameraBtn"
+                disabled={disabled}
+                onClick={openCameraScanner}
+                aria-label={isArabic ? "مسح بالكاميرا" : "Scan with camera"}
+                title={isArabic ? "مسح بالكاميرا" : "Scan with camera"}
+              >
+                📷
+              </button>
+            )}
+            {barcodeValue && (
+              <button
+                type="button"
+                className="posBarcodeClearBtn"
+                onClick={() => {
+                  setBarcodeValue("");
+                  focusBarcode();
+                }}
+                aria-label={isArabic ? "مسح" : "Clear"}
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
+
         {message && (
           <div className={`posMessage ${message.error ? "error" : ""}`}>{message.text}</div>
         )}
@@ -177,7 +178,7 @@ const PosBarcodeInput = forwardRef<PosBarcodeInputHandle, PosBarcodeInputProps>(
             onDetected={handleCameraDetected}
             onClose={() => {
               setCameraOpen(false);
-              focusInput();
+              focusBarcode();
             }}
           />
         )}

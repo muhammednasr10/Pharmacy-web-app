@@ -10,6 +10,11 @@ export type MedicineEntryValues = {
   expiry: string;
 };
 
+export function filterMedicinesForPharmacy(medicines: Medicine[], pharmacyId: string) {
+  if (!pharmacyId) return [];
+  return medicines.filter((medicine) => (medicine.pharmacyId || pharmacyId) === pharmacyId);
+}
+
 export function normalizeMedicineText(value: unknown) {
   return String(value ?? "").trim();
 }

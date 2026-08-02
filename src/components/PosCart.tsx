@@ -15,6 +15,8 @@ type PosCartProps = {
   currency: string;
   isSelling: boolean;
   isSubscriptionExpired: boolean;
+  subscriptionBlocksSale?: boolean;
+  shiftSaleBlocked?: boolean;
   onDecreaseQty: (id: number) => void;
   onIncreaseQty: (id: number) => void;
   onRemoveItem: (id: number) => void;
@@ -46,6 +48,8 @@ export default function PosCart({
   currency,
   isSelling,
   isSubscriptionExpired,
+  subscriptionBlocksSale = false,
+  shiftSaleBlocked = false,
   onDecreaseQty,
   onIncreaseQty,
   onRemoveItem,
@@ -62,8 +66,10 @@ export default function PosCart({
   onOpenInstantReturn,
   isOnline = true,
 }: PosCartProps) {
+  const saleBlocked = subscriptionBlocksSale || shiftSaleBlocked;
+
   return (
-    <div className="posPanel">
+    <div className="posPanel posCartPanel">
       <div className="cartHeader">
         <div>
           <h3>{t.cart}</h3>
@@ -77,109 +83,146 @@ export default function PosCart({
           </div>
         </div>
         {cart.length > 0 && (
-          <button className="clearCartBtn" onClick={onClearCart}>
+          <button type="button" className="clearCartBtn" onClick={onClearCart}>
             {isArabic ? "تفريغ السلة" : "Clear Cart"}
           </button>
         )}
       </div>
-      {cart.length === 0 ? (
-        <p className="empty">{t.emptyCart}</p>
-      ) : (
-        <div className="cartList">
-          {cart.map((item) => (
-            <div className="cartItem" key={item.id}>
-              <div>
-                <strong>{isArabic ? item.name_ar : item.name_en}</strong>
-                <p>
-                  {item.price} {currency} × {item.cartQty}
-                </p>
-              </div>
-              <div className="qtyControls">
-                <button onClick={() => onDecreaseQty(item.id)}>-</button>
-                <span>{item.cartQty}</span>
-                <button onClick={() => onIncreaseQty(item.id)}>+</button>
-              </div>
-              <button className="deleteBtn" onClick={() => onRemoveItem(item.id)}>
-                {t.remove}
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-      <PaymentBox
-        discount={discount}
-        paymentMethod={paymentMethod}
-        customerName={customerName}
-        isArabic={isArabic}
-        t={t}
-        onDiscountChange={onDiscountChange}
-        onPaymentMethodChange={onPaymentMethodChange}
-        onCustomerNameChange={onCustomerNameChange}
-        getPaymentLabel={getPaymentLabel}
-        disableCredit={!isOnline}
-      />
-      <div className="subtotalLine">
-        <span>{t.subtotal}</span>
-        <strong>
-          {subtotal.toFixed(2)} {currency}
-        </strong>
-      </div>
-      <div className="totalBox">
-        <span>{t.total}</span>
-        <strong>
-          {total.toFixed(2)} {currency}
-        </strong>
-      </div>
-      <div className="posActionRow">
-        {cart.length > 0 && (
-          <button
-            className="posActionBtn holdBtn"
-            type="button"
-            onClick={onHoldInvoice}
-            disabled={isHolding || isSubscriptionExpired || !isOnline}
-          >
-            {isHolding
-              ? isArabic
-                ? "جاري التعليق..."
-                : "Holding..."
-              : isArabic
-                ? "تعليق الفاتورة"
-                : "Hold Invoice"}
-          </button>
+
+      <div className="posCartBody">
+        {cart.length === 0 ? (
+          <div className="posCartEmpty">
+            <span className="posCartEmptyIcon" aria-hidden="true">
+              🛒
+            </span>
+            <p>{t.emptyCart}</p>
+            <small>
+              {isArabic
+                ? "امسح باركود أو ابحث بالاسم ثم اضغط «إضافة»"
+                : "Scan a barcode or search by name, then tap Add"}
+            </small>
+          </div>
+        ) : (
+          <div className="cartList posCartList">
+            {cart.map((item) => {
+              const lineTotal = item.price * item.cartQty;
+              return (
+                <div className="cartItem posCartItem" key={item.id}>
+                  <div className="posCartItemMain">
+                    <strong>{isArabic ? item.name_ar : item.name_en}</strong>
+                    <p>
+                      {item.price.toFixed(2)} {currency} × {item.cartQty}
+                    </p>
+                    <span className="posCartLineTotal">
+                      {lineTotal.toFixed(2)} {currency}
+                    </span>
+                  </div>
+                  <div className="posCartItemActions">
+                    <div className="qtyControls">
+                      <button type="button" onClick={() => onDecreaseQty(item.id)}>
+                        -
+                      </button>
+                      <span>{item.cartQty}</span>
+                      <button type="button" onClick={() => onIncreaseQty(item.id)}>
+                        +
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      className="deleteBtn posCartRemoveBtn"
+                      onClick={() => onRemoveItem(item.id)}
+                    >
+                      {t.remove}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
+      </div>
+
+      <div className="posCartCheckout">
+        <PaymentBox
+          discount={discount}
+          paymentMethod={paymentMethod}
+          customerName={customerName}
+          isArabic={isArabic}
+          t={t}
+          onDiscountChange={onDiscountChange}
+          onPaymentMethodChange={onPaymentMethodChange}
+          onCustomerNameChange={onCustomerNameChange}
+          getPaymentLabel={getPaymentLabel}
+          disableCredit={!isOnline}
+        />
+        <div className="subtotalLine posCartSubtotal">
+          <span>{t.subtotal}</span>
+          <strong>
+            {subtotal.toFixed(2)} {currency}
+          </strong>
+        </div>
+        <div className="totalBox posCartTotal">
+          <span>{t.total}</span>
+          <strong>
+            {total.toFixed(2)} {currency}
+          </strong>
+        </div>
+        <div className="posActionRow">
+          {cart.length > 0 && (
+            <button
+              className="posActionBtn holdBtn"
+              type="button"
+              onClick={onHoldInvoice}
+              disabled={isHolding || isSubscriptionExpired || !isOnline}
+            >
+              {isHolding
+                ? isArabic
+                  ? "جاري التعليق..."
+                  : "Holding..."
+                : isArabic
+                  ? "تعليق الفاتورة"
+                  : "Hold Invoice"}
+            </button>
+          )}
+          <button
+            className="posActionBtn"
+            type="button"
+            onClick={onOpenHeldInvoices}
+            disabled={!isOnline}
+          >
+            {isArabic ? "الفواتير المعلقة" : "Held Invoices"}
+            {heldInvoicesCount > 0 ? ` (${heldInvoicesCount})` : ""}
+          </button>
+          <button
+            className="posActionBtn"
+            type="button"
+            onClick={onOpenInstantReturn}
+            disabled={!isOnline}
+          >
+            {isArabic ? "مرتجع سريع" : "Quick Return"}
+          </button>
+        </div>
         <button
-          className="posActionBtn"
           type="button"
-          onClick={onOpenHeldInvoices}
-          disabled={!isOnline}
+          className="completeBtn posCartCompleteBtn"
+          onClick={onCompleteSale}
+          disabled={isSelling || saleBlocked || cart.length === 0}
         >
-          {isArabic ? "الفواتير المعلقة" : "Held Invoices"}
-          {heldInvoicesCount > 0 ? ` (${heldInvoicesCount})` : ""}
-        </button>
-        <button
-          className="posActionBtn"
-          type="button"
-          onClick={onOpenInstantReturn}
-          disabled={!isOnline}
-        >
-          {isArabic ? "مرتجع سريع" : "Quick Return"}
+          {subscriptionBlocksSale
+            ? isArabic
+              ? "الاشتراك منتهي"
+              : "Subscription Expired"
+            : shiftSaleBlocked
+              ? isArabic
+                ? "افتح وردية أولاً"
+                : "Open shift first"
+              : isSelling
+                ? isArabic
+                  ? "جاري تسجيل البيع..."
+                  : "Completing sale..."
+                : t.completeSale}
         </button>
       </div>
-      <button
-        className="completeBtn"
-        onClick={onCompleteSale}
-        disabled={isSelling || isSubscriptionExpired}
-      >
-        {isSubscriptionExpired
-          ? isArabic
-            ? "الاشتراك منتهي"
-            : "Subscription Expired"
-          : isSelling
-            ? isArabic
-              ? "جاري تسجيل البيع..."
-              : "Completing sale..."
-            : t.completeSale}
-      </button>
     </div>
   );
 }

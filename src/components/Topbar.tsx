@@ -1,25 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { getSubscriptionTierLabel } from "../config/subscriptionTiers";
 import type { SubscriptionTier } from "../config/subscriptionTiers";
-import type { AppUser } from "../types";
+import type { AppUser, CustomerDebt, Invoice, Medicine, Page, PharmacySettings } from "../types";
 import { canSwitchOrganizationBranches, getRoleLabel, isSuperAdmin } from "../utils/roles";
 import type { TierUpgradePrompt } from "../utils/subscriptionFeatures";
+import type { GlobalSearchResult } from "../utils/globalSearch";
 import { ALL_BRANCHES_ID } from "../constants/branches";
-
-export type AlertKind = "expired" | "low" | "expiring";
-
-export type AlertItem = {
-  id: string;
-  kind: AlertKind;
-  name: string;
-  detail: string;
-};
-
-export type BranchOption = {
-  id: string;
-  name: string;
-  name_en?: string;
-};
+import BranchScopeSelect from "./BranchScopeSelect";
+import TopbarGlobalSearch from "./TopbarGlobalSearch";
 
 type TopbarProps = {
   title: string;
@@ -37,17 +25,26 @@ type TopbarProps = {
   onToggleLang: () => void;
   resolvedTheme: "light" | "dark";
   onToggleTheme: () => void;
-  onOpenGlobalSearch: () => void;
+  globalSearchAllowedPages: Page[];
+  medicines: Medicine[];
+  invoices: Invoice[];
+  customerDebts: CustomerDebt[];
+  canSearchMedicines: boolean;
+  canSearchInvoices: boolean;
+  canSearchCustomers: boolean;
+  onGlobalSearchSelect: (result: GlobalSearchResult) => void;
+  globalSearchFocusToken?: number;
   onLogout: () => void;
   onToggleMenu: () => void;
   isMenuOpen: boolean;
   alertItems: AlertItem[];
   alertTotal: number;
   onAlertNavigate: (filter: "low" | "expiring" | "expired") => void;
-  branches: BranchOption[];
+  branches: Pick<PharmacySettings, "id" | "name" | "name_en" | "organizationId">[];
   activeBranchId: string | null;
   onSwitchBranch: (id: string) => void;
   allowBranchSwitch?: boolean;
+  userPhotoBase64?: string;
 };
 
 const KIND_META: Record<AlertKind, { dot: string; ar: string; en: string }> = {
@@ -71,7 +68,15 @@ export default function Topbar({
   onToggleLang,
   resolvedTheme,
   onToggleTheme,
-  onOpenGlobalSearch,
+  globalSearchAllowedPages,
+  medicines,
+  invoices,
+  customerDebts,
+  canSearchMedicines,
+  canSearchInvoices,
+  canSearchCustomers,
+  onGlobalSearchSelect,
+  globalSearchFocusToken = 0,
   onLogout,
   onToggleMenu,
   isMenuOpen,
@@ -82,6 +87,7 @@ export default function Topbar({
   activeBranchId,
   onSwitchBranch,
   allowBranchSwitch,
+  userPhotoBase64 = "",
 }: TopbarProps) {
   const [alertsOpen, setAlertsOpen] = useState(false);
   const alertRef = useRef<HTMLDivElement>(null);
@@ -102,13 +108,98 @@ export default function Topbar({
     setAlertsOpen(false);
   };
 
-  const userInitial = (appUser?.name || "?").trim().charAt(0) || "?";
   const canSwitchBranches =
     allowBranchSwitch ?? canSwitchOrganizationBranches(appUser, branches.length);
   const showBranchSwitch = (isSuperAdmin(appUser) || canSwitchBranches) && branches.length > 0;
   const branchSelectValue = activeBranchId || appUser?.pharmacyId || branches[0]?.id || "";
   const showSubscriptionTier = !isSuperAdmin(appUser);
   const tierBadgeClass = `saasTierBadge ${subscriptionTier}`;
+  const hasUserPhoto = Boolean(userPhotoBase64?.trim());
+
+  const alertBellNode = (
+    <div className="alertBell" ref={alertRef}>
+      <button
+        type="button"
+        className={`topbarIconBtn alertBellBtn ${alertsOpen ? "open" : ""}`}
+        onClick={() => setAlertsOpen((value) => !value)}
+        aria-label={isArabic ? "التنبيهات" : "Notifications"}
+        aria-expanded={alertsOpen}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M12 3a6 6 0 0 0-6 6v3.6c0 .5-.2 1-.6 1.4L4 15.4c-.6.6-.2 1.6.7 1.6h14.6c.9 0 1.3-1 .7-1.6l-1.4-1.4a2 2 0 0 1-.6-1.4V9a6 6 0 0 0-6-6Z"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M9.5 19a2.5 2.5 0 0 0 5 0"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+        </svg>
+        {alertTotal > 0 && (
+          <span className="alertBadge">{alertTotal > 99 ? "99+" : alertTotal}</span>
+        )}
+      </button>
+
+      {alertsOpen && (
+        <div className="alertDropdown" dir={isArabic ? "rtl" : "ltr"}>
+          <div className="alertDropdownHeader">
+            <strong>{isArabic ? "التنبيهات" : "Notifications"}</strong>
+            <span>
+              {alertTotal} {isArabic ? "تنبيه" : "alerts"}
+            </span>
+          </div>
+
+          {alertItems.length === 0 ? (
+            <div className="alertEmpty">
+              {isArabic ? "لا توجد تنبيهات حالياً 🎉" : "No notifications 🎉"}
+            </div>
+          ) : (
+            <ul className="alertList">
+              {alertItems.map((item) => (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    className="alertRow"
+                    onClick={() =>
+                      navigate(
+                        item.kind === "expired"
+                          ? "expired"
+                          : item.kind === "low"
+                            ? "low"
+                            : "expiring",
+                      )
+                    }
+                  >
+                    <span
+                      className="alertDot"
+                      style={{ background: KIND_META[item.kind].dot }}
+                    />
+                    <span className="alertText">
+                      <span className="alertName">{item.name}</span>
+                      <span className="alertDetail">{item.detail}</span>
+                    </span>
+                    <span className="alertKindLabel">
+                      {isArabic ? KIND_META[item.kind].ar : KIND_META[item.kind].en}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="alertDropdownFooter">
+            <button type="button" className="alertFooterBtn" onClick={() => navigate("low")}>
+              {isArabic ? "عرض كل النواقص في المخزون" : "View all in inventory"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <header className="topbar">
@@ -205,30 +296,149 @@ export default function Topbar({
           </div>
         </div>
 
-        <div className="topbarIdentityDivider topbarIdentityDivider--account" aria-hidden="true" />
-
-        <div className="topbarAccountBlock">
-          <div className="topbarAccountAvatar" aria-hidden="true">
-            {userInitial}
-          </div>
-          <div className="topbarAccountContent">
-            <span className="topbarSectionLabel">{isArabic ? "الحساب" : "Account"}</span>
-            <strong className="topbarAccountName">{appUser?.name}</strong>
-            <span className="topbarRoleChip">
-              {appUser ? getRoleLabel(appUser.role, isArabic) : ""}
-            </span>
-          </div>
-        </div>
-
         <div className="topbarIdentityDivider topbarIdentityDivider--actions" aria-hidden="true" />
 
         <div className="topbarControlsBlock">
-          <span className="topbarSectionLabel">{isArabic ? "التحكم" : "Controls"}</span>
-          <div className="topbarActionRow">
+          <div className="topbarActionRow topbarActionRow--controls">
             {showBranchSwitch && (
-              <label
-                className="topbarMetaChip topbarBranchChip"
-                title={isArabic ? "الفرع النشط" : "Active branch"}
+              <div className="topbarControlGroup">
+                <span className="topbarSectionLabel">{isArabic ? "التحكم" : "Controls"}</span>
+                <div className="topbarControlItems">
+                  <label
+                    className="topbarMetaChip topbarBranchChip"
+                    title={isArabic ? "الفرع النشط" : "Active branch"}
+                  >
+                    <svg
+                      className="topbarMetaIcon"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M4 20V8l8-4 8 4v12"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M9 20v-6h6v6"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    <BranchScopeSelect
+                      pharmacies={branches}
+                      value={branchSelectValue}
+                      onChange={onSwitchBranch}
+                      isArabic={isArabic}
+                      includeAllBranches={canSwitchBranches}
+                      aria-label={isArabic ? "الفرع النشط" : "Active branch"}
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
+
+            <div className="topbarSearchColumn">
+              <div className="topbarAccountInline">
+                <div className="topbarAccountInlineMain">
+                  {hasUserPhoto ? (
+                    <div className="topbarAccountAvatar hasPhoto" aria-hidden="true">
+                      <img src={userPhotoBase64} alt="" />
+                    </div>
+                  ) : null}
+                  <span className="topbarAccountField">
+                    <span className="topbarAccountFieldLabel">
+                      {isArabic ? "اسم المستخدم" : "Username"}
+                    </span>
+                    <strong className="topbarAccountName">{appUser?.name}</strong>
+                  </span>
+                  <span className="topbarAccountField">
+                    <span className="topbarAccountFieldLabel">{isArabic ? "الدور" : "Role"}</span>
+                    <strong className="topbarAccountRoleValue">
+                      {appUser ? getRoleLabel(appUser.role, isArabic) : ""}
+                    </strong>
+                  </span>
+                </div>
+                <div className="topbarAlertsSlot">{alertBellNode}</div>
+              </div>
+              <TopbarGlobalSearch
+                isArabic={isArabic}
+                t={t}
+                allowedPages={globalSearchAllowedPages}
+                medicines={medicines}
+                invoices={invoices}
+                customerDebts={customerDebts}
+                canSearchMedicines={canSearchMedicines}
+                canSearchInvoices={canSearchInvoices}
+                canSearchCustomers={canSearchCustomers}
+                onSelect={onGlobalSearchSelect}
+                focusToken={globalSearchFocusToken}
+              />
+            </div>
+
+            <div className="topbarUtilityStack">
+              <div className="topbarUtilityIcons">
+                <button
+                  type="button"
+                  className="topbarIconBtn topbarActionChip topbarActionChip--theme topbarActionChip--iconOnly"
+                  onClick={onToggleTheme}
+                  title={
+                    isArabic
+                      ? resolvedTheme === "dark"
+                        ? "الوضع الفاتح"
+                        : "الوضع الداكن"
+                      : resolvedTheme === "dark"
+                        ? "Light mode"
+                        : "Dark mode"
+                  }
+                  aria-label={
+                    isArabic
+                      ? resolvedTheme === "dark"
+                        ? "التبديل إلى الوضع الفاتح"
+                        : "التبديل إلى الوضع الداكن"
+                      : resolvedTheme === "dark"
+                        ? "Switch to light mode"
+                        : "Switch to dark mode"
+                  }
+                >
+                  <span className="topbarThemeIcon" aria-hidden="true">
+                    {resolvedTheme === "dark" ? "☀️" : "🌙"}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  className="topbarIconBtn topbarActionChip topbarActionChip--lang topbarActionChip--iconOnly"
+                  onClick={onToggleLang}
+                  title={t.langButton}
+                  aria-label={t.langButton}
+                >
+                  <svg
+                    className="topbarMetaIcon"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+                    <path
+                      d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                className="topbarActionChip topbarActionChip--logout topbarUtilityLogout"
+                onClick={onLogout}
               >
                 <svg
                   className="topbarMetaIcon"
@@ -239,231 +449,22 @@ export default function Topbar({
                   aria-hidden="true"
                 >
                   <path
-                    d="M4 20V8l8-4 8 4v12"
+                    d="M9 6V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2v-1"
                     stroke="currentColor"
                     strokeWidth="1.8"
                     strokeLinejoin="round"
                   />
                   <path
-                    d="M9 20v-6h6v6"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                <select
-                  value={branchSelectValue}
-                  onChange={(e) => onSwitchBranch(e.target.value)}
-                  aria-label={isArabic ? "الفرع النشط" : "Active branch"}
-                >
-                  {canSwitchBranches && (
-                    <option value={ALL_BRANCHES_ID}>
-                      {isArabic ? "كل الفروع" : "All branches"}
-                    </option>
-                  )}
-                  {branches.map((branch) => (
-                    <option key={branch.id} value={branch.id}>
-                      {(isArabic ? branch.name : branch.name_en) || branch.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-
-            <div className="alertBell" ref={alertRef}>
-              <button
-                type="button"
-                className={`topbarIconBtn alertBellBtn ${alertsOpen ? "open" : ""}`}
-                onClick={() => setAlertsOpen((value) => !value)}
-                aria-label={isArabic ? "التنبيهات" : "Notifications"}
-                aria-expanded={alertsOpen}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path
-                    d="M12 3a6 6 0 0 0-6 6v3.6c0 .5-.2 1-.6 1.4L4 15.4c-.6.6-.2 1.6.7 1.6h14.6c.9 0 1.3-1 .7-1.6l-1.4-1.4a2 2 0 0 1-.6-1.4V9a6 6 0 0 0-6-6Z"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M9.5 19a2.5 2.5 0 0 0 5 0"
+                    d="M13 12H3m0 0 3-3M3 12l3 3"
                     stroke="currentColor"
                     strokeWidth="1.8"
                     strokeLinecap="round"
+                    strokeLinejoin="round"
                   />
                 </svg>
-                {alertTotal > 0 && (
-                  <span className="alertBadge">{alertTotal > 99 ? "99+" : alertTotal}</span>
-                )}
+                <span>{isArabic ? "تسجيل خروج" : "Logout"}</span>
               </button>
-
-              {alertsOpen && (
-                <div className="alertDropdown" dir={isArabic ? "rtl" : "ltr"}>
-                  <div className="alertDropdownHeader">
-                    <strong>{isArabic ? "التنبيهات" : "Notifications"}</strong>
-                    <span>
-                      {alertTotal} {isArabic ? "تنبيه" : "alerts"}
-                    </span>
-                  </div>
-
-                  {alertItems.length === 0 ? (
-                    <div className="alertEmpty">
-                      {isArabic ? "لا توجد تنبيهات حالياً 🎉" : "No notifications 🎉"}
-                    </div>
-                  ) : (
-                    <ul className="alertList">
-                      {alertItems.map((item) => (
-                        <li key={item.id}>
-                          <button
-                            type="button"
-                            className="alertRow"
-                            onClick={() =>
-                              navigate(
-                                item.kind === "expired"
-                                  ? "expired"
-                                  : item.kind === "low"
-                                    ? "low"
-                                    : "expiring",
-                              )
-                            }
-                          >
-                            <span
-                              className="alertDot"
-                              style={{ background: KIND_META[item.kind].dot }}
-                            />
-                            <span className="alertText">
-                              <span className="alertName">{item.name}</span>
-                              <span className="alertDetail">{item.detail}</span>
-                            </span>
-                            <span className="alertKindLabel">
-                              {isArabic ? KIND_META[item.kind].ar : KIND_META[item.kind].en}
-                            </span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-
-                  <div className="alertDropdownFooter">
-                    <button
-                      type="button"
-                      className="alertFooterBtn"
-                      onClick={() => navigate("low")}
-                    >
-                      {isArabic ? "عرض كل النواقص في المخزون" : "View all in inventory"}
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
-
-            <button
-              type="button"
-              className="topbarActionChip topbarActionChip--search"
-              onClick={onOpenGlobalSearch}
-              title={isArabic ? "بحث عام (Ctrl+K)" : "Global search (Ctrl+K)"}
-              aria-label={isArabic ? "بحث عام" : "Global search"}
-            >
-              <svg
-                className="topbarMetaIcon"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                aria-hidden="true"
-              >
-                <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.8" />
-                <path
-                  d="M20 20l-3.5-3.5"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                />
-              </svg>
-              <span className="topbarSearchLabel">{isArabic ? "بحث" : "Search"}</span>
-              <kbd className="topbarSearchKbd">Ctrl+K</kbd>
-            </button>
-
-            <button
-              type="button"
-              className="topbarActionChip topbarActionChip--theme"
-              onClick={onToggleTheme}
-              title={
-                isArabic
-                  ? resolvedTheme === "dark"
-                    ? "الوضع الفاتح"
-                    : "الوضع الداكن"
-                  : resolvedTheme === "dark"
-                    ? "Light mode"
-                    : "Dark mode"
-              }
-              aria-label={
-                isArabic
-                  ? resolvedTheme === "dark"
-                    ? "التبديل إلى الوضع الفاتح"
-                    : "التبديل إلى الوضع الداكن"
-                  : resolvedTheme === "dark"
-                    ? "Switch to light mode"
-                    : "Switch to dark mode"
-              }
-            >
-              <span className="topbarThemeIcon" aria-hidden="true">
-                {resolvedTheme === "dark" ? "☀️" : "🌙"}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              className="topbarActionChip topbarActionChip--lang"
-              onClick={onToggleLang}
-            >
-              <svg
-                className="topbarMetaIcon"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                aria-hidden="true"
-              >
-                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
-                <path
-                  d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                />
-              </svg>
-              <span>{t.langButton}</span>
-            </button>
-
-            <button
-              type="button"
-              className="topbarActionChip topbarActionChip--logout"
-              onClick={onLogout}
-            >
-              <svg
-                className="topbarMetaIcon"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M9 6V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2v-1"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M13 12H3m0 0 3-3M3 12l3 3"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <span>{isArabic ? "تسجيل خروج" : "Logout"}</span>
-            </button>
           </div>
         </div>
       </div>

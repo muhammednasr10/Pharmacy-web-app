@@ -43,10 +43,7 @@ export default function RolePermissionsEditorModal({
   if (!open || !target) return null;
 
   const roleLabel = getRoleLabel(target.roleKey, isArabic);
-  const pageOptions =
-    target.kind === "builtin" && target.roleKey === "pharmacy_admin"
-      ? ROLE_PAGE_OPTIONS
-      : ROLE_PAGE_OPTIONS.filter((item) => item.page !== "sqlMigrations");
+  const pageOptions = ROLE_PAGE_OPTIONS.filter((item) => item.page !== "sqlMigrations");
 
   function togglePage(page: Page) {
     onChangePages(
@@ -157,8 +154,9 @@ export function normalizeEditorAccess(
   permissions: RolePermissionFlags,
 ) {
   const baseRole = target.kind === "custom" ? target.baseRole : target.roleKey;
+  const pages = allowedPages.filter((page) => page !== "sqlMigrations");
   return {
-    allowedPages,
+    allowedPages: pages,
     permissions: normalizeRolePermissionFlags(baseRole, permissions),
   };
 }
