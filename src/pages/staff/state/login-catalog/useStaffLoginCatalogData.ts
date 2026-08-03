@@ -1,6 +1,10 @@
 import { useEffect, useMemo } from "react";
 import { buildPharmacyRoleSelectOptions } from "../../../../utils/pharmacyGeneralManager";
-import { getRoleLabel } from "../../../../utils/roles";
+import {
+  getRoleLabel,
+  isStaffAssignableLoginAccount,
+  isStaffAssignableSystemUser,
+} from "../../../../utils/roles";
 import type { StaffLoginCatalogParams } from "./types";
 
 export type StaffLoginCatalogDataParams = StaffLoginCatalogParams & {
@@ -45,8 +49,13 @@ export function useStaffLoginCatalogData(params: StaffLoginCatalogDataParams) {
   ]);
 
   const branchLoginCatalog = useMemo(() => {
-    if (!canViewLoginAccountsTab) return loginCatalog;
-    return loginCatalog.filter((item) => item.pharmacyId === catalogTargetPharmacyId);
+    if (!canViewLoginAccountsTab) {
+      return loginCatalog.filter((item) => isStaffAssignableLoginAccount(item));
+    }
+    return loginCatalog.filter(
+      (item) =>
+        item.pharmacyId === catalogTargetPharmacyId && isStaffAssignableLoginAccount(item),
+    );
   }, [loginCatalog, canViewLoginAccountsTab, catalogTargetPharmacyId]);
 
   const branchCustomRoles = useMemo(
@@ -60,8 +69,15 @@ export function useStaffLoginCatalogData(params: StaffLoginCatalogDataParams) {
   const employeesPanelLoginAccounts = useMemo(() => {
     const scoped =
       loginAccountsPanelBranchFilter === "all"
-        ? loginCatalog.filter((item) => orgBranchIds.includes(item.pharmacyId))
-        : loginCatalog.filter((item) => item.pharmacyId === loginAccountsPanelBranchFilter);
+        ? loginCatalog.filter(
+            (item) =>
+              orgBranchIds.includes(item.pharmacyId) && isStaffAssignableLoginAccount(item),
+          )
+        : loginCatalog.filter(
+            (item) =>
+              item.pharmacyId === loginAccountsPanelBranchFilter &&
+              isStaffAssignableLoginAccount(item),
+          );
     return [...scoped].sort((a, b) => {
       const byRole = getRoleLabel(a.role, isArabic).localeCompare(
         getRoleLabel(b.role, isArabic),
@@ -75,8 +91,14 @@ export function useStaffLoginCatalogData(params: StaffLoginCatalogDataParams) {
   const employeesPanelAccessUsers = useMemo(() => {
     const scoped =
       loginAccountsPanelBranchFilter === "all"
-        ? systemUsers.filter((user) => orgBranchIds.includes(user.pharmacyId))
-        : systemUsers.filter((user) => user.pharmacyId === loginAccountsPanelBranchFilter);
+        ? systemUsers.filter(
+            (user) => orgBranchIds.includes(user.pharmacyId) && isStaffAssignableSystemUser(user),
+          )
+        : systemUsers.filter(
+            (user) =>
+              user.pharmacyId === loginAccountsPanelBranchFilter &&
+              isStaffAssignableSystemUser(user),
+          );
     return [...scoped].sort((a, b) => {
       const byRole = getRoleLabel(a.role, isArabic).localeCompare(
         getRoleLabel(b.role, isArabic),

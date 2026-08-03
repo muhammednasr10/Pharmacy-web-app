@@ -3,7 +3,13 @@ import {
   isPharmacyGeneralManagerRole,
   PHARMACY_GENERAL_MANAGER_TAKEN,
 } from "../../utils/pharmacyGeneralManager";
-import { getRoleLabel, isSuperAdmin, parseLoginAccountRole } from "../../utils/roles";
+import {
+  getRoleLabel,
+  isStaffAssignableLoginAccount,
+  isStaffAssignableSystemUser,
+  isSuperAdmin,
+  parseLoginAccountRole,
+} from "../../utils/roles";
 import type {
   AppUser,
   Employee,
@@ -20,6 +26,11 @@ export function staffActionErrorMessage(
   const msg = err instanceof Error ? err.message : "";
   if (msg === PHARMACY_GENERAL_MANAGER_TAKEN) {
     return formatPharmacyGeneralManagerTakenError(isArabic);
+  }
+  if (msg === "employee_update_failed") {
+    return isArabic
+      ? "تعذر حفظ بيانات الموظف — تحقق من الصلاحيات"
+      : "Could not save employee — check permissions";
   }
   return msg || fallback;
 }
@@ -51,19 +62,26 @@ export function getEmployeeAssignedAccountId(
 }
 
 export function getEmployeeLinkedUserUid(employee: Employee, systemUsers: SystemUser[]): string {
-  return systemUsers.find((user) => user.employeeId === employee.id)?.uid || "";
+  const linked = systemUsers.find((user) => user.employeeId === employee.id);
+  if (!linked || !isStaffAssignableSystemUser(linked)) return "";
+  return linked.uid;
 }
 
 export function getEmployeeSelectedRole(
   emp: Employee,
   catalogByEmployeeId: Map<string, PharmacyLoginAccount>,
+  systemUsers: SystemUser[] = [],
 ): string {
   if (emp.jobTitle?.trim()) {
     return parseLoginAccountRole(emp.jobTitle);
   }
   const linked = catalogByEmployeeId.get(emp.id);
-  if (linked) {
+  if (linked?.role?.trim()) {
     return parseLoginAccountRole(linked.role);
+  }
+  const linkedUser = systemUsers.find((user) => user.employeeId === emp.id);
+  if (linkedUser?.role?.trim() && isStaffAssignableSystemUser(linkedUser)) {
+    return parseLoginAccountRole(linkedUser.role);
   }
   return "";
 }
@@ -84,6 +102,7 @@ export function employeeLoginAccountOptionsFor(
 
   const eligible = sourceAccounts.filter(
     (account) =>
+      isStaffAssignableLoginAccount(account) &&
       account.status === "approved" &&
       (!account.employeeId || account.employeeId === employeeId),
   );
@@ -116,6 +135,7 @@ export function employeeSystemUserOptionsFor(
   const linkedUid = getEmployeeLinkedUserUid({ id: employeeId } as Employee, systemUsers);
   return systemUsers
     .filter((user) => {
+      if (!isStaffAssignableSystemUser(user)) return false;
       if (user.pharmacyId !== pharmacyId || user.isActive === false) return false;
       if (user.employeeId && user.employeeId !== employeeId) return false;
       if (

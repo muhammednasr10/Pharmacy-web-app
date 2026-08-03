@@ -168,6 +168,16 @@ export const SQL_MIGRATIONS: SqlMigrationDefinition[] = [
     probe: { type: "rpc", name: "sync_pharmacy_from_catalog_reference", args: {} },
   },
   {
+    id: "medicine-catalog-reference-stats",
+    file: "medicine-catalog-reference-stats.sql",
+    group: "core",
+    titleAr: "إحصائيات الكتالوج المركزي",
+    titleEn: "Central catalog stats RPC",
+    noteAr: "بعد medicine-catalog-reference.sql — يعرض عدد الأدوية المتاحة للاستيراد",
+    noteEn: "After medicine-catalog-reference.sql — shows catalog count for import UI",
+    probe: { type: "rpc", name: "get_medicine_catalog_reference_stats", args: {} },
+  },
+  {
     id: "complete-sale-rpc",
     file: "complete-sale-rpc.sql",
     group: "pos",
@@ -224,6 +234,14 @@ export const SQL_MIGRATIONS: SqlMigrationDefinition[] = [
     titleAr: "تكاليف الصيدلية",
     titleEn: "Pharmacy costs",
     probe: { type: "table", name: "pharmacy_costs" },
+  },
+  {
+    id: "pharmacy-cost-plans",
+    file: "pharmacy-cost-plans.sql",
+    group: "core",
+    titleAr: "خطة التكاليف الشهرية",
+    titleEn: "Monthly cost plans",
+    probe: { type: "table", name: "pharmacy_cost_plans" },
   },
   {
     id: "login-accounts",
@@ -468,5 +486,15 @@ export const SQL_MIGRATIONS: SqlMigrationDefinition[] = [
     noteAr: "بعد rls-remove-dev-policies.sql — يمنع تزوير التوكن ويغلق anon",
     noteEn: "Run after rls-remove-dev-policies.sql — blocks token forging and locks anon",
     probe: { type: "rpc", name: "app_client_login", args: {} },
+  },
+  {
+    id: "medicines-pagination-count",
+    file: "medicines-pagination-count-rpc.sql",
+    group: "core",
+    titleAr: "عدّ سريع لأدوية المخزون (pagination)",
+    titleEn: "Fast medicine count for inventory pagination",
+    noteAr: "بعد استيراد كatalog كبير — يمنع timeout في المخزون",
+    noteEn: "After large catalog import — prevents inventory list timeout",
+    probe: { type: "rpc", name: "pharmacy_medicine_stats", args: {} },
   },
 ];

@@ -275,3 +275,53 @@ export async function listCashierShifts(
 
   return (data || []).map((item) => normalizeCashierShift(item));
 }
+
+export async function deleteCashierShift(params: {
+  shiftId: number;
+  pharmacyId: string;
+  requesterId: string;
+  canManageAll: boolean;
+}): Promise<void> {
+  const { data: row, error: fetchError } = await supabase
+    .from("cashier_shifts")
+    .select("*")
+    .eq("id", params.shiftId)
+    .eq("pharmacy_id", params.pharmacyId)
+    .single();
+
+  if (fetchError || !row) {
+    throw new Error("shift_not_found");
+  }
+
+  const shift = normalizeCashierShift(row);
+  if (shift.status === "open") {
+    throw new Error("shift_still_open");
+  }
+
+  if (!params.canManageAll && shift.cashierId !== params.requesterId) {
+    throw new Error("not_authorized");
+  }
+
+  const { count, error: countError } = await supabase
+    .from("invoices")
+    .select("*", { count: "exact", head: true })
+    .eq("cashier_shift_id", params.shiftId);
+
+  if (countError) {
+    throw new Error(countError.message);
+  }
+
+  if ((count ?? 0) > 0) {
+    throw new Error("shift_has_sales");
+  }
+
+  const { error } = await supabase
+    .from("cashier_shifts")
+    .delete()
+    .eq("id", params.shiftId)
+    .eq("pharmacy_id", params.pharmacyId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}

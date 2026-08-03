@@ -24,6 +24,7 @@ import {
   isPharmacyManager,
   isSuperAdmin,
   canManageStaffRolePermissions,
+  isStaffAssignableLoginAccount,
 } from "../../../utils/roles";
 import type { EmployeesUsersPageProps, TabId } from "../types";
 
@@ -329,7 +330,7 @@ export function useStaffSharedDerived(
   const catalogByEmployeeId = useMemo(() => {
     const map = new Map<string, PharmacyLoginAccount>();
     loginCatalog.forEach((item) => {
-      if (!item.employeeId) return;
+      if (!item.employeeId || !isStaffAssignableLoginAccount(item)) return;
       const existing = map.get(item.employeeId);
       if (!existing || item.status === "approved") {
         map.set(item.employeeId, item);

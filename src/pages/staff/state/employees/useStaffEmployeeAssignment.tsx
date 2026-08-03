@@ -10,6 +10,8 @@ import {
 import {
   getRoleLabel,
   isOrgPharmacyAdmin,
+  isStaffAssignableLoginAccount,
+  isStaffAssignableSystemUser,
   isSuperAdmin,
   parseLoginAccountRole,
 } from "../../../../utils/roles";
@@ -78,6 +80,11 @@ export function useStaffEmployeeAssignment({
   }
 
   async function assignEmployeeRole(employee: Employee, roleKey: string) {
+    const selectedRole = getEmployeeSelectedRole(employee, catalogByEmployeeId, systemUsers);
+    const parsedRole = roleKey ? parseLoginAccountRole(roleKey) : "";
+
+    if (parsedRole === selectedRole) return;
+
     if (!roleKey) {
       setBusy(`role-emp-${employee.id}`);
       try {
@@ -91,8 +98,6 @@ export function useStaffEmployeeAssignment({
       return;
     }
 
-    const parsedRole = parseLoginAccountRole(roleKey);
-    const selectedRole = getEmployeeSelectedRole(employee, catalogByEmployeeId);
     if (!employeeRoleOptionsFor(employee.pharmacyId, employee.id, selectedRole).includes(parsedRole)) {
       alert(isArabic ? "الدور غير متاح لهذا الفرع" : "This role is not available for this branch");
       return;
@@ -111,34 +116,61 @@ export function useStaffEmployeeAssignment({
     setBusy(`role-emp-${employee.id}`);
     try {
       await pharmacyService.updateEmployee(employee.id, { jobTitle: parsedRole });
+      await loadAll();
 
+      const syncErrors: string[] = [];
       const linkedUser = systemUsers.find((user) => user.employeeId === employee.id);
-      if (linkedUser) {
-        await pharmacyService.updateSystemUser(linkedUser.uid, {
-          role: parsedRole,
-          name: employee.name,
-        });
-      }
-
-      const linked = catalogByEmployeeId.get(employee.id);
-      if (linked && parsedRole && parseLoginAccountRole(linked.role) !== parsedRole) {
-        await pharmacyService.updatePharmacyLoginAccount(linked.id, { role: parsedRole });
-        if (linked.status === "approved" && (isSuperAdmin(appUser) || isOrgPharmacyAdmin(appUser))) {
-          try {
-            await syncSavedCatalogAccount(employee.pharmacyId, parsedRole, linked.id);
-          } catch (syncErr) {
-            const syncMessage =
-              syncErr instanceof Error
-                ? formatLoginAccountSyncError(syncErr.message, isArabic)
-                : isArabic
-                  ? "تعذر مزامنة الدور مع حساب الدخول"
-                  : "Could not sync role with login account";
-            alert(syncMessage);
-          }
+      if (
+        linkedUser &&
+        isStaffAssignableSystemUser(linkedUser) &&
+        parseLoginAccountRole(linkedUser.role) !== parsedRole
+      ) {
+        try {
+          await pharmacyService.updateSystemUser(linkedUser.uid, {
+            role: parsedRole,
+            name: employee.name,
+          });
+        } catch (syncErr) {
+          syncErrors.push(
+            syncErr instanceof Error
+              ? formatLoginAccountSyncError(syncErr.message, isArabic)
+              : isArabic
+                ? "تعذر مزامنة الدور مع حساب الدخول"
+                : "Could not sync role with login account",
+          );
         }
       }
 
-      await loadAll();
+      const linked = catalogByEmployeeId.get(employee.id);
+      if (
+        linked &&
+        isStaffAssignableLoginAccount(linked) &&
+        parsedRole &&
+        parseLoginAccountRole(linked.role) !== parsedRole
+      ) {
+        try {
+          await pharmacyService.updatePharmacyLoginAccount(linked.id, { role: parsedRole });
+          if (linked.status === "approved" && (isSuperAdmin(appUser) || isOrgPharmacyAdmin(appUser))) {
+            await syncSavedCatalogAccount(employee.pharmacyId, parsedRole, linked.id);
+          }
+        } catch (syncErr) {
+          syncErrors.push(
+            syncErr instanceof Error
+              ? formatLoginAccountSyncError(syncErr.message, isArabic)
+              : isArabic
+                ? "تعذر مزامنة الدور مع سجل حساب الدخول"
+                : "Could not sync role with login catalog",
+          );
+        }
+      }
+
+      if (syncErrors.length > 0) {
+        alert(
+          isArabic
+            ? `تم حفظ دور الموظف، لكن: ${syncErrors.join(" — ")}`
+            : `Employee role saved, but: ${syncErrors.join(" — ")}`,
+        );
+      }
     } catch (err) {
       alert(staffActionErrorMessage(err, isArabic, isArabic ? "تعذر تحديث الدور" : "Could not update role"));
     } finally {
@@ -147,7 +179,7 @@ export function useStaffEmployeeAssignment({
   }
 
   function renderEmployeeRoleCell(emp: Employee) {
-    const selectedRole = getEmployeeSelectedRole(emp, catalogByEmployeeId);
+    const selectedRole = getEmployeeSelectedRole(emp, catalogByEmployeeId, systemUsers);
     const roleOptions = employeeRoleOptionsFor(emp.pharmacyId, emp.id, selectedRole);
     const optionsWithSelected =
       selectedRole && !roleOptions.includes(selectedRole)
@@ -233,6 +265,14 @@ export function useStaffEmployeeAssignment({
       );
       return;
     }
+    if (!isStaffAssignableLoginAccount(acc)) {
+      alert(
+        isArabic
+          ? "حساب مالك النظام لا يمكن ربطه بموظف"
+          : "System owner account cannot be linked to an employee",
+      );
+      return;
+    }
     if (acc.employeeId && acc.employeeId !== employee.id) {
       const other = employeeById.get(acc.employeeId);
       alert(
@@ -315,6 +355,14 @@ export function useStaffEmployeeAssignment({
       alert(isArabic ? "المستخدم غير موجود" : "User not found");
       return;
     }
+    if (!isStaffAssignableSystemUser(user)) {
+      alert(
+        isArabic
+          ? "حساب مالك النظام لا يمكن ربطه بموظف"
+          : "System owner account cannot be linked to an employee",
+      );
+      return;
+    }
     if (user.employeeId && user.employeeId !== employee.id) {
       const other = employeeById.get(user.employeeId);
       alert(
@@ -325,7 +373,7 @@ export function useStaffEmployeeAssignment({
       return;
     }
 
-    const role = getEmployeeSelectedRole(employee, catalogByEmployeeId) || user.role;
+    const role = getEmployeeSelectedRole(employee, catalogByEmployeeId, systemUsers) || user.role;
     if (
       isPharmacyGeneralManagerRole(role) &&
       isPharmacyGeneralManagerSlotTaken(targetPharmacyId, generalManagerScope, {
@@ -430,6 +478,7 @@ export function useStaffEmployeeAssignment({
       employeeSystemUserOptionsFor(pharmacyId, employeeId, systemUsers, appUser),
     isAccountCustomRole: (roleKey: string) => isAccountCustomRole(roleKey, branchCustomRoles),
     employeeRoleOptionsFor,
-    getEmployeeSelectedRole: (emp: Employee) => getEmployeeSelectedRole(emp, catalogByEmployeeId),
+    getEmployeeSelectedRole: (emp: Employee) =>
+      getEmployeeSelectedRole(emp, catalogByEmployeeId, systemUsers),
   };
 }

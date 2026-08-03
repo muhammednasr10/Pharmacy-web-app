@@ -1,6 +1,6 @@
 import { supabase } from "../supabaseClient";
 import type { ActivityLog, Invoice, InvoiceItem, StockMovement } from "../../types";
-import { toSnakeCase } from "./mappers";
+import { toSnakeCase, toCamelCase } from "./mappers";
 import { stampPharmacy } from "./scope";
 
 export async function addActivityLog(log: ActivityLog) {
@@ -56,7 +56,7 @@ export async function attachInvoiceItems(invoices: Invoice[]): Promise<Invoice[]
     return invoices.map((invoice) => ({ ...invoice, items: invoice.items || [] }));
   }
 
-  const items = (itemsData || []).map((row) => normalizeInvoiceItem(row));
+  const items = (itemsData || []).map((row) => toCamelCase<InvoiceItem>(row));
   const itemsByInvoiceId = items.reduce(
     (acc, item) => {
       if (item.invoiceId !== undefined) {

@@ -37,7 +37,7 @@ export default function EmployeePortalLeavePanel({ state }: Props) {
       </label>
       <button
         type="button"
-        className="completeBtn"
+        className="printFullBtn employeePortalSubmitBtn"
         disabled={!!busy}
         onClick={() => void submitLeaveRequest()}
       >

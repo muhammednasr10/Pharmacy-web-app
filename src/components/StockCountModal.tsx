@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Medicine } from "../types";
-import { findMedicineByBarcode, searchMedicines } from "../utils/medicineLookup";
+import { findMedicineByBarcode } from "../utils/medicineLookup";
+import {
+  fetchMedicinesPage,
+  lookupInventoryMedicineByBarcode,
+} from "../services/pharmacy/inventoryPaginationService";
+import { runWithPharmacyScope } from "../services/pharmacy/medicineQueryService";
 import { playBarcodeBeep } from "../utils/barcodeBeep";
 import { useHardwareBarcodeScanner } from "../utils/useHardwareBarcodeScanner";
 import BarcodeCameraScanner, { canUseBarcodeCameraScanner } from "./BarcodeCameraScanner";
@@ -44,6 +49,8 @@ export default function StockCountModal({
   });
   const [scanValue, setScanValue] = useState("");
   const [searchValue, setSearchValue] = useState("");
+  const [searchResults, setSearchResults] = useState<Medicine[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [applying, setApplying] = useState(false);
@@ -75,12 +82,23 @@ export default function StockCountModal({
     [],
   );
 
+  const resolveMedicineByBarcode = useCallback(
+    async (code: string): Promise<Medicine | undefined> => {
+      return runWithPharmacyScope(pharmacyId, async () => {
+        const fromServer = await lookupInventoryMedicineByBarcode(code);
+        if (fromServer) return fromServer;
+        return findMedicineByBarcode(medicines, code);
+      });
+    },
+    [medicines, pharmacyId],
+  );
+
   const processBarcode = useCallback(
-    (raw: string) => {
+    async (raw: string) => {
       const clean = raw.trim();
       if (!clean || disabled) return false;
 
-      const found = findMedicineByBarcode(medicines, clean);
+      const found = await resolveMedicineByBarcode(clean);
       if (!found) {
         playBarcodeBeep(false);
         showMessage(
@@ -99,7 +117,7 @@ export default function StockCountModal({
       focusInput();
       return true;
     },
-    [disabled, focusInput, isArabic, medicines, showMessage, updateSession],
+    [disabled, focusInput, isArabic, resolveMedicineByBarcode, showMessage, updateSession],
   );
 
   useEffect(() => {
@@ -119,15 +137,47 @@ export default function StockCountModal({
 
   useHardwareBarcodeScanner({
     disabled: disabled || step !== "count",
-    onScan: processBarcode,
+    onScan: (code) => {
+      void processBarcode(code);
+    },
     ignoreInputRef: inputRef,
   });
 
-  const searchResults = useMemo(() => {
+  useEffect(() => {
     const query = searchValue.trim();
-    if (query.length < 2) return [];
-    return searchMedicines(medicines, query).slice(0, 8);
-  }, [medicines, searchValue]);
+    if (query.length < 2) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setSearchLoading(true);
+
+    const timer = window.setTimeout(() => {
+      void runWithPharmacyScope(pharmacyId, async () => {
+        try {
+          const result = await fetchMedicinesPage({
+            page: 1,
+            pageSize: 8,
+            search: query,
+            stockFilter: "all",
+          });
+          if (!cancelled) setSearchResults(result.rows);
+        } catch (searchError) {
+          console.error("Stock count search error:", searchError);
+          if (!cancelled) setSearchResults([]);
+        } finally {
+          if (!cancelled) setSearchLoading(false);
+        }
+      });
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [pharmacyId, searchValue]);
 
   function handleResetSession() {
     const confirmed = window.confirm(
@@ -235,13 +285,13 @@ export default function StockCountModal({
                     const next = event.target.value;
                     setScanValue(next);
                     if (next.includes("\n") || next.includes("\r")) {
-                      processBarcode(next.replace(/[\n\r]/g, ""));
+                      void processBarcode(next.replace(/[\n\r]/g, ""));
                     }
                   }}
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
                       event.preventDefault();
-                      processBarcode(scanValue);
+                      void processBarcode(scanValue);
                     }
                   }}
                 />
@@ -273,6 +323,16 @@ export default function StockCountModal({
                 }
                 onChange={(event) => setSearchValue(event.target.value)}
               />
+              {searchLoading && (
+                <p className="mutedText">
+                  {isArabic ? "جاري البحث..." : "Searching..."}
+                </p>
+              )}
+              {!searchLoading && searchValue.trim().length >= 2 && searchResults.length === 0 && (
+                <p className="mutedText">
+                  {isArabic ? "لا توجد نتائج" : "No results"}
+                </p>
+              )}
               {searchResults.length > 0 && (
                 <ul className="stockCountSearchResults">
                   {searchResults.map((medicine) => (
@@ -464,7 +524,7 @@ export default function StockCountModal({
             onClose={() => setCameraOpen(false)}
             onDetected={(code) => {
               setCameraOpen(false);
-              processBarcode(code);
+              void processBarcode(code);
             }}
           />
         )}

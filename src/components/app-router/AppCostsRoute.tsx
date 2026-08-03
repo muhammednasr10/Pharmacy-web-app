@@ -6,6 +6,7 @@ export type AppCostsRouteProps = Pick<
   | "displayPage"
   | "canOpenPage"
   | "pharmacyCosts"
+  | "invoices"
   | "isArabic"
   | "t"
   | "getPharmacyId"
@@ -23,6 +24,7 @@ export default function AppCostsRoute({
   displayPage,
   canOpenPage,
   pharmacyCosts,
+  invoices,
   isArabic,
   t,
   getPharmacyId,
@@ -40,6 +42,7 @@ export default function AppCostsRoute({
   return (
     <CostsPage
       costs={pharmacyCosts}
+      invoices={invoices}
       isArabic={isArabic}
       t={t}
       currency={t.currency}

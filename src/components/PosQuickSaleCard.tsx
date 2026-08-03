@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { CashierShift } from "../types";
 
 type PosQuickSaleCardProps = {
@@ -7,6 +7,7 @@ type PosQuickSaleCardProps = {
   activeShift: CashierShift | null;
   branchLabel?: string;
   onClose: () => void;
+  onFullscreenChange?: (isFullscreen: boolean) => void;
   children: ReactNode;
 };
 
@@ -16,61 +17,58 @@ export default function PosQuickSaleCard({
   activeShift,
   branchLabel,
   onClose,
+  onFullscreenChange,
   children,
 }: PosQuickSaleCardProps) {
-  const cardRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const syncFullscreenState = useCallback(() => {
-    setIsFullscreen(document.fullscreenElement === cardRef.current);
-  }, []);
+  const setFullscreen = useCallback(
+    (next: boolean) => {
+      setIsFullscreen(next);
+      onFullscreenChange?.(next);
+    },
+    [onFullscreenChange],
+  );
 
   useEffect(() => {
     if (!open) {
-      if (document.fullscreenElement === cardRef.current) {
-        void document.exitFullscreen?.();
-      }
-      setIsFullscreen(false);
+      setFullscreen(false);
     }
-  }, [open]);
+  }, [open, setFullscreen]);
 
   useEffect(() => {
-    document.addEventListener("fullscreenchange", syncFullscreenState);
-    return () => document.removeEventListener("fullscreenchange", syncFullscreenState);
-  }, [syncFullscreenState]);
+    if (!open || !isFullscreen) return;
 
-  async function toggleFullscreen() {
-    const element = cardRef.current;
-    if (!element) return;
-
-    try {
-      if (document.fullscreenElement === element) {
-        await document.exitFullscreen();
-      } else {
-        await element.requestFullscreen();
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        setFullscreen(false);
       }
-    } catch {
-      setIsFullscreen((current) => !current);
     }
+
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [open, isFullscreen, setFullscreen]);
+
+  function toggleFullscreen() {
+    setFullscreen(!isFullscreen);
   }
 
   if (!open) return null;
 
-  const useCssFullscreen = isFullscreen && document.fullscreenElement !== cardRef.current;
-
   return (
     <div
-      className={`posQuickSaleOverlay${useCssFullscreen ? " is-fullscreen" : ""}`}
+      className={`posQuickSaleOverlay${isFullscreen ? " is-fullscreen" : ""}`}
       role="presentation"
       onClick={(event) => {
-        if (event.target === event.currentTarget && !useCssFullscreen) {
+        if (event.target === event.currentTarget && !isFullscreen) {
           onClose();
         }
       }}
     >
       <div
-        ref={cardRef}
-        className={`posQuickSaleCard card${useCssFullscreen ? " is-css-fullscreen" : ""}`}
+        className={`posQuickSaleCard card${isFullscreen ? " is-css-fullscreen is-expanded" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={isArabic ? "بيع سريع" : "Quick sale"}
@@ -92,9 +90,25 @@ export default function PosQuickSaleCard({
             <button
               type="button"
               className="posQuickSaleIconBtn"
-              onClick={() => void toggleFullscreen()}
-              title={isFullscreen ? (isArabic ? "خروج من ملء الشاشة" : "Exit fullscreen") : isArabic ? "ملء الشاشة" : "Fullscreen"}
-              aria-label={isFullscreen ? (isArabic ? "خروج من ملء الشاشة" : "Exit fullscreen") : isArabic ? "ملء الشاشة" : "Fullscreen"}
+              onClick={toggleFullscreen}
+              title={
+                isFullscreen
+                  ? isArabic
+                    ? "خروج من ملء الشاشة"
+                    : "Exit fullscreen"
+                  : isArabic
+                    ? "ملء الشاشة"
+                    : "Fullscreen"
+              }
+              aria-label={
+                isFullscreen
+                  ? isArabic
+                    ? "خروج من ملء الشاشة"
+                    : "Exit fullscreen"
+                  : isArabic
+                    ? "ملء الشاشة"
+                    : "Fullscreen"
+              }
             >
               {isFullscreen ? "⤢" : "⛶"}
             </button>
@@ -110,7 +124,7 @@ export default function PosQuickSaleCard({
           </div>
         </div>
 
-        <div className="posQuickSaleCardBody">{children}</div>
+        <div className={`posQuickSaleCardBody${isFullscreen ? " is-fullscreen-body" : ""}`}>{children}</div>
       </div>
     </div>
   );

@@ -9,14 +9,17 @@ import type {
 } from "../types";
 import PosBarcodeInput, { type PosBarcodeInputHandle } from "../components/PosBarcodeInput";
 import PosCart from "../components/PosCart";
-import PosManualSalePanel from "../components/PosManualSalePanel";
+import PosManualSalePanel, { type PosSearchScope } from "../components/PosManualSalePanel";
 import PosQuickSaleCard from "../components/PosQuickSaleCard";
+import PosSmartSearch from "../components/PosSmartSearch";
+import PosWarehouseScopeBar from "../components/PosWarehouseScopeBar";
 import CashierShiftPanel from "../components/CashierShiftPanel";
 import PosShiftsTable from "../components/PosShiftsTable";
 import OfflinePosBanner from "../components/OfflinePosBanner";
 import PosShortcutsModal from "../components/PosShortcutsModal";
 import { usePosKeyboardShortcuts } from "../hooks/usePosKeyboardShortcuts";
 import { usePosInventorySource } from "../hooks/usePosInventorySource";
+import type { PosActionFeedback } from "../hooks/usePosSales";
 import { isPharmacyManager, isSuperAdmin } from "../utils/roles";
 
 function usesCashierShiftGate(appUser: AppUser | null) {
@@ -58,7 +61,7 @@ type PosPageProps = {
   getPaymentLabel: (method: string) => string;
   heldInvoicesCount: number;
   isHolding: boolean;
-  onHoldInvoice: () => void;
+  onHoldInvoice: () => void | Promise<void | PosActionFeedback>;
   onOpenHeldInvoices: () => void;
   onOpenInstantReturn: () => void;
   lowStockThreshold: number;
@@ -66,6 +69,8 @@ type PosPageProps = {
   workShiftLabel?: string;
   pharmacyId: string;
   branchLabel?: string;
+  branches?: PharmacySettings[];
+  getBranchLabel?: (branchId: string | undefined) => string;
   inventoryRefreshKey?: string | number;
   appUser: AppUser | null;
   activeCashierShift: CashierShift | null;
@@ -120,6 +125,8 @@ export default function PosPage({
   workShiftLabel,
   pharmacyId,
   branchLabel,
+  branches = [],
+  getBranchLabel,
   inventoryRefreshKey = 0,
   appUser,
   activeCashierShift,
@@ -135,6 +142,10 @@ export default function PosPage({
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [manualSaleOpen, setManualSaleOpen] = useState(false);
   const [quickSaleCardOpen, setQuickSaleCardOpen] = useState(false);
+  const [quickSaleFullscreen, setQuickSaleFullscreen] = useState(false);
+  const [searchScope, setSearchScope] = useState<PosSearchScope>("current");
+  const [posActionFeedback, setPosActionFeedback] = useState<PosActionFeedback | null>(null);
+  const posActionFeedbackTimerRef = useRef<number | null>(null);
   const shiftGateEnabled = usesCashierShiftGate(appUser);
   const shiftReady = !shiftGateEnabled || Boolean(activeCashierShift);
   const shortcutsEnabled = canUsePOS && !isSubscriptionExpired && shiftReady;
@@ -167,6 +178,38 @@ export default function PosPage({
     }
   }, [quickSaleCardOpen, shiftReady, activeCashierShift, focusBarcode]);
 
+  useEffect(() => {
+    if (quickSaleFullscreen) {
+      setManualSaleOpen(false);
+    }
+  }, [quickSaleFullscreen]);
+
+  const showPosActionFeedback = useCallback((feedback: PosActionFeedback) => {
+    setPosActionFeedback(feedback);
+    if (posActionFeedbackTimerRef.current) {
+      window.clearTimeout(posActionFeedbackTimerRef.current);
+    }
+    posActionFeedbackTimerRef.current = window.setTimeout(() => {
+      setPosActionFeedback(null);
+      posActionFeedbackTimerRef.current = null;
+    }, 4000);
+  }, []);
+
+  const handleHoldInvoice = useCallback(async () => {
+    const result = await onHoldInvoice();
+    if (result?.text) {
+      showPosActionFeedback(result);
+    }
+  }, [onHoldInvoice, showPosActionFeedback]);
+
+  useEffect(() => {
+    return () => {
+      if (posActionFeedbackTimerRef.current) {
+        window.clearTimeout(posActionFeedbackTimerRef.current);
+      }
+    };
+  }, []);
+
   usePosKeyboardShortcuts({
     enabled: shortcutsEnabled,
     isArabic,
@@ -177,7 +220,7 @@ export default function PosPage({
     onShowHelp: () => setShortcutsOpen(true),
     onFocusBarcode: focusBarcode,
     onPaymentMethodChange,
-    onHoldInvoice,
+    onHoldInvoice: handleHoldInvoice,
     onOpenHeldInvoices,
     onCompleteSale,
     onClearCart,
@@ -191,7 +234,82 @@ export default function PosPage({
     isSubscriptionExpired ||
     (!isOnline && offlineInventoryCount === 0);
 
-  const saleWorkspaceContent = (
+  const useCompactPosLayout = quickSaleCardOpen || quickSaleFullscreen;
+
+  const saleWorkspaceContent = useCompactPosLayout ? (
+    <div className={`posLayoutStack${useCompactPosLayout ? " is-compact" : ""}`}>
+      {posActionFeedback ? (
+        <div className={`posMessage posActionFeedback${posActionFeedback.error ? " error" : ""}`}>
+          {posActionFeedback.text}
+        </div>
+      ) : null}
+      <PosWarehouseScopeBar
+        isArabic={isArabic}
+        pharmacyId={pharmacyId}
+        branches={branches}
+        searchScope={searchScope}
+        getBranchLabel={getBranchLabel}
+        onChange={setSearchScope}
+      />
+      <PosBarcodeInput
+        ref={barcodeInputRef}
+        medicines={inventoryMedicines}
+        isArabic={isArabic}
+        onAddToCart={onAddToCart}
+        disabled={inputsDisabled}
+        lookupBarcode={lookupBarcode}
+      />
+      <PosSmartSearch
+        isArabic={isArabic}
+        isOnline={isOnline}
+        disabled={inputsDisabled}
+        pharmacyId={pharmacyId}
+        searchScope={searchScope}
+        branches={branches}
+        getBranchLabel={getBranchLabel}
+        medicines={medicines}
+        inventoryRefreshKey={inventoryRefreshKey}
+        lowStockThreshold={lowStockThreshold}
+        expiringSoonDays={expiringSoonDays}
+        onAddToCart={onAddToCart}
+      />
+      <div className="posCartSection posCartSection--split">
+        <PosCart
+          layout="split"
+          cart={cart}
+          cartItemsCount={cartItemsCount}
+          cartTotalQty={cartTotalQty}
+          subtotal={subtotal}
+          total={total}
+          discount={discount}
+          paymentMethod={paymentMethod}
+          customerName={customerName}
+          isArabic={isArabic}
+          t={t}
+          currency={currency}
+          isSelling={isSelling}
+          isSubscriptionExpired={isSubscriptionExpired}
+          subscriptionBlocksSale={subscriptionBlocksSale}
+          shiftSaleBlocked={shiftGateEnabled && !shiftReady}
+          onDecreaseQty={onDecreaseQty}
+          onIncreaseQty={onIncreaseQty}
+          onRemoveItem={onRemoveItem}
+          onClearCart={onClearCart}
+          onDiscountChange={onDiscountChange}
+          onPaymentMethodChange={onPaymentMethodChange}
+          onCustomerNameChange={onCustomerNameChange}
+          onCompleteSale={onCompleteSale}
+          getPaymentLabel={getPaymentLabel}
+          heldInvoicesCount={heldInvoicesCount}
+          isHolding={isHolding}
+          onHoldInvoice={handleHoldInvoice}
+          onOpenHeldInvoices={onOpenHeldInvoices}
+          onOpenInstantReturn={onOpenInstantReturn}
+          isOnline={isOnline}
+        />
+      </div>
+    </div>
+  ) : (
     <div className="posLayoutStack">
       <PosBarcodeInput
         ref={barcodeInputRef}
@@ -205,8 +323,13 @@ export default function PosPage({
         isArabic={isArabic}
         isOnline={isOnline}
         open={manualSaleOpen}
+        compact={false}
         onToggle={() => setManualSaleOpen((current) => !current)}
         pharmacyId={pharmacyId}
+        branches={branches}
+        getBranchLabel={getBranchLabel}
+        searchScope={searchScope}
+        onSearchScopeChange={setSearchScope}
         medicines={medicines}
         inventoryRefreshKey={inventoryRefreshKey}
         lowStockThreshold={lowStockThreshold}
@@ -249,7 +372,7 @@ export default function PosPage({
           getPaymentLabel={getPaymentLabel}
           heldInvoicesCount={heldInvoicesCount}
           isHolding={isHolding}
-          onHoldInvoice={onHoldInvoice}
+          onHoldInvoice={handleHoldInvoice}
           onOpenHeldInvoices={onOpenHeldInvoices}
           onOpenInstantReturn={onOpenInstantReturn}
           isOnline={isOnline}
@@ -266,6 +389,7 @@ export default function PosPage({
         activeShift={activeCashierShift}
         branchLabel={branchLabel}
         onClose={() => setQuickSaleCardOpen(false)}
+        onFullscreenChange={setQuickSaleFullscreen}
       >
         {saleWorkspaceContent}
       </PosQuickSaleCard>
@@ -363,14 +487,6 @@ export default function PosPage({
           </div>
         ) : (
           <div className="posShiftGate">
-            <div className="posShiftGateIntro">
-              <h3>{isArabic ? "ابدأ وردية للبيع" : "Start a shift to sell"}</h3>
-              <p className="mutedText">
-                {isArabic
-                  ? "افتح الوردية أولاً — بعدها يظهر البيع السريع بالباركود والسلة"
-                  : "Open your shift first — then quick barcode sale and cart will appear"}
-              </p>
-            </div>
             <CashierShiftPanel
               isArabic={isArabic}
               currency={currency}
@@ -400,6 +516,7 @@ export default function PosPage({
           onClose={() => setShortcutsOpen(false)}
         />
       )}
+
     </section>
   );
 }

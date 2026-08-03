@@ -26,6 +26,11 @@ function requiresOpenCashierShift(appUser: AppUser | null) {
   return appUser.role === "cashier" || isPharmacyManager(appUser) || isSuperAdmin(appUser);
 }
 
+export type PosActionFeedback = {
+  text: string;
+  error?: boolean;
+};
+
 type ActivityLogInput = {
   type: string;
   title: string;
@@ -393,30 +398,32 @@ export function usePosSales({
   ]);
 
   const openHeldInvoicesModal = useCallback(async () => {
+    setShowHeldInvoicesModal(true);
     try {
       await refreshHeldInvoices();
-      setShowHeldInvoicesModal(true);
     } catch (error) {
-      alert(getHeldInvoiceErrorMessage(error, isArabic));
+      console.error("Open held invoices modal refresh error:", error);
     }
-  }, [isArabic, refreshHeldInvoices]);
+  }, [refreshHeldInvoices]);
 
-  const handleHoldInvoice = useCallback(async () => {
+  const handleHoldInvoice = useCallback(async (): Promise<PosActionFeedback | void> => {
     if (!canUseSystemActions()) {
       showSubscriptionExpiredAlert();
       return;
     }
     if (!canUsePOS()) {
-      alert(isArabic ? "ليس لديك صلاحية للبيع" : "You do not have permission to sell");
-      return;
+      return {
+        text: isArabic ? "ليس لديك صلاحية للبيع" : "You do not have permission to sell",
+        error: true,
+      };
     }
     if (!navigator.onLine) {
-      alert(
-        isArabic
+      return {
+        text: isArabic
           ? "تعليق الفاتورة يتطلب اتصالاً بالإنترنت"
           : "Holding invoices requires an internet connection",
-      );
-      return;
+        error: true,
+      };
     }
     if (cart.length === 0 || isHolding) return;
 
@@ -452,10 +459,15 @@ export function usePosSales({
       } catch (refreshError) {
         console.error("Held invoices refresh after hold:", refreshError);
       }
-      alert(isArabic ? "تم تعليق الفاتورة بنجاح" : "Invoice held successfully");
+      return {
+        text: isArabic ? "تم تعليق الفاتورة بنجاح" : "Invoice held successfully",
+      };
     } catch (error) {
       console.error("Hold invoice error:", error);
-      alert(getHeldInvoiceErrorMessage(error, isArabic));
+      return {
+        text: getHeldInvoiceErrorMessage(error, isArabic),
+        error: true,
+      };
     } finally {
       setIsHolding(false);
     }

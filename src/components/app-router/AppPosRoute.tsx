@@ -44,6 +44,7 @@ export type AppPosRouteProps = Pick<
   | "currentWorkShiftLabel"
   | "resolveBranchLabel"
   | "activeBranchId"
+  | "branches"
   | "appUser"
   | "activeCashierShift"
   | "pharmacySettings"
@@ -98,6 +99,7 @@ export default function AppPosRoute({
   currentWorkShiftLabel,
   resolveBranchLabel,
   activeBranchId,
+  branches,
   appUser,
   activeCashierShift,
   pharmacySettings,
@@ -146,7 +148,7 @@ export default function AppPosRoute({
       getPaymentLabel={getPaymentLabel}
       heldInvoicesCount={heldInvoices.length}
       isHolding={isHolding}
-      onHoldInvoice={() => void handleHoldInvoice()}
+      onHoldInvoice={handleHoldInvoice}
       onOpenHeldInvoices={() => void openHeldInvoicesModal()}
       onOpenInstantReturn={() => setShowInstantReturnModal(true)}
       lowStockThreshold={lowStockThreshold}
@@ -154,6 +156,8 @@ export default function AppPosRoute({
       workShiftLabel={currentWorkShiftLabel}
       pharmacyId={getPharmacyId()}
       branchLabel={resolveBranchLabel(getPharmacyId())}
+      branches={branches}
+      getBranchLabel={resolveBranchLabel}
       inventoryRefreshKey={`${getPharmacyId()}-${medicines.length}-${activeBranchId || ""}`}
       appUser={appUser}
       activeCashierShift={activeCashierShift}

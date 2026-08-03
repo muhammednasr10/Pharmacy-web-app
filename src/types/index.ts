@@ -275,6 +275,18 @@ export type PharmacyCost = {
   createdAt?: string;
 };
 
+export type PharmacyCostPlan = {
+  id: number;
+  pharmacyId?: string;
+  planMonth: string;
+  category: string;
+  title: string;
+  plannedAmount: number;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export type CustomerPayment = {
   id: number;
   paymentNumber: string;

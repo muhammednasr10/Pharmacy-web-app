@@ -96,7 +96,11 @@ export function applyPharmacyFilter<T extends PharmacyScopedQuery<T>>(
     if (activePharmacyId && activePharmacyId !== ALL_BRANCHES_ID) {
       return query.eq("pharmacy_id", activePharmacyId);
     }
-    return query;
+    if (activePharmacyId === ALL_BRANCHES_ID && organizationBranchIds.length > 0 && query.in) {
+      return query.in("pharmacy_id", organizationBranchIds);
+    }
+    const fallbackPharmacyId = appUser?.pharmacyId || "main";
+    return query.eq("pharmacy_id", fallbackPharmacyId);
   }
 
   if (shouldQueryAllOrganizationBranches(appUser)) {
@@ -123,6 +127,26 @@ export function resolveStampPharmacyId(): string {
     return activePharmacyId;
   }
   return currentAppUser?.pharmacyId || "main";
+}
+
+/** Pharmacy id used for read queries (inventory pagination, counts). */
+export function resolveReadPharmacyId(appUser: AppUser | null = currentAppUser): string {
+  if (shouldQueryAllOrganizationBranches(appUser) && organizationBranchIds.length === 1) {
+    return organizationBranchIds[0];
+  }
+
+  if (isSuperAdmin(appUser)) {
+    if (activePharmacyId && activePharmacyId !== ALL_BRANCHES_ID) {
+      return activePharmacyId;
+    }
+    return appUser?.pharmacyId || "main";
+  }
+
+  if (activePharmacyId && activePharmacyId !== ALL_BRANCHES_ID) {
+    return activePharmacyId;
+  }
+
+  return appUser?.pharmacyId || "main";
 }
 
 export function resolveHeldInvoicesPharmacyId(pharmacyId?: string): string | null {

@@ -1,14 +1,43 @@
 import { supabase } from "../supabaseClient";
 import type { Medicine } from "../../types";
 import { getAllRows } from "./dbHelpers";
-import { setActivePharmacy, getActivePharmacy } from "./scope";
-import { MEDICINES_REALTIME_REFETCH_MS } from "../../constants/medicineCatalog";
+import { setActivePharmacy, getActivePharmacy, resolveReadPharmacyId } from "./scope";
+import {
+  LARGE_MEDICINE_CATALOG,
+  MEDICINES_REALTIME_REFETCH_MS,
+} from "../../constants/medicineCatalog";
+
+async function countMedicinesForPharmacy(pharmacyId: string): Promise<number | null> {
+  if (!pharmacyId) return null;
+  const { data, error } = await supabase.rpc("count_pharmacy_medicines", {
+    p_pharmacy_id: pharmacyId,
+    p_search: null,
+    p_stock_filter: "all",
+    p_low_stock_threshold: 10,
+    p_expiring_soon_days: 90,
+    p_in_stock_only: false,
+  });
+  if (error) return null;
+  return Number(data ?? 0);
+}
+
+async function shouldSkipBulkMedicineLoad(pharmacyId: string): Promise<boolean> {
+  const count = await countMedicinesForPharmacy(pharmacyId);
+  return count !== null && count > LARGE_MEDICINE_CATALOG;
+}
 
 export async function getMedicines(): Promise<Medicine[]> {
+  const pharmacyId = resolveReadPharmacyId();
+  if (pharmacyId && (await shouldSkipBulkMedicineLoad(pharmacyId))) {
+    return [];
+  }
   return getAllRows<Medicine>("medicines", "id", false, undefined, { pharmacyScoped: true });
 }
 
 export async function getMedicinesForPharmacy(pharmacyId: string): Promise<Medicine[]> {
+  if (await shouldSkipBulkMedicineLoad(pharmacyId)) {
+    return [];
+  }
   return getAllRows<Medicine>("medicines", "id", false, undefined, {
     filter: { column: "pharmacy_id", value: pharmacyId },
   });
@@ -18,6 +47,11 @@ export async function getMedicinesForPharmacies(pharmacyIds: string[]): Promise<
   const ids = [...new Set(pharmacyIds.filter(Boolean))];
   if (ids.length === 0) return getMedicines();
   if (ids.length === 1) return getMedicinesForPharmacy(ids[0]);
+
+  const counts = await Promise.all(ids.map((id) => countMedicinesForPharmacy(id)));
+  if (counts.some((count) => count !== null && count > LARGE_MEDICINE_CATALOG)) {
+    return [];
+  }
 
   return getAllRows<Medicine>("medicines", "id", false, undefined, {
     inFilter: { column: "pharmacy_id", values: ids },

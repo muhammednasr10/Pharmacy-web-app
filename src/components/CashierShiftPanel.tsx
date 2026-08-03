@@ -78,6 +78,71 @@ export default function CashierShiftPanel({
 
   if (!canManageShift) return null;
 
+  if (!activeShift) {
+    return (
+      <>
+        <div className="cashierShiftStartOnly">
+          <button
+            type="button"
+            className="completeBtn cashierShiftOpenTrigger"
+            onClick={() => setShowOpenModal(true)}
+            disabled={Boolean(busy)}
+          >
+            {isArabic ? "بدء وردية جديدة" : "Start new shift"}
+          </button>
+        </div>
+
+        {showOpenModal ? (
+          <div className="modalOverlay">
+            <div
+              className="invoiceModal userModal cashierShiftModal"
+              onClick={(event) => event.stopPropagation()}
+              dir={isArabic ? "rtl" : "ltr"}
+            >
+              <div className="modalHeader">
+                <h3>{isArabic ? "فتح وردية كاشير" : "Open cashier shift"}</h3>
+                <button
+                  type="button"
+                  className="deleteSmallBtn"
+                  onClick={() => setShowOpenModal(false)}
+                >
+                  {isArabic ? "إغلاق" : "Close"}
+                </button>
+              </div>
+              <label className="formField cashierShiftFormField">
+                {isArabic ? "رصيد الصندوق الافتتاحي" : "Opening cash in drawer"}
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="tableInput"
+                  value={openingCash}
+                  onChange={(event) => setOpeningCash(event.target.value)}
+                />
+              </label>
+              <div className="modalActions cashierShiftModalActions">
+                <button
+                  type="button"
+                  className="completeBtn cashierShiftStartBtn"
+                  onClick={() => void handleOpenShift()}
+                  disabled={busy === "open"}
+                >
+                  {busy === "open"
+                    ? isArabic
+                      ? "جاري الفتح..."
+                      : "Opening..."
+                    : isArabic
+                      ? "بدء الوردية"
+                      : "Start shift"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </>
+    );
+  }
+
   async function handleOpenShift() {
     if (!appUser) return;
     const amount = Number(openingCash);
@@ -159,20 +224,7 @@ export default function CashierShiftPanel({
   return (
     <>
       <div className="cashierShiftPanel">
-        {!activeShift ? (
-          <div className="cashierShiftPanelEmpty">
-            <span>{isArabic ? "لا توجد وردية مفتوحة" : "No open cashier shift"}</span>
-            <button
-              type="button"
-              className="primaryBtn"
-              onClick={() => setShowOpenModal(true)}
-              disabled={Boolean(busy)}
-            >
-              {isArabic ? "فتح وردية" : "Open shift"}
-            </button>
-          </div>
-        ) : (
-          <div className="cashierShiftPanelActive">
+        <div className="cashierShiftPanelActive">
             <div className="cashierShiftPanelMeta">
               <strong>{activeShift.shiftNumber}</strong>
               <span>
@@ -216,56 +268,7 @@ export default function CashierShiftPanel({
               </button>
             </div>
           </div>
-        )}
       </div>
-
-      {showOpenModal && (
-        <div className="modalOverlay">
-          <div
-            className="invoiceModal userModal cashierShiftModal"
-            onClick={(event) => event.stopPropagation()}
-            dir={isArabic ? "rtl" : "ltr"}
-          >
-            <div className="modalHeader">
-              <h3>{isArabic ? "فتح وردية كاشير" : "Open cashier shift"}</h3>
-              <button
-                type="button"
-                className="deleteSmallBtn"
-                onClick={() => setShowOpenModal(false)}
-              >
-                {isArabic ? "إغلاق" : "Close"}
-              </button>
-            </div>
-            <label className="formField">
-              {isArabic ? "رصيد الصندوق الافتتاحي" : "Opening cash in drawer"}
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                className="tableInput"
-                value={openingCash}
-                onChange={(event) => setOpeningCash(event.target.value)}
-              />
-            </label>
-            <div className="modalActions">
-              <button
-                type="button"
-                className="primaryBtn"
-                onClick={() => void handleOpenShift()}
-                disabled={busy === "open"}
-              >
-                {busy === "open"
-                  ? isArabic
-                    ? "جاري الفتح..."
-                    : "Opening..."
-                  : isArabic
-                    ? "بدء الوردية"
-                    : "Start shift"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {showCloseModal && activeShift && summary && (
         <div className="modalOverlay">

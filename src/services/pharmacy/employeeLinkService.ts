@@ -60,6 +60,20 @@ export async function findLoginAccountForEmployee(
 }
 
 export async function linkUserToEmployee(uid: string, employeeId: string | null) {
+  if (employeeId) {
+    const { data: userRow, error: fetchError } = await supabase
+      .from("users")
+      .select("role")
+      .eq("uid", uid)
+      .maybeSingle();
+    if (fetchError) {
+      throw new Error(fetchError.message);
+    }
+    if (userRow && normalizeRole(String(userRow.role || "")) === "super_admin") {
+      throw new Error("cannot_link_super_admin_to_employee");
+    }
+  }
+
   const payload: Record<string, unknown> = {
     employee_id: employeeId,
     updated_at: new Date().toISOString(),

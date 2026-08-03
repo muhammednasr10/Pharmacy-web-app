@@ -1,26 +1,29 @@
-import { useMemo, useState } from "react";
-import type { PharmacyCost } from "../types";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Invoice, PharmacyCost, PharmacyCostPlan } from "../types";
 import * as pharmacyService from "../services/pharmacyService";
-import { COST_CATEGORIES, getCostCategoryLabel } from "../utils/costCategories";
-import { formatDateInput } from "../utils/date";
+import { COST_CATEGORIES } from "../utils/costCategories";
+import {
+  analyzeInvestment,
+  buildInvestmentPlanRows,
+  filterCostsForMonth,
+  formatPlanMonthInput,
+  formatPlanMonthLabel,
+  getCategoryLabel,
+  getPlanMonthBounds,
+  getPlanYear,
+  type InvestmentPlanRow,
+} from "../utils/investmentAnalysis";
 
-const PAYMENT_METHODS = [
-  { value: "cash", ar: "نقدي", en: "Cash" },
-  { value: "visa", ar: "فيزا", en: "Visa" },
-  { value: "wallet", ar: "محفظة", en: "Wallet" },
-  { value: "transfer", ar: "تحويل", en: "Transfer" },
-] as const;
-
-const emptyCostForm = {
+const emptyPlanForm = {
   title: "",
   category: "other",
-  amount: 0,
-  paymentMethod: "cash",
+  plannedAmount: 0,
   notes: "",
 };
 
 type CostsPageProps = {
   costs: PharmacyCost[];
+  invoices: Invoice[];
   isArabic: boolean;
   t: Record<string, string>;
   currency: string;
@@ -41,14 +44,23 @@ type CostsPageProps = {
   onRefreshCosts: () => Promise<void>;
 };
 
-function getPaymentLabel(value: string, isArabic: boolean) {
-  const entry = PAYMENT_METHODS.find((item) => item.value === value);
-  if (!entry) return value || "-";
-  return isArabic ? entry.ar : entry.en;
+function formatVariance(value: number, currency: string) {
+  const prefix = value > 0 ? "+" : "";
+  return `${prefix}${value.toFixed(2)} ${currency}`;
+}
+
+function formatRatioPercent(value: number) {
+  if (!Number.isFinite(value)) return "0.0";
+  return (value * 100).toFixed(1);
+}
+
+function rowDraftKey(row: InvestmentPlanRow) {
+  return String(row.id);
 }
 
 export default function CostsPage({
   costs,
+  invoices,
   isArabic,
   t,
   currency,
@@ -62,422 +74,660 @@ export default function CostsPage({
   downloadCSV,
   onRefreshCosts,
 }: CostsPageProps) {
-  const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
-  const [showModal, setShowModal] = useState(false);
-  const [editingCost, setEditingCost] = useState<PharmacyCost | null>(null);
-  const [form, setForm] = useState(emptyCostForm);
+  const [planMonth, setPlanMonth] = useState(() => formatPlanMonthInput(new Date()));
+  const [plans, setPlans] = useState<PharmacyCostPlan[]>([]);
+  const [loadingPlans, setLoadingPlans] = useState(false);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<PharmacyCostPlan | null>(null);
+  const [planForm, setPlanForm] = useState(emptyPlanForm);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [applyingYearPlan, setApplyingYearPlan] = useState(false);
+  const [actualDrafts, setActualDrafts] = useState<Record<string, string>>({});
+  const [savingActualRowId, setSavingActualRowId] = useState<string | null>(null);
 
-  const filteredCosts = useMemo(() => {
-    const query = search.trim().toLowerCase();
+  const loadPlans = useCallback(async () => {
+    if (!pharmacyId || !planMonth) return;
+    setLoadingPlans(true);
+    try {
+      let loaded = await pharmacyService.getPharmacyCostPlans(pharmacyId, planMonth);
+      if (loaded.length === 0 && canManageCosts) {
+        loaded = await pharmacyService.seedDefaultPharmacyCostPlans(
+          pharmacyId,
+          planMonth,
+          [...COST_CATEGORIES],
+          isArabic,
+        );
+      }
+      setPlans(loaded);
+    } catch (error) {
+      console.error("Load cost plans error:", error);
+    } finally {
+      setLoadingPlans(false);
+    }
+  }, [pharmacyId, planMonth, canManageCosts, isArabic]);
 
-    return costs.filter((cost) => {
-      const matchesSearch =
-        !query ||
-        String(cost.costNumber ?? "")
-          .toLowerCase()
-          .includes(query) ||
-        String(cost.title ?? "")
-          .toLowerCase()
-          .includes(query) ||
-        String(cost.notes || "")
-          .toLowerCase()
-          .includes(query) ||
-        (cost.userName || "").toLowerCase().includes(query);
+  useEffect(() => {
+    void loadPlans();
+  }, [loadPlans]);
 
-      const matchesCategory = categoryFilter === "all" || cost.category === categoryFilter;
-
-      const costDate = new Date(cost.createdAt || cost.date || 0);
-      const from = fromDate ? new Date(`${fromDate}T00:00:00`) : null;
-      const to = toDate ? new Date(`${toDate}T23:59:59`) : null;
-      const matchesFrom = !from || costDate >= from;
-      const matchesTo = !to || costDate <= to;
-
-      return matchesSearch && matchesCategory && matchesFrom && matchesTo;
-    });
-  }, [costs, search, categoryFilter, fromDate, toDate]);
-
-  const totalFilteredAmount = useMemo(
-    () => filteredCosts.reduce((sum, cost) => sum + safeNumber(cost.amount), 0),
-    [filteredCosts, safeNumber],
+  const monthCosts = useMemo(
+    () => filterCostsForMonth(costs, planMonth),
+    [costs, planMonth],
   );
 
-  const monthTotal = useMemo(() => {
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    return costs
-      .filter((cost) => {
-        const date = new Date(cost.createdAt || cost.date || 0);
-        return date >= monthStart;
-      })
-      .reduce((sum, cost) => sum + safeNumber(cost.amount), 0);
-  }, [costs, safeNumber]);
+  const planRows = useMemo(
+    () => buildInvestmentPlanRows(plans, monthCosts),
+    [plans, monthCosts],
+  );
 
-  function openAddModal() {
-    setEditingCost(null);
-    setForm(emptyCostForm);
-    setShowModal(true);
+  const analysis = useMemo(
+    () =>
+      analyzeInvestment({
+        planMonth,
+        plans,
+        costs,
+        invoices,
+        safeNumber,
+      }),
+    [planMonth, plans, costs, invoices, safeNumber],
+  );
+
+  useEffect(() => {
+    setActualDrafts({});
+  }, [planMonth, costs, plans]);
+
+  function openAddPlanModal() {
+    setEditingPlan(null);
+    setPlanForm(emptyPlanForm);
+    setShowPlanModal(true);
   }
 
-  function openEditModal(cost: PharmacyCost) {
-    setEditingCost(cost);
-    setForm({
-      title: cost.title,
-      category: cost.category || "other",
-      amount: safeNumber(cost.amount),
-      paymentMethod: String(cost.paymentMethod || "cash"),
-      notes: cost.notes || "",
+  function openEditPlanModal(plan: PharmacyCostPlan) {
+    setEditingPlan(plan);
+    setPlanForm({
+      title: plan.title,
+      category: plan.category || "other",
+      plannedAmount: safeNumber(plan.plannedAmount),
+      notes: plan.notes || "",
     });
-    setShowModal(true);
+    setShowPlanModal(true);
   }
 
-  function closeModal() {
+  function closePlanModal() {
     if (saving) return;
-    setShowModal(false);
-    setEditingCost(null);
-    setForm(emptyCostForm);
+    setShowPlanModal(false);
+    setEditingPlan(null);
+    setPlanForm(emptyPlanForm);
   }
 
-  async function handleSave() {
-    if (!canManageCosts || isSubscriptionExpired || saving) return;
+  async function handleApplyYearPlan() {
+    if (!canManageCosts || isSubscriptionExpired || applyingYearPlan) return;
 
-    if (!form.title.trim() || form.amount <= 0) {
+    const year = getPlanYear(planMonth);
+    const hasTemplate = plans.length > 0;
+    const confirmed = window.confirm(
+      isArabic
+        ? hasTemplate
+          ? `نسخ خطة ${formatPlanMonthLabel(planMonth, true)} إلى كل شهور ${year} التي لا تحتوي خطة؟`
+          : `إنشاء الخطة الافتراضية لكل شهور ${year}؟`
+        : hasTemplate
+          ? `Copy ${formatPlanMonthLabel(planMonth, false)} plan to empty months in ${year}?`
+          : `Create default plan for all months in ${year}?`,
+    );
+    if (!confirmed) return;
+
+    setApplyingYearPlan(true);
+    try {
+      const appliedMonths = await pharmacyService.applyPlanTemplateToYear(
+        pharmacyId,
+        year,
+        plans,
+        [...COST_CATEGORIES],
+        isArabic,
+        { fillEmptyOnly: true },
+      );
+
+      await onActivityLog({
+        type: "cost_plan_year",
+        title: isArabic ? "تطبيق خطة السنة" : "Year Plan Applied",
+        description: isArabic
+          ? `تم تطبيق الخطة على ${appliedMonths} شهر في ${year}`
+          : `Applied plan to ${appliedMonths} months in ${year}`,
+        referenceType: "cost_plan",
+        referenceId: year,
+      });
+
+      await loadPlans();
       alert(
         isArabic
-          ? "أدخل عنوان التكلفة ومبلغاً أكبر من صفر"
-          : "Enter a title and amount greater than zero",
+          ? appliedMonths > 0
+            ? `تم تطبيق الخطة على ${appliedMonths} شهر`
+            : "كل شهور السنة تحتوي بالفعل على خطة"
+          : appliedMonths > 0
+            ? `Plan applied to ${appliedMonths} month(s)`
+            : "All months already have a plan",
       );
+    } catch (error) {
+      console.error("Apply year plan error:", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : isArabic
+            ? "تعذر تطبيق خطة السنة"
+            : "Could not apply year plan",
+      );
+    } finally {
+      setApplyingYearPlan(false);
+    }
+  }
+
+  function getActualDraftValue(row: InvestmentPlanRow) {
+    const key = rowDraftKey(row);
+    if (Object.prototype.hasOwnProperty.call(actualDrafts, key)) {
+      return actualDrafts[key];
+    }
+    return row.actual > 0 ? String(row.actual) : "";
+  }
+
+  async function handleSaveActualRow(row: InvestmentPlanRow) {
+    if (!canManageCosts || isSubscriptionExpired) return;
+
+    const key = rowDraftKey(row);
+    const rawValue = actualDrafts[key] ?? (row.actual > 0 ? String(row.actual) : "");
+    const amount = rawValue.trim() === "" ? 0 : Number(rawValue);
+
+    if (Number.isNaN(amount) || amount < 0) {
+      alert(isArabic ? "أدخل مبلغاً صحيحاً" : "Enter a valid amount");
+      return;
+    }
+
+    if (amount === row.actual) return;
+
+    setSavingActualRowId(key);
+    try {
+      const { from } = getPlanMonthBounds(planMonth);
+      const monthIso = from.toISOString();
+
+      if (amount <= 0) {
+        if (row.costId) {
+          await pharmacyService.deletePharmacyCost(row.costId);
+        }
+      } else if (row.costId) {
+        await pharmacyService.updatePharmacyCost(row.costId, { amount });
+      } else {
+        const costId = Date.now();
+        const record: PharmacyCost = {
+          id: costId,
+          costNumber: `COST-${costId}`,
+          title: row.title,
+          category: row.category,
+          amount,
+          paymentMethod: "cash",
+          notes: "",
+          pharmacyId,
+          userId,
+          userName,
+          date: from.toLocaleDateString(),
+          createdAt: monthIso,
+        };
+        await pharmacyService.savePharmacyCost(record);
+      }
+
+      await onRefreshCosts();
+      setActualDrafts((current) => {
+        const next = { ...current };
+        delete next[key];
+        return next;
+      });
+    } catch (error) {
+      console.error("Save actual row error:", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : isArabic
+            ? "تعذر حفظ المصروف الفعلي"
+            : "Could not save actual cost",
+      );
+    } finally {
+      setSavingActualRowId(null);
+    }
+  }
+
+  async function handleSavePlan() {
+    if (!canManageCosts || isSubscriptionExpired || saving) return;
+
+    if (!planForm.title.trim()) {
+      alert(isArabic ? "أدخل عنوان بند الخطة" : "Enter a plan line title");
       return;
     }
 
     setSaving(true);
     try {
       const nowIso = new Date().toISOString();
-      const displayDate = new Date().toLocaleString();
 
-      if (editingCost) {
-        await pharmacyService.updatePharmacyCost(editingCost.id, {
-          title: form.title.trim(),
-          category: form.category,
-          amount: Number(form.amount),
-          paymentMethod: form.paymentMethod,
-          notes: form.notes.trim(),
+      if (editingPlan) {
+        await pharmacyService.updatePharmacyCostPlan(editingPlan.id, {
+          title: planForm.title.trim(),
+          category: planForm.category,
+          plannedAmount: Number(planForm.plannedAmount),
+          notes: planForm.notes.trim(),
         });
 
         await onActivityLog({
-          type: "cost_update",
-          title: isArabic ? "تعديل تكلفة" : "Cost Updated",
+          type: "cost_plan_update",
+          title: isArabic ? "تعديل خطة تكلفة" : "Cost Plan Updated",
           description: isArabic
-            ? `تم تعديل تكلفة ${form.title.trim()} بمبلغ ${Number(form.amount).toFixed(2)} ${currency}`
-            : `Updated cost ${form.title.trim()} for ${Number(form.amount).toFixed(2)} ${currency}`,
-          referenceType: "cost",
-          referenceId: editingCost.costNumber,
+            ? `تم تعديل بند ${planForm.title.trim()} للشهر ${formatPlanMonthLabel(planMonth, true)}`
+            : `Updated plan line ${planForm.title.trim()} for ${formatPlanMonthLabel(planMonth, false)}`,
+          referenceType: "cost_plan",
+          referenceId: String(editingPlan.id),
         });
       } else {
-        const costId = Date.now();
-        const costNumber = `COST-${costId}`;
-        const record: PharmacyCost = {
-          id: costId,
-          costNumber,
-          title: form.title.trim(),
-          category: form.category,
-          amount: Number(form.amount),
-          paymentMethod: form.paymentMethod,
-          notes: form.notes.trim(),
+        const planId = Date.now();
+        const record: PharmacyCostPlan = {
+          id: planId,
           pharmacyId,
-          userId,
-          userName,
-          date: displayDate,
+          planMonth,
+          category: planForm.category,
+          title: planForm.title.trim(),
+          plannedAmount: Number(planForm.plannedAmount),
+          notes: planForm.notes.trim(),
           createdAt: nowIso,
+          updatedAt: nowIso,
         };
 
-        await pharmacyService.savePharmacyCost(record);
+        await pharmacyService.savePharmacyCostPlan(record);
 
         await onActivityLog({
-          type: "cost_create",
-          title: isArabic ? "تسجيل تكلفة" : "Cost Recorded",
+          type: "cost_plan_create",
+          title: isArabic ? "إضافة بند خطة" : "Plan Line Added",
           description: isArabic
-            ? `تم تسجيل تكلفة ${record.title} بمبلغ ${record.amount.toFixed(2)} ${currency}`
-            : `Recorded cost ${record.title} for ${record.amount.toFixed(2)} ${currency}`,
-          referenceType: "cost",
-          referenceId: costNumber,
+            ? `تمت إضافة بند ${record.title} للشهر ${formatPlanMonthLabel(planMonth, true)}`
+            : `Added plan line ${record.title} for ${formatPlanMonthLabel(planMonth, false)}`,
+          referenceType: "cost_plan",
+          referenceId: String(planId),
         });
       }
 
-      await onRefreshCosts();
-      closeModal();
-      alert(
-        editingCost
-          ? isArabic
-            ? "تم تعديل التكلفة بنجاح"
-            : "Cost updated successfully"
-          : isArabic
-            ? "تم تسجيل التكلفة بنجاح"
-            : "Cost saved successfully",
-      );
+      await loadPlans();
+      closePlanModal();
     } catch (error) {
-      console.error("Save cost error:", error);
+      console.error("Save plan error:", error);
       alert(
         error instanceof Error
           ? error.message
           : isArabic
-            ? "تعذر حفظ التكلفة"
-            : "Could not save cost",
+            ? "تعذر حفظ بند الخطة"
+            : "Could not save plan line",
       );
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleDelete(cost: PharmacyCost) {
+  async function handleDeletePlan(plan: PharmacyCostPlan) {
     if (!canManageCosts || isSubscriptionExpired) return;
 
     const confirmed = window.confirm(
-      isArabic ? `حذف تكلفة "${cost.title}"؟` : `Delete cost "${cost.title}"?`,
+      isArabic ? `حذف بند "${plan.title}" من الخطة؟` : `Delete plan line "${plan.title}"?`,
     );
     if (!confirmed) return;
 
-    setDeletingId(cost.id);
+    setDeletingId(plan.id);
     try {
-      await pharmacyService.deletePharmacyCost(cost.id);
-      await onActivityLog({
-        type: "cost_delete",
-        title: isArabic ? "حذف تكلفة" : "Cost Deleted",
-        description: isArabic
-          ? `تم حذف تكلفة ${cost.title} بمبلغ ${safeNumber(cost.amount).toFixed(2)} ${currency}`
-          : `Deleted cost ${cost.title} for ${safeNumber(cost.amount).toFixed(2)} ${currency}`,
-        referenceType: "cost",
-        referenceId: cost.costNumber,
-      });
-      await onRefreshCosts();
+      await pharmacyService.deletePharmacyCostPlan(plan.id);
+      await loadPlans();
     } catch (error) {
-      console.error("Delete cost error:", error);
+      console.error("Delete plan error:", error);
       alert(
         error instanceof Error
           ? error.message
           : isArabic
-            ? "تعذر حذف التكلفة"
-            : "Could not delete cost",
+            ? "تعذر حذف بند الخطة"
+            : "Could not delete plan line",
       );
     } finally {
       setDeletingId(null);
     }
   }
 
-  function exportCostsCSV() {
+  function exportPlanCSV() {
     const rows = [
       [
-        isArabic ? "رقم التكلفة" : "Cost No.",
+        isArabic ? "الشهر" : "Month",
         isArabic ? "العنوان" : "Title",
         isArabic ? "التصنيف" : "Category",
-        isArabic ? "المبلغ" : "Amount",
-        isArabic ? "طريقة الدفع" : "Payment",
-        isArabic ? "ملاحظات" : "Notes",
-        isArabic ? "المستخدم" : "User",
-        isArabic ? "التاريخ" : "Date",
+        isArabic ? "المخطط" : "Planned",
+        isArabic ? "الفعلي" : "Actual",
+        isArabic ? "الفرق" : "Variance",
       ],
-      ...filteredCosts.map((cost) => [
-        cost.costNumber,
-        cost.title,
-        getCostCategoryLabel(cost.category, isArabic),
-        safeNumber(cost.amount).toFixed(2),
-        getPaymentLabel(String(cost.paymentMethod), isArabic),
-        cost.notes || "-",
-        cost.userName || "-",
-        cost.date || cost.createdAt || "-",
+      ...planRows.map((row) => [
+        planMonth,
+        row.title,
+        getCategoryLabel(row.category, isArabic),
+        row.planned.toFixed(2),
+        row.actual.toFixed(2),
+        row.variance.toFixed(2),
       ]),
+      [
+        isArabic ? "الإجمالي" : "Total",
+        "",
+        "",
+        analysis.plannedTotal.toFixed(2),
+        analysis.actualTotal.toFixed(2),
+        (analysis.actualTotal - analysis.plannedTotal).toFixed(2),
+      ],
     ];
 
-    downloadCSV(`costs-${formatDateInput(new Date())}.csv`, rows);
+    downloadCSV(`investment-plan-${planMonth}.csv`, rows);
   }
 
+  const verdictLabel = isArabic ? analysis.verdictLabelAr : analysis.verdictLabelEn;
+  const verdictHint = isArabic ? analysis.verdictHintAr : analysis.verdictHintEn;
+
   return (
-    <section className="card costsPage">
+    <section className="card costsPage investmentPage">
       <div className="cardHeader returnsPageActions">
         <div>
-          <h2>{isArabic ? "التكاليف" : "Costs"}</h2>
+          <h2>{isArabic ? "استثمارى" : "Investment"}</h2>
           <p className="returnsSectionHint">
             {isArabic
-              ? "تسجيل ومتابعة مصروفات الصيدلية التشغيلية"
-              : "Record and track pharmacy operating expenses"}
+              ? "خطة التكاليف المتوقعة مقابل المصروفات الفعلية ومقارنتها بالمبيعات والأرباح"
+              : "Planned vs actual costs compared to sales and profit"}
           </p>
         </div>
         {canManageCosts && (
           <div className="returnsHeaderBtns">
             <button
               type="button"
-              className="printFullBtn"
-              onClick={openAddModal}
-              disabled={isSubscriptionExpired}
+              className="completeBtn"
+              onClick={() => void handleApplyYearPlan()}
+              disabled={isSubscriptionExpired || loadingPlans || applyingYearPlan}
             >
-              {isArabic ? "+ تسجيل تكلفة" : "+ New Cost"}
+              {applyingYearPlan
+                ? isArabic
+                  ? "جاري التطبيق..."
+                  : "Applying..."
+                : isArabic
+                  ? "الخطة الافتراضية لشهور السنة"
+                  : "Default plan for year"}
+            </button>
+            <button
+              type="button"
+              className="completeBtn"
+              onClick={openAddPlanModal}
+              disabled={isSubscriptionExpired || loadingPlans}
+            >
+              {isArabic ? "+ بند خطة" : "+ Plan Line"}
             </button>
           </div>
         )}
       </div>
 
-      <div className="costsSummaryGrid">
+      <div className="investmentMonthBar">
+        <label className="investmentMonthField">
+          <span>{isArabic ? "شهر الخطة" : "Plan month"}</span>
+          <input
+            type="month"
+            value={planMonth}
+            onChange={(e) => setPlanMonth(e.target.value)}
+          />
+        </label>
+        <span className="investmentMonthLabel">
+          {formatPlanMonthLabel(planMonth, isArabic)}
+        </span>
+      </div>
+
+      <div
+        className={`investmentVerdict investmentVerdict--${analysis.verdict}`}
+        role="status"
+      >
+        <div className="investmentVerdictMain">
+          <strong>{verdictLabel}</strong>
+          <p>{verdictHint}</p>
+        </div>
+        <div className="investmentVerdictStats">
+          <span>
+            {isArabic ? "نسبة التكلفة للمبيعات" : "Cost / sales"}:{" "}
+            <strong>{formatRatioPercent(analysis.costToSalesRatio)}%</strong>
+          </span>
+          <span>
+            {isArabic ? "صافي بعد التكاليف" : "Net after costs"}:{" "}
+            <strong className={analysis.netAfterCosts >= 0 ? "positive" : "negative"}>
+              {analysis.netAfterCosts.toFixed(2)} {currency}
+            </strong>
+          </span>
+        </div>
+      </div>
+
+      <div className="costsSummaryGrid investmentSummaryGrid">
         <div className="costsSummaryCard">
-          <span>{isArabic ? "تكاليف الشهر الحالي" : "This month"}</span>
-          <strong>
-            {monthTotal.toFixed(2)} {currency}
+          <span>{isArabic ? "مبيعات الشهر" : "Month sales"}</span>
+          <strong className="investmentSales">
+            {analysis.salesTotal.toFixed(2)} {currency}
           </strong>
         </div>
         <div className="costsSummaryCard">
-          <span>{isArabic ? "إجمالي النتائج المعروضة" : "Filtered total"}</span>
-          <strong>
-            {totalFilteredAmount.toFixed(2)} {currency}
+          <span>{isArabic ? "أرباح الشهر" : "Month profit"}</span>
+          <strong className="investmentProfit">
+            {analysis.profitTotal.toFixed(2)} {currency}
           </strong>
         </div>
         <div className="costsSummaryCard">
-          <span>{isArabic ? "عدد السجلات" : "Records"}</span>
-          <strong>{filteredCosts.length}</strong>
+          <span>{isArabic ? "التكلفة المخططة" : "Planned costs"}</span>
+          <strong>{analysis.plannedTotal.toFixed(2)} {currency}</strong>
+        </div>
+        <div className="costsSummaryCard">
+          <span>{isArabic ? "التكلفة الفعلية" : "Actual costs"}</span>
+          <strong className="investmentActual">
+            {analysis.actualTotal.toFixed(2)} {currency}
+          </strong>
+        </div>
+        <div className="costsSummaryCard">
+          <span>{isArabic ? "فرق الخطة" : "Plan variance"}</span>
+          <strong
+            className={
+              analysis.actualTotal - analysis.plannedTotal > 0 ? "negative" : "positive"
+            }
+          >
+            {formatVariance(analysis.actualTotal - analysis.plannedTotal, currency)}
+          </strong>
+        </div>
+        <div className="costsSummaryCard">
+          <span>{isArabic ? "سجلات فعلية" : "Actual records"}</span>
+          <strong>{monthCosts.length}</strong>
         </div>
       </div>
 
       <div className="cardHeader purchasesHistoryHeader">
-        <h2>{isArabic ? "سجل التكاليف" : "Costs History"}</h2>
-        <button type="button" className="printBtn" onClick={exportCostsCSV}>
+        <h2>{isArabic ? "خطة التكاليف المتوقعة" : "Expected Cost Plan"}</h2>
+        <button type="button" className="printBtn" onClick={exportPlanCSV}>
           <span aria-hidden="true">⬇️</span>
           <span>{isArabic ? "تصدير Excel" : "Export Excel"}</span>
         </button>
       </div>
 
-      <div className="filtersBar purchaseFiltersBar">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={
-            isArabic ? "بحث بالعنوان أو الرقم أو المستخدم" : "Search title, number, or user"
-          }
-        />
-        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-          <option value="all">{isArabic ? "كل التصنيفات" : "All categories"}</option>
-          {COST_CATEGORIES.map((category) => (
-            <option key={category.value} value={category.value}>
-              {isArabic ? category.ar : category.en}
-            </option>
-          ))}
-        </select>
-        <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-        <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
-        <button
-          type="button"
-          className="clearCartBtn"
-          onClick={() => {
-            setSearch("");
-            setCategoryFilter("all");
-            setFromDate("");
-            setToDate("");
-          }}
-        >
-          {isArabic ? "مسح الفلاتر" : "Clear filters"}
-        </button>
-      </div>
-
-      {filteredCosts.length === 0 ? (
+      {loadingPlans ? (
+        <p className="empty">{isArabic ? "جاري تحميل الخطة..." : "Loading plan..."}</p>
+      ) : planRows.length === 0 ? (
         <p className="empty">
-          {isArabic ? "لا توجد تكاليف مسجلة حتى الآن" : "No costs recorded yet"}
+          {isArabic
+            ? "لا توجد بنود في خطة هذا الشهر — أضف بنداً أو انتظر إنشاء الخطة الافتراضية"
+            : "No plan lines for this month"}
         </p>
       ) : (
         <div className="tableWrap">
           <table>
             <thead>
               <tr>
-                <th>{isArabic ? "رقم التكلفة" : "Cost No."}</th>
                 <th>{isArabic ? "العنوان" : "Title"}</th>
                 <th>{isArabic ? "التصنيف" : "Category"}</th>
-                <th>{isArabic ? "المبلغ" : "Amount"}</th>
-                <th>{isArabic ? "طريقة الدفع" : "Payment"}</th>
-                <th>{isArabic ? "المستخدم" : "User"}</th>
-                <th>{t.date}</th>
+                <th>{isArabic ? "المخطط" : "Planned"}</th>
+                <th>{isArabic ? "الفعلي" : "Actual"}</th>
+                <th>{isArabic ? "الفرق" : "Variance"}</th>
                 {canManageCosts && <th>{t.action}</th>}
               </tr>
             </thead>
             <tbody>
-              {filteredCosts.map((cost) => (
-                <tr key={cost.id}>
+              {planRows.map((row) => (
+                <tr key={row.id} className={row.isOrphanActual ? "investmentOrphanRow" : ""}>
                   <td>
-                    <strong className="purchaseNumberTag">{cost.costNumber}</strong>
+                    {row.title}
+                    {row.isOrphanActual && (
+                      <span className="investmentOrphanTag">
+                        {isArabic ? "مصروف بدون خطة" : "Unplanned"}
+                      </span>
+                    )}
                   </td>
-                  <td>{cost.title}</td>
-                  <td>{getCostCategoryLabel(cost.category, isArabic)}</td>
+                  <td>{getCategoryLabel(row.category, isArabic)}</td>
                   <td>
-                    {safeNumber(cost.amount).toFixed(2)} {currency}
+                    {row.planned.toFixed(2)} {currency}
                   </td>
-                  <td>{getPaymentLabel(String(cost.paymentMethod), isArabic)}</td>
-                  <td>{cost.userName || "-"}</td>
-                  <td>{cost.date || cost.createdAt || "-"}</td>
-                  {canManageCosts && (
+                  <td>
+                    {canManageCosts && !isSubscriptionExpired ? (
+                      <div className="investmentActualCell">
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          className="investmentInlineInput"
+                          value={getActualDraftValue(row)}
+                          placeholder="0"
+                          disabled={savingActualRowId === rowDraftKey(row)}
+                          onChange={(e) =>
+                            setActualDrafts((current) => ({
+                              ...current,
+                              [rowDraftKey(row)]: e.target.value,
+                            }))
+                          }
+                          onBlur={() => void handleSaveActualRow(row)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.currentTarget.blur();
+                            }
+                          }}
+                        />
+                        <span className="investmentInlineCurrency">{currency}</span>
+                      </div>
+                    ) : (
+                      <>
+                        {row.actual.toFixed(2)} {currency}
+                      </>
+                    )}
+                  </td>
+                  <td>
+                    <span
+                      className={
+                        row.variance > 0
+                          ? "investmentVariance investmentVariance--over"
+                          : row.variance < 0
+                            ? "investmentVariance investmentVariance--under"
+                            : "investmentVariance"
+                      }
+                    >
+                      {formatVariance(row.variance, currency)}
+                    </span>
+                  </td>
+                  {canManageCosts && row.planId && (
                     <td>
                       <div className="actionButtons purchaseRowActions">
                         <button
                           type="button"
                           className="editBtn"
                           disabled={isSubscriptionExpired || saving}
-                          onClick={() => openEditModal(cost)}
+                          onClick={() => {
+                            const plan = plans.find((item) => item.id === row.planId);
+                            if (plan) openEditPlanModal(plan);
+                          }}
                         >
                           {t.edit}
                         </button>
                         <button
                           type="button"
                           className="deleteSmallBtn"
-                          disabled={isSubscriptionExpired || deletingId === cost.id}
-                          onClick={() => void handleDelete(cost)}
+                          disabled={isSubscriptionExpired || deletingId === row.planId}
+                          onClick={() => {
+                            const plan = plans.find((item) => item.id === row.planId);
+                            if (plan) void handleDeletePlan(plan);
+                          }}
                         >
-                          {deletingId === cost.id ? "..." : t.delete}
+                          {deletingId === row.planId ? "..." : t.delete}
                         </button>
                       </div>
                     </td>
                   )}
+                  {canManageCosts && !row.planId && <td>-</td>}
                 </tr>
               ))}
+              <tr className="investmentTotalsRow">
+                <td colSpan={2}>
+                  <strong>{isArabic ? "الإجمالي" : "Total"}</strong>
+                </td>
+                <td>
+                  <strong>
+                    {analysis.plannedTotal.toFixed(2)} {currency}
+                  </strong>
+                </td>
+                <td>
+                  <strong>
+                    {analysis.actualTotal.toFixed(2)} {currency}
+                  </strong>
+                </td>
+                <td>
+                  <strong
+                    className={
+                      analysis.actualTotal - analysis.plannedTotal > 0 ? "negative" : "positive"
+                    }
+                  >
+                    {formatVariance(analysis.actualTotal - analysis.plannedTotal, currency)}
+                  </strong>
+                </td>
+                {canManageCosts && <td />}
+              </tr>
             </tbody>
           </table>
         </div>
       )}
 
-      {showModal && (
+      {showPlanModal && (
         <div className="modalOverlay">
           <div className="invoiceModal costModal" onClick={(e) => e.stopPropagation()}>
             <div className="modalHeader">
               <div>
                 <h2>
-                  {editingCost
+                  {editingPlan
                     ? isArabic
-                      ? "تعديل تكلفة"
-                      : "Edit Cost"
+                      ? "تعديل بند الخطة"
+                      : "Edit Plan Line"
                     : isArabic
-                      ? "تسجيل تكلفة جديدة"
-                      : "New Cost"}
+                      ? "إضافة بند للخطة"
+                      : "Add Plan Line"}
                 </h2>
+                <p className="returnsSectionHint">
+                  {formatPlanMonthLabel(planMonth, isArabic)}
+                </p>
               </div>
-              <button type="button" className="closeBtn" onClick={closeModal}>
+              <button type="button" className="closeBtn" onClick={closePlanModal}>
                 ×
               </button>
             </div>
 
             <div className="purchaseMetaGrid">
               <div className="purchaseMetaField purchaseMetaFieldWide">
-                <label>{isArabic ? "عنوان التكلفة" : "Cost title"}</label>
+                <label>{isArabic ? "عنوان البند" : "Line title"}</label>
                 <input
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  placeholder={
-                    isArabic ? "مثال: فاتورة كهرباء مارس" : "e.g. March electricity bill"
-                  }
+                  value={planForm.title}
+                  onChange={(e) => setPlanForm({ ...planForm, title: e.target.value })}
+                  placeholder={isArabic ? "مثال: إيجار المحل" : "e.g. Shop rent"}
                   disabled={saving}
                 />
               </div>
               <div className="purchaseMetaField">
                 <label>{isArabic ? "التصنيف" : "Category"}</label>
                 <select
-                  value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  value={planForm.category}
+                  onChange={(e) => setPlanForm({ ...planForm, category: e.target.value })}
                   disabled={saving}
                 >
                   {COST_CATEGORIES.map((category) => (
@@ -488,40 +738,26 @@ export default function CostsPage({
                 </select>
               </div>
               <div className="purchaseMetaField">
-                <label>{isArabic ? "المبلغ" : "Amount"}</label>
+                <label>{isArabic ? "المبلغ المخطط" : "Planned amount"}</label>
                 <input
                   type="number"
                   min={0}
                   step="0.01"
-                  value={form.amount || ""}
+                  value={planForm.plannedAmount || ""}
                   onChange={(e) =>
-                    setForm({
-                      ...form,
-                      amount: e.target.value === "" ? 0 : Number(e.target.value),
+                    setPlanForm({
+                      ...planForm,
+                      plannedAmount: e.target.value === "" ? 0 : Number(e.target.value),
                     })
                   }
                   disabled={saving}
                 />
               </div>
-              <div className="purchaseMetaField">
-                <label>{isArabic ? "طريقة الدفع" : "Payment method"}</label>
-                <select
-                  value={form.paymentMethod}
-                  onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}
-                  disabled={saving}
-                >
-                  {PAYMENT_METHODS.map((method) => (
-                    <option key={method.value} value={method.value}>
-                      {isArabic ? method.ar : method.en}
-                    </option>
-                  ))}
-                </select>
-              </div>
               <div className="purchaseMetaField purchaseMetaFieldWide">
                 <label>{isArabic ? "ملاحظات" : "Notes"}</label>
                 <input
-                  value={form.notes}
-                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                  value={planForm.notes}
+                  onChange={(e) => setPlanForm({ ...planForm, notes: e.target.value })}
                   placeholder={isArabic ? "ملاحظات اختيارية" : "Optional notes"}
                   disabled={saving}
                 />
@@ -532,22 +768,18 @@ export default function CostsPage({
               <button
                 type="button"
                 className="addMedicineBtn"
-                onClick={() => void handleSave()}
+                onClick={() => void handleSavePlan()}
                 disabled={isSubscriptionExpired || saving}
               >
                 {saving
                   ? isArabic
                     ? "جاري الحفظ..."
                     : "Saving..."
-                  : editingCost
-                    ? isArabic
-                      ? "حفظ التعديل"
-                      : "Save Changes"
-                    : isArabic
-                      ? "حفظ التكلفة"
-                      : "Save Cost"}
+                  : isArabic
+                    ? "حفظ البند"
+                    : "Save Line"}
               </button>
-              <button type="button" className="completeBtn" onClick={closeModal} disabled={saving}>
+              <button type="button" className="completeBtn" onClick={closePlanModal} disabled={saving}>
                 {t.close}
               </button>
             </div>

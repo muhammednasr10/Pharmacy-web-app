@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import type { HeldInvoice } from "../types";
 
 type HeldInvoicesModalProps = {
@@ -28,8 +29,8 @@ export default function HeldInvoicesModal({
   onResume,
   onDelete,
 }: HeldInvoicesModalProps) {
-  return (
-    <div className="modalOverlay">
+  return createPortal(
+    <div className="modalOverlay modalOverlay--abovePos" role="presentation">
       <div className="invoiceModal posModalWide" onClick={(e) => e.stopPropagation()}>
         <div className="modalHeader">
           <div>
@@ -99,6 +100,7 @@ export default function HeldInvoicesModal({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

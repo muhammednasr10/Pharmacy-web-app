@@ -12,6 +12,8 @@ import { LARGE_MEDICINE_CATALOG } from "../constants/medicineCatalog";
 
 type UsePosInventorySourceOptions = {
   pharmacyId: string;
+  /** Limit search/page loads to these branches; defaults to active pharmacy scope. */
+  searchPharmacyIds?: string[];
   enabled?: boolean;
   search?: string;
   refreshKey?: number;
@@ -21,6 +23,7 @@ type UsePosInventorySourceOptions = {
 
 export function usePosInventorySource({
   pharmacyId,
+  searchPharmacyIds,
   enabled = true,
   search = "",
   refreshKey = 0,
@@ -36,12 +39,16 @@ export function usePosInventorySource({
   const [branchSnapshot, setBranchSnapshot] = useState<Medicine[]>([]);
 
   const trimmedSearch = search.trim();
+  const scopedIds = useMemo(
+    () => [...new Set((searchPharmacyIds || []).filter(Boolean))],
+    [searchPharmacyIds],
+  );
   const branchReady = enabled && Boolean(pharmacyId) && !isAllBranchesMode(pharmacyId);
   const usesInventoryPagination = catalogTotal > LARGE_MEDICINE_CATALOG || total > LARGE_MEDICINE_CATALOG;
 
   useEffect(() => {
     setPage(1);
-  }, [trimmedSearch, pharmacyId, lowStockThreshold, expiringSoonDays]);
+  }, [trimmedSearch, pharmacyId, scopedIds.join("|"), lowStockThreshold, expiringSoonDays]);
 
   const loadPage = useCallback(async () => {
     if (!branchReady) {
@@ -65,6 +72,7 @@ export function usePosInventorySource({
           lowStockThreshold,
           expiringSoonDays,
           inStockOnly: !trimmedSearch,
+          pharmacyIds: scopedIds.length > 0 ? scopedIds : undefined,
         }),
         trimmedSearch
           ? Promise.resolve(null)
@@ -74,6 +82,7 @@ export function usePosInventorySource({
               stockFilter: "all",
               lowStockThreshold,
               expiringSoonDays,
+              pharmacyIds: scopedIds.length > 0 ? scopedIds : undefined,
             }),
       ]);
 
@@ -89,7 +98,7 @@ export function usePosInventorySource({
     } finally {
       setLoading(false);
     }
-  }, [branchReady, page, trimmedSearch, lowStockThreshold, expiringSoonDays]);
+  }, [branchReady, page, trimmedSearch, scopedIds, lowStockThreshold, expiringSoonDays]);
 
   useEffect(() => {
     void loadPage();

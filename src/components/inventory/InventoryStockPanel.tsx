@@ -320,13 +320,17 @@ export default function InventoryStockPanel({
             loading,
           }}
           emptyMessage={
-            loading
+            error
               ? isArabic
-                ? "جاري تحميل المخزون..."
-                : "Loading stock..."
-              : isArabic
-                ? "لا توجد أصناف مطابقة"
-                : "No matching items"
+                ? `تعذّر تحميل المخزون: ${error}`
+                : `Failed to load stock: ${error}`
+              : loading
+                ? isArabic
+                  ? "جاري تحميل المخزون..."
+                  : "Loading stock..."
+                : isArabic
+                  ? "لا توجد أصناف مطابقة"
+                  : "No matching items"
           }
         />
       </div>

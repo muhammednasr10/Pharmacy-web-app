@@ -236,6 +236,10 @@ export async function assignPharmacyLoginAccountToEmployee(
     throw new Error("login_account_not_approved");
   }
 
+  if (employeeId && normalizeRole(catalogAccount.role) === "super_admin") {
+    throw new Error("cannot_link_super_admin_to_employee");
+  }
+
   if (employeeId && isPharmacyGeneralManagerRole(catalogAccount.role)) {
     await assertPharmacyGeneralManagerSlotAvailable(pharmacyId.trim(), catalogAccount.role, {
       accountId: accountId,

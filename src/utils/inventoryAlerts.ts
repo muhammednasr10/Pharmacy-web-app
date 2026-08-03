@@ -107,6 +107,45 @@ export type BranchInventoryAlertRow = {
   totalAlertCount: number;
 };
 
+type BranchStatsSnapshot = {
+  lowStock: number;
+  outOfStock: number;
+  expiring: number;
+  expired: number;
+};
+
+export function buildBranchInventoryAlertRowsFromStats(params: {
+  branchStats: Record<string, BranchStatsSnapshot>;
+  branches: PharmacySettings[];
+  isArabic: boolean;
+}): BranchInventoryAlertRow[] {
+  const empty: BranchStatsSnapshot = {
+    lowStock: 0,
+    outOfStock: 0,
+    expiring: 0,
+    expired: 0,
+  };
+  const branchIds =
+    params.branches.length > 0
+      ? params.branches.map((branch) => branch.id)
+      : Object.keys(params.branchStats);
+
+  return branchIds
+    .map((branchId) => {
+      const stats = params.branchStats[branchId] ?? empty;
+      return {
+        branchId,
+        branchLabel: getBranchLabel(branchId, params.branches, params.isArabic),
+        lowStockCount: stats.lowStock,
+        outOfStockCount: stats.outOfStock,
+        expiringCount: stats.expiring,
+        expiredCount: stats.expired,
+        totalAlertCount: stats.lowStock + stats.expiring + stats.expired,
+      };
+    })
+    .sort((a, b) => b.totalAlertCount - a.totalAlertCount || b.lowStockCount - a.lowStockCount);
+}
+
 export function buildBranchInventoryAlertRows(params: {
   medicines: Medicine[];
   branches: PharmacySettings[];

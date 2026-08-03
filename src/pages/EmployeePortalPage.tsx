@@ -1,8 +1,8 @@
 import AttendanceDynamicQrPanel from "../components/attendance/AttendanceDynamicQrPanel";
 import { formatScheduleWindow, getShiftDisplayName } from "../utils/workSchedule";
-import EmployeePortalAttendancePanel from "./employee-portal/EmployeePortalAttendancePanel";
 import EmployeePortalLeavePanel from "./employee-portal/EmployeePortalLeavePanel";
 import EmployeePortalPermissionPanel from "./employee-portal/EmployeePortalPermissionPanel";
+import EmployeePortalProfilePanel from "./employee-portal/EmployeePortalProfilePanel";
 import { useEmployeePortalState } from "./employee-portal/useEmployeePortalState";
 import type { EmployeePortalPageProps } from "./employee-portal/types";
 
@@ -21,6 +21,8 @@ export default function EmployeePortalPage(props: EmployeePortalPageProps) {
     schedule,
     activePanel,
     setActivePanel,
+    showAttendanceLog,
+    setShowAttendanceLog,
   } = state;
 
   if (loading) {
@@ -35,7 +37,7 @@ export default function EmployeePortalPage(props: EmployeePortalPageProps) {
     return (
       <section className="card employeePortalPage">
         <div className="cardHeader">
-          <h2>{isArabic ? "حضوري" : "My Attendance"}</h2>
+          <h2>{isArabic ? "بروفايلى" : "My Profile"}</h2>
         </div>
         <p className="empty">
           {isArabic
@@ -47,10 +49,10 @@ export default function EmployeePortalPage(props: EmployeePortalPageProps) {
   }
 
   return (
-    <section className="card employeePortalPage">
-      <div className="cardHeader">
+    <section className="card employeePortalPage employeeProfilePage">
+      <div className="cardHeader employeeProfileHeader">
         <div>
-          <h2>{isArabic ? "حضوري" : "My Attendance"}</h2>
+          <h2>{isArabic ? "بروفايلى" : "My Profile"}</h2>
           <p className="returnsSectionHint">
             {staff.name}
             {schedule && payrollConfig && (
@@ -65,7 +67,7 @@ export default function EmployeePortalPage(props: EmployeePortalPageProps) {
       </div>
 
       {error && (
-        <p className="errorText" style={{ padding: "0 1rem" }}>
+        <p className="errorText employeeProfileError">
           {isArabic
             ? "تأكد من تنفيذ supabase/add-employee-requests.sql في Supabase"
             : "Run supabase/add-employee-requests.sql in Supabase if tables are missing"}
@@ -80,33 +82,86 @@ export default function EmployeePortalPage(props: EmployeePortalPageProps) {
         />
       )}
 
-      <div className="employeePortalTabs">
+      <div className="employeeProfileActions">
         <button
           type="button"
-          className={activePanel === "attendance" ? "active" : ""}
-          onClick={() => setActivePanel("attendance")}
-        >
-          {isArabic ? "اليوم" : "Today"}
-        </button>
-        <button
-          type="button"
-          className={activePanel === "leave" ? "active" : ""}
+          className="employeeProfileActionCard employeeProfileActionCard--leave"
           onClick={() => setActivePanel("leave")}
         >
-          {isArabic ? "طلب إجازة" : "Request leave"}
+          <span className="employeeProfileActionIcon" aria-hidden="true">
+            🏖️
+          </span>
+          <strong>{isArabic ? "طلب إجازة" : "Request leave"}</strong>
+          <span>{isArabic ? "إجازة يوم أو أكثر" : "One or more days off"}</span>
         </button>
         <button
           type="button"
-          className={activePanel === "permission" ? "active" : ""}
+          className="employeeProfileActionCard employeeProfileActionCard--permission"
           onClick={() => setActivePanel("permission")}
         >
-          {isArabic ? "طلب إذن" : "Request permission"}
+          <span className="employeeProfileActionIcon" aria-hidden="true">
+            🕐
+          </span>
+          <strong>{isArabic ? "طلب إذن" : "Request permission"}</strong>
+          <span>{isArabic ? "انصراف مبكر بإذن" : "Approved early leave"}</span>
+        </button>
+        <button
+          type="button"
+          className={`employeeProfileActionCard employeeProfileActionCard--attendance ${showAttendanceLog ? "active" : ""}`}
+          onClick={() => {
+            setShowAttendanceLog((value) => !value);
+            setActivePanel("profile");
+          }}
+        >
+          <span className="employeeProfileActionIcon" aria-hidden="true">
+            📋
+          </span>
+          <strong>{isArabic ? "سجل الحضور والانصراف" : "Attendance log"}</strong>
+          <span>
+            {showAttendanceLog
+              ? isArabic
+                ? "إخفاء السجل"
+                : "Hide log"
+              : isArabic
+                ? "عرض سجل الشهر"
+                : "Show month log"}
+          </span>
         </button>
       </div>
 
-      {activePanel === "attendance" && <EmployeePortalAttendancePanel state={state} />}
-      {activePanel === "leave" && <EmployeePortalLeavePanel state={state} />}
-      {activePanel === "permission" && <EmployeePortalPermissionPanel state={state} />}
+      {activePanel === "profile" && <EmployeePortalProfilePanel state={state} />}
+
+      {activePanel === "leave" && (
+        <div className="employeeProfileModal">
+          <div className="employeeProfileModalBackdrop" onClick={() => setActivePanel("profile")} />
+          <div className="employeeProfileModalCard">
+            <button
+              type="button"
+              className="employeeProfileModalClose"
+              onClick={() => setActivePanel("profile")}
+            >
+              ×
+            </button>
+            <EmployeePortalLeavePanel state={state} />
+          </div>
+        </div>
+      )}
+
+      {activePanel === "permission" && (
+        <div className="employeeProfileModal">
+          <div className="employeeProfileModalBackdrop" onClick={() => setActivePanel("profile")} />
+          <div className="employeeProfileModalCard">
+            <button
+              type="button"
+              className="employeeProfileModalClose"
+              onClick={() => setActivePanel("profile")}
+            >
+              ×
+            </button>
+            <EmployeePortalPermissionPanel state={state} />
+          </div>
+        </div>
+      )}
     </section>
   );
 }

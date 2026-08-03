@@ -1,8 +1,9 @@
 -- =============================================================================
--- الكتالوج المركزي للأدوية — Central medicine catalog (import CSV once)
+-- الكتالوج المركزي للأدوية — Central medicine catalog (shared across all pharmacies)
 -- 1) Run this file in SQL Editor
--- 2) Table Editor → medicine_catalog_reference → Import CSV → egyptian-medicine-catalog.csv
--- 3) From the app: "تحديث الكتالوج" (يحافظ على الكميات) أو "استيراد من الصفر"
+-- 2) Run medicine-catalog-reference-stats.sql
+-- 3) Seed once: npm run seed:catalog-reference:all  (see .env.example)
+-- 4) From the app (any pharmacy): Inventory → Import → "Victory database"
 -- =============================================================================
 
 create table if not exists public.medicine_catalog_reference (

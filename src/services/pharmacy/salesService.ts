@@ -4,6 +4,7 @@ export * from "./saleCompletionService";
 export * from "./returnService";
 export * from "./purchaseService";
 export * from "./pharmacyCostService";
+export * from "./pharmacyCostPlanService";
 export * from "./customerPaymentService";
 export * from "./stockMovementQueryService";
 export * from "./activityLogQueryService";

@@ -121,6 +121,7 @@ export type AppPageRouterProps = {
   dashboardInvoicesCount: number;
   dashboardProfitTotal: number;
   totalInvoicesCount: number;
+  totalMedicinesCount: number;
   totalCustomerRemainingDebt: number;
   totalCustomerPayments: number;
   dashboardBranchRows: ReturnType<typeof import("../../utils/branchReports").buildBranchReportRows>;
@@ -178,6 +179,11 @@ export type AppPageRouterProps = {
   isSelling: boolean;
   heldInvoices: import("../../types").HeldInvoice[];
   isHolding: boolean;
+  showHeldInvoicesModal: boolean;
+  setShowHeldInvoicesModal: Dispatch<SetStateAction<boolean>>;
+  isHeldInvoiceProcessing: boolean;
+  handleResumeHeldInvoice: (held: import("../../types").HeldInvoice) => void | Promise<void>;
+  handleDeleteHeldInvoice: (held: import("../../types").HeldInvoice) => void | Promise<void>;
   currentWorkShiftLabel: string;
   currentWorkShiftId: string;
   activeCashierShift: CashierShift | null;
@@ -224,7 +230,7 @@ export type AppPageRouterProps = {
   setPaymentMethod: (value: PaymentMethod) => void;
   setCustomerName: (value: string) => void;
   completeSale: () => void | Promise<void>;
-  handleHoldInvoice: () => void | Promise<void>;
+  handleHoldInvoice: () => void | Promise<void | import("../../hooks/usePosSales").PosActionFeedback>;
   openHeldInvoicesModal: () => void | Promise<void>;
   setShowInstantReturnModal: (open: boolean) => void;
   saveMedicine: () => Promise<boolean>;

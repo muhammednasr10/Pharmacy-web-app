@@ -14,6 +14,7 @@ import {
   resolveAllowedLateMinutes,
   resolveWorkSchedule,
 } from "../../utils/workSchedule";
+import { buildEmployeeMonthDays } from "../../utils/employeePortalCalendar";
 import { currentMonthBounds, mapAttendanceActionError } from "./helpers";
 import type {
   EmployeePortalPageProps,
@@ -40,7 +41,8 @@ export function useEmployeePortalState({
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | undefined>();
   const [monthRecords, setMonthRecords] = useState<AttendanceRecord[]>([]);
   const [requests, setRequests] = useState<EmployeeRequest[]>([]);
-  const [activePanel, setActivePanel] = useState<EmployeePortalPanel>("attendance");
+  const [activePanel, setActivePanel] = useState<EmployeePortalPanel>("profile");
+  const [showAttendanceLog, setShowAttendanceLog] = useState(false);
 
   const [leaveForm, setLeaveForm] = useState<LeaveFormState>({
     workDate: "",
@@ -70,6 +72,29 @@ export function useEmployeePortalState({
     () => requests.filter((req) => req.status === "approved" && req.requestType === "permission"),
     [requests],
   );
+
+  const monthPlanDays = useMemo(() => {
+    if (!schedule || !payrollConfig) return [];
+    return buildEmployeeMonthDays({
+      monthStart: monthBounds.start,
+      monthEnd: monthBounds.end,
+      todayIso,
+      schedule,
+      workShifts: payrollConfig.workShifts,
+      isArabic,
+      monthRecords,
+      requests,
+    });
+  }, [
+    schedule,
+    payrollConfig,
+    monthBounds.start,
+    monthBounds.end,
+    todayIso,
+    isArabic,
+    monthRecords,
+    requests,
+  ]);
 
   const todayTiming = useMemo(() => {
     if (!schedule || !todayRecord || !staff) return null;
@@ -244,7 +269,7 @@ export function useEmployeePortalState({
         reason: leaveForm.reason.trim(),
       });
       setLeaveForm({ workDate: "", endDate: "", reason: "" });
-      setActivePanel("attendance");
+      setActivePanel("profile");
       await loadAll();
       alert(isArabic ? "تم إرسال طلب الإجازة" : "Leave request submitted");
     } catch (err) {
@@ -272,7 +297,7 @@ export function useEmployeePortalState({
         reason: permissionForm.reason.trim(),
       });
       setPermissionForm({ workDate: "", requestedTime: "", reason: "" });
-      setActivePanel("attendance");
+      setActivePanel("profile");
       await loadAll();
       alert(isArabic ? "تم إرسال طلب الإذن" : "Permission request submitted");
     } catch (err) {
@@ -296,6 +321,10 @@ export function useEmployeePortalState({
     requests,
     activePanel,
     setActivePanel,
+    showAttendanceLog,
+    setShowAttendanceLog,
+    monthPlanDays,
+    monthBounds,
     leaveForm,
     setLeaveForm,
     permissionForm,

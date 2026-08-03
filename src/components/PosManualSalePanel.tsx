@@ -1,17 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Medicine } from "../types";
+import type { Medicine, PharmacySettings } from "../types";
 import MedicineTable from "./MedicineTable";
 import InventoryPaginationBar from "./inventory/InventoryPaginationBar";
+import PosWarehouseScopeBar from "./PosWarehouseScopeBar";
 import { usePosInventorySource } from "../hooks/usePosInventorySource";
 import { isAllBranchesMode } from "../constants/branches";
 import { medicineMatchesInventorySearch } from "../utils/medicineLookup";
+
+export type PosSearchScope = "current" | "all" | string;
 
 type PosManualSalePanelProps = {
   isArabic: boolean;
   isOnline: boolean;
   open: boolean;
   onToggle: () => void;
+  compact?: boolean;
   pharmacyId: string;
+  branches?: PharmacySettings[];
+  getBranchLabel?: (branchId: string | undefined) => string;
+  searchScope: PosSearchScope;
+  onSearchScopeChange: (scope: PosSearchScope) => void;
   medicines: Medicine[];
   inventoryRefreshKey?: string | number;
   lowStockThreshold: number;
@@ -32,7 +40,12 @@ export default function PosManualSalePanel({
   isOnline,
   open,
   onToggle,
+  compact = false,
   pharmacyId,
+  branches = [],
+  getBranchLabel,
+  searchScope,
+  onSearchScopeChange,
   medicines,
   inventoryRefreshKey = 0,
   lowStockThreshold,
@@ -50,6 +63,20 @@ export default function PosManualSalePanel({
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const branchOptions = useMemo(
+    () => branches.filter((branch) => Boolean(branch.id)),
+    [branches],
+  );
+  const canPickBranches = branchOptions.length > 1;
+
+  const searchPharmacyIds = useMemo(() => {
+    if (searchScope === "current") return [pharmacyId];
+    if (searchScope === "all") return branchOptions.map((branch) => branch.id);
+    return [searchScope];
+  }, [branchOptions, pharmacyId, searchScope]);
+
+  const searchingOtherBranches = searchScope !== "current";
 
   useEffect(() => {
     if (!open) {
@@ -77,6 +104,7 @@ export default function PosManualSalePanel({
     branchReady,
   } = usePosInventorySource({
     pharmacyId,
+    searchPharmacyIds,
     enabled: isOnline && open && debouncedSearch.length > 0,
     search: debouncedSearch,
     refreshKey: inventoryRefreshKey,
@@ -86,10 +114,13 @@ export default function PosManualSalePanel({
 
   const offlineRows = useMemo(() => {
     if (!debouncedSearch) return [];
-    return medicines
+    const pool = searchingOtherBranches
+      ? medicines
+      : medicines.filter((medicine) => (medicine.pharmacyId || pharmacyId) === pharmacyId);
+    return pool
       .filter((medicine) => medicine.qty > 0)
       .filter((medicine) => medicineMatchesInventorySearch(medicine, debouncedSearch));
-  }, [medicines, debouncedSearch]);
+  }, [debouncedSearch, medicines, pharmacyId, searchingOtherBranches]);
 
   const tableRows = isOnline ? inventoryRows : offlineRows;
 
@@ -110,39 +141,72 @@ export default function PosManualSalePanel({
     return isArabic ? "لا توجد نتائج مطابقة في المخزن" : "No matching items in inventory";
   }, [isArabic, branchReady, pharmacyId, debouncedSearch, inventoryLoading, tableRows.length]);
 
+  function handleAddToCart(medicine: Medicine) {
+    const medicineBranch = medicine.pharmacyId || pharmacyId;
+    if (medicineBranch !== pharmacyId) {
+      const branchName = getBranchLabel?.(medicineBranch) || medicineBranch;
+      window.alert(
+        isArabic
+          ? `هذا الدواء متوفر في «${branchName}» — البيع من المخزن الحالي فقط`
+          : `This item is in "${branchName}" — sales use the current warehouse only`,
+      );
+      return;
+    }
+    onAddToCart(medicine);
+  }
+
   return (
-    <div className={`posManualSaleSection${open ? " is-open" : ""}`}>
-      <button
-        type="button"
-        className="posManualSaleToggle"
-        onClick={onToggle}
-        aria-expanded={open}
-        aria-controls="pos-manual-search-panel"
-      >
-        <span className="posManualSaleToggleIcon" aria-hidden="true">
-          {open ? "▾" : "▸"}
-        </span>
-        <span className="posManualSaleToggleText">
-          <span className="posManualSaleToggleTitle">
-            {isArabic ? "البيع بالبحث اليدوي" : "Manual search sale"}
+    <div className={`posManualSaleSection${open ? " is-open" : ""}${compact ? " is-compact" : ""}`}>
+      {!compact ? (
+        <button
+          type="button"
+          className="posManualSaleToggle"
+          onClick={onToggle}
+          aria-expanded={open}
+          aria-controls="pos-manual-search-panel"
+        >
+          <span className="posManualSaleToggleIcon" aria-hidden="true">
+            {open ? "▾" : "▸"}
           </span>
-          <span className="posManualSaleToggleHint mutedText">
-            {open
-              ? isArabic
-                ? "اضغط للإغلاق"
-                : "Click to collapse"
-              : isArabic
-                ? "اضغط للفتح — بحث بالاسم أو المادة الفعالة"
-                : "Click to open — search by name or ingredient"}
+          <span className="posManualSaleToggleText">
+            <span className="posManualSaleToggleTitle">
+              {isArabic ? "البيع بالبحث اليدوي" : "Manual search sale"}
+            </span>
+            <span className="posManualSaleToggleHint mutedText">
+              {open
+                ? isArabic
+                  ? "اضغط للإغلاق"
+                  : "Click to collapse"
+                : isArabic
+                  ? "اضغط للفتح — بحث بالاسم أو المادة الفعالة"
+                  : "Click to open — search by name or ingredient"}
+            </span>
           </span>
-        </span>
-      </button>
+        </button>
+      ) : null}
 
       {open ? (
         <div className="posManualSaleDropdown" id="pos-manual-search-panel">
+          {canPickBranches ? (
+            <PosWarehouseScopeBar
+              isArabic={isArabic}
+              pharmacyId={pharmacyId}
+              branches={branches}
+              searchScope={searchScope}
+              getBranchLabel={getBranchLabel}
+              onChange={onSearchScopeChange}
+            />
+          ) : null}
+
           <div className="posSearchField">
             <label className="posBarcodeLabel" htmlFor="pos-manual-search">
-              {isArabic ? "بحث في المخزن" : "Search inventory"}
+              {searchingOtherBranches
+                ? isArabic
+                  ? "بحث في مخازن أخرى"
+                  : "Search other warehouses"
+                : isArabic
+                  ? "بحث في المخزن"
+                  : "Search inventory"}
             </label>
             <div className="posBarcodeRow posNameSearchRow">
               <span className="posBarcodeIcon" aria-hidden="true">
@@ -174,38 +238,50 @@ export default function PosManualSalePanel({
                 </button>
               ) : null}
             </div>
+            {searchingOtherBranches ? (
+              <p className="posSearchScopeHint mutedText">
+                {isArabic
+                  ? "عرض التوفر في الفروع — الإضافة للسلة من المخزن الحالي فقط"
+                  : "Shows availability across branches — only the current warehouse can be sold"}
+              </p>
+            ) : null}
           </div>
 
           {inventoryError ? <p className="invMgmtError">{inventoryError}</p> : null}
 
-          <MedicineTable
-            medicines={tableRows}
-            t={t}
-            isArabic={isArabic}
-            currency={currency}
-            showManagementActions={false}
-            showSplitNameColumns
-            emptyMessage={emptyMessage}
-            canUsePOS={canUsePOS}
-            canManageInventory={canManageInventory}
-            canDeleteMedicine={canDeleteMedicine}
-            showCostProfitColumns={canViewPosCostProfit}
-            onAddToCart={onAddToCart}
-            onEditMedicine={onEditMedicine}
-            onDeleteMedicine={onDeleteMedicine}
-            lowStockThreshold={lowStockThreshold}
-            expiringSoonDays={expiringSoonDays}
-            externalPagination={
-              isOnline && debouncedSearch
-                ? {
-                    page: page - 1,
-                    pageSize,
-                    total: inventoryTotal,
-                    loading: inventoryLoading,
-                  }
-                : undefined
-            }
-          />
+          <div className="posManualSaleTableWrap">
+            <MedicineTable
+              medicines={tableRows}
+              t={t}
+              isArabic={isArabic}
+              currency={currency}
+              showManagementActions={false}
+              showSplitNameColumns
+              showBranchColumn={searchingOtherBranches}
+              getBranchLabel={getBranchLabel}
+              emptyMessage={emptyMessage}
+              canUsePOS={canUsePOS}
+              canManageInventory={canManageInventory}
+              canDeleteMedicine={canDeleteMedicine}
+              showCostProfitColumns={canViewPosCostProfit}
+              onAddToCart={handleAddToCart}
+              onEditMedicine={onEditMedicine}
+              onDeleteMedicine={onDeleteMedicine}
+              lowStockThreshold={lowStockThreshold}
+              expiringSoonDays={expiringSoonDays}
+              branches={branches}
+              externalPagination={
+                isOnline && debouncedSearch
+                  ? {
+                      page: page - 1,
+                      pageSize,
+                      total: inventoryTotal,
+                      loading: inventoryLoading,
+                    }
+                  : undefined
+              }
+            />
+          </div>
 
           {isOnline && debouncedSearch && (usesInventoryPagination || inventoryTotal > pageSize) ? (
             <InventoryPaginationBar

@@ -175,7 +175,7 @@ export function useDashboardModules({
     if (canAccess("employeePortal")) {
       actions.push({
         key: "employee-portal",
-        title: isArabic ? "حضوري" : "My Attendance",
+        title: isArabic ? "بروفايلى" : "My Profile",
         hint: isArabic ? "تسجيل حضور وطلبات" : "Check-in & requests",
         onClick: () => onNavigate("employeePortal"),
       });

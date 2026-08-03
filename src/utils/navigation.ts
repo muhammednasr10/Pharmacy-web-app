@@ -54,7 +54,7 @@ export function getPageLabel(page: Page, isArabic: boolean, t: Record<string, st
     case "purchases":
       return isArabic ? "المشتريات" : "Purchases";
     case "costs":
-      return isArabic ? "التكاليف" : "Costs";
+      return isArabic ? "استثمارى" : "Investment";
     case "customers":
       return isArabic ? "العملاء (CRM)" : "Customers (CRM)";
     case "reports":
@@ -64,7 +64,7 @@ export function getPageLabel(page: Page, isArabic: boolean, t: Record<string, st
     case "activityLogs":
       return isArabic ? "سجل النشاط" : "Activity Log";
     case "users":
-      return isArabic ? "الموظفين والمستخدمين" : "Staff & Accounts";
+      return isArabic ? "الموظفين" : "Staff";
     case "branches":
       return isArabic ? "الفروع" : "Branches";
     case "tenants":
@@ -76,7 +76,7 @@ export function getPageLabel(page: Page, isArabic: boolean, t: Record<string, st
     case "userGuide":
       return isArabic ? "دليل الاستخدام" : "User guide";
     case "employeePortal":
-      return isArabic ? "حضوري" : "My Attendance";
+      return isArabic ? "بروفايلى" : "My Profile";
     default:
       return page;
   }

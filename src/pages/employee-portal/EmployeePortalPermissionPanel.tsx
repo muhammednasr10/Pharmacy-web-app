@@ -39,7 +39,7 @@ export default function EmployeePortalPermissionPanel({ state }: Props) {
       </label>
       <button
         type="button"
-        className="completeBtn"
+        className="printFullBtn employeePortalSubmitBtn"
         disabled={!!busy}
         onClick={() => void submitPermissionRequest()}
       >

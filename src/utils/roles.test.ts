@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   canManageStaffRolePermissions,
   isOrgPharmacyAdmin,
+  isStaffAssignableLoginAccount,
+  isStaffAssignableSystemUser,
   isSuperAdmin,
   normalizeRole,
   parseLoginAccountRole,
@@ -58,5 +60,12 @@ describe("role permission gates", () => {
     expect(isSuperAdmin(user("super_admin"))).toBe(true);
     expect(isOrgPharmacyAdmin(user("super_admin"))).toBe(true);
     expect(canManageStaffRolePermissions(user("super_admin"))).toBe(true);
+  });
+
+  it("excludes super_admin from staff assignable users and login accounts", () => {
+    expect(isStaffAssignableSystemUser(user("super_admin"))).toBe(false);
+    expect(isStaffAssignableSystemUser(user("cashier"))).toBe(true);
+    expect(isStaffAssignableLoginAccount({ role: "super_admin" })).toBe(false);
+    expect(isStaffAssignableLoginAccount({ role: "cashier" })).toBe(true);
   });
 });

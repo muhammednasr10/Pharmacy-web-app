@@ -157,9 +157,17 @@ export async function updateEmployee(id: string, updates: Partial<Employee>) {
   }
 
   const payload = toSnakeCase({ ...updates, updatedAt: new Date().toISOString() });
-  const { error } = await supabase.from("employees").update(payload).eq("id", id);
+  const { data, error } = await supabase
+    .from("employees")
+    .update(payload)
+    .eq("id", id)
+    .select("id, job_title")
+    .maybeSingle();
   if (error) {
     throw new Error(error.message);
+  }
+  if (!data) {
+    throw new Error("employee_update_failed");
   }
 }
 

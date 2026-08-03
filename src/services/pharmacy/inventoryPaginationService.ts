@@ -1,6 +1,6 @@
 import { supabase } from "../supabaseClient";
 import { toCamelCase } from "./mappers";
-import { applyPharmacyFilter } from "./scope";
+import { applyPharmacyFilter, resolveReadPharmacyId } from "./scope";
 import type { ActivityLog, Medicine, StockMovement } from "../../types";
 import { formatDateInput } from "../../utils/date";
 
@@ -26,6 +26,8 @@ export type MedicinesPageQuery = {
   expiringSoonDays?: number;
   /** POS / sellable lists — only medicines with qty > 0 */
   inStockOnly?: boolean;
+  /** When set, limits the query to these pharmacy branches (overrides active scope). */
+  pharmacyIds?: string[];
 };
 
 export type StockMovementsPageQuery = {
@@ -41,13 +43,18 @@ function escapeIlike(value: string): string {
   return value.replace(/[%_\\]/g, "\\$&");
 }
 
+/** PostgREST requires quoted ilike values for non-ASCII / wildcard patterns. */
+function quoteIlikePattern(pattern: string): string {
+  return `"${pattern.replace(/"/g, '""')}"`;
+}
+
 function applyMedicineSearch<T extends { or: (filters: string) => T }>(
   query: T,
   search?: string,
 ): T {
   const term = search?.trim();
   if (!term) return query;
-  const pattern = `%${escapeIlike(term)}%`;
+  const pattern = quoteIlikePattern(`%${escapeIlike(term)}%`);
   return query.or(
     [
       `name_ar.ilike.${pattern}`,
@@ -82,6 +89,32 @@ function applyStockCatalogFilter(
   return query;
 }
 
+async function countMedicinesForPage(
+  pharmacyId: string,
+  query: MedicinesPageQuery,
+  stockFilter: StockCatalogFilter,
+  lowStockThreshold: number,
+  expiringSoonDays: number,
+): Promise<number | null> {
+  const { data, error } = await supabase.rpc("count_pharmacy_medicines", {
+    p_pharmacy_id: pharmacyId,
+    p_search: query.search?.trim() || null,
+    p_stock_filter: stockFilter,
+    p_low_stock_threshold: lowStockThreshold,
+    p_expiring_soon_days: expiringSoonDays,
+    p_in_stock_only: query.inStockOnly ?? false,
+  });
+
+  if (error) {
+    if (!error.message.includes("count_pharmacy_medicines")) {
+      console.warn("count_pharmacy_medicines RPC unavailable:", error.message);
+    }
+    return null;
+  }
+
+  return Number(data ?? 0);
+}
+
 export async function fetchMedicinesPage(
   query: MedicinesPageQuery = {},
 ): Promise<PaginatedResult<Medicine>> {
@@ -92,9 +125,17 @@ export async function fetchMedicinesPage(
   const stockFilter = query.stockFilter || "all";
   const lowStockThreshold = query.lowStockThreshold ?? 10;
   const expiringSoonDays = query.expiringSoonDays ?? 90;
+  const pharmacyId = resolveReadPharmacyId();
+  const scopedPharmacyIds = [...new Set((query.pharmacyIds || []).filter(Boolean))];
 
-  let request = supabase.from("medicines").select("*", { count: "exact" });
-  request = applyPharmacyFilter(request);
+  let request = supabase.from("medicines").select("*");
+  if (scopedPharmacyIds.length === 1) {
+    request = request.eq("pharmacy_id", scopedPharmacyIds[0]);
+  } else if (scopedPharmacyIds.length > 1) {
+    request = request.in("pharmacy_id", scopedPharmacyIds);
+  } else {
+    request = applyPharmacyFilter(request);
+  }
   request = applyMedicineSearch(request, query.search);
   request = applyStockCatalogFilter(request, stockFilter, lowStockThreshold, expiringSoonDays);
 
@@ -102,16 +143,51 @@ export async function fetchMedicinesPage(
     request = request.gt("qty", 0);
   }
 
-  const { data, error, count } = await request.order("id", { ascending: true }).range(from, to);
+  const [{ data, error }, rpcTotal] = await Promise.all([
+    request.order("id", { ascending: true }).range(from, to),
+    scopedPharmacyIds.length === 1
+      ? countMedicinesForPage(scopedPharmacyIds[0], query, stockFilter, lowStockThreshold, expiringSoonDays)
+      : scopedPharmacyIds.length === 0
+        ? countMedicinesForPage(pharmacyId, query, stockFilter, lowStockThreshold, expiringSoonDays)
+        : Promise.resolve(null),
+  ]);
 
   if (error) {
     console.error("fetchMedicinesPage error:", error.message);
-    return { rows: [], total: 0, page, pageSize };
+    throw new Error(error.message);
+  }
+
+  let total = rpcTotal;
+  if (total === null) {
+    const countRequest = supabase.from("medicines").select("*", { count: "planned", head: true });
+    let scopedCountRequest = countRequest;
+    if (scopedPharmacyIds.length === 1) {
+      scopedCountRequest = countRequest.eq("pharmacy_id", scopedPharmacyIds[0]);
+    } else if (scopedPharmacyIds.length > 1) {
+      scopedCountRequest = countRequest.in("pharmacy_id", scopedPharmacyIds);
+    } else {
+      scopedCountRequest = applyPharmacyFilter(countRequest);
+    }
+    const withSearch = applyMedicineSearch(scopedCountRequest, query.search);
+    const withFilter = applyStockCatalogFilter(
+      withSearch,
+      stockFilter,
+      lowStockThreshold,
+      expiringSoonDays,
+    );
+    const countQuery = query.inStockOnly ? withFilter.gt("qty", 0) : withFilter;
+    const { count, error: countError } = await countQuery;
+    if (countError) {
+      console.error("fetchMedicinesPage count error:", countError.message);
+      total = (data || []).length;
+    } else {
+      total = count ?? (data || []).length;
+    }
   }
 
   return {
     rows: (data || []).map((row) => toCamelCase<Medicine>(row)),
-    total: count ?? 0,
+    total,
     page,
     pageSize,
   };
@@ -123,7 +199,7 @@ function applyMovementSearch<T extends { or: (filters: string) => T }>(
 ): T {
   const term = search?.trim();
   if (!term) return query;
-  const pattern = `%${escapeIlike(term)}%`;
+  const pattern = quoteIlikePattern(`%${escapeIlike(term)}%`);
   return query.or(
     [
       `medicine_name_ar.ilike.${pattern}`,
@@ -192,7 +268,7 @@ function applyActivityLogSearch<T extends { or: (filters: string) => T }>(
 ): T {
   const term = search?.trim();
   if (!term) return query;
-  const pattern = `%${escapeIlike(term)}%`;
+  const pattern = quoteIlikePattern(`%${escapeIlike(term)}%`);
   return query.or(
     [`title.ilike.${pattern}`, `description.ilike.${pattern}`, `user_name.ilike.${pattern}`].join(
       ",",

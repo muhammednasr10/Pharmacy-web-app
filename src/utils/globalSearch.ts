@@ -47,7 +47,7 @@ const PAGE_KEYWORDS: Partial<Record<Page, string[]>> = {
   invoices: ["فواتير", "فاتورة", "مبيعات", "sales"],
   returns: ["مرتجع", "return"],
   purchases: ["مشتريات", "شراء", "purchase"],
-  costs: ["تكاليف", "مصروف", "costs"],
+  costs: ["استثمار", "استثمارى", "تكاليف", "مصروف", "investment", "costs"],
   customers: ["عملاء", "عميل", "customer", "ديون"],
   reports: ["تقارير", "report"],
   stockMovements: ["حركة", "movement"],
@@ -59,7 +59,7 @@ const PAGE_KEYWORDS: Partial<Record<Page, string[]>> = {
   settings: ["إعدادات", "settings", "اشتراك"],
   userGuide: ["دليل", "مساعدة", "help", "guide", "اختصارات", "shortcuts"],
   hr: ["موارد", "حضور", "hr"],
-  employeePortal: ["حضوري", "portal", "attendance"],
+  employeePortal: ["بروفايل", "بروفايلى", "حضوري", "portal", "attendance", "profile"],
 };
 
 function normalize(value: string) {

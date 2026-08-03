@@ -3,7 +3,12 @@ import { useInventoryDerived } from "../useInventoryDerived";
 import { useBusinessMetrics } from "../useBusinessMetrics";
 import { useDataExports } from "../useDataExports";
 import { useExpiryNotify } from "../useExpiryNotify";
+import { useMedicineCatalogStats } from "../useMedicineCatalogStats";
 import { getSubscriptionStatus } from "../../utils/subscriptionStatus";
+import {
+  buildBranchInventoryAlertRowsFromStats,
+} from "../../utils/inventoryAlerts";
+import { LARGE_MEDICINE_CATALOG } from "../../constants/medicineCatalog";
 import type { AppAuthSliceReturn } from "./useAppAuthSlice";
 import type { AppDataSliceReturn } from "./useAppDataSlice";
 import type { AppOperationsSliceReturn } from "./useAppOperationsSlice";
@@ -109,13 +114,13 @@ export function useAppMetricsSlice({
     lowStockMedicines,
     expiredMedicines,
     expiringSoonMedicines,
-    branchInventoryAlertRows,
-    lowStockCount,
-    expiringCount,
-    expiredCount,
+    branchInventoryAlertRows: derivedBranchInventoryAlertRows,
+    lowStockCount: derivedLowStockCount,
+    expiringCount: derivedExpiringCount,
+    expiredCount: derivedExpiredCount,
     alertItems,
-    alertTotal,
-    useBranchAwareInventoryAlerts,
+    alertTotal: derivedAlertTotal,
+    useBranchAwareInventoryAlerts: derivedUseBranchAwareInventoryAlerts,
   } = useInventoryDerived({
     query,
     medicines,
@@ -128,6 +133,57 @@ export function useAppMetricsSlice({
     isArabic,
     resolveBranchLabel,
   });
+
+  const catalogStats = useMedicineCatalogStats({
+    pharmacyId: getPharmacyId(),
+    branches,
+    pharmacySettings,
+    showOrgStats: showOrgInventoryAlerts,
+  });
+
+  const useCatalogStats =
+    catalogStats.scopedStats.total > medicines.length ||
+    catalogStats.scopedStats.total > LARGE_MEDICINE_CATALOG;
+
+  const branchInventoryAlertRows = useMemo(() => {
+    if (!showOrgInventoryAlerts) return derivedBranchInventoryAlertRows;
+    if (Object.keys(catalogStats.branchStats).length > 0) {
+      return buildBranchInventoryAlertRowsFromStats({
+        branchStats: catalogStats.branchStats,
+        branches,
+        isArabic,
+      });
+    }
+    return derivedBranchInventoryAlertRows;
+  }, [
+    showOrgInventoryAlerts,
+    catalogStats.branchStats,
+    derivedBranchInventoryAlertRows,
+    branches,
+    isArabic,
+  ]);
+
+  const totalMedicinesCount = useCatalogStats
+    ? catalogStats.scopedStats.total
+    : medicines.length;
+
+  const lowStockCount = useCatalogStats
+    ? catalogStats.scopedStats.lowStock
+    : derivedLowStockCount;
+
+  const expiringCount = useCatalogStats
+    ? catalogStats.scopedStats.expiring
+    : derivedExpiringCount;
+
+  const expiredCount = useCatalogStats
+    ? catalogStats.scopedStats.expired
+    : derivedExpiredCount;
+
+  const alertTotal = lowStockCount + expiringCount + expiredCount;
+
+  const useBranchAwareInventoryAlerts =
+    derivedUseBranchAwareInventoryAlerts ||
+    (showOrgInventoryAlerts && Object.keys(catalogStats.branchStats).length > 0);
 
   const {
     filteredInvoicesList,
@@ -242,6 +298,7 @@ export function useAppMetricsSlice({
     expiredMedicines,
     expiringSoonMedicines,
     branchInventoryAlertRows,
+    totalMedicinesCount,
     lowStockCount,
     expiringCount,
     expiredCount,

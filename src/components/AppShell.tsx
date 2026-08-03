@@ -12,6 +12,7 @@ import { canSwitchBranchesWithTier, type TierUpgradePrompt } from "../utils/subs
 import type { AppUser, CustomerDebt, Invoice, Lang, Medicine, Page, PharmacySettings } from "../types";
 import type { GlobalSearchResult } from "../utils/globalSearch";
 import { getPageLabel, pageIcons } from "../utils/navigation";
+import { resolveBranchDisplay } from "../utils/branchDisplay";
 import * as pharmacyService from "../services/pharmacyService";
 
 export type AppShellProps = {

@@ -284,6 +284,7 @@ export function useAppBindingsSlice({
     dashboardInvoicesCount: metrics.dashboardInvoicesCount,
     dashboardProfitTotal: metrics.dashboardProfitTotal,
     totalInvoicesCount: metrics.totalInvoicesCount,
+    totalMedicinesCount: metrics.totalMedicinesCount,
     totalCustomerRemainingDebt: metrics.totalCustomerRemainingDebt,
     totalCustomerPayments: metrics.totalCustomerPayments,
     dashboardBranchRows: metrics.dashboardBranchRows,

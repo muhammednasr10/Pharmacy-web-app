@@ -79,13 +79,13 @@ export type RolePageOption = {
 
 export const ROLE_PAGE_OPTIONS: RolePageOption[] = [
   { page: "dashboard", labelAr: "لوحة التحكم", labelEn: "Dashboard" },
-  { page: "employeePortal", labelAr: "بوابة الموظف", labelEn: "Employee portal" },
+  { page: "employeePortal", labelAr: "بروفايلى", labelEn: "My profile" },
   { page: "inventory", labelAr: "المخزون", labelEn: "Inventory" },
   { page: "pos", labelAr: "نقطة البيع", labelEn: "POS" },
   { page: "invoices", labelAr: "المبيعات", labelEn: "Sales" },
   { page: "returns", labelAr: "المرتجعات", labelEn: "Returns" },
   { page: "purchases", labelAr: "المشتريات", labelEn: "Purchases" },
-  { page: "costs", labelAr: "التكاليف", labelEn: "Costs" },
+  { page: "costs", labelAr: "استثمارى", labelEn: "Investment" },
   { page: "customers", labelAr: "العملاء", labelEn: "Customers" },
   { page: "reports", labelAr: "التقارير", labelEn: "Reports" },
   { page: "stockMovements", labelAr: "حركات المخزون", labelEn: "Stock movements" },

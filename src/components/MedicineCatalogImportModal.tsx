@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as pharmacyService from "../services/pharmacyService";
 import {
   chunkCatalogRows,
@@ -51,8 +51,40 @@ export default function MedicineCatalogImportModal({
     null,
   );
   const [error, setError] = useState("");
+  const [catalogTotal, setCatalogTotal] = useState<number | null>(null);
+  const [catalogLoading, setCatalogLoading] = useState(false);
 
   const previewSample = useMemo(() => previewRows.slice(0, 5), [previewRows]);
+  const catalogLabel =
+    catalogTotal != null
+      ? catalogTotal.toLocaleString()
+      : isArabic
+        ? "~25,000"
+        : "~25,000";
+
+  useEffect(() => {
+    if (!open) return;
+
+    let cancelled = false;
+    setCatalogLoading(true);
+
+    void pharmacyService
+      .fetchMedicineCatalogReferenceStats()
+      .then((stats) => {
+        if (!cancelled) setCatalogTotal(stats.total);
+      })
+      .catch((loadError) => {
+        console.warn("Catalog stats unavailable:", loadError);
+        if (!cancelled) setCatalogTotal(null);
+      })
+      .finally(() => {
+        if (!cancelled) setCatalogLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   if (!open) return null;
 
@@ -115,8 +147,8 @@ export default function MedicineCatalogImportModal({
   async function importFromVictoryCatalog() {
     const confirmed = window.confirm(
       isArabic
-        ? `سيتم حذف ${currentMedicineCount.toLocaleString()} دواء في هذا الفرع واستبدالهم بـ ~25,000 دواء من قاعدة بيانات Victory.\n\nمتابعة؟`
-        : `This will delete ${currentMedicineCount.toLocaleString()} medicines in this branch and replace them with ~25,000 drugs from the Victory database.\n\nContinue?`,
+        ? `سيتم حذف ${currentMedicineCount.toLocaleString()} دواء في هذا الفرع واستبدالهم بـ ${catalogLabel} دواء من قاعدة بيانات Victory.\n\nمتابعة؟`
+        : `This will delete ${currentMedicineCount.toLocaleString()} medicines in this branch and replace them with ${catalogLabel} drugs from the Victory database.\n\nContinue?`,
     );
     if (!confirmed) return;
 
@@ -206,9 +238,24 @@ export default function MedicineCatalogImportModal({
             <h2>{isArabic ? "استيراد أدوية من قاعدة Victory" : "Import medicines from Victory database"}</h2>
             <p>
               {isArabic
-                ? "حمّل قائمة ~25,000 دواء مصرية (أسماء، مواد فعالة، أسعار) إلى فرعك — الكميات تُسجّل لاحقاً من المشتريات أو الجرد"
-                : "Load ~25,000 Egyptian medicines (names, active ingredients, prices) into your branch — record quantities later via purchases or stock count"}
+                ? `حمّل قائمة ${catalogLabel} دواء مصرية (أسماء، مواد فعالة، أسعار) إلى فرعك — الكميات تُسجّل لاحقاً من المشتريات أو الجرد`
+                : `Load ${catalogLabel} Egyptian medicines (names, active ingredients, prices) into your branch — record quantities later via purchases or stock count`}
             </p>
+            {catalogLoading ? (
+              <small>{isArabic ? "جاري التحقق من الكتالوج..." : "Checking catalog availability..."}</small>
+            ) : catalogTotal === 0 ? (
+              <small className="medicineCatalogImportError">
+                {isArabic
+                  ? "الكتالوج المركزي فارغ حالياً — تواصل مع الدعم أو استخدم ملف CSV"
+                  : "Central catalog is empty — contact support or use a CSV file"}
+              </small>
+            ) : catalogTotal != null ? (
+              <small>
+                {isArabic
+                  ? `${catalogTotal.toLocaleString()} دواء متاح للاستيراد من Supabase`
+                  : `${catalogTotal.toLocaleString()} medicines available to import from Supabase`}
+              </small>
+            ) : null}
           </div>
           <button type="button" className="closeBtn" disabled={importing} onClick={onClose}>
             ×
@@ -229,7 +276,7 @@ export default function MedicineCatalogImportModal({
                   <button
                     type="button"
                     className="completeBtn"
-                    disabled={importing}
+                    disabled={importing || catalogTotal === 0}
                     onClick={() => void syncFromVictoryCatalog()}
                   >
                     {importing
@@ -237,13 +284,13 @@ export default function MedicineCatalogImportModal({
                         ? "جاري التحديث..."
                         : "Updating..."
                       : isArabic
-                        ? "تحديث الكتالوج (~25,000 دواء)"
-                        : "Update catalog (~25,000 medicines)"}
+                        ? `تحديث الكتالوج (${catalogLabel} دواء)`
+                        : `Update catalog (${catalogLabel} medicines)`}
                   </button>
                   <button
                     type="button"
                     className="printBtn medicineCatalogImportDangerBtn"
-                    disabled={importing}
+                    disabled={importing || catalogTotal === 0}
                     onClick={() => void importFromVictoryCatalog()}
                   >
                     {isArabic ? "استيراد من الصفر (يحذف الكميات)" : "Fresh import (deletes stock)"}
@@ -259,7 +306,7 @@ export default function MedicineCatalogImportModal({
                   <button
                     type="button"
                     className="completeBtn"
-                    disabled={importing}
+                    disabled={importing || catalogTotal === 0}
                     onClick={() => void importFromVictoryCatalog()}
                   >
                     {importing
@@ -267,8 +314,8 @@ export default function MedicineCatalogImportModal({
                         ? "جاري الاستيراد..."
                         : "Importing..."
                       : isArabic
-                        ? "استيراد ~25,000 دواء"
-                        : "Import ~25,000 medicines"}
+                        ? `استيراد ${catalogLabel} دواء`
+                        : `Import ${catalogLabel} medicines`}
                   </button>
                 </>
               )}

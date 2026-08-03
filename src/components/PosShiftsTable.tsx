@@ -3,6 +3,7 @@ import type { AppUser, CashierShift, PharmacySettings } from "../types";
 import * as pharmacyService from "../services/pharmacyService";
 import { downloadCashierShiftPdf } from "../utils/cashierShiftReport";
 import { isPharmacyManager } from "../utils/roles";
+import { getReportQuickRange } from "../utils/reportDateRange";
 
 type PosShiftsTableProps = {
   isArabic: boolean;
@@ -27,10 +28,6 @@ function formatDateTime(value: string | undefined, isArabic: boolean) {
   });
 }
 
-function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 export default function PosShiftsTable({
   isArabic,
   currency,
@@ -41,16 +38,26 @@ export default function PosShiftsTable({
   activeShiftId,
   refreshKey = 0,
 }: PosShiftsTableProps) {
-  const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<CashierShift[]>([]);
   const [loading, setLoading] = useState(false);
-  const [fromDate, setFromDate] = useState(todayIsoDate);
-  const [toDate, setToDate] = useState(todayIsoDate);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const monthRange = getReportQuickRange("month");
+  const [fromDate, setFromDate] = useState(monthRange.from);
+  const [toDate, setToDate] = useState(monthRange.to);
   const [statusFilter, setStatusFilter] = useState<"all" | "open" | "closed">("all");
+
+  function applyTodayFilter() {
+    const todayRange = getReportQuickRange("today");
+    setFromDate(todayRange.from);
+    setToDate(todayRange.to);
+  }
 
   const canViewShifts =
     appUser &&
     (appUser.role === "cashier" || isPharmacyManager(appUser) || appUser.role === "super_admin");
+
+  const canManageAllShifts =
+    appUser && (isPharmacyManager(appUser) || appUser.role === "super_admin");
 
   const loadRows = useCallback(async () => {
     if (!pharmacyId || !canViewShifts) return;
@@ -74,9 +81,8 @@ export default function PosShiftsTable({
   }, [pharmacyId, canViewShifts, fromDate, toDate, statusFilter, appUser]);
 
   useEffect(() => {
-    if (!open) return;
     void loadRows();
-  }, [open, loadRows, refreshKey]);
+  }, [loadRows, refreshKey]);
 
   async function handleDownload(shift: CashierShift) {
     const summary = await pharmacyService.computeCashierShiftSummary(shift);
@@ -90,45 +96,63 @@ export default function PosShiftsTable({
     });
   }
 
+  async function handleDelete(shift: CashierShift) {
+    if (!appUser) return;
+
+    const confirmed = window.confirm(
+      isArabic
+        ? `حذف الوردية ${shift.shiftNumber}؟ لا يمكن التراجع.`
+        : `Delete shift ${shift.shiftNumber}? This cannot be undone.`,
+    );
+    if (!confirmed) return;
+
+    setDeletingId(shift.id);
+    try {
+      await pharmacyService.deleteCashierShift({
+        shiftId: shift.id,
+        pharmacyId,
+        requesterId: appUser.uid,
+        canManageAll: Boolean(canManageAllShifts),
+      });
+      setRows((current) => current.filter((row) => row.id !== shift.id));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes("shift_still_open")) {
+        alert(isArabic ? "لا يمكن حذف وردية مفتوحة" : "Cannot delete an open shift");
+      } else if (message.includes("shift_has_sales")) {
+        alert(
+          isArabic
+            ? "لا يمكن حذف وردية مرتبطة بمبيعات"
+            : "Cannot delete a shift linked to sales",
+        );
+      } else if (message.includes("not_authorized")) {
+        alert(isArabic ? "ليس لديك صلاحية الحذف" : "You are not allowed to delete this shift");
+      } else {
+        alert(message);
+      }
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   if (!canViewShifts) return null;
 
   return (
-    <div className={`posShiftsTableSection${open ? " is-open" : ""}`}>
-      <button
-        type="button"
-        className="posShiftsTableToggle"
-        onClick={() => setOpen((current) => !current)}
-        aria-expanded={open}
-        aria-controls="pos-shifts-table-panel"
-      >
-        <span className="posShiftsTableToggleIcon" aria-hidden="true">
-          {open ? "▾" : "▸"}
-        </span>
-        <span className="posShiftsTableToggleText">
-          <span className="posShiftsTableToggleTitle">
-            {isArabic ? "جدول الورديات" : "Shifts table"}
-          </span>
-          <span className="posShiftsTableToggleHint mutedText">
-            {open
-              ? isArabic
-                ? "اضغط للإغلاق"
-                : "Click to collapse"
-              : isArabic
-                ? "اضغط للفتح — عرض ورديات الكاشير"
-                : "Click to open — view cashier shifts"}
-          </span>
-        </span>
-      </button>
+    <div className="posShiftsTableSection is-open">
+      <div className="posShiftsTableHeading">
+        <h3>{isArabic ? "جدول الورديات" : "Shifts table"}</h3>
+      </div>
 
-      {open ? (
-        <div className="posShiftsTablePanel" id="pos-shifts-table-panel">
-          <div className="posShiftsTableFilters">
+      <div className="posShiftsTablePanel" id="pos-shifts-table-panel">
+        <div className="posShiftsTableFilters">
+          <div className="posShiftsTableFilterDates">
             <label>
               {isArabic ? "من" : "From"}
               <input
                 type="date"
                 className="tableInput"
                 value={fromDate}
+                max={toDate}
                 onChange={(event) => setFromDate(event.target.value)}
               />
             </label>
@@ -138,6 +162,7 @@ export default function PosShiftsTable({
                 type="date"
                 className="tableInput"
                 value={toDate}
+                min={fromDate}
                 onChange={(event) => setToDate(event.target.value)}
               />
             </label>
@@ -155,6 +180,16 @@ export default function PosShiftsTable({
                 <option value="closed">{isArabic ? "مغلقة" : "Closed"}</option>
               </select>
             </label>
+          </div>
+          <div className="posShiftsTableFilterActions">
+            <button
+              type="button"
+              className="rangeChip"
+              onClick={applyTodayFilter}
+              title={isArabic ? "عرض ورديات اليوم فقط" : "Show today's shifts only"}
+            >
+              {isArabic ? "اليوم" : "Today"}
+            </button>
             <button
               type="button"
               className="secondaryBtn posShiftsTableRefreshBtn"
@@ -164,100 +199,121 @@ export default function PosShiftsTable({
               {loading ? (isArabic ? "جاري التحميل..." : "Loading...") : isArabic ? "تحديث" : "Refresh"}
             </button>
           </div>
+        </div>
 
-          <div className="tableWrap posShiftsTableWrap">
-            <table className="dataTable posShiftsTable">
-              <thead>
+        <div className="tableWrap posShiftsTableWrap">
+          <table className="dataTable posShiftsTable">
+            <thead>
+              <tr>
+                <th>{isArabic ? "الوردية" : "Shift"}</th>
+                <th>{isArabic ? "الكاشير" : "Cashier"}</th>
+                <th>{isArabic ? "الحالة" : "Status"}</th>
+                <th>{isArabic ? "فتح" : "Opened"}</th>
+                <th>{isArabic ? "إغلاق" : "Closed"}</th>
+                <th>{isArabic ? "المبيعات" : "Sales"}</th>
+                <th>{isArabic ? "الفواتير" : "Invoices"}</th>
+                <th>{isArabic ? "الفرق" : "Variance"}</th>
+                <th className="posShiftsTableActionsCol">{isArabic ? "طباعة" : "Print"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
                 <tr>
-                  <th>{isArabic ? "الوردية" : "Shift"}</th>
-                  <th>{isArabic ? "الكاشير" : "Cashier"}</th>
-                  <th>{isArabic ? "الحالة" : "Status"}</th>
-                  <th>{isArabic ? "فتح" : "Opened"}</th>
-                  <th>{isArabic ? "إغلاق" : "Closed"}</th>
-                  <th>{isArabic ? "المبيعات" : "Sales"}</th>
-                  <th>{isArabic ? "الفواتير" : "Invoices"}</th>
-                  <th>{isArabic ? "الفرق" : "Variance"}</th>
-                  <th />
+                  <td colSpan={9} className="emptyCell">
+                    {loading
+                      ? isArabic
+                        ? "جاري التحميل..."
+                        : "Loading..."
+                      : isArabic
+                        ? "لا توجد ورديات في هذه الفترة"
+                        : "No shifts in this period"}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="emptyCell">
-                      {loading
-                        ? isArabic
-                          ? "جاري التحميل..."
-                          : "Loading..."
-                        : isArabic
-                          ? "لا توجد ورديات في هذه الفترة"
-                          : "No shifts in this period"}
-                    </td>
-                  </tr>
-                ) : (
-                  rows.map((shift) => {
-                    const isActive = shift.id === activeShiftId;
-                    const variance = Number(shift.cashVariance ?? 0);
-                    return (
-                      <tr key={shift.id} className={isActive ? "posShiftsTableRowActive" : undefined}>
-                        <td>
-                          <strong>{shift.shiftNumber}</strong>
-                          {isActive ? (
-                            <span className="posShiftsTableCurrentTag">
-                              {isArabic ? "الحالية" : "Current"}
-                            </span>
-                          ) : null}
-                        </td>
-                        <td>{shift.cashierName || shift.cashierId}</td>
-                        <td>
-                          <span
-                            className={`posShiftStatusBadge posShiftStatusBadge--${shift.status}`}
-                          >
-                            {shift.status === "open"
-                              ? isArabic
-                                ? "مفتوحة"
-                                : "Open"
-                              : isArabic
-                                ? "مغلقة"
-                                : "Closed"}
+              ) : (
+                rows.map((shift) => {
+                  const isActive = shift.id === activeShiftId;
+                  const variance = Number(shift.cashVariance ?? 0);
+                  const canDelete =
+                    shift.status === "closed" &&
+                    (canManageAllShifts || shift.cashierId === appUser?.uid) &&
+                    (shift.invoiceCount ?? 0) === 0;
+
+                  return (
+                    <tr key={shift.id} className={isActive ? "posShiftsTableRowActive" : undefined}>
+                      <td>
+                        <strong>{shift.shiftNumber}</strong>
+                        {isActive ? (
+                          <span className="posShiftsTableCurrentTag">
+                            {isArabic ? "الحالية" : "Current"}
                           </span>
-                        </td>
-                        <td>{formatDateTime(shift.openedAt, isArabic)}</td>
-                        <td>{formatDateTime(shift.closedAt, isArabic)}</td>
-                        <td>{formatMoney(shift.totalSales, currency)}</td>
-                        <td>{shift.invoiceCount ?? 0}</td>
-                        <td
-                          className={
-                            shift.status === "closed"
-                              ? variance < 0
-                                ? "textDanger"
-                                : variance > 0
-                                  ? "textSuccess"
-                                  : ""
-                              : ""
-                          }
+                        ) : null}
+                      </td>
+                      <td>{shift.cashierName || shift.cashierId}</td>
+                      <td>
+                        <span
+                          className={`posShiftStatusBadge posShiftStatusBadge--${shift.status}`}
                         >
-                          {shift.status === "closed" ? formatMoney(variance, currency) : "—"}
-                        </td>
-                        <td>
+                          {shift.status === "open"
+                            ? isArabic
+                              ? "مفتوحة"
+                              : "Open"
+                            : isArabic
+                              ? "مغلقة"
+                              : "Closed"}
+                        </span>
+                      </td>
+                      <td>{formatDateTime(shift.openedAt, isArabic)}</td>
+                      <td>{formatDateTime(shift.closedAt, isArabic)}</td>
+                      <td>{formatMoney(shift.totalSales, currency)}</td>
+                      <td>{shift.invoiceCount ?? 0}</td>
+                      <td
+                        className={
+                          shift.status === "closed"
+                            ? variance < 0
+                              ? "textDanger"
+                              : variance > 0
+                                ? "textSuccess"
+                                : ""
+                            : ""
+                        }
+                      >
+                        {shift.status === "closed" ? formatMoney(variance, currency) : "—"}
+                      </td>
+                      <td className="posShiftsTableActionsCol">
+                        <div className="posShiftsTableActions">
                           {shift.status === "closed" ? (
                             <button
                               type="button"
-                              className="secondaryBtn"
+                              className="printBtn tableIconBtn"
                               onClick={() => void handleDownload(shift)}
+                              title={isArabic ? "طباعة PDF" : "Print PDF"}
+                              aria-label={isArabic ? "طباعة PDF" : "Print PDF"}
                             >
-                              PDF
+                              <span aria-hidden="true">🖨️</span>
                             </button>
                           ) : null}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                          {canDelete ? (
+                            <button
+                              type="button"
+                              className="deleteSmallBtn tableIconBtn"
+                              onClick={() => void handleDelete(shift)}
+                              disabled={deletingId === shift.id}
+                              title={isArabic ? "حذف" : "Delete"}
+                              aria-label={isArabic ? "حذف الوردية" : "Delete shift"}
+                            >
+                              <span aria-hidden="true">🗑️</span>
+                            </button>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }

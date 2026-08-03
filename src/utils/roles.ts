@@ -38,6 +38,21 @@ export function isSuperAdmin(appUser: AppUser | null | undefined): boolean {
   return appUser?.role === "super_admin";
 }
 
+/** System owner accounts are managed outside staff/login workflows. */
+export function isStaffAssignableSystemUser(
+  user: { role?: string; isActive?: boolean | null } | null | undefined,
+): boolean {
+  if (!user || user.isActive === false) return false;
+  return normalizeRole(user.role || "") !== "super_admin";
+}
+
+export function isStaffAssignableLoginAccount(
+  account: { role?: string } | null | undefined,
+): boolean {
+  if (!account) return false;
+  return normalizeRole(account.role || "") !== "super_admin";
+}
+
 /** Organization-wide manager — all branches in the group. */
 export function isOrgPharmacyAdmin(appUser: AppUser | null | undefined): boolean {
   return appUser?.role === "pharmacy_admin" || isSuperAdmin(appUser);

@@ -122,3 +122,25 @@ export async function replacePharmacyMedicineCatalog(
 
   return { deleted, inserted };
 }
+
+export type MedicineCatalogReferenceStats = {
+  total: number;
+  updatedAt: string | null;
+};
+
+export async function fetchMedicineCatalogReferenceStats(): Promise<MedicineCatalogReferenceStats> {
+  const { data, error } = await supabase.rpc("get_medicine_catalog_reference_stats");
+
+  if (error) {
+    if (error.message.includes("get_medicine_catalog_reference_stats")) {
+      throw new Error("catalog_reference_sql_required");
+    }
+    throw new Error(error.message);
+  }
+
+  const payload = data as { total?: number; updated_at?: string | null } | null;
+  return {
+    total: Number(payload?.total ?? 0),
+    updatedAt: payload?.updated_at ?? null,
+  };
+}
