@@ -25,6 +25,7 @@ type ReturnsPageProps = {
   onReturnInvoice: (invoice: Invoice) => void;
   onPrintInvoice: (invoice: Invoice) => void;
   canUseReturns: boolean;
+  canCreateReturn?: boolean;
   canDeleteReturn: boolean;
   deletingReturnId: number | string | null;
   showBranchColumn?: boolean;
@@ -64,6 +65,7 @@ export default function ReturnsPage({
   onReturnInvoice,
   onPrintInvoice,
   canUseReturns,
+  canCreateReturn = false,
   canDeleteReturn,
   deletingReturnId,
   showBranchColumn = false,
@@ -188,7 +190,7 @@ export default function ReturnsPage({
             </p>
           </div>
           <div className="returnsHeaderBtns">
-            {canUseReturns && (
+            {(canCreateReturn ?? canUseReturns) ? (
               <button
                 type="button"
                 className="printFullBtn"
@@ -196,7 +198,7 @@ export default function ReturnsPage({
               >
                 {isArabic ? "تسجيل مرتجع جديد" : "New Return"}
               </button>
-            )}
+            ) : null}
             <button type="button" className="printBtn" onClick={exportReturnsCSV}>
               <span aria-hidden="true">⬇️</span>
               <span>{isArabic ? "تصدير المرتجعات" : "Export Returns"}</span>
@@ -332,7 +334,7 @@ export default function ReturnsPage({
         )}
       </section>
 
-      {showNewReturnPicker && canUseReturns && (
+      {showNewReturnPicker && (canCreateReturn ?? canUseReturns) && (
         <div className="modalOverlay">
           <div className="invoiceModal returnsPickerModal" onClick={(e) => e.stopPropagation()}>
             <div className="modalHeader">

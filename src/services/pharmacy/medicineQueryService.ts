@@ -23,7 +23,9 @@ async function countMedicinesForPharmacy(pharmacyId: string): Promise<number | n
 
 async function shouldSkipBulkMedicineLoad(pharmacyId: string): Promise<boolean> {
   const count = await countMedicinesForPharmacy(pharmacyId);
-  return count !== null && count > LARGE_MEDICINE_CATALOG;
+  if (count !== null) return count > LARGE_MEDICINE_CATALOG;
+  // Avoid loading the full catalog when count RPC is unavailable (prevents statement timeout).
+  return true;
 }
 
 export async function getMedicines(): Promise<Medicine[]> {

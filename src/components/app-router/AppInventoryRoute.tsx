@@ -142,7 +142,7 @@ export default function AppInventoryRoute({
       exportInventoryCSV={exportInventoryCSV}
       isSubscriptionExpired={isSubscriptionExpired}
       canManageInventory={canManageInventory() && !subscriptionBlocksWrite}
-      canDeleteMedicine={canDeleteMedicine()}
+      canDeleteMedicine={canDeleteMedicine() && !subscriptionBlocksWrite}
       canViewInventoryCostProfit={canViewInventoryCostProfit}
       onEditMedicine={startEditMedicine}
       onDeleteMedicine={deleteMedicine}

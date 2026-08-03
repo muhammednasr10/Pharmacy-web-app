@@ -26,6 +26,7 @@ import {
   canSwitchBranchesWithTier,
   resolveOrganizationTier,
 } from "../../utils/subscriptionFeatures";
+import { isSubscriptionWriteBlocked } from "../../utils/subscriptionAccess";
 import type { AppAuthSliceReturn } from "./useAppAuthSlice";
 import type { AppSharedStateReturn } from "./shared";
 
@@ -78,6 +79,15 @@ export function useAppDataSlice({
     [branches, appUser?.pharmacyId],
   );
 
+  const subscriptionWriteBlocked = useMemo(
+    () =>
+      isSubscriptionWriteBlocked(
+        appUser,
+        getSubscriptionStatus(pharmacySettings).isSubscriptionExpired,
+      ),
+    [appUser, pharmacySettings],
+  );
+
   const isViewingAllBranches = useMemo(
     () =>
       isAllBranchesMode(activeBranchId) &&
@@ -107,6 +117,7 @@ export function useAppDataSlice({
       referenceId?: string;
       pharmacyId?: string;
     }) => {
+      if (subscriptionWriteBlocked) return;
       try {
         const logId = Date.now();
         const logRecord: ActivityLog = {
@@ -126,7 +137,7 @@ export function useAppDataSlice({
         console.error("Activity log error:", error);
       }
     },
-    [appUser?.name, getPharmacyId, user?.uid],
+    [appUser?.name, getPharmacyId, subscriptionWriteBlocked, user?.uid],
   );
 
   const {
@@ -150,7 +161,7 @@ export function useAppDataSlice({
     onOpenInventoryExpiryView,
   });
 
-  const { refreshPurchasesFromDb, refreshActivityLogsFromDb, refreshPharmacyCostsFromDb } =
+  const { refreshPurchasesFromDb, refreshActivityLogsFromDb, refreshPharmacyCostsFromDb, appDataCacheAt, reloadAppDataFromDb } =
     usePharmacyData({
       appUser,
       activeBranchId,
@@ -228,6 +239,8 @@ export function useAppDataSlice({
     refreshPurchasesFromDb,
     refreshActivityLogsFromDb,
     refreshPharmacyCostsFromDb,
+    appDataCacheAt,
+    reloadAppDataFromDb,
     subscriptionRequests,
     setSubscriptionRequests,
     pendingPharmacyLoginAccounts,

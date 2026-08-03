@@ -1,9 +1,16 @@
-import { useCallback, useEffect, startTransition } from "react";
+import { useCallback, useEffect, useRef, startTransition, useState } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import * as pharmacyService from "../services/pharmacyService";
 import { ALL_BRANCHES_ID, isAllBranchesMode } from "../constants/branches";
 import { canViewOrgActivityLogs, isPharmacyManager, isSuperAdmin } from "../utils/roles";
 import { mapPharmacySettingsToForm } from "../utils/pharmacySettingsForm";
+import {
+  buildAppDataCacheKey,
+  loadAppDataSnapshot,
+  saveAppDataSnapshot,
+  type AppDataSnapshot,
+} from "../utils/offlinePosStorage";
+import { useOnlineStatus } from "./useOnlineStatus";
 import type {
   ActivityLog,
   AppUser,
@@ -68,6 +75,13 @@ export function usePharmacyData({
   setPendingPharmacyLoginAccounts,
   setSystemUsers,
 }: UsePharmacyDataOptions) {
+  const isOnline = useOnlineStatus();
+  const [appDataCacheAt, setAppDataCacheAt] = useState<string | null>(null);
+  const wasOfflineRef = useRef(false);
+  const loadDataRef = useRef<((user: AppUser, offlineOnly?: boolean) => Promise<void>) | null>(
+    null,
+  );
+
   useEffect(() => {
     const currentAppUser = appUser;
     if (!currentAppUser) return;
@@ -78,6 +92,7 @@ export function usePharmacyData({
     const settingsBranchId = isAllBranches
       ? currentAppUser.pharmacyId || "main"
       : scopedBranchId || "main";
+    const cacheKey = buildAppDataCacheKey(currentAppUser.uid, settingsBranchId);
 
     pharmacyService.setActivePharmacy(
       isAllBranches ? ALL_BRANCHES_ID : activeBranchId || currentAppUser.pharmacyId,
@@ -85,74 +100,139 @@ export function usePharmacyData({
 
     const cleanup: Array<() => void> = [];
 
-    async function loadData(user: AppUser) {
-      const branchesList = await pharmacyService.getPharmacies();
-      setBranches(branchesList);
-      pharmacyService.setOrganizationBranchIds(branchesList.map((branch) => branch.id));
+    function applySnapshot(snapshot: AppDataSnapshot) {
+      setBranches(snapshot.branches);
+      pharmacyService.setOrganizationBranchIds(snapshot.branches.map((branch) => branch.id));
+      if (snapshot.pharmacySettings) {
+        setPharmacySettings(snapshot.pharmacySettings);
+        setSettingsForm(mapPharmacySettingsToForm(snapshot.pharmacySettings));
+      }
+      startTransition(() => {
+        setMedicines(snapshot.medicines);
+      });
+      setInvoices(snapshot.invoices);
+      setReturns(snapshot.returns);
+      setPurchases(snapshot.purchases);
+      setCustomerPayments(snapshot.customerPayments);
+      setPharmacyCosts(snapshot.pharmacyCosts);
+      setStockMovements(snapshot.stockMovements);
+      setActivityLogs(snapshot.activityLogs);
+      heldInvoicesSetterRef.current(snapshot.heldInvoices);
+      setAppDataCacheAt(snapshot.updatedAt);
+    }
 
-      const pharmacySettings = await pharmacyService.getPharmacySettings(settingsBranchId);
-      if (pharmacySettings) {
-        setPharmacySettings(pharmacySettings);
-        setSettingsForm(mapPharmacySettingsToForm(pharmacySettings));
+    async function loadData(user: AppUser, offlineOnly = false) {
+      if (offlineOnly || (typeof navigator !== "undefined" && !navigator.onLine)) {
+        const cached = await loadAppDataSnapshot(cacheKey);
+        if (cached) applySnapshot(cached);
+        return;
       }
 
-      if (isPharmacyManager(user) && !isAllBranches && scopedBranchId === "main") {
-        const medicinesList = await pharmacyService.getMedicines();
-        if (medicinesList.length === 0 && medicinesSeed.length > 0) {
-          for (const medicine of medicinesSeed) {
-            await pharmacyService.addMedicine(medicine);
+      try {
+        const branchesList = await pharmacyService.getPharmacies();
+        setBranches(branchesList);
+        pharmacyService.setOrganizationBranchIds(branchesList.map((branch) => branch.id));
+
+        const pharmacySettings = await pharmacyService.getPharmacySettings(settingsBranchId);
+        if (pharmacySettings) {
+          setPharmacySettings(pharmacySettings);
+          setSettingsForm(mapPharmacySettingsToForm(pharmacySettings));
+        }
+
+        if (isPharmacyManager(user) && !isAllBranches && scopedBranchId === "main") {
+          const medicinesList = await pharmacyService.getMedicines();
+          if (medicinesList.length === 0 && medicinesSeed.length > 0) {
+            for (const medicine of medicinesSeed) {
+              await pharmacyService.addMedicine(medicine);
+            }
           }
         }
-      }
 
-      const loadedMedicines = await pharmacyService.getMedicines();
-      startTransition(() => {
-        setMedicines(loadedMedicines);
-      });
-      setInvoices(await pharmacyService.getInvoices());
-      setReturns(await pharmacyService.getReturns());
-      setPurchases(await pharmacyService.getPurchases());
-      setCustomerPayments(await pharmacyService.getCustomerPayments());
-      try {
-        setPharmacyCosts(await pharmacyService.getPharmacyCosts());
-      } catch (costsError) {
-        console.error("Load pharmacy costs error:", costsError);
-        setPharmacyCosts([]);
-      }
-      setStockMovements(await pharmacyService.getStockMovements());
-      if (isAllBranches && branchesList.length > 0 && canViewOrgActivityLogs(user)) {
-        setActivityLogs(
-          await pharmacyService.getActivityLogsForPharmacies(
+        const loadedMedicines = await pharmacyService.getMedicines();
+        startTransition(() => {
+          setMedicines(loadedMedicines);
+        });
+        const invoices = await pharmacyService.getInvoices();
+        setInvoices(invoices);
+        const returns = await pharmacyService.getReturns();
+        setReturns(returns);
+        const purchases = await pharmacyService.getPurchases();
+        setPurchases(purchases);
+        const customerPayments = await pharmacyService.getCustomerPayments();
+        setCustomerPayments(customerPayments);
+
+        let pharmacyCosts: PharmacyCost[] = [];
+        try {
+          pharmacyCosts = await pharmacyService.getPharmacyCosts();
+          setPharmacyCosts(pharmacyCosts);
+        } catch (costsError) {
+          console.error("Load pharmacy costs error:", costsError);
+          setPharmacyCosts([]);
+        }
+
+        const stockMovements = await pharmacyService.getStockMovements();
+        setStockMovements(stockMovements);
+
+        let activityLogs: ActivityLog[] = [];
+        if (isAllBranches && branchesList.length > 0 && canViewOrgActivityLogs(user)) {
+          activityLogs = await pharmacyService.getActivityLogsForPharmacies(
             branchesList.map((branch) => branch.id),
             500,
-          ),
-        );
-      } else {
-        setActivityLogs(await pharmacyService.getActivityLogs());
-      }
-      setSubscriptionRequests(await pharmacyService.getAllSubscriptionRequests());
-      if (isSuperAdmin(user)) {
-        setPendingPharmacyLoginAccounts(
-          await pharmacyService.getAllPharmacyLoginAccounts({ pendingApproval: true }),
-        );
-      }
-      try {
-        heldInvoicesSetterRef.current(await pharmacyService.getHeldInvoices(settingsBranchId));
-      } catch (heldError) {
-        console.error("Load held invoices error:", heldError);
-        heldInvoicesSetterRef.current([]);
-      }
+          );
+        } else {
+          activityLogs = await pharmacyService.getActivityLogs();
+        }
+        setActivityLogs(activityLogs);
+        setSubscriptionRequests(await pharmacyService.getAllSubscriptionRequests());
+        if (isSuperAdmin(user)) {
+          setPendingPharmacyLoginAccounts(
+            await pharmacyService.getAllPharmacyLoginAccounts({ pendingApproval: true }),
+          );
+        }
 
-      if (isSuperAdmin(user)) {
-        setSystemUsers(await pharmacyService.getAllSystemUsers());
-      } else if (isPharmacyManager(user)) {
-        setSystemUsers(await pharmacyService.getSystemUsers(settingsBranchId));
+        let heldInvoices: HeldInvoice[] = [];
+        try {
+          heldInvoices = await pharmacyService.getHeldInvoices(settingsBranchId);
+          heldInvoicesSetterRef.current(heldInvoices);
+        } catch (heldError) {
+          console.error("Load held invoices error:", heldError);
+          heldInvoicesSetterRef.current([]);
+        }
+
+        if (isSuperAdmin(user)) {
+          setSystemUsers(await pharmacyService.getAllSystemUsers());
+        } else if (isPharmacyManager(user)) {
+          setSystemUsers(await pharmacyService.getSystemUsers(settingsBranchId));
+        }
+
+        const snapshot: AppDataSnapshot = {
+          cacheKey,
+          updatedAt: new Date().toISOString(),
+          branches: branchesList,
+          pharmacySettings: pharmacySettings ?? null,
+          medicines: loadedMedicines,
+          invoices,
+          returns,
+          purchases,
+          customerPayments,
+          pharmacyCosts,
+          stockMovements,
+          activityLogs,
+          heldInvoices,
+        };
+        await saveAppDataSnapshot(snapshot);
+        setAppDataCacheAt(snapshot.updatedAt);
+      } catch (error) {
+        console.error("Initial data load error:", error);
+        const cached = await loadAppDataSnapshot(cacheKey);
+        if (cached) applySnapshot(cached);
       }
     }
 
-    loadData(currentAppUser).catch((error) => {
-      console.error("Initial data load error:", error);
-    });
+    loadDataRef.current = loadData;
+
+    const startOffline = typeof navigator !== "undefined" && !navigator.onLine;
+    void loadData(currentAppUser, startOffline);
 
     cleanup.push(
       pharmacyService.subscribePharmacies((rows) => {
@@ -216,6 +296,21 @@ export function usePharmacyData({
     setSystemUsers,
   ]);
 
+  useEffect(() => {
+    if (!isOnline) {
+      wasOfflineRef.current = true;
+      return;
+    }
+    if (!wasOfflineRef.current || !appUser) return;
+    wasOfflineRef.current = false;
+    void loadDataRef.current?.(appUser);
+  }, [isOnline, appUser]);
+
+  const reloadAppDataFromDb = useCallback(async () => {
+    if (!appUser) return;
+    await loadDataRef.current?.(appUser);
+  }, [appUser]);
+
   const refreshPurchasesFromDb = useCallback(async () => {
     setPurchases(await pharmacyService.getPurchases());
   }, [setPurchases]);
@@ -243,6 +338,8 @@ export function usePharmacyData({
   }, [setPharmacyCosts]);
 
   return {
+    appDataCacheAt,
+    reloadAppDataFromDb,
     refreshPurchasesFromDb,
     refreshActivityLogsFromDb,
     refreshPharmacyCostsFromDb,

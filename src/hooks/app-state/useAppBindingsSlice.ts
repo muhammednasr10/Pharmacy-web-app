@@ -10,6 +10,7 @@ import { barcodeCSV, downloadCSV } from "../../utils/csvExport";
 import { safeNumber } from "../../utils/safeNumber";
 import type { GlobalSearchResult } from "../../utils/globalSearch";
 import type { Page } from "../../types";
+import { isSubscriptionWriteBlocked } from "../../utils/subscriptionAccess";
 import type { AppAuthSliceReturn } from "./useAppAuthSlice";
 import type { AppDataSliceReturn } from "./useAppDataSlice";
 import type { AppMetricsSliceReturn } from "./useAppMetricsSlice";
@@ -469,6 +470,12 @@ export function useAppBindingsSlice({
     setLang,
     toggleTheme,
     handleLogout,
+    isOnline: operations.isOnline,
+    pendingOfflineSalesCount: operations.pendingOfflineSalesCount,
+    appDataCacheAt: data.appDataCacheAt ?? operations.offlineMedicinesCacheAt,
+    isSyncingOfflineSales: operations.isSyncingOfflineSales,
+    subscriptionReadOnly: isSubscriptionWriteBlocked(auth.appUser, metrics.isSubscriptionExpired),
+    subscriptionEndDate: metrics.subscriptionEndDate,
   });
 
   return {

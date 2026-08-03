@@ -13,6 +13,7 @@ export default function BranchesTablePanel({ state }: Props) {
     onSwitchBranch,
     openEditBranchModal,
     removeBranch,
+    subscriptionBlocksWrite = false,
   } = state;
 
   if (branches.length === 0) {
@@ -72,21 +73,25 @@ export default function BranchesTablePanel({ state }: Props) {
                     >
                       {isArabic ? "تبديل" : "Switch"}
                     </button>
-                    <button
-                      type="button"
-                      className="editBtn"
-                      onClick={() => openEditBranchModal(branch)}
-                    >
-                      {isArabic ? "تعديل" : "Edit"}
-                    </button>
-                    <button
-                      type="button"
-                      className="deleteSmallBtn"
-                      disabled={branch.id === "main" || branch.id === appUser?.pharmacyId}
-                      onClick={() => void removeBranch(branch.id, display.branchName)}
-                    >
-                      {isArabic ? "حذف" : "Delete"}
-                    </button>
+                    {!subscriptionBlocksWrite ? (
+                      <>
+                        <button
+                          type="button"
+                          className="editBtn"
+                          onClick={() => openEditBranchModal(branch)}
+                        >
+                          {isArabic ? "تعديل" : "Edit"}
+                        </button>
+                        <button
+                          type="button"
+                          className="deleteSmallBtn"
+                          disabled={branch.id === "main" || branch.id === appUser?.pharmacyId}
+                          onClick={() => void removeBranch(branch.id, display.branchName)}
+                        >
+                          {isArabic ? "حذف" : "Delete"}
+                        </button>
+                      </>
+                    ) : null}
                   </div>
                 </td>
               </tr>

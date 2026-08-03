@@ -106,13 +106,54 @@ async function countMedicinesForPage(
   });
 
   if (error) {
-    if (!error.message.includes("count_pharmacy_medicines")) {
-      console.warn("count_pharmacy_medicines RPC unavailable:", error.message);
-    }
+    console.warn("count_pharmacy_medicines RPC error:", error.message);
     return null;
   }
 
   return Number(data ?? 0);
+}
+
+type FetchMedicinesPageRpcRow = Record<string, unknown>;
+
+async function fetchMedicinesPageViaRpc(
+  pharmacyId: string,
+  query: MedicinesPageQuery,
+  page: number,
+  pageSize: number,
+  stockFilter: StockCatalogFilter,
+  lowStockThreshold: number,
+  expiringSoonDays: number,
+): Promise<PaginatedResult<Medicine> | null> {
+  const { data, error } = await supabase.rpc("fetch_pharmacy_medicines_page", {
+    p_pharmacy_id: pharmacyId,
+    p_page: page,
+    p_page_size: pageSize,
+    p_search: query.search?.trim() || null,
+    p_stock_filter: stockFilter,
+    p_low_stock_threshold: lowStockThreshold,
+    p_expiring_soon_days: expiringSoonDays,
+    p_in_stock_only: query.inStockOnly ?? false,
+  });
+
+  if (error) {
+    if (!error.message.includes("fetch_pharmacy_medicines_page")) {
+      console.warn("fetch_pharmacy_medicines_page RPC error:", error.message);
+    }
+    return null;
+  }
+
+  if (!data || typeof data !== "object") return null;
+  const payload = data as { total?: unknown; rows?: unknown };
+  const rows = Array.isArray(payload.rows)
+    ? payload.rows.map((row) => toCamelCase<Medicine>(row as FetchMedicinesPageRpcRow))
+    : [];
+
+  return {
+    rows,
+    total: Number(payload.total ?? rows.length),
+    page,
+    pageSize,
+  };
 }
 
 export async function fetchMedicinesPage(
@@ -127,6 +168,25 @@ export async function fetchMedicinesPage(
   const expiringSoonDays = query.expiringSoonDays ?? 90;
   const pharmacyId = resolveReadPharmacyId();
   const scopedPharmacyIds = [...new Set((query.pharmacyIds || []).filter(Boolean))];
+  const rpcPharmacyId =
+    scopedPharmacyIds.length === 1
+      ? scopedPharmacyIds[0]
+      : scopedPharmacyIds.length === 0
+        ? pharmacyId
+        : "";
+
+  if (rpcPharmacyId) {
+    const rpcResult = await fetchMedicinesPageViaRpc(
+      rpcPharmacyId,
+      query,
+      page,
+      pageSize,
+      stockFilter,
+      lowStockThreshold,
+      expiringSoonDays,
+    );
+    if (rpcResult) return rpcResult;
+  }
 
   let request = supabase.from("medicines").select("*");
   if (scopedPharmacyIds.length === 1) {
@@ -159,30 +219,7 @@ export async function fetchMedicinesPage(
 
   let total = rpcTotal;
   if (total === null) {
-    const countRequest = supabase.from("medicines").select("*", { count: "planned", head: true });
-    let scopedCountRequest = countRequest;
-    if (scopedPharmacyIds.length === 1) {
-      scopedCountRequest = countRequest.eq("pharmacy_id", scopedPharmacyIds[0]);
-    } else if (scopedPharmacyIds.length > 1) {
-      scopedCountRequest = countRequest.in("pharmacy_id", scopedPharmacyIds);
-    } else {
-      scopedCountRequest = applyPharmacyFilter(countRequest);
-    }
-    const withSearch = applyMedicineSearch(scopedCountRequest, query.search);
-    const withFilter = applyStockCatalogFilter(
-      withSearch,
-      stockFilter,
-      lowStockThreshold,
-      expiringSoonDays,
-    );
-    const countQuery = query.inStockOnly ? withFilter.gt("qty", 0) : withFilter;
-    const { count, error: countError } = await countQuery;
-    if (countError) {
-      console.error("fetchMedicinesPage count error:", countError.message);
-      total = (data || []).length;
-    } else {
-      total = count ?? (data || []).length;
-    }
+    total = (data || []).length;
   }
 
   return {

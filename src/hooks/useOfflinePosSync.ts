@@ -26,6 +26,7 @@ type UseOfflinePosSyncParams = {
   activeCashierShift: CashierShift | null;
   getPharmacyId: () => string;
   refreshMedicinesFromDb: () => Promise<void>;
+  reloadAppDataFromDb?: () => Promise<void>;
   refreshActiveCashierShift: () => Promise<unknown>;
 };
 
@@ -39,6 +40,7 @@ export function useOfflinePosSync({
   activeCashierShift,
   getPharmacyId,
   refreshMedicinesFromDb,
+  reloadAppDataFromDb,
   refreshActiveCashierShift,
 }: UseOfflinePosSyncParams) {
   const [pendingOfflineSalesCount, setPendingOfflineSalesCount] = useState(0);
@@ -84,8 +86,12 @@ export function useOfflinePosSync({
     setIsSyncingOfflineSales(true);
     void syncPendingOfflineSales(pharmacyId)
       .then(async (result) => {
-        if (result.synced > 0) {
+        if (reloadAppDataFromDb) {
+          await reloadAppDataFromDb();
+        } else if (result.synced > 0) {
           await refreshMedicinesFromDb();
+        }
+        if (result.synced > 0) {
           if (activeCashierShift) {
             await refreshActiveCashierShift();
           }
@@ -122,6 +128,7 @@ export function useOfflinePosSync({
     getPharmacyId,
     activeCashierShift,
     refreshMedicinesFromDb,
+    reloadAppDataFromDb,
     refreshActiveCashierShift,
     refreshOfflinePosMeta,
     isArabic,

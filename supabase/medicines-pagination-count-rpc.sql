@@ -62,7 +62,7 @@ end;
 $$;
 
 revoke all on function public.count_pharmacy_medicines(text, text, text, integer, integer, boolean) from public;
-grant execute on function public.count_pharmacy_medicines(text, text, text, integer, integer, boolean) to authenticated;
+grant execute on function public.count_pharmacy_medicines(text, text, text, integer, integer, boolean) to anon, authenticated;
 
 create or replace function public.pharmacy_medicine_stats(
   p_pharmacy_id text,
@@ -121,6 +121,6 @@ end;
 $$;
 
 revoke all on function public.pharmacy_medicine_stats(text, integer, integer) from public;
-grant execute on function public.pharmacy_medicine_stats(text, integer, integer) to authenticated;
+grant execute on function public.pharmacy_medicine_stats(text, integer, integer) to anon, authenticated;
 
 notify pgrst, 'reload schema';

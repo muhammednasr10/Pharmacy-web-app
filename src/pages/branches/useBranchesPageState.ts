@@ -41,6 +41,8 @@ export function useBranchesPageState(props: BranchesPageProps) {
     onActivityLog,
   } = props;
 
+  const subscriptionBlocksWrite = props.subscriptionBlocksWrite ?? false;
+
   const [branchModal, setBranchModal] = useState<"add" | "edit" | null>(null);
   const [branchForm, setBranchForm] = useState<BranchFormState>(emptyBranchForm);
   const [savingBranch, setSavingBranch] = useState(false);
@@ -347,11 +349,15 @@ export function useBranchesPageState(props: BranchesPageProps) {
   }
 
   const effectiveBranchId = activeBranchId || appUser?.pharmacyId;
-  const canTransfer = canTransferStockWithTier(appUser, orgSubscriptionTier, branches.length);
+  const canTransfer =
+    canTransferStockWithTier(appUser, orgSubscriptionTier, branches.length) &&
+    !subscriptionBlocksWrite;
   const homePharmacy = branches.find((branch) => branch.id === appUser?.pharmacyId) || branches[0];
   const branchUsage = homePharmacy ? getOrganizationBranchUsage(branches, homePharmacy) : null;
   const canAddBranch =
-    canManageOrgBranchesWithTier(appUser, orgSubscriptionTier) && (branchUsage?.canAdd ?? true);
+    canManageOrgBranchesWithTier(appUser, orgSubscriptionTier) &&
+    (branchUsage?.canAdd ?? true) &&
+    !subscriptionBlocksWrite;
 
   return {
     ...props,

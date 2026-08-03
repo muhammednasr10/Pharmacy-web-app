@@ -27,6 +27,7 @@ export type EmployeesUsersPageProps = {
   currentUid?: string;
   onActivityLog: (data: ActivityInput) => Promise<void>;
   onOpenSubscriptionSettings?: () => void;
+  subscriptionBlocksWrite?: boolean;
 };
 
 export const emptyEmployeeForm = {

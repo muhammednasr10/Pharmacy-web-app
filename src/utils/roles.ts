@@ -178,8 +178,9 @@ export function canReviewPendingBranchTransfers(appUser: AppUser | null | undefi
   return userHasPermission(appUser, "review_branch_transfers");
 }
 
+/** Buy price & profit in inventory — system owner and org pharmacy admin only. */
 export function canViewInventoryCostProfit(appUser: AppUser | null | undefined): boolean {
-  return userHasPermission(appUser, "view_inventory_cost_profit");
+  return isOrgPharmacyAdmin(appUser);
 }
 
 export function canViewPosCostProfit(appUser: AppUser | null | undefined): boolean {

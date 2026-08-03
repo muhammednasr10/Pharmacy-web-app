@@ -107,8 +107,8 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
             pharmacyService.setCurrentAppUser(null);
             await pharmacyService.signOutUser();
             const msg = isArabic
-              ? "الصيدلية غير نشطة أو انتهت الفترة التجريبية/الاشتراك. تواصل مع الدعم أو جدّد الاشتراك."
-              : "Pharmacy is inactive or the trial/subscription has ended. Contact support or renew.";
+              ? "الصيدلية غير نشطة أو موقوفة. تواصل مع الدعم."
+              : "Pharmacy is inactive or suspended. Contact support.";
             setSubscriptionBlocked(msg);
             alert(msg);
             return;

@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import PageLoadingCard from "./PageLoadingCard";
-import { isSuperAdmin } from "../utils/roles";
+import { isSubscriptionWriteBlocked } from "../utils/subscriptionAccess";
 import type { AppPageRouterProps } from "./app-router/types";
 import AppActivityLogsRoute from "./app-router/AppActivityLogsRoute";
 import AppBranchesRoute from "./app-router/AppBranchesRoute";
@@ -23,7 +23,10 @@ import AppUserGuideRoute from "./app-router/AppUserGuideRoute";
 export type { AppPageRouterProps } from "./app-router/types";
 
 export default function AppPageRouter(props: AppPageRouterProps) {
-  const subscriptionBlocksWrite = props.isSubscriptionExpired && !isSuperAdmin(props.appUser);
+  const subscriptionBlocksWrite = isSubscriptionWriteBlocked(
+    props.appUser,
+    props.isSubscriptionExpired,
+  );
 
   return (
     <Suspense fallback={<PageLoadingCard isArabic={props.isArabic} />}>
@@ -33,15 +36,15 @@ export default function AppPageRouter(props: AppPageRouterProps) {
       <AppCostsRoute {...props} />
       <AppPosRoute {...props} subscriptionBlocksWrite={subscriptionBlocksWrite} />
       <AppInvoicesRoute {...props} />
-      <AppReturnsRoute {...props} />
+      <AppReturnsRoute {...props} subscriptionBlocksWrite={subscriptionBlocksWrite} />
       <AppCustomersRoute {...props} />
       <AppActivityLogsRoute {...props} />
       <AppReportsRoute {...props} />
-      <AppEmployeesRoute {...props} />
+      <AppEmployeesRoute {...props} subscriptionBlocksWrite={subscriptionBlocksWrite} />
       <AppEmployeePortalRoute {...props} />
       <AppSuperAdminRoute {...props} />
       <AppSqlMigrationsRoute {...props} />
-      <AppBranchesRoute {...props} />
+      <AppBranchesRoute {...props} subscriptionBlocksWrite={subscriptionBlocksWrite} />
       <AppUserGuideRoute {...props} />
       <AppSettingsRoute {...props} />
     </Suspense>

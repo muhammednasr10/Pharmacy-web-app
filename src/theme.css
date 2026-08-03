@@ -197,7 +197,20 @@ td {
 .alertDropdown,
 .cashierShiftPanel,
 .offlinePosBanner,
+.offlineAppBanner,
 .displayPrefsOption {
+  background: var(--color-bg-surface);
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.subscriptionReadOnlyBanner {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.subscriptionReadOnlyBannerBtn {
   background: var(--color-bg-surface);
   color: var(--color-text);
   border-color: var(--color-border-strong);
@@ -208,7 +221,8 @@ td {
 }
 
 .cashierShiftPanel,
-.offlinePosBanner {
+.offlinePosBanner,
+.offlineAppBanner {
   background: var(--color-bg-muted);
 }
 

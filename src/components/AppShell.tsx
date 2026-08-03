@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import ErrorBoundary from "./ErrorBoundary";
 import AppNavBar from "./AppNavBar";
 import BranchScopeBanner from "./BranchScopeBanner";
+import OfflineAppBanner from "./OfflineAppBanner";
+import SubscriptionReadOnlyBanner from "./SubscriptionReadOnlyBanner";
 import PreviewDeployBanner from "./PreviewDeployBanner";
 import Sidebar from "./Sidebar";
 import Topbar, { type AlertItem } from "./Topbar";
@@ -56,6 +58,12 @@ export type AppShellProps = {
   resolveBranchLabel: (branchId?: string) => string;
   onOpenSubscriptionSettings: () => void;
   tierUpgradePrompt: TierUpgradePrompt | null;
+  isOnline?: boolean;
+  pendingOfflineSalesCount?: number;
+  appDataCacheAt?: string | null;
+  isSyncingOfflineSales?: boolean;
+  subscriptionReadOnly?: boolean;
+  subscriptionEndDate?: string;
   children: ReactNode;
   modals?: ReactNode;
 };
@@ -101,6 +109,12 @@ export default function AppShell({
   resolveBranchLabel,
   onOpenSubscriptionSettings,
   tierUpgradePrompt,
+  isOnline = true,
+  pendingOfflineSalesCount = 0,
+  appDataCacheAt = null,
+  isSyncingOfflineSales = false,
+  subscriptionReadOnly = false,
+  subscriptionEndDate = "",
   children,
   modals,
 }: AppShellProps) {
@@ -222,6 +236,21 @@ export default function AppShell({
           isArabic={isArabic}
           appUser={appUser}
           branchDisplay={activeBranchDisplay}
+        />
+
+        <SubscriptionReadOnlyBanner
+          isArabic={isArabic}
+          isVisible={subscriptionReadOnly}
+          subscriptionEndDate={subscriptionEndDate}
+          onRenew={onOpenSubscriptionSettings}
+        />
+
+        <OfflineAppBanner
+          isArabic={isArabic}
+          isOnline={isOnline}
+          pendingCount={pendingOfflineSalesCount}
+          appDataCacheAt={appDataCacheAt}
+          isSyncing={isSyncingOfflineSales}
         />
 
         <ErrorBoundary isArabic={isArabic}>

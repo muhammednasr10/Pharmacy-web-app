@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canManageStaffRolePermissions,
+  canViewInventoryCostProfit,
   isOrgPharmacyAdmin,
   isStaffAssignableLoginAccount,
   isStaffAssignableSystemUser,
@@ -67,5 +68,13 @@ describe("role permission gates", () => {
     expect(isStaffAssignableSystemUser(user("cashier"))).toBe(true);
     expect(isStaffAssignableLoginAccount({ role: "super_admin" })).toBe(false);
     expect(isStaffAssignableLoginAccount({ role: "cashier" })).toBe(true);
+  });
+
+  it("shows inventory buy price and profit only to system owner and pharmacy admin", () => {
+    expect(canViewInventoryCostProfit(user("super_admin"))).toBe(true);
+    expect(canViewInventoryCostProfit(user("pharmacy_admin"))).toBe(true);
+    expect(canViewInventoryCostProfit(user("branch_manager"))).toBe(false);
+    expect(canViewInventoryCostProfit(user("cashier"))).toBe(false);
+    expect(canViewInventoryCostProfit(user("inventory"))).toBe(false);
   });
 });

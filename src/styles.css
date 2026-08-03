@@ -13360,7 +13360,8 @@ button:disabled {
   font-size: 0.85rem;
 }
 
-.offlinePosBanner {
+.offlinePosBanner,
+.offlineAppBanner {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
@@ -13371,38 +13372,85 @@ button:disabled {
   border: 1px solid transparent;
 }
 
-.offlinePosBanner.isOffline {
+.offlinePosBanner.isOffline,
+.offlineAppBanner.isOffline {
   background: #fff7ed;
   border-color: #fdba74;
   color: #9a3412;
 }
 
-.offlinePosBanner.isOnline {
+.offlinePosBanner.isOnline,
+.offlineAppBanner.isOnline {
   background: #ecfeff;
   border-color: #67e8f9;
   color: #155e75;
 }
 
-.offlinePosBannerMain strong {
+.offlinePosBannerMain strong,
+.offlineAppBannerMain strong {
   display: block;
   margin-bottom: 4px;
   font-size: 15px;
 }
 
 .offlinePosBannerMain p,
-.offlinePosBannerMeta {
+.offlinePosBannerMeta,
+.offlineAppBannerMain p,
+.offlineAppBannerMeta {
   margin: 0;
   font-size: 13px;
   line-height: 1.5;
 }
 
-.offlinePosBannerMeta {
+.offlinePosBannerMeta,
+.offlineAppBannerMeta {
   min-width: 180px;
 }
 
-.offlinePosBannerMeta strong {
+.offlinePosBannerMeta strong,
+.offlineAppBannerMeta strong {
   display: block;
   margin-top: 4px;
+}
+
+.subscriptionReadOnlyBanner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #fca5a5;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.subscriptionReadOnlyBannerMain strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 15px;
+}
+
+.subscriptionReadOnlyBannerMain p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.subscriptionReadOnlyBannerBtn {
+  border: 1px solid #dc2626;
+  background: #fff;
+  color: #b91c1c;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.subscriptionReadOnlyBannerBtn:hover {
+  background: #fee2e2;
 }
 
 .paymentOfflineHint {

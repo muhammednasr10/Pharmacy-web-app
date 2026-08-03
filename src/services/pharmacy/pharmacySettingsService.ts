@@ -1,26 +1,24 @@
 import { supabase } from "../supabaseClient";
-import { isActiveSubscriptionStatus } from "../../config/subscription";
 import {
   getSubscriptionTier,
   parseSubscriptionTier,
 } from "../../config/subscriptionTiers";
 import type { PharmacySettings } from "../../types";
 import { toCamelCase, toSnakeCase } from "./mappers";
-import { isSubscriptionEndDatePassed } from "./authServiceShared";
+
+const BLOCKED_PHARMACY_STATUSES = new Set(["suspended", "cancelled", "inactive"]);
 
 export async function getCurrentPharmacy(pharmacyId: string): Promise<PharmacySettings | null> {
   return getPharmacySettings(pharmacyId);
 }
 
-
+/** Login access — expired subscription still allowed (read-only mode in the app). */
 export async function isPharmacyAccessAllowed(pharmacyId: string): Promise<boolean> {
   const pharmacy = await getPharmacySettings(pharmacyId);
   if (!pharmacy) return false;
   if (pharmacy.isActive === false) return false;
-  if (!isActiveSubscriptionStatus(pharmacy.subscriptionStatus)) return false;
-  if (isSubscriptionEndDatePassed(pharmacy.subscriptionEndDate || pharmacy.subscriptionEndsAt)) {
-    return false;
-  }
+  const status = (pharmacy.subscriptionStatus || "active").toLowerCase();
+  if (BLOCKED_PHARMACY_STATUSES.has(status)) return false;
   return true;
 }
 

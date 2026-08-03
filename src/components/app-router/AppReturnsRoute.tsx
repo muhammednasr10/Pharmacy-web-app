@@ -34,7 +34,9 @@ export type AppReturnsRouteProps = Pick<
   | "t"
   | "isArabic"
   | "safeNumber"
->;
+> & {
+  subscriptionBlocksWrite: boolean;
+};
 
 export default function AppReturnsRoute({
   displayPage,
@@ -68,6 +70,7 @@ export default function AppReturnsRoute({
   t,
   isArabic,
   safeNumber,
+  subscriptionBlocksWrite,
 }: AppReturnsRouteProps) {
   if (displayPage !== "returns" || !canOpenPage("returns")) return null;
 
@@ -95,7 +98,8 @@ export default function AppReturnsRoute({
       onReturnInvoice={openReturnModal}
       onPrintInvoice={printSavedInvoice}
       canUseReturns={canUseReturns()}
-      canDeleteReturn={canDeleteReturn()}
+      canCreateReturn={canUseReturns() && !subscriptionBlocksWrite}
+      canDeleteReturn={canDeleteReturn() && !subscriptionBlocksWrite}
       deletingReturnId={deletingReturnId}
       showBranchColumn={isViewingAllBranches}
       getBranchLabel={resolveBranchLabel}

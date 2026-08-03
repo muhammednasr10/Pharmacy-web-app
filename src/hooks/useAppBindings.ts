@@ -56,6 +56,12 @@ export type UseAppBindingsInput = AppPageRouterProps & {
   setLang: Dispatch<SetStateAction<Lang>>;
   toggleTheme: () => void;
   handleLogout: () => void;
+  isOnline?: boolean;
+  pendingOfflineSalesCount?: number;
+  appDataCacheAt?: string | null;
+  isSyncingOfflineSales?: boolean;
+  subscriptionReadOnly?: boolean;
+  subscriptionEndDate?: string;
 };
 
 export type AppShellBindings = Omit<AppShellProps, "children" | "modals">;
@@ -243,6 +249,12 @@ export function useAppBindings(input: UseAppBindingsInput): AppBindingsResult {
     resolveBranchLabel: input.resolveBranchLabel,
     onOpenSubscriptionSettings: input.openSubscriptionSettings,
     tierUpgradePrompt: input.tierUpgradePrompt,
+    isOnline: input.isOnline,
+    pendingOfflineSalesCount: input.pendingOfflineSalesCount,
+    appDataCacheAt: input.appDataCacheAt,
+    isSyncingOfflineSales: input.isSyncingOfflineSales,
+    subscriptionReadOnly: input.subscriptionReadOnly,
+    subscriptionEndDate: input.subscriptionEndDate,
   };
 
   return { pageRouterProps, appModalsProps, appShellProps };

@@ -14,34 +14,17 @@ export type AppEmployeesRouteProps = Pick<
   | "user"
   | "addActivityLog"
   | "openSubscriptionSettings"
->;
+> & {
+  subscriptionBlocksWrite: boolean;
+};
 
 export default function AppEmployeesRoute({
   displayPage,
   canOpenPage,
-  isArabic,
-  appUser,
-  getPharmacyId,
-  branches,
-  employeesPageTenantScope,
-  settingsForm,
-  user,
-  addActivityLog,
-  openSubscriptionSettings,
+  subscriptionBlocksWrite,
+  ...props
 }: AppEmployeesRouteProps) {
   if (displayPage !== "users" || !canOpenPage("users")) return null;
 
-  return (
-    <EmployeesUsersPage
-      isArabic={isArabic}
-      appUser={appUser}
-      pharmacyId={getPharmacyId()}
-      pharmacies={branches}
-      tenantScopePharmacyId={employeesPageTenantScope}
-      currency={settingsForm.currency || "ج.م"}
-      currentUid={user?.uid}
-      onActivityLog={addActivityLog}
-      onOpenSubscriptionSettings={openSubscriptionSettings}
-    />
-  );
+  return <EmployeesUsersPage {...props} subscriptionBlocksWrite={subscriptionBlocksWrite} />;
 }

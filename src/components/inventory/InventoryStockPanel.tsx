@@ -13,6 +13,7 @@ import { saveReorderPurchaseDraft, type ReorderPurchaseDraft } from "../../utils
 import type { StockCountSession } from "../../utils/stockCount";
 import type { StockCatalogFilter } from "../../services/pharmacy/inventoryPaginationService";
 import { usePaginatedMedicines } from "../../hooks/usePaginatedMedicines";
+import { useOnlineStatus } from "../../hooks/useOnlineStatus";
 import InventoryPaginationBar from "./InventoryPaginationBar";
 
 type InventoryStockPanelProps = {
@@ -105,6 +106,7 @@ export default function InventoryStockPanel({
   refreshKey = 0,
   stockCountLaunchKey = 0,
 }: InventoryStockPanelProps) {
+  const isOnline = useOnlineStatus();
   const [showMedicineForm, setShowMedicineForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [stockDetailMedicine, setStockDetailMedicine] = useState<Medicine | null>(null);
@@ -126,24 +128,6 @@ export default function InventoryStockPanel({
     setShowStockCountModal(true);
   }, [stockCountLaunchKey, canManageInventory, onApplyStockCount]);
 
-  const {
-    rows: pageMedicines,
-    total,
-    page,
-    pageSize,
-    loading,
-    error,
-    setPage,
-    reload,
-  } = usePaginatedMedicines({
-    enabled,
-    search: debouncedSearch,
-    stockFilter,
-    lowStockThreshold,
-    expiringSoonDays,
-    refreshKey,
-  });
-
   const branchMedicines = useMemo(
     () =>
       medicines.filter(
@@ -154,6 +138,27 @@ export default function InventoryStockPanel({
       ),
     [medicines, pharmacyId],
   );
+
+  const {
+    rows: pageMedicines,
+    total,
+    page,
+    pageSize,
+    loading,
+    error,
+    setPage,
+    reload,
+  } = usePaginatedMedicines({
+    enabled: enabled && isOnline,
+    isOfflineMode: !isOnline,
+    offlineMedicines: branchMedicines,
+    pharmacyId,
+    search: debouncedSearch,
+    stockFilter,
+    lowStockThreshold,
+    expiringSoonDays,
+    refreshKey,
+  });
 
   useEffect(() => {
     if (editingMedicineId) {
@@ -288,8 +293,6 @@ export default function InventoryStockPanel({
           onAction={onOpenSubscriptionSettings}
         />
       )}
-
-      {error ? <p className="invMgmtError">{error}</p> : null}
 
       <div className={loading ? "invMgmtTableLoading" : ""}>
         <MedicineTable

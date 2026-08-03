@@ -110,6 +110,7 @@ export function useStaffSharedContext({
   currentUid,
   onActivityLog,
   onOpenSubscriptionSettings,
+  subscriptionBlocksWrite = false,
 }: EmployeesUsersPageProps): StaffSharedContext {
   const isAccountantOnly = appUser?.role === "accountant";
   const [activeTab, setActiveTab] = useState<TabId>(isAccountantOnly ? "attendance" : "employees");
@@ -122,8 +123,10 @@ export function useStaffSharedContext({
   const [employeesAccessPanel, setEmployeesAccessPanel] = useState<"login" | null>(null);
   const [branchHrSummaryOpen, setBranchHrSummaryOpen] = useState(false);
 
-  const canManage = isPharmacyManager(appUser) || isSuperAdmin(appUser);
-  const canManageRolePermissions = canManageStaffRolePermissions(appUser);
+  const canManage =
+    (isPharmacyManager(appUser) || isSuperAdmin(appUser)) && !subscriptionBlocksWrite;
+  const canManageRolePermissions =
+    canManageStaffRolePermissions(appUser) && !subscriptionBlocksWrite;
   const canManageRolesOnEmployeesPage =
     canManageRolePermissions && !isSuperAdmin(appUser);
 

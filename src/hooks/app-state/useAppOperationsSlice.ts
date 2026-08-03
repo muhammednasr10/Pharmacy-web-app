@@ -54,6 +54,7 @@ type UseAppOperationsSliceInput = Pick<
     | "appLogo"
     | "heldInvoicesSetterRef"
     | "refreshMedicinesFromDb"
+    | "reloadAppDataFromDb"
     | "addActivityLog"
   > &
   Pick<AppOrgContextReturn, "branchMedicines" | "isViewingAllBranches"> & {
@@ -88,6 +89,7 @@ export function useAppOperationsSlice({
   appLogo,
   heldInvoicesSetterRef,
   refreshMedicinesFromDb,
+  reloadAppDataFromDb,
   addActivityLog,
   branchMedicines,
   isViewingAllBranches,
@@ -267,6 +269,7 @@ export function useAppOperationsSlice({
     activeCashierShift,
     getPharmacyId,
     refreshMedicinesFromDb,
+    reloadAppDataFromDb,
     refreshActiveCashierShift,
   });
 

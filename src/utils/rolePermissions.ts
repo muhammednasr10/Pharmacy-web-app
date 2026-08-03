@@ -113,11 +113,6 @@ export const ROLE_PERMISSION_OPTIONS: {
   { key: "manage_org_branches", labelAr: "إدارة الفروع", labelEn: "Manage branches" },
   { key: "review_branch_transfers", labelAr: "اعتماد نقل مخزون بين الفروع", labelEn: "Approve branch transfers" },
   {
-    key: "view_inventory_cost_profit",
-    labelAr: "عرض سعر الشراء والربح في المخزون",
-    labelEn: "View buy price & profit in inventory",
-  },
-  {
     key: "view_pos_cost_profit",
     labelAr: "عرض سعر الشراء والربح في نقطة البيع",
     labelEn: "View buy price & profit at POS",
@@ -126,7 +121,7 @@ export const ROLE_PERMISSION_OPTIONS: {
 
 const ALL_PERMISSION_KEYS = ROLE_PERMISSION_OPTIONS.map((item) => item.key);
 
-/** Hidden at POS by default for all roles — grant via staff permissions if needed */
+/** Hidden at POS by default — grant via staff permissions if needed */
 const DEFAULT_WITHOUT_POS_COST_PROFIT = ALL_PERMISSION_KEYS.filter(
   (key) => key !== "view_pos_cost_profit",
 );

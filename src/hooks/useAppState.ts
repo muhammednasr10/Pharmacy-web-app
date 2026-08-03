@@ -76,6 +76,7 @@ export function useAppState() {
     appLogo: data.appLogo,
     heldInvoicesSetterRef: data.heldInvoicesSetterRef,
     refreshMedicinesFromDb: data.refreshMedicinesFromDb,
+    reloadAppDataFromDb: data.reloadAppDataFromDb,
     addActivityLog: data.addActivityLog,
     branchMedicines: org.branchMedicines,
     isViewingAllBranches: org.isViewingAllBranches,

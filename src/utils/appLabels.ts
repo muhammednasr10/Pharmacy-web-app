@@ -32,7 +32,7 @@ export function getSubscriptionPlanLabel(plan: string, isArabic: boolean) {
 export function showSubscriptionExpiredAlert(isArabic: boolean) {
   alert(
     isArabic
-      ? "الاشتراك منتهي، يرجى التجديد لاستمرار استخدام النظام"
-      : "Subscription expired. Please renew to continue using the system",
+      ? "انتهى الاشتراك. يمكنك عرض بياناتك فقط — جدّد الاشتراك لإضافة سجلات جديدة."
+      : "Subscription ended. You can view your data only — renew to add new records.",
   );
 }

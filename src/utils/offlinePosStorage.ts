@@ -1,7 +1,39 @@
-import type { CartItem, Invoice, Medicine } from "../types";
+import type {
+  ActivityLog,
+  CartItem,
+  CustomerPayment,
+  HeldInvoice,
+  Invoice,
+  Medicine,
+  PharmacyCost,
+  PharmacySettings,
+  PurchaseRecord,
+  ReturnRecord,
+  StockMovement,
+} from "../types";
 
 const DB_NAME = "focus-pharmacy-offline";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
+
+export type AppDataSnapshot = {
+  cacheKey: string;
+  updatedAt: string;
+  branches: PharmacySettings[];
+  pharmacySettings: PharmacySettings | null;
+  medicines: Medicine[];
+  invoices: Invoice[];
+  returns: ReturnRecord[];
+  purchases: PurchaseRecord[];
+  customerPayments: CustomerPayment[];
+  pharmacyCosts: PharmacyCost[];
+  stockMovements: StockMovement[];
+  activityLogs: ActivityLog[];
+  heldInvoices: HeldInvoice[];
+};
+
+export function buildAppDataCacheKey(userId: string, branchId: string) {
+  return `${userId}:${branchId}`;
+}
 
 export type PendingOfflineSale = {
   localId: string;
@@ -38,6 +70,9 @@ function openOfflineDb(): Promise<IDBDatabase> {
         const store = db.createObjectStore("pendingSales", { keyPath: "localId" });
         store.createIndex("pharmacyId", "pharmacyId", { unique: false });
         store.createIndex("status", "status", { unique: false });
+      }
+      if (!db.objectStoreNames.contains("appSnapshots")) {
+        db.createObjectStore("appSnapshots", { keyPath: "cacheKey" });
       }
     };
   });
@@ -139,6 +174,20 @@ export async function updatePendingOfflineSale(
 
 export async function removePendingOfflineSale(localId: string): Promise<void> {
   await runTransaction("pendingSales", "readwrite", (store) => store.delete(localId));
+}
+
+export async function saveAppDataSnapshot(snapshot: AppDataSnapshot): Promise<void> {
+  await runTransaction("appSnapshots", "readwrite", (store) => store.put(snapshot));
+}
+
+export async function loadAppDataSnapshot(cacheKey: string): Promise<AppDataSnapshot | null> {
+  if (!cacheKey) return null;
+  const row = (await runTransaction<AppDataSnapshot | undefined>(
+    "appSnapshots",
+    "readonly",
+    (store) => store.get(cacheKey),
+  )) as AppDataSnapshot | undefined;
+  return row ?? null;
 }
 
 export function applyOptimisticStockDeduction(medicines: Medicine[], cart: CartItem[]): Medicine[] {

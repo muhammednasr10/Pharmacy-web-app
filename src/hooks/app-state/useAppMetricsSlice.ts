@@ -101,6 +101,7 @@ export function useAppMetricsSlice({
   userLoading,
 }: UseAppMetricsSliceInput & { userLoading: boolean }) {
   const {
+    subscriptionEndDate,
     subscriptionDaysLeft,
     isSubscriptionExpired,
     isSubscriptionExpiringSoon,
@@ -287,6 +288,7 @@ export function useAppMetricsSlice({
   });
 
   return {
+    subscriptionEndDate,
     subscriptionDaysLeft,
     isSubscriptionExpired,
     isSubscriptionExpiringSoon,

@@ -195,6 +195,7 @@ export function usePharmacySettings({
     }
 
     await pharmacyService.upsertPharmacySettings(getPharmacyId(), settingsUpdates);
+
     const refreshedSettings = await pharmacyService.getPharmacySettings(getPharmacyId());
     if (refreshedSettings) {
       setPharmacySettings(refreshedSettings);

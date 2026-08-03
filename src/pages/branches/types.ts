@@ -25,6 +25,7 @@ export type BranchesPageProps = {
     referenceType?: string;
     referenceId?: string;
   }) => Promise<void>;
+  subscriptionBlocksWrite?: boolean;
 };
 
 export type BranchFormState = {
