@@ -3,6 +3,7 @@ import { getStoredLoginProfile } from "../appAuthSession";
 import { appUserFromStoredProfile, isBrowserOffline } from "../../utils/offlineAuth";
 import { normalizeAppUser } from "../../utils/roles";
 import type { AppUser } from "../../types";
+import { removeRealtimeChannelByName } from "./dbHelpers";
 import { toCamelCase } from "./mappers";
 
 export async function getCurrentAppUserByUid(uid: string): Promise<AppUser | null> {
@@ -51,22 +52,15 @@ export async function getAppUserByUid(uid: string): Promise<AppUser | null> {
 }
 
 export function subscribeUserAccessRevocation(uid: string, onRevoked: () => void) {
+  const channelName = `user-access-revoke-${uid}`;
+  removeRealtimeChannelByName(channelName);
+
   const channel = supabase
-    .channel(`user-access-revoke-${uid}`)
+    .channel(channelName)
     .on(
       "postgres_changes",
       {
-        event: "INSERT",
-        schema: "public",
-        table: "user_session_revocations",
-        filter: `uid=eq.${uid}`,
-      },
-      () => onRevoked(),
-    )
-    .on(
-      "postgres_changes",
-      {
-        event: "UPDATE",
+        event: "*",
         schema: "public",
         table: "user_session_revocations",
         filter: `uid=eq.${uid}`,

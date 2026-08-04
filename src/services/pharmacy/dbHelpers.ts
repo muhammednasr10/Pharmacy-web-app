@@ -108,6 +108,16 @@ export async function createIdAllocator(table: string) {
 
 let realtimeChannelSeq = 0;
 
+/** Drop a named channel before re-subscribing (avoids Supabase "after subscribe()" errors). */
+export function removeRealtimeChannelByName(channelName: string) {
+  const topic = `realtime:${channelName}`;
+  for (const channel of supabase.getChannels()) {
+    if (channel.topic === topic) {
+      void supabase.removeChannel(channel);
+    }
+  }
+}
+
 export function subscribeTable<T>(
   table: string,
   callback: (rows: T[]) => void,

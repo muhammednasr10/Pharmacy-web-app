@@ -35,8 +35,10 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
   const [subscriptionBlocked, setSubscriptionBlocked] = useState("");
   const accessRevokedRef = useRef(false);
   const appUserRef = useRef<AppUser | null>(null);
+  const isArabicRef = useRef(isArabic);
 
   appUserRef.current = appUser;
+  isArabicRef.current = isArabic;
 
   function applyBranchScopeForUser(data: AppUser) {
     if (isSuperAdmin(data)) {
@@ -244,7 +246,7 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
       clearSessionNavigationState();
       await pharmacyService.signOutUser();
       alert(
-        isArabic
+        isArabicRef.current
           ? "تم إنهاء جلستك من قبل مدير النظام"
           : "Your session was ended by the system owner",
       );
@@ -266,7 +268,7 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
       unsubscribe();
       window.clearInterval(interval);
     };
-  }, [appUser?.uid, isArabic]);
+  }, [appUser?.uid]);
 
   const handleLogin = useCallback(
     async (e: FormEvent<HTMLFormElement>) => {

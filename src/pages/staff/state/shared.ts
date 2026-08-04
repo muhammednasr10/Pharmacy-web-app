@@ -104,7 +104,7 @@ export function useStaffSharedContext({
   isArabic,
   appUser,
   pharmacyId,
-  pharmacies,
+  pharmacies = [],
   tenantScopePharmacyId = null,
   currency,
   currentUid,
