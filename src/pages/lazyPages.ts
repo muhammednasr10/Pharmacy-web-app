@@ -12,7 +12,6 @@ export const SuperAdminPage = lazy(() => import("./SuperAdminPage"));
 export const PurchasesPage = lazy(() => import("./PurchasesPage"));
 export const ActivityLogsPage = lazy(() => import("./ActivityLogsPage"));
 export const BranchesPage = lazy(() => import("./BranchesPage"));
-export const CostsPage = lazy(() => import("./CostsPage"));
 export const CustomersPage = lazy(() => import("./CustomersPage"));
 export const EmployeePortalPage = lazy(() => import("./EmployeePortalPage"));
 export const SqlMigrationsPage = lazy(() => import("./SqlMigrationsPage"));

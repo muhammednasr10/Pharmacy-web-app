@@ -3,6 +3,7 @@ import { normalizeRole } from "../../utils/roles";
 import type { LoginAccountRequest, SubscriptionRequestStatus, UserRole } from "../../types";
 import { toCamelCase, toSnakeCase } from "./mappers";
 import { buildLoginAccountRequestNumber } from "./authServiceShared";
+import { createManagedRealtimeChannel, disposeManagedRealtimeChannel } from "./dbHelpers";
 
 export async function getAllLoginAccountRequests(options?: {
   includePendingPasswords?: boolean;
@@ -105,19 +106,18 @@ export function subscribeLoginAccountRequests(
   callback: (rows: LoginAccountRequest[]) => void,
   options?: { includePendingPasswords?: boolean },
 ) {
-  const channel = supabase
-    .channel("realtime-login-account-requests")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "login_account_requests" },
-      () => {
-        void getAllLoginAccountRequests(options).then(callback);
-      },
-    );
+  const channelName = "realtime-login-account-requests";
+  const channel = createManagedRealtimeChannel(channelName).on(
+    "postgres_changes",
+    { event: "*", schema: "public", table: "login_account_requests" },
+    () => {
+      void getAllLoginAccountRequests(options).then(callback);
+    },
+  );
 
   void channel.subscribe();
   return () => {
-    void channel.unsubscribe();
+    disposeManagedRealtimeChannel(channel);
   };
 }
 

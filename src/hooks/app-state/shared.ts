@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { appTranslations } from "../../i18n/appTranslations";
 import { formatDateInput } from "../../utils/date";
 import { useDisplayPreferences } from "../useDisplayPreferences";
-import type { Lang, Medicine, Page, PaymentMethod } from "../../types";
+import type { Lang, Medicine, Page, PaymentMethod, ReportsTab } from "../../types";
 import type { SettingsTab } from "../../pages/lazyPages";
 import { getBranchLabel as formatBranchLabel } from "../../utils/branchLabel";
 import { filterMedicinesForPharmacy } from "../../utils/medicineLookup";
@@ -39,6 +39,7 @@ export function useAppSharedState() {
   const [invoiceToDate, setInvoiceToDate] = useState("");
   const [reportFrom, setReportFrom] = useState(formatDateInput(new Date()));
   const [reportTo, setReportTo] = useState(formatDateInput(new Date()));
+  const [reportsTab, setReportsTab] = useState<ReportsTab>("financial");
   const [dashboardPeriod, setDashboardPeriod] = useState<"today" | "7days" | "month" | "custom">(
     "today",
   );
@@ -54,6 +55,12 @@ export function useAppSharedState() {
       document.body.style.overflow = "";
     };
   }, [isMenuOpen]);
+
+  useEffect(() => {
+    if (activePage === "costs") {
+      setReportsTab("investment");
+    }
+  }, [activePage]);
 
   useEffect(() => {
     if (activePage !== "settings") {
@@ -121,6 +128,8 @@ export function useAppSharedState() {
     setReportFrom,
     reportTo,
     setReportTo,
+    reportsTab,
+    setReportsTab,
     dashboardPeriod,
     setDashboardPeriod,
     dashboardFromDate,

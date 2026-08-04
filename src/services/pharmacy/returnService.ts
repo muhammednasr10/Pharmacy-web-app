@@ -7,6 +7,7 @@ import {
   updateMedicineStock,
   addStockMovement,
 } from "./medicineService";
+import { createManagedRealtimeChannel, disposeManagedRealtimeChannel } from "./dbHelpers";
 
 function resolveMedicineIdValue(raw: unknown): number | string {
   if (raw === null || raw === undefined || raw === "") {
@@ -234,16 +235,19 @@ export async function getReturns(): Promise<ReturnRecord[]> {
 }
 
 export function subscribeReturns(callback: (returnsData: ReturnRecord[]) => void) {
-  const channel = supabase
-    .channel("realtime-returns")
-    .on("postgres_changes", { event: "*", schema: "public", table: "returns" }, () => {
+  const channelName = "realtime-returns";
+  const channel = createManagedRealtimeChannel(channelName).on(
+    "postgres_changes",
+    { event: "*", schema: "public", table: "returns" },
+    () => {
       void getReturns().then(callback);
-    });
+    },
+  );
 
   void channel.subscribe();
 
   return () => {
-    void channel.unsubscribe();
+    disposeManagedRealtimeChannel(channel);
   };
 }
 

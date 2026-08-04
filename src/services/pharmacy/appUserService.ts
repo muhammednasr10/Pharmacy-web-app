@@ -3,7 +3,7 @@ import { getStoredLoginProfile } from "../appAuthSession";
 import { appUserFromStoredProfile, isBrowserOffline } from "../../utils/offlineAuth";
 import { normalizeAppUser } from "../../utils/roles";
 import type { AppUser } from "../../types";
-import { removeRealtimeChannelByName } from "./dbHelpers";
+import { removeRealtimeChannelByName, disposeManagedRealtimeChannel } from "./dbHelpers";
 import { toCamelCase } from "./mappers";
 
 export async function getCurrentAppUserByUid(uid: string): Promise<AppUser | null> {
@@ -81,7 +81,7 @@ export function subscribeUserAccessRevocation(uid: string, onRevoked: () => void
   void channel.subscribe();
 
   return () => {
-    void supabase.removeChannel(channel);
+    disposeManagedRealtimeChannel(channel);
   };
 }
 

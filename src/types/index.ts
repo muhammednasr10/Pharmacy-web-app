@@ -67,6 +67,8 @@ export type Employee = {
   updatedAt?: string;
 };
 
+export type ReportsTab = "financial" | "investment";
+
 export type Page =
   | "dashboard"
   | "inventory"

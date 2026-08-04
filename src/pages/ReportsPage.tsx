@@ -3,13 +3,14 @@ import TierUpgradeNotice from "../components/TierUpgradeNotice";
 import CashierShiftsReport from "../components/CashierShiftsReport";
 import { getCostCategoryLabel } from "../utils/costCategories";
 import type { BranchReportRow } from "../utils/branchReports";
-import type { AppUser, Medicine, PharmacySettings } from "../types";
+import type { AppUser, Medicine, PharmacySettings, ReportsTab } from "../types";
 import {
   downloadFinancialReportCsv,
   downloadFinancialReportPdf,
   type ReportExportSnapshot,
 } from "../utils/reportExport";
 import { formatMoney } from "../utils/formatMoney";
+import { useEffect, type ReactNode } from "react";
 
 type SellingMedicine = {
   medicineId: number;
@@ -27,6 +28,11 @@ type QuickRange = "today" | "7days" | "month" | "year";
 type ReportsPageProps = {
   isArabic: boolean;
   t: Record<string, string>;
+  reportsTab: ReportsTab;
+  setReportsTab: (tab: ReportsTab) => void;
+  showFinancialTab: boolean;
+  showInvestmentTab: boolean;
+  investmentPanel?: ReactNode;
   reportFrom: string;
   reportTo: string;
   setReportFrom: (value: string) => void;
@@ -62,6 +68,11 @@ type ReportsPageProps = {
 export default function ReportsPage({
   isArabic,
   t,
+  reportsTab,
+  setReportsTab,
+  showFinancialTab,
+  showInvestmentTab,
+  investmentPanel = null,
   reportFrom,
   reportTo,
   setReportFrom,
@@ -93,6 +104,23 @@ export default function ReportsPage({
   pharmacySettings = null,
   medicines = [],
 }: ReportsPageProps) {
+  useEffect(() => {
+    if (!showFinancialTab && showInvestmentTab && reportsTab === "financial") {
+      setReportsTab("investment");
+    }
+    if (showFinancialTab && !showInvestmentTab && reportsTab === "investment") {
+      setReportsTab("financial");
+    }
+  }, [showFinancialTab, showInvestmentTab, reportsTab, setReportsTab]);
+
+  const showReportsTabs = showFinancialTab && showInvestmentTab;
+  const activeTab =
+    reportsTab === "investment" && showInvestmentTab
+      ? "investment"
+      : showFinancialTab
+        ? "financial"
+        : "investment";
+
   const profitMargin = filteredReportTotal
     ? (filteredReportProfitTotal / filteredReportTotal) * 100
     : 0;
@@ -215,7 +243,35 @@ export default function ReportsPage({
   ];
 
   return (
-    <section className="card reportsPage reportsDashboard">
+    <section className="card reportsPage reportsDashboard reportsHub">
+      {showReportsTabs && (
+        <div className="staffPageTabsBar reportsTabsBar">
+          <nav
+            className="settingsTabsNav"
+            aria-label={isArabic ? "أقسام التقارير" : "Reports sections"}
+          >
+            <button
+              type="button"
+              className={`settingsTabBtn ${activeTab === "financial" ? "active" : ""}`}
+              onClick={() => setReportsTab("financial")}
+            >
+              {isArabic ? "التقارير المالية" : "Financial Reports"}
+            </button>
+            <button
+              type="button"
+              className={`settingsTabBtn ${activeTab === "investment" ? "active" : ""}`}
+              onClick={() => setReportsTab("investment")}
+            >
+              {isArabic ? "استثمارى" : "Investment"}
+            </button>
+          </nav>
+        </div>
+      )}
+
+      {activeTab === "investment" ? (
+        investmentPanel
+      ) : (
+        <>
       <div className="cardHeader reportsPageHeader">
         <div>
           <h2>{isArabic ? "التقارير المالية" : "Financial Reports"}</h2>
@@ -496,6 +552,8 @@ export default function ReportsPage({
           pharmacySettings={pharmacySettings}
           getPaymentLabel={getPaymentLabel}
         />
+      )}
+        </>
       )}
     </section>
   );

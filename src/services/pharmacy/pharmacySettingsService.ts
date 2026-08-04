@@ -6,6 +6,10 @@ import {
 import type { PharmacySettings } from "../../types";
 import { toCamelCase, toSnakeCase } from "./mappers";
 import { canTrustOfflinePharmacyAccess, isBrowserOffline } from "../../utils/offlineAuth";
+import {
+  createManagedRealtimeChannel,
+  disposeManagedRealtimeChannel,
+} from "./dbHelpers";
 
 const BLOCKED_PHARMACY_STATUSES = new Set(["suspended", "cancelled", "inactive"]);
 
@@ -135,15 +139,18 @@ export async function getPharmacies(): Promise<PharmacySettings[]> {
 }
 
 export function subscribePharmacies(callback: (rows: PharmacySettings[]) => void) {
-  const channel = supabase
-    .channel("realtime-pharmacies-all")
-    .on("postgres_changes", { event: "*", schema: "public", table: "pharmacies" }, () => {
+  const channelName = "realtime-pharmacies-all";
+  const channel = createManagedRealtimeChannel(channelName).on(
+    "postgres_changes",
+    { event: "*", schema: "public", table: "pharmacies" },
+    () => {
       void getPharmacies().then(callback);
-    });
+    },
+  );
 
   void channel.subscribe();
 
   return () => {
-    void channel.unsubscribe();
+    disposeManagedRealtimeChannel(channel);
   };
 }

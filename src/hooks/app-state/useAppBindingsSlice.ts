@@ -80,6 +80,8 @@ export function useAppBindingsSlice({
     reportTo,
     setReportFrom,
     setReportTo,
+    reportsTab,
+    setReportsTab,
     themeMode,
     fontScale,
     resolvedTheme,
@@ -167,6 +169,11 @@ export function useAppBindingsSlice({
 
       switch (result.type) {
         case "page":
+          if (result.page === "costs") {
+            setReportsTab("investment");
+            setActivePage("reports");
+            break;
+          }
           if (allowedPages.includes(result.page)) {
             setActivePage(result.page);
           }
@@ -204,6 +211,7 @@ export function useAppBindingsSlice({
       setInventoryStatusFilter,
       setIsMenuOpen,
       setQuery,
+      setReportsTab,
     ],
   );
 
@@ -308,6 +316,8 @@ export function useAppBindingsSlice({
     reportTo,
     setReportFrom,
     setReportTo,
+    reportsTab,
+    setReportsTab,
     filteredReportInvoices: metrics.filteredReportInvoices,
     filteredReportProfitTotal: metrics.filteredReportProfitTotal,
     filteredReportTotal: metrics.filteredReportTotal,

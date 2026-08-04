@@ -4,6 +4,7 @@ import { toCamelCase } from "./mappers";
 import { applyPharmacyFilter, stampPharmacy } from "./scope";
 import { prepareInvoicePayload, prepareInvoiceItemPayload } from "./payloads";
 import { attachInvoiceItems } from "./medicineService";
+import { createManagedRealtimeChannel, disposeManagedRealtimeChannel } from "./dbHelpers";
 
 export async function getInvoices(limit = 100): Promise<Invoice[]> {
   let invoiceQuery = applyPharmacyFilter(supabase.from("invoices").select("*"));
@@ -54,16 +55,19 @@ export async function getInvoicesForPeriod(
 }
 
 export function subscribeInvoices(callback: (invoices: Invoice[]) => void) {
-  const channel = supabase
-    .channel("realtime-invoices")
-    .on("postgres_changes", { event: "*", schema: "public", table: "invoices" }, () => {
+  const channelName = "realtime-invoices";
+  const channel = createManagedRealtimeChannel(channelName).on(
+    "postgres_changes",
+    { event: "*", schema: "public", table: "invoices" },
+    () => {
       void getInvoices().then(callback);
-    });
+    },
+  );
 
   void channel.subscribe();
 
   return () => {
-    void channel.unsubscribe();
+    disposeManagedRealtimeChannel(channel);
   };
 }
 

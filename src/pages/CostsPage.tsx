@@ -22,6 +22,7 @@ const emptyPlanForm = {
 };
 
 type CostsPageProps = {
+  embedded?: boolean;
   costs: PharmacyCost[];
   invoices: Invoice[];
   isArabic: boolean;
@@ -59,6 +60,7 @@ function rowDraftKey(row: InvestmentPlanRow) {
 }
 
 export default function CostsPage({
+  embedded = false,
   costs,
   invoices,
   isArabic,
@@ -425,12 +427,16 @@ export default function CostsPage({
 
   const verdictLabel = isArabic ? analysis.verdictLabelAr : analysis.verdictLabelEn;
   const verdictHint = isArabic ? analysis.verdictHintAr : analysis.verdictHintEn;
+  const RootTag = embedded ? "div" : "section";
+  const rootClassName = embedded
+    ? "reportsEmbeddedPanel costsPage investmentPage"
+    : "card costsPage investmentPage";
 
   return (
-    <section className="card costsPage investmentPage">
-      <div className="cardHeader returnsPageActions">
+    <RootTag className={rootClassName}>
+      <div className={`cardHeader returnsPageActions ${embedded ? "reportsEmbeddedHeader" : ""}`}>
         <div>
-          <h2>{isArabic ? "استثمارى" : "Investment"}</h2>
+          {!embedded && <h2>{isArabic ? "استثمارى" : "Investment"}</h2>}
           <p className="returnsSectionHint">
             {isArabic
               ? "خطة التكاليف المتوقعة مقابل المصروفات الفعلية ومقارنتها بالمبيعات والأرباح"
@@ -786,6 +792,6 @@ export default function CostsPage({
           </div>
         </div>
       )}
-    </section>
+    </RootTag>
   );
 }

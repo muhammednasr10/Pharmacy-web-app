@@ -8,6 +8,7 @@ import {
 import { normalizeTierAllowedFeatures } from "../../config/subscriptionTierFeatures";
 import { normalizeTierEnabledPages } from "../../config/subscriptionTierPages";
 import { setSubscriptionTierConfigs } from "../../config/subscriptionTierCache";
+import { createManagedRealtimeChannel, disposeManagedRealtimeChannel } from "./dbHelpers";
 
 type SubscriptionTierConfigRow = {
   tier_id: string;
@@ -147,16 +148,15 @@ function notifyTierConfigListeners(configs: Record<SubscriptionTier, Subscriptio
 function ensureTierConfigRealtimeChannel() {
   if (tierConfigRealtimeChannel) return;
 
-  tierConfigRealtimeChannel = supabase
-    .channel("realtime-subscription-tier-configs")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "subscription_tier_configs" },
-      () => {
-        void loadSubscriptionTierConfigs().then(notifyTierConfigListeners);
-      },
-    )
-    .subscribe();
+  const channelName = "realtime-subscription-tier-configs";
+  tierConfigRealtimeChannel = createManagedRealtimeChannel(channelName).on(
+    "postgres_changes",
+    { event: "*", schema: "public", table: "subscription_tier_configs" },
+    () => {
+      void loadSubscriptionTierConfigs().then(notifyTierConfigListeners);
+    },
+  );
+  void tierConfigRealtimeChannel.subscribe();
 }
 
 export function subscribeSubscriptionTierConfigs(
@@ -168,7 +168,7 @@ export function subscribeSubscriptionTierConfigs(
   return () => {
     tierConfigRealtimeListeners.delete(callback);
     if (tierConfigRealtimeListeners.size === 0 && tierConfigRealtimeChannel) {
-      void tierConfigRealtimeChannel.unsubscribe();
+      disposeManagedRealtimeChannel(tierConfigRealtimeChannel);
       tierConfigRealtimeChannel = null;
     }
   };

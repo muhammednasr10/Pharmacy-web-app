@@ -8,6 +8,7 @@ import {
   getCurrentAppUser,
   getActivePharmacy,
 } from "./scope";
+import { createManagedRealtimeChannel, disposeManagedRealtimeChannel } from "./dbHelpers";
 
 export type HoldInvoiceInput = {
   holdNumber: string;
@@ -194,16 +195,19 @@ export function subscribeHeldInvoices(
   callback: (rows: HeldInvoice[]) => void,
   pharmacyId?: string,
 ) {
-  const channel = supabase
-    .channel("realtime-held-invoices")
-    .on("postgres_changes", { event: "*", schema: "public", table: "held_invoices" }, () => {
+  const channelName = "realtime-held-invoices";
+  const channel = createManagedRealtimeChannel(channelName).on(
+    "postgres_changes",
+    { event: "*", schema: "public", table: "held_invoices" },
+    () => {
       void getHeldInvoices(pharmacyId)
         .then(callback)
         .catch((error) => console.error("subscribeHeldInvoices refresh error:", error));
-    });
+    },
+  );
 
   void channel.subscribe();
   return () => {
-    void channel.unsubscribe();
+    disposeManagedRealtimeChannel(channel);
   };
 }

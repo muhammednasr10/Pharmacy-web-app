@@ -25,6 +25,7 @@ import type {
   PharmacyCustomRole,
   PharmacySettings,
   PurchaseRecord,
+  ReportsTab,
   ReturnRecord,
   StockMovement,
   SubscriptionRequest,
@@ -144,6 +145,8 @@ export type AppPageRouterProps = {
   reportTo: string;
   setReportFrom: (value: string) => void;
   setReportTo: (value: string) => void;
+  reportsTab: ReportsTab;
+  setReportsTab: Dispatch<SetStateAction<ReportsTab>>;
   filteredReportInvoices: Invoice[];
   filteredReportProfitTotal: number;
   filteredReportTotal: number;

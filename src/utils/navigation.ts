@@ -120,7 +120,7 @@ export function buildNavigationTree(
   t: Record<string, string>,
   lockedPages?: Set<Page>,
 ): NavEntry[] {
-  const mergedPages = pages.filter((page) => page !== "stockMovements");
+  const mergedPages = pages.filter((page) => page !== "stockMovements" && page !== "costs");
   const billingChildren = BILLING_NAV_PAGES.filter((page) => mergedPages.includes(page)).map((page) =>
     buildPageEntry(page, isArabic, t, lockedPages),
   );

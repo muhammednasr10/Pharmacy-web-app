@@ -48,6 +48,7 @@ export function useAppState() {
   const displayPage = useMemo((): Page => {
     if (!auth.appUser) return shared.activePage;
     if (shared.activePage === "hr") return "users";
+    if (shared.activePage === "costs") return "reports";
     if (allowedPages.includes(shared.activePage)) return shared.activePage;
     return allowedPages[0] || "dashboard";
   }, [auth.appUser, shared.activePage, allowedPages]);

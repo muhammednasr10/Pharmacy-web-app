@@ -118,6 +118,19 @@ export function removeRealtimeChannelByName(channelName: string) {
   }
 }
 
+/** Create a named Realtime channel after removing any stale instance with the same name. */
+export function createManagedRealtimeChannel(channelName: string) {
+  removeRealtimeChannelByName(channelName);
+  return supabase.channel(channelName);
+}
+
+/** Fully remove a Realtime channel from the client (prefer over channel.unsubscribe()). */
+export function disposeManagedRealtimeChannel(
+  channel: ReturnType<typeof supabase.channel>,
+) {
+  void supabase.removeChannel(channel);
+}
+
 export function subscribeTable<T>(
   table: string,
   callback: (rows: T[]) => void,
@@ -128,6 +141,7 @@ export function subscribeTable<T>(
   pharmacyScoped = false,
 ) {
   const channelName = `realtime-${table}-${++realtimeChannelSeq}`;
+  removeRealtimeChannelByName(channelName);
   const channel = supabase
     .channel(channelName)
     .on("postgres_changes", { event: "*", schema: "public", table }, () => {
@@ -137,6 +151,6 @@ export function subscribeTable<T>(
   void channel.subscribe();
 
   return () => {
-    void supabase.removeChannel(channel);
+    disposeManagedRealtimeChannel(channel);
   };
 }

@@ -3,6 +3,7 @@ import { notifySuperAdminOfSubscriptionRequest } from "../../utils/superAdminNot
 import type { SubscriptionRequest, SubscriptionRequestStatus } from "../../types";
 import { toCamelCase, toSnakeCase } from "./mappers";
 import { buildSubscriptionRequestNumber } from "./authServiceShared";
+import { createManagedRealtimeChannel, disposeManagedRealtimeChannel } from "./dbHelpers";
 
 export async function getAllSubscriptionRequests(): Promise<SubscriptionRequest[]> {
   const { data, error } = await supabase
@@ -38,20 +39,19 @@ export async function getPharmacySubscriptionRequests(
 }
 
 export function subscribeSubscriptionRequests(callback: (rows: SubscriptionRequest[]) => void) {
-  const channel = supabase
-    .channel("realtime-subscription-requests")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "subscription_requests" },
-      () => {
-        void getAllSubscriptionRequests().then(callback);
-      },
-    );
+  const channelName = "realtime-subscription-requests";
+  const channel = createManagedRealtimeChannel(channelName).on(
+    "postgres_changes",
+    { event: "*", schema: "public", table: "subscription_requests" },
+    () => {
+      void getAllSubscriptionRequests().then(callback);
+    },
+  );
 
   void channel.subscribe();
 
   return () => {
-    void channel.unsubscribe();
+    disposeManagedRealtimeChannel(channel);
   };
 }
 

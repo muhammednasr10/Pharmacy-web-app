@@ -2,7 +2,6 @@ import { isSubscriptionWriteBlocked } from "../utils/subscriptionAccess";
 import type { AppPageRouterProps } from "./app-router/types";
 import AppActivityLogsRoute from "./app-router/AppActivityLogsRoute";
 import AppBranchesRoute from "./app-router/AppBranchesRoute";
-import AppCostsRoute from "./app-router/AppCostsRoute";
 import AppCustomersRoute from "./app-router/AppCustomersRoute";
 import AppDashboardRoute from "./app-router/AppDashboardRoute";
 import AppEmployeePortalRoute from "./app-router/AppEmployeePortalRoute";
@@ -31,7 +30,6 @@ export default function AppPageRouter(props: AppPageRouterProps) {
       <AppDashboardRoute {...props} />
       <AppInventoryRoute {...props} subscriptionBlocksWrite={subscriptionBlocksWrite} />
       <AppPurchasesRoute {...props} />
-      <AppCostsRoute {...props} />
       <AppPosRoute {...props} subscriptionBlocksWrite={subscriptionBlocksWrite} />
       <AppInvoicesRoute {...props} />
       <AppReturnsRoute {...props} subscriptionBlocksWrite={subscriptionBlocksWrite} />

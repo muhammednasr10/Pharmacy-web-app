@@ -1,6 +1,6 @@
 import { supabase } from "../supabaseClient";
 import type { Medicine } from "../../types";
-import { getAllRows } from "./dbHelpers";
+import { getAllRows, createManagedRealtimeChannel, disposeManagedRealtimeChannel } from "./dbHelpers";
 import { setActivePharmacy, getActivePharmacy, resolveReadPharmacyId } from "./scope";
 import {
   LARGE_MEDICINE_CATALOG,
@@ -84,14 +84,17 @@ export function subscribeMedicines(callback: (medicines: Medicine[]) => void) {
     }, MEDICINES_REALTIME_REFETCH_MS);
   };
 
-  const channel = supabase
-    .channel("realtime-medicines")
-    .on("postgres_changes", { event: "*", schema: "public", table: "medicines" }, scheduleRefetch);
+  const channelName = "realtime-medicines";
+  const channel = createManagedRealtimeChannel(channelName).on(
+    "postgres_changes",
+    { event: "*", schema: "public", table: "medicines" },
+    scheduleRefetch,
+  );
 
   void channel.subscribe();
 
   return () => {
     if (refetchTimer) clearTimeout(refetchTimer);
-    void channel.unsubscribe();
+    disposeManagedRealtimeChannel(channel);
   };
 }

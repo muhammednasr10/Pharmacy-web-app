@@ -2,12 +2,13 @@ import { supabase } from "../supabaseClient";
 import type { PharmacyLoginAccount } from "../../types";
 import { toCamelCase } from "./mappers";
 import { normalizePharmacyLoginAccount } from "./loginAccountCatalogShared";
+import { createManagedRealtimeChannel, disposeManagedRealtimeChannel } from "./dbHelpers";
 
 export function subscribePharmacyLoginCatalog(
   onChange: () => void,
 ): () => void {
-  const channel = supabase
-    .channel("realtime-pharmacy-login-catalog")
+  const channelName = "realtime-pharmacy-login-catalog";
+  const channel = createManagedRealtimeChannel(channelName)
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "pharmacy_login_accounts" },
@@ -17,7 +18,7 @@ export function subscribePharmacyLoginCatalog(
 
   void channel.subscribe();
   return () => {
-    void supabase.removeChannel(channel);
+    disposeManagedRealtimeChannel(channel);
   };
 }
 

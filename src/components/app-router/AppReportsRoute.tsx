@@ -1,3 +1,4 @@
+import CostsPage from "../../pages/CostsPage";
 import { ReportsPage } from "../../pages/lazyPages";
 import type { AppPageRouterProps } from "./types";
 
@@ -11,6 +12,8 @@ export type AppReportsRouteProps = Pick<
   | "reportTo"
   | "setReportFrom"
   | "setReportTo"
+  | "reportsTab"
+  | "setReportsTab"
   | "applyReportQuickRange"
   | "filteredReportInvoices"
   | "filteredReportProfitTotal"
@@ -34,8 +37,17 @@ export type AppReportsRouteProps = Pick<
   | "openSubscriptionSettings"
   | "getPharmacyId"
   | "appUser"
+  | "user"
   | "pharmacySettings"
   | "medicines"
+  | "pharmacyCosts"
+  | "invoices"
+  | "canManageCosts"
+  | "isSubscriptionExpired"
+  | "addActivityLog"
+  | "safeNumber"
+  | "downloadCSV"
+  | "refreshPharmacyCostsFromDb"
 >;
 
 export default function AppReportsRoute({
@@ -47,6 +59,8 @@ export default function AppReportsRoute({
   reportTo,
   setReportFrom,
   setReportTo,
+  reportsTab,
+  setReportsTab,
   applyReportQuickRange,
   filteredReportInvoices,
   filteredReportProfitTotal,
@@ -70,15 +84,33 @@ export default function AppReportsRoute({
   openSubscriptionSettings,
   getPharmacyId,
   appUser,
+  user,
   pharmacySettings,
   medicines,
+  pharmacyCosts,
+  invoices,
+  canManageCosts,
+  isSubscriptionExpired,
+  addActivityLog,
+  safeNumber,
+  downloadCSV,
+  refreshPharmacyCostsFromDb,
 }: AppReportsRouteProps) {
-  if (displayPage !== "reports" || !canOpenPage("reports")) return null;
+  const showFinancialTab = canOpenPage("reports");
+  const showInvestmentTab = canOpenPage("costs");
+
+  if (displayPage !== "reports" || (!showFinancialTab && !showInvestmentTab)) {
+    return null;
+  }
 
   return (
     <ReportsPage
       isArabic={isArabic}
       t={t}
+      reportsTab={reportsTab}
+      setReportsTab={setReportsTab}
+      showFinancialTab={showFinancialTab}
+      showInvestmentTab={showInvestmentTab}
       reportFrom={reportFrom}
       reportTo={reportTo}
       setReportFrom={setReportFrom}
@@ -109,6 +141,27 @@ export default function AppReportsRoute({
       appUser={appUser}
       pharmacySettings={pharmacySettings}
       medicines={medicines}
+      investmentPanel={
+        showInvestmentTab ? (
+          <CostsPage
+            embedded
+            costs={pharmacyCosts}
+            invoices={invoices}
+            isArabic={isArabic}
+            t={t}
+            currency={t.currency}
+            pharmacyId={getPharmacyId()}
+            canManageCosts={canManageCosts()}
+            isSubscriptionExpired={isSubscriptionExpired}
+            userId={user?.uid}
+            userName={appUser?.name}
+            onActivityLog={addActivityLog}
+            safeNumber={safeNumber}
+            downloadCSV={downloadCSV}
+            onRefreshCosts={refreshPharmacyCostsFromDb}
+          />
+        ) : null
+      }
     />
   );
 }

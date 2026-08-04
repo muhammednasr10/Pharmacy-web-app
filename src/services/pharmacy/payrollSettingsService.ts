@@ -13,6 +13,7 @@ import {
 } from "../../utils/workSchedule";
 import { toCamelCase, toSnakeCase } from "./mappers";
 import { getPharmacySettings, updatePharmacySettings } from "./authService";
+import { createManagedRealtimeChannel, disposeManagedRealtimeChannel } from "./dbHelpers";
 import { getEmployees } from "./employeeService";
 import { resolveLinkedEmployeeForAppUser } from "./employeeLinkService";
 
@@ -228,7 +229,8 @@ export function subscribePharmacySettings(
   pharmacyId: string,
   callback: (settings: PharmacySettings) => void,
 ) {
-  const channel = supabase.channel(`realtime-pharmacies-${pharmacyId}`).on(
+  const channelName = `realtime-pharmacies-${pharmacyId}`;
+  const channel = createManagedRealtimeChannel(channelName).on(
     "postgres_changes",
     {
       event: "*",
@@ -247,7 +249,7 @@ export function subscribePharmacySettings(
   void channel.subscribe();
 
   return () => {
-    void channel.unsubscribe();
+    disposeManagedRealtimeChannel(channel);
   };
 }
 
