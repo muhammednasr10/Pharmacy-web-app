@@ -43,9 +43,7 @@ export default function AuthLoadingScreen({ isArabic }: AuthLoadingScreenProps) 
         <h1 className="authLoadingTitle">
           {isArabic ? "جاري التحميل" : "Loading"}
         </h1>
-        <p className="authLoadingStep" key={stepIndex}>
-          {steps[stepIndex]}
-        </p>
+        <p className="authLoadingStep">{steps[stepIndex]}</p>
         <p className="authLoadingHint">
           {isArabic
             ? "لحظات ويُفتح نظام Victory"

@@ -14,6 +14,7 @@ import type { StockCountSession } from "../../utils/stockCount";
 import type { StockCatalogFilter } from "../../services/pharmacy/inventoryPaginationService";
 import { usePaginatedMedicines } from "../../hooks/usePaginatedMedicines";
 import { useOnlineStatus } from "../../hooks/useOnlineStatus";
+import { inventoryEmptySearchMessage } from "../../utils/inventorySearchErrors";
 import InventoryPaginationBar from "./InventoryPaginationBar";
 
 type InventoryStockPanelProps = {
@@ -148,11 +149,13 @@ export default function InventoryStockPanel({
     error,
     setPage,
     reload,
+    offlineSourceCount,
   } = usePaginatedMedicines({
-    enabled: enabled && isOnline,
+    enabled,
     isOfflineMode: !isOnline,
     offlineMedicines: branchMedicines,
     pharmacyId,
+    isArabic,
     search: debouncedSearch,
     stockFilter,
     lowStockThreshold,
@@ -226,6 +229,12 @@ export default function InventoryStockPanel({
       <div className="invMgmtPanelToolbar invMgmtStockToolbar">
         <div className="filtersBar invMgmtFiltersBar">
           <input
+            className="invMgmtSearchInput"
+            type="search"
+            enterKeyHint="search"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder={
@@ -294,6 +303,23 @@ export default function InventoryStockPanel({
         />
       )}
 
+      {error ? (
+        <p className="invMgmtError" role="alert">
+          {isArabic ? `تعذّر تحميل المخزون: ${error}` : `Failed to load stock: ${error}`}
+          <button type="button" className="invMgmtRetryBtn" onClick={() => void reload()}>
+            {isArabic ? "إعادة المحاولة" : "Retry"}
+          </button>
+        </p>
+      ) : null}
+
+      {!isOnline ? (
+        <p className="invMgmtOfflineHint" role="status">
+          {isArabic
+            ? "وضع عدم الاتصال — البحث يعمل على النسخة المحفوظة محلياً فقط"
+            : "Offline — search uses locally saved items only"}
+        </p>
+      ) : null}
+
       <div className={loading ? "invMgmtTableLoading" : ""}>
         <MedicineTable
           medicines={pageMedicines}
@@ -325,15 +351,18 @@ export default function InventoryStockPanel({
           emptyMessage={
             error
               ? isArabic
-                ? `تعذّر تحميل المخزون: ${error}`
-                : `Failed to load stock: ${error}`
+                ? "تعذّر عرض النتائج — اضغط «إعادة المحاولة»"
+                : "Could not show results — tap Retry"
               : loading
                 ? isArabic
                   ? "جاري تحميل المخزون..."
                   : "Loading stock..."
-                : isArabic
-                  ? "لا توجد أصناف مطابقة"
-                  : "No matching items"
+                : inventoryEmptySearchMessage(
+                    isArabic,
+                    debouncedSearch,
+                    !isOnline,
+                    offlineSourceCount > 0,
+                  )
           }
         />
       </div>

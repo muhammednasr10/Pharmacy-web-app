@@ -11,6 +11,11 @@ type HeldInvoicesModalProps = {
   onDelete: (held: HeldInvoice) => void;
 };
 
+function getPortalRoot(): HTMLElement | null {
+  if (typeof document === "undefined") return null;
+  return document.getElementById("app-portal-root");
+}
+
 function formatHeldTime(value?: string, isArabic?: boolean) {
   if (!value) return "-";
   try {
@@ -29,6 +34,9 @@ export default function HeldInvoicesModal({
   onResume,
   onDelete,
 }: HeldInvoicesModalProps) {
+  const portalRoot = getPortalRoot();
+  if (!portalRoot) return null;
+
   return createPortal(
     <div className="modalOverlay modalOverlay--abovePos" role="presentation">
       <div className="invoiceModal posModalWide" onClick={(e) => e.stopPropagation()}>
@@ -101,6 +109,6 @@ export default function HeldInvoicesModal({
         )}
       </div>
     </div>,
-    document.body,
+    portalRoot,
   );
 }

@@ -5,6 +5,7 @@ import {
 } from "../../config/subscriptionTiers";
 import type { PharmacySettings } from "../../types";
 import { toCamelCase, toSnakeCase } from "./mappers";
+import { canTrustOfflinePharmacyAccess, isBrowserOffline } from "../../utils/offlineAuth";
 
 const BLOCKED_PHARMACY_STATUSES = new Set(["suspended", "cancelled", "inactive"]);
 
@@ -14,6 +15,10 @@ export async function getCurrentPharmacy(pharmacyId: string): Promise<PharmacySe
 
 /** Login access — expired subscription still allowed (read-only mode in the app). */
 export async function isPharmacyAccessAllowed(pharmacyId: string): Promise<boolean> {
+  if (isBrowserOffline()) {
+    return canTrustOfflinePharmacyAccess(pharmacyId);
+  }
+
   const pharmacy = await getPharmacySettings(pharmacyId);
   if (!pharmacy) return false;
   if (pharmacy.isActive === false) return false;

@@ -68,5 +68,9 @@ if (!root) {
 if (supabaseConfigError) {
   ReactDOM.createRoot(root).render(<ConfigErrorScreen message={supabaseConfigError} />);
 } else {
-  ReactDOM.createRoot(root).render(<App />);
+  ReactDOM.createRoot(root).render(
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>,
+  );
 }

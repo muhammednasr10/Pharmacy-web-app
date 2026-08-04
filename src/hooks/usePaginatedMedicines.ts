@@ -6,6 +6,8 @@ import {
   type StockCatalogFilter,
 } from "../services/pharmacy/inventoryPaginationService";
 import { filterMedicinesForInventoryView } from "../utils/offlineMedicineFilters";
+import { formatInventoryLoadError } from "../utils/inventorySearchErrors";
+import { loadCachedMedicines, cacheMedicinesSnapshot } from "../utils/offlinePosStorage";
 
 type UsePaginatedMedicinesOptions = {
   enabled?: boolean;
@@ -18,7 +20,38 @@ type UsePaginatedMedicinesOptions = {
   isOfflineMode?: boolean;
   offlineMedicines?: Medicine[];
   pharmacyId?: string;
+  isArabic?: boolean;
 };
+
+function filterOfflinePage(
+  source: Medicine[],
+  options: {
+    pharmacyId?: string;
+    search?: string;
+    stockFilter?: StockCatalogFilter;
+    lowStockThreshold?: number;
+    expiringSoonDays?: number;
+    page: number;
+    pageSize: number;
+  },
+) {
+  const filtered = filterMedicinesForInventoryView(source, {
+    pharmacyId: options.pharmacyId,
+    search: options.search,
+    stockFilter: options.stockFilter,
+    lowStockThreshold: options.lowStockThreshold,
+    expiringSoonDays: options.expiringSoonDays,
+  });
+  const maxPage = Math.max(1, Math.ceil(filtered.length / options.pageSize) || 1);
+  const safePage = Math.min(options.page, maxPage);
+  const start = (safePage - 1) * options.pageSize;
+  return {
+    rows: filtered.slice(start, start + options.pageSize),
+    total: filtered.length,
+    page: safePage,
+    maxPage,
+  };
+}
 
 export function usePaginatedMedicines({
   enabled = true,
@@ -31,43 +64,81 @@ export function usePaginatedMedicines({
   isOfflineMode = false,
   offlineMedicines = [],
   pharmacyId,
+  isArabic = true,
 }: UsePaginatedMedicinesOptions) {
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState<Medicine[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [offlineSourceCount, setOfflineSourceCount] = useState(offlineMedicines.length);
+  const offlineSourceRef = useRef<Medicine[]>(offlineMedicines);
   const requestId = useRef(0);
+
+  useEffect(() => {
+    offlineSourceRef.current = offlineMedicines;
+    setOfflineSourceCount(offlineMedicines.length);
+  }, [offlineMedicines]);
+
+  useEffect(() => {
+    if (!pharmacyId || offlineMedicines.length > 0) return;
+
+    let cancelled = false;
+    void loadCachedMedicines(pharmacyId).then(({ medicines }) => {
+      if (cancelled || medicines.length === 0) return;
+      offlineSourceRef.current = medicines;
+      setOfflineSourceCount(medicines.length);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pharmacyId, offlineMedicines.length]);
 
   useEffect(() => {
     setPage(1);
   }, [search, stockFilter, lowStockThreshold, expiringSoonDays, pageSize, isOfflineMode]);
 
+  const mergeOfflineCache = useCallback(
+    async (incoming: Medicine[]) => {
+      if (!pharmacyId || incoming.length === 0) return;
+      const { medicines: cached } = await loadCachedMedicines(pharmacyId);
+      const merged = new Map<number, Medicine>();
+      for (const medicine of cached) merged.set(medicine.id, medicine);
+      for (const medicine of incoming) merged.set(medicine.id, medicine);
+      const next = Array.from(merged.values()).slice(0, 2000);
+      offlineSourceRef.current = next;
+      setOfflineSourceCount(next.length);
+      void cacheMedicinesSnapshot(pharmacyId, next);
+    },
+    [pharmacyId],
+  );
+
   const load = useCallback(async () => {
     if (!enabled && !isOfflineMode) return;
+
     const currentRequest = ++requestId.current;
     setLoading(true);
     setError(null);
 
     try {
       if (isOfflineMode) {
-        const filtered = filterMedicinesForInventoryView(offlineMedicines, {
+        const offlineResult = filterOfflinePage(offlineSourceRef.current, {
           pharmacyId,
           search,
           stockFilter,
           lowStockThreshold,
           expiringSoonDays,
+          page,
+          pageSize,
         });
-        const maxPage = Math.max(1, Math.ceil(filtered.length / pageSize) || 1);
-        const safePage = Math.min(page, maxPage);
-        if (safePage !== page) {
-          setPage(safePage);
+        if (currentRequest !== requestId.current) return;
+        if (offlineResult.page !== page) {
+          setPage(offlineResult.page);
           return;
         }
-        const start = (safePage - 1) * pageSize;
-        if (currentRequest !== requestId.current) return;
-        setRows(filtered.slice(start, start + pageSize));
-        setTotal(filtered.length);
+        setRows(offlineResult.rows);
+        setTotal(offlineResult.total);
         return;
       }
 
@@ -83,32 +154,39 @@ export function usePaginatedMedicines({
       if (currentRequest !== requestId.current) return;
 
       const maxPage = Math.max(1, Math.ceil(result.total / pageSize) || 1);
-      if (page > maxPage) {
-        setPage(maxPage);
+      const safePage = Math.min(page, maxPage);
+      if (safePage !== page) {
+        setPage(safePage);
         return;
       }
 
       setRows(result.rows);
       setTotal(result.total);
+      void mergeOfflineCache(result.rows);
     } catch (loadError) {
       if (currentRequest !== requestId.current) return;
-      if (offlineMedicines.length > 0) {
-        const filtered = filterMedicinesForInventoryView(offlineMedicines, {
+
+      if (offlineSourceRef.current.length > 0) {
+        const offlineResult = filterOfflinePage(offlineSourceRef.current, {
           pharmacyId,
           search,
           stockFilter,
           lowStockThreshold,
           expiringSoonDays,
+          page,
+          pageSize,
         });
-        const maxPage = Math.max(1, Math.ceil(filtered.length / pageSize) || 1);
-        const safePage = Math.min(page, maxPage);
-        const start = (safePage - 1) * pageSize;
-        setRows(filtered.slice(start, start + pageSize));
-        setTotal(filtered.length);
+        if (offlineResult.page !== page) {
+          setPage(offlineResult.page);
+          return;
+        }
+        setRows(offlineResult.rows);
+        setTotal(offlineResult.total);
         setError(null);
         return;
       }
-      setError(loadError instanceof Error ? loadError.message : String(loadError));
+
+      setError(formatInventoryLoadError(loadError, isArabic));
       setRows([]);
       setTotal(0);
     } finally {
@@ -119,7 +197,7 @@ export function usePaginatedMedicines({
   }, [
     enabled,
     isOfflineMode,
-    offlineMedicines,
+    mergeOfflineCache,
     pharmacyId,
     page,
     pageSize,
@@ -127,6 +205,7 @@ export function usePaginatedMedicines({
     stockFilter,
     lowStockThreshold,
     expiringSoonDays,
+    isArabic,
   ]);
 
   useEffect(() => {
@@ -142,5 +221,6 @@ export function usePaginatedMedicines({
     error,
     setPage,
     reload: load,
+    offlineSourceCount,
   };
 }

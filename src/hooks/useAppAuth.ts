@@ -7,6 +7,8 @@ import { clearSessionNavigationState } from "../utils/sessionNavigation";
 import { formatUserCreationError } from "../utils/userCreationErrors";
 import { syncSentryUser } from "../utils/sentryMonitoring";
 import { isAccountant, isOrgPharmacyAdmin, isSuperAdmin } from "../utils/roles";
+import { appUserFromStoredProfile, isBrowserOffline } from "../utils/offlineAuth";
+import { buildAppAuthSession, clearAppAuthSession } from "../services/appAuthSession";
 import type { AppUser } from "../types";
 
 export type LoginScreenStatus = "loading" | "login" | "denied";
@@ -32,6 +34,31 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
   const [registering, setRegistering] = useState(false);
   const [subscriptionBlocked, setSubscriptionBlocked] = useState("");
   const accessRevokedRef = useRef(false);
+  const appUserRef = useRef<AppUser | null>(null);
+
+  appUserRef.current = appUser;
+
+  function applyBranchScopeForUser(data: AppUser) {
+    if (isSuperAdmin(data)) {
+      const tenantScope = activeBranchId || data.pharmacyId || "main";
+      setActiveBranchId(tenantScope);
+      pharmacyService.setActivePharmacy(tenantScope);
+    } else if (isOrgPharmacyAdmin(data) || isAccountant(data)) {
+      const saved = localStorage.getItem(branchPreferenceStorageKey(data.uid));
+      const initialBranch = saved || data.pharmacyId || null;
+      setActiveBranchId(initialBranch);
+      pharmacyService.setActivePharmacy(initialBranch);
+    } else {
+      setActiveBranchId(data.pharmacyId || null);
+      pharmacyService.setActivePharmacy(data.pharmacyId || null);
+    }
+  }
+
+  function finishAuthenticatedSession(data: AppUser) {
+    pharmacyService.setCurrentAppUser(data);
+    setAppUser(data);
+    applyBranchScopeForUser(data);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -69,11 +96,17 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
       }
 
       try {
-        setUserLoading(true);
+        if (!appUserRef.current) {
+          setUserLoading(true);
+        }
         setSubscriptionBlocked("");
         let data = await pharmacyService.getAppUserByUid(currentUser.uid);
 
-        if (!data) {
+        if (!data && isBrowserOffline()) {
+          data = appUserFromStoredProfile(currentUser.uid);
+        }
+
+        if (!data && !isBrowserOffline()) {
           const provisioned = await pharmacyService.ensureTrialPharmacyFromAuth(authUser);
           if (provisioned) {
             data = await pharmacyService.getAppUserByUid(currentUser.uid);
@@ -81,14 +114,19 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
         }
 
         if (!data) {
+          if (isBrowserOffline()) {
+            console.warn("[Auth] offline session without cached profile");
+          }
           setAppUser(null);
           pharmacyService.setCurrentAppUser(null);
-          await pharmacyService.signOutUser();
-          alert(
-            isArabic
-              ? "هذا المستخدم غير مسجل في نظام الصيدلية"
-              : "This user is not registered in the pharmacy system",
-          );
+          if (!isBrowserOffline()) {
+            await pharmacyService.signOutUser();
+            alert(
+              isArabic
+                ? "هذا المستخدم غير مسجل في نظام الصيدلية"
+                : "This user is not registered in the pharmacy system",
+            );
+          }
           return;
         }
 
@@ -105,36 +143,33 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
           if (!pharmacyAllowed) {
             setAppUser(null);
             pharmacyService.setCurrentAppUser(null);
-            await pharmacyService.signOutUser();
-            const msg = isArabic
-              ? "الصيدلية غير نشطة أو موقوفة. تواصل مع الدعم."
-              : "Pharmacy is inactive or suspended. Contact support.";
-            setSubscriptionBlocked(msg);
-            alert(msg);
+            if (!isBrowserOffline()) {
+              await pharmacyService.signOutUser();
+              const msg = isArabic
+                ? "الصيدلية غير نشطة أو موقوفة. تواصل مع الدعم."
+                : "Pharmacy is inactive or suspended. Contact support.";
+              setSubscriptionBlocked(msg);
+              alert(msg);
+            }
             return;
           }
         }
 
-        const linkedUser = await pharmacyService.ensureAppUserEmployeeLink(data);
-        pharmacyService.setCurrentAppUser(linkedUser);
-        setAppUser(linkedUser);
-        void pharmacyService.recordLastLogin(data.uid);
-
-        if (isSuperAdmin(data)) {
-          const tenantScope = activeBranchId || data.pharmacyId || "main";
-          setActiveBranchId(tenantScope);
-          pharmacyService.setActivePharmacy(tenantScope);
-        } else if (isOrgPharmacyAdmin(data) || isAccountant(data)) {
-          const saved = localStorage.getItem(branchPreferenceStorageKey(data.uid));
-          const initialBranch = saved || data.pharmacyId || null;
-          setActiveBranchId(initialBranch);
-          pharmacyService.setActivePharmacy(initialBranch);
-        } else {
-          setActiveBranchId(data.pharmacyId || null);
-          pharmacyService.setActivePharmacy(data.pharmacyId || null);
+        let linkedUser = data;
+        if (!isBrowserOffline()) {
+          linkedUser = await pharmacyService.ensureAppUserEmployeeLink(data);
+        }
+        finishAuthenticatedSession(linkedUser);
+        if (!isBrowserOffline()) {
+          void pharmacyService.recordLastLogin(data.uid);
         }
       } catch (error) {
         console.error("[Auth] error loading app user", error);
+        const offlineUser = appUserFromStoredProfile(currentUser.uid);
+        if (isBrowserOffline() && offlineUser?.isActive) {
+          finishAuthenticatedSession(offlineUser);
+          return;
+        }
         setAppUser(null);
         pharmacyService.setCurrentAppUser(null);
         await pharmacyService.signOutUser();
@@ -157,7 +192,9 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
 
     const authSubscription = pharmacyService.onAuthStateChange((event, session) => {
       if (event === "INITIAL_SESSION") return;
-      void processSession(session);
+      window.setTimeout(() => {
+        if (!cancelled) void processSession(session);
+      }, 0);
     });
 
     const authTimeout = window.setTimeout(() => {
@@ -181,6 +218,17 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
   useEffect(() => {
     syncSentryUser(appUser);
   }, [appUser]);
+
+  useEffect(() => {
+    if (!appUser || isBrowserOffline()) return;
+
+    const interval = window.setInterval(() => {
+      if (buildAppAuthSession()) return;
+      window.setTimeout(() => clearAppAuthSession(), 0);
+    }, 60_000);
+
+    return () => window.clearInterval(interval);
+  }, [appUser?.uid]);
 
   useEffect(() => {
     const uid = appUser?.uid;
@@ -207,6 +255,7 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
     });
 
     const interval = window.setInterval(() => {
+      if (isBrowserOffline()) return;
       void pharmacyService.isAppUserStillActive(uid).then((active) => {
         if (!active) void forceLogout();
       });
@@ -340,7 +389,13 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
   }, []);
 
   const loginScreenStatus: LoginScreenStatus | null =
-    authLoading || userLoading ? "loading" : !user ? "login" : !appUser ? "denied" : null;
+    (authLoading && !appUser) || (userLoading && !appUser)
+      ? "loading"
+      : !user
+        ? "login"
+        : !appUser
+          ? "denied"
+          : null;
 
   const loginFormProps = {
     authMode,

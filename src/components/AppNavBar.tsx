@@ -78,6 +78,11 @@ export default function AppNavBar({
   }, [openGroupId, activePage, isArabic]);
 
   useEffect(() => {
+    setOpenGroupId(null);
+    setMenuAnchor(null);
+  }, [navPages.join("|")]);
+
+  useEffect(() => {
     const track = trackRef.current;
     if (!track) return;
     const frameId = window.requestAnimationFrame(() => {
@@ -92,11 +97,12 @@ export default function AppNavBar({
   useEffect(() => {
     if (!openGroupId) return;
     const reposition = () => updateMenuAnchor(openGroupId);
+    const track = trackRef.current;
     window.addEventListener("resize", reposition);
-    trackRef.current?.addEventListener("scroll", reposition, { passive: true });
+    track?.addEventListener("scroll", reposition, { passive: true });
     return () => {
       window.removeEventListener("resize", reposition);
-      trackRef.current?.removeEventListener("scroll", reposition);
+      track?.removeEventListener("scroll", reposition);
     };
   }, [openGroupId]);
 

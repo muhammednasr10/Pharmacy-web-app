@@ -1,5 +1,6 @@
 import { supabase } from "../supabaseClient";
 import { getStoredLoginProfile } from "../appAuthSession";
+import { appUserFromStoredProfile, isBrowserOffline } from "../../utils/offlineAuth";
 import { normalizeAppUser } from "../../utils/roles";
 import type { AppUser } from "../../types";
 import { toCamelCase } from "./mappers";
@@ -24,6 +25,9 @@ export async function getAppUserByUid(uid: string): Promise<AppUser | null> {
       details: error.details,
       hint: error.hint,
     });
+    if (isBrowserOffline()) {
+      return appUserFromStoredProfile(uid);
+    }
   }
 
   if (data) {

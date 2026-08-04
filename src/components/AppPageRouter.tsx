@@ -1,5 +1,3 @@
-import { Suspense } from "react";
-import PageLoadingCard from "./PageLoadingCard";
 import { isSubscriptionWriteBlocked } from "../utils/subscriptionAccess";
 import type { AppPageRouterProps } from "./app-router/types";
 import AppActivityLogsRoute from "./app-router/AppActivityLogsRoute";
@@ -29,7 +27,7 @@ export default function AppPageRouter(props: AppPageRouterProps) {
   );
 
   return (
-    <Suspense fallback={<PageLoadingCard isArabic={props.isArabic} />}>
+    <>
       <AppDashboardRoute {...props} />
       <AppInventoryRoute {...props} subscriptionBlocksWrite={subscriptionBlocksWrite} />
       <AppPurchasesRoute {...props} />
@@ -47,6 +45,6 @@ export default function AppPageRouter(props: AppPageRouterProps) {
       <AppBranchesRoute {...props} subscriptionBlocksWrite={subscriptionBlocksWrite} />
       <AppUserGuideRoute {...props} />
       <AppSettingsRoute {...props} />
-    </Suspense>
+    </>
   );
 }

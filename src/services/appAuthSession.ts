@@ -31,13 +31,21 @@ function readStoredUid(): string | null {
   return localStorage.getItem(ACCESS_UID_KEY);
 }
 
+/** Read token for API calls — side-effect free (does not sign out). */
 export function getAppAccessToken(): string | null {
   const token = readStoredToken();
   if (!token) return null;
-  if (isAccessTokenExpired(token)) {
-    clearAppAuthSession();
-    return null;
-  }
+  if (isAccessTokenExpired(token)) return null;
+  return token;
+}
+
+export function hasValidAppAccessToken(): boolean {
+  return getAppAccessToken() !== null;
+}
+
+function readValidAccessToken(): string | null {
+  const token = readStoredToken();
+  if (!token || isAccessTokenExpired(token)) return null;
   return token;
 }
 
@@ -88,7 +96,7 @@ export function setAppAccessToken(token: string | null, uid?: string | null) {
 }
 
 export function buildAppAuthSession(): AppAuthSession | null {
-  const access_token = readStoredToken();
+  const access_token = readValidAccessToken();
   const uid = readStoredUid();
   if (!access_token || !uid) return null;
   return {
