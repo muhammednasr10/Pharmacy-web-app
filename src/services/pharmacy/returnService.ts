@@ -9,6 +9,7 @@ import {
 } from "./medicineService";
 import { createManagedRealtimeChannel, disposeManagedRealtimeChannel } from "./dbHelpers";
 import { sameMedicineId } from "../../utils/returnHelpers";
+import { lookupInventoryMedicineForReturn } from "./inventoryPaginationService";
 
 function resolveMedicineIdValue(raw: unknown): number | string {
   if (raw === null || raw === undefined || raw === "") {
@@ -342,17 +343,20 @@ export async function createInstantSaleReturn(
 
   const currentMedicines = await getMedicines();
 
-  for (const item of returnItems) {
-    const currentMedicine = currentMedicines.find((m) => m.id === item.medicineId);
+  for (let index = 0; index < returnItems.length; index += 1) {
+    const item = returnItems[index];
+    const currentMedicine =
+      currentMedicines.find((m) => sameMedicineId(m.id, item.medicineId)) ??
+      (await lookupInventoryMedicineForReturn(item.medicineId, item.barcode));
     if (!currentMedicine) {
       throw new Error("medicine_not_found");
     }
-    await updateMedicineStock(item.medicineId, currentMedicine.qty + item.quantity);
+    await updateMedicineStock(currentMedicine.id, currentMedicine.qty + item.quantity);
 
     await addStockMovement({
-      id: Date.now() + item.medicineId,
+      id: Date.now() + index,
       type: "sale_return",
-      medicineId: item.medicineId,
+      medicineId: currentMedicine.id,
       medicineName_ar: item.name_ar,
       medicineName_en: item.name_en,
       barcode: item.barcode,

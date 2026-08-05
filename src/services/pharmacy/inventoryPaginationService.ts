@@ -377,6 +377,38 @@ export async function fetchStockCountSessionMovements(createdAt: string): Promis
   return (data || []).map((row) => toCamelCase<StockMovement>(row));
 }
 
+export async function lookupInventoryMedicineById(
+  medicineId: number | string,
+): Promise<Medicine | null> {
+  const id = String(medicineId ?? "").trim();
+  if (!id || id === "0") return null;
+
+  let request = supabase.from("medicines").select("*").eq("id", id).limit(1);
+  request = applyPharmacyFilter(request);
+
+  const { data, error } = await request.maybeSingle();
+
+  if (error) {
+    console.error("lookupInventoryMedicineById error:", error.message);
+    return null;
+  }
+
+  return data ? toCamelCase<Medicine>(data) : null;
+}
+
+/** Resolve a return line to a warehouse row without loading the full catalog. */
+export async function lookupInventoryMedicineForReturn(
+  medicineId: number | string,
+  barcode?: string,
+): Promise<Medicine | null> {
+  const byId = await lookupInventoryMedicineById(medicineId);
+  if (byId) return byId;
+
+  const code = String(barcode ?? "").trim();
+  if (!code) return null;
+  return lookupInventoryMedicineByBarcode(code);
+}
+
 export async function lookupInventoryMedicineByBarcode(barcode: string): Promise<Medicine | null> {
   const code = String(barcode ?? "").trim();
   if (!code) return null;

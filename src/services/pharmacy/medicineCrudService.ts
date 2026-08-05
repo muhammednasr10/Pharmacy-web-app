@@ -40,8 +40,9 @@ export async function deleteMedicine(id: number) {
   }
 }
 
-export async function updateMedicineStock(medicineId: number, newQty: number) {
-  const { error } = await supabase.from("medicines").update({ qty: newQty }).eq("id", medicineId);
+export async function updateMedicineStock(medicineId: number | string, newQty: number) {
+  const id = String(medicineId ?? "").trim();
+  const { error } = await supabase.from("medicines").update({ qty: newQty }).eq("id", id);
 
   if (error) {
     throw new Error(error.message);

@@ -1,5 +1,8 @@
 import { useCallback, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
+import {
+  lookupInventoryMedicineForReturn,
+} from "../services/pharmacy/inventoryPaginationService";
 import * as pharmacyService from "../services/pharmacyService";
 import type { AppUser, Invoice, ReturnRecord, StockMovement } from "../types";
 import {
@@ -227,18 +230,26 @@ export function useReturns({
         isInstant: false,
       };
 
-      const currentMedicines = await pharmacyService.getMedicines();
-      const stockMovements = selectedReturnItems.map((item) => {
-        const currentMedicine = currentMedicines.find(
-          (medicine) => medicine.id === item.medicineId,
+      const stockMovements = [];
+
+      for (const item of selectedReturnItems) {
+        const currentMedicine = await lookupInventoryMedicineForReturn(
+          item.medicineId,
+          item.barcode,
         );
-        const oldQty = currentMedicine?.qty || 0;
+        if (!currentMedicine) {
+          throw new Error(isArabic ? "دواء غير موجود في المخزون" : "Medicine not found");
+        }
+
+        const oldQty = currentMedicine.qty || 0;
         const newQty = oldQty + item.quantity;
 
-        return {
-          id: Date.now() + item.medicineId,
+        await pharmacyService.updateMedicineStock(currentMedicine.id, newQty);
+
+        stockMovements.push({
+          id: Date.now() + stockMovements.length,
           type: "return",
-          medicineId: item.medicineId,
+          medicineId: currentMedicine.id,
           medicineName_ar: item.name_ar,
           medicineName_en: item.name_en,
           barcode: item.barcode,
@@ -251,20 +262,7 @@ export function useReturns({
           userId: user?.uid || "",
           userName: appUser?.name || "",
           createdAt: new Date().toISOString(),
-        };
-      });
-
-      for (const item of selectedReturnItems) {
-        const currentMedicine = currentMedicines.find(
-          (medicine) => medicine.id === item.medicineId,
-        );
-        if (!currentMedicine) {
-          throw new Error(isArabic ? "دواء غير موجود في المخزون" : "Medicine not found");
-        }
-        await pharmacyService.updateMedicineStock(
-          item.medicineId,
-          currentMedicine.qty + item.quantity,
-        );
+        });
       }
 
       for (const movement of stockMovements) {
