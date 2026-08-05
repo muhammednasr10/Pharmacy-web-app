@@ -1,5 +1,5 @@
 import InvoiceTable from "../components/InvoiceTable";
-import type { Invoice, PaymentMethod } from "../types";
+import type { Invoice, PaymentMethod, ReturnRecord } from "../types";
 
 type InvoicesPageProps = {
   filteredInvoicesList: Invoice[];
@@ -19,6 +19,7 @@ type InvoicesPageProps = {
   onReturnInvoice: (invoice: Invoice) => void;
   onPrintInvoice: (invoice: Invoice) => void;
   canUseReturns: boolean;
+  returns?: ReturnRecord[];
   t: Record<string, string>;
   isArabic: boolean;
   currency: string;
@@ -42,6 +43,7 @@ export default function InvoicesPage({
   onReturnInvoice,
   onPrintInvoice,
   canUseReturns,
+  returns = [],
   t,
   isArabic,
   currency,
@@ -65,6 +67,7 @@ export default function InvoicesPage({
       onReturnInvoice={onReturnInvoice}
       onPrintInvoice={onPrintInvoice}
       canUseReturns={canUseReturns}
+      returns={returns}
       exportInvoicesCSV={exportInvoicesCSV}
       getPaymentLabel={getPaymentLabel}
     />

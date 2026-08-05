@@ -21,6 +21,7 @@ export type AppInvoicesRouteProps = Pick<
   | "openReturnModal"
   | "printSavedInvoice"
   | "canUseReturns"
+  | "returns"
   | "t"
   | "isArabic"
 >;
@@ -44,6 +45,7 @@ export default function AppInvoicesRoute({
   openReturnModal,
   printSavedInvoice,
   canUseReturns,
+  returns,
   t,
   isArabic,
 }: AppInvoicesRouteProps) {
@@ -68,6 +70,7 @@ export default function AppInvoicesRoute({
       onReturnInvoice={openReturnModal}
       onPrintInvoice={printSavedInvoice}
       canUseReturns={canUseReturns()}
+      returns={returns}
       t={t}
       isArabic={isArabic}
       currency={t.currency}

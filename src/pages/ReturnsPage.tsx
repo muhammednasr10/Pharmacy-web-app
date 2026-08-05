@@ -372,6 +372,7 @@ export default function ReturnsPage({
               onReturnInvoice={handlePickInvoiceForReturn}
               onPrintInvoice={onPrintInvoice}
               canUseReturns={canUseReturns}
+              returns={returns}
               exportInvoicesCSV={exportInvoicesCSV}
               getPaymentLabel={getPaymentLabel}
             />

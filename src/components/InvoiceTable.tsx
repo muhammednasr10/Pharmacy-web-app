@@ -1,4 +1,6 @@
-import type { Invoice, PaymentMethod } from "../types";
+import { useMemo } from "react";
+import type { Invoice, PaymentMethod, ReturnRecord } from "../types";
+import { getReturnedInvoiceNumbers } from "../utils/returnHelpers";
 
 type InvoiceTableProps = {
   filteredInvoices: Invoice[];
@@ -21,6 +23,7 @@ type InvoiceTableProps = {
   exportInvoicesCSV: () => void;
   getPaymentLabel: (method: string) => string;
   embedded?: boolean;
+  returns?: ReturnRecord[];
 };
 
 export default function InvoiceTable({
@@ -44,7 +47,13 @@ export default function InvoiceTable({
   exportInvoicesCSV,
   getPaymentLabel,
   embedded = false,
+  returns = [],
 }: InvoiceTableProps) {
+  const returnedInvoiceNumbers = useMemo(
+    () => getReturnedInvoiceNumbers(returns),
+    [returns],
+  );
+
   const Wrapper = embedded ? "div" : "section";
   const wrapperClass = embedded ? "invoicePickerEmbed" : "card invoicesPage";
 
@@ -131,13 +140,27 @@ export default function InvoiceTable({
                     </td>
                   )}
                   <td>
-                    {embedded ? (
-                      <span className="invoiceDocBadge">
-                        {invoice.invoiceNumber || `#${invoice.id}`}
-                      </span>
-                    ) : (
-                      invoice.invoiceNumber || `#${invoice.id}`
-                    )}
+                    <div className="invoiceNumberCell">
+                      {embedded ? (
+                        <span className="invoiceDocBadge">
+                          {invoice.invoiceNumber || `#${invoice.id}`}
+                        </span>
+                      ) : (
+                        <span>{invoice.invoiceNumber || `#${invoice.id}`}</span>
+                      )}
+                      {returnedInvoiceNumbers.has(String(invoice.invoiceNumber ?? "").trim()) && (
+                        <span
+                          className="returnTypeBadge invoice"
+                          title={
+                            isArabic
+                              ? "تم تسجيل مرتجع على هذه الفاتورة"
+                              : "This invoice has a return recorded"
+                          }
+                        >
+                          {isArabic ? "مرتجع" : "Returned"}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td>{invoice.date}</td>
                   <td>{getPaymentLabel(invoice.paymentMethod || "cash")}</td>

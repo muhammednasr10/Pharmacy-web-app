@@ -13145,6 +13145,13 @@ button:disabled {
   margin-bottom: 14px;
 }
 
+.invoiceNumberCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .returnDocBadge,
 .invoiceDocBadge {
   display: inline-block;

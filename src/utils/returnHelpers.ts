@@ -63,6 +63,21 @@ export function getReturnedQtyForInvoice(
     .reduce((sum, item) => sum + getReturnItemQuantity(item), 0);
 }
 
+export function getReturnedInvoiceNumbers(returns: ReturnRecord[]): Set<string> {
+  const numbers = new Set<string>();
+  for (const record of returns) {
+    const invoiceNumber = String(record.invoiceNumber ?? "").trim();
+    if (invoiceNumber) numbers.add(invoiceNumber);
+  }
+  return numbers;
+}
+
+export function invoiceHasReturn(returns: ReturnRecord[], invoiceNumber: string): boolean {
+  const target = String(invoiceNumber ?? "").trim();
+  if (!target) return false;
+  return getReturnedInvoiceNumbers(returns).has(target);
+}
+
 export function getReturnTypeLabel(returnRecord: ReturnRecord, isArabic: boolean) {
   if (returnRecord.isInstant) {
     return isArabic ? "مرتجع لحظي" : "Instant Return";
