@@ -21,8 +21,6 @@ export default function EmployeePortalPage(props: EmployeePortalPageProps) {
     schedule,
     activePanel,
     setActivePanel,
-    showAttendanceLog,
-    setShowAttendanceLog,
   } = state;
 
   if (loading) {
@@ -82,7 +80,7 @@ export default function EmployeePortalPage(props: EmployeePortalPageProps) {
         />
       )}
 
-      <div className="employeeProfileActions">
+      <div className="employeeProfileActions employeeProfileActions--two">
         <button
           type="button"
           className="employeeProfileActionCard employeeProfileActionCard--leave"
@@ -104,28 +102,6 @@ export default function EmployeePortalPage(props: EmployeePortalPageProps) {
           </span>
           <strong>{isArabic ? "طلب إذن" : "Request permission"}</strong>
           <span>{isArabic ? "انصراف مبكر بإذن" : "Approved early leave"}</span>
-        </button>
-        <button
-          type="button"
-          className={`employeeProfileActionCard employeeProfileActionCard--attendance ${showAttendanceLog ? "active" : ""}`}
-          onClick={() => {
-            setShowAttendanceLog((value) => !value);
-            setActivePanel("profile");
-          }}
-        >
-          <span className="employeeProfileActionIcon" aria-hidden="true">
-            📋
-          </span>
-          <strong>{isArabic ? "سجل الحضور والانصراف" : "Attendance log"}</strong>
-          <span>
-            {showAttendanceLog
-              ? isArabic
-                ? "إخفاء السجل"
-                : "Hide log"
-              : isArabic
-                ? "عرض سجل الشهر"
-                : "Show month log"}
-          </span>
         </button>
       </div>
 

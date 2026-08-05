@@ -1,3 +1,5 @@
+import { TRIAL_SUBSCRIPTION_DAYS } from "../../config/subscription";
+
 type DashboardSubscriptionAlertProps = {
   isArabic: boolean;
   subscriptionDaysLeft: number | null;
@@ -22,6 +24,17 @@ export default function DashboardSubscriptionAlert({
   if (!isTrialSubscription && !isSubscriptionExpired && !isSubscriptionExpiringSoon) {
     return null;
   }
+
+  const daysRemaining =
+    subscriptionDaysLeft != null && Number.isFinite(subscriptionDaysLeft)
+      ? subscriptionDaysLeft
+      : null;
+  const daysLabel =
+    daysRemaining != null
+      ? String(daysRemaining)
+      : isArabic
+        ? "غير محدد"
+        : "not set";
 
   return (
     <section
@@ -61,11 +74,19 @@ export default function DashboardSubscriptionAlert({
               : "Please renew the subscription to continue using the system."
           : isTrialSubscription
             ? isArabic
-              ? `متبقي ${subscriptionDaysLeft} يوم على نهاية التجربة المجانية.`
-              : `${subscriptionDaysLeft} days left in your free trial.`
+              ? daysRemaining != null
+                ? `متبقي ${daysLabel} يوم على نهاية التجربة المجانية.`
+                : `فترة تجريبية ${TRIAL_SUBSCRIPTION_DAYS} يوم — تاريخ الانتهاء غير محدد بعد.`
+              : daysRemaining != null
+                ? `${daysLabel} days left in your free trial.`
+                : `${TRIAL_SUBSCRIPTION_DAYS}-day trial — end date not set yet.`
             : isArabic
-              ? `متبقي ${subscriptionDaysLeft} يوم على انتهاء الاشتراك.`
-              : `${subscriptionDaysLeft} days left until subscription ends.`}
+              ? daysRemaining != null
+                ? `متبقي ${daysLabel} يوم على انتهاء الاشتراك.`
+                : "تاريخ انتهاء الاشتراك غير محدد."
+              : daysRemaining != null
+                ? `${daysLabel} days left until subscription ends.`
+                : "Subscription end date is not set."}
       </span>
       {hasAdminRole && canAccessSettings && (
         <div className="renewActions">

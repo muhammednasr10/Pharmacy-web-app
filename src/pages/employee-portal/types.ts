@@ -2,6 +2,8 @@ import type { AppUser, Employee, ShiftId } from "../../types";
 
 export type EmployeePortalPanel = "profile" | "leave" | "permission";
 
+export type EmployeeScheduleTab = "plan" | "log";
+
 export type EmployeePortalPageProps = {
   isArabic: boolean;
   appUser: AppUser | null;

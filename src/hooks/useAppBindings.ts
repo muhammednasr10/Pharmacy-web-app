@@ -153,6 +153,9 @@ export function useAppBindings(input: UseAppBindingsInput): AppBindingsResult {
   const pageRouterProps: AppPageRouterProps = {
     ...routerFields,
     invoices,
+    isSubscriptionExpired,
+    isSubscriptionExpiringSoon,
+    subscriptionDaysLeft: subscriptionDaysLeft ?? null,
     setSelectedReturn,
     setSelectedInvoice,
     setShowInstantReturnModal,

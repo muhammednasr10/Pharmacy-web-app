@@ -13282,6 +13282,35 @@ button:disabled {
   padding: 0 1rem 1rem;
 }
 
+.employeeProfileActions--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.employeeProfileScheduleSection {
+  margin-top: 12px;
+}
+
+.employeeProfileScheduleTabs {
+  padding: 0;
+  margin-bottom: 14px;
+}
+
+.employeeProfileScheduleTabs button {
+  flex: 1 1 180px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .employeeProfileActions--two {
+    grid-template-columns: 1fr;
+  }
+
+  .employeeProfileScheduleTabs button {
+    flex: 1 1 100%;
+  }
+}
+
 .employeeProfileActionCard {
   display: flex;
   flex-direction: column;
@@ -13390,9 +13419,13 @@ button:disabled {
   background: #eff8ff;
 }
 
-.employeeProfileMonthTable .employeeProfileOffRow {
+.employeeProfileMonthTable .employeeProfileOffRow td {
   background: #f9fafb;
   color: #667085;
+}
+
+.employeeProfileMonthTable .employeeProfileOffRow {
+  background: transparent;
 }
 
 .employeeProfileMonthTable .employeeProfileLeaveRow {

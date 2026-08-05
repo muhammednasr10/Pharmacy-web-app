@@ -33,7 +33,8 @@ export default function EmployeePortalProfilePanel({ state }: Props) {
     approvedPermissions,
     requests,
     monthRecords,
-    showAttendanceLog,
+    scheduleTab,
+    setScheduleTab,
     loadAll,
     handleCheckIn,
     handleCheckOut,
@@ -153,177 +154,195 @@ export default function EmployeePortalProfilePanel({ state }: Props) {
         </div>
       </div>
 
-      <div className="employeePortalSection cardInner">
+      <div className="employeePortalSection cardInner employeeProfileScheduleSection">
         <div className="employeeProfileSectionHead">
-          <h3>{isArabic ? "جدول عمل الشهر" : "Monthly work plan"}</h3>
+          <h3>{isArabic ? "الجدول والحضور" : "Schedule & attendance"}</h3>
           <span className="employeeProfileMonthTitle">
             {formatMonthTitle(monthBounds.start, isArabic)}
           </span>
         </div>
-        <div className="tableWrap">
-          <table className="dataTable compactTable employeeProfileMonthTable">
-            <thead>
-              <tr>
-                <th>{isArabic ? "اليوم" : "Day"}</th>
-                <th>{isArabic ? "التاريخ" : "Date"}</th>
-                <th>{isArabic ? "الشيفت" : "Shift"}</th>
-                <th>{isArabic ? "التوقيت" : "Hours"}</th>
-                <th>{isArabic ? "النوع" : "Type"}</th>
-                <th>{isArabic ? "الحضور" : "Attendance"}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {monthPlanDays.map((day) => (
-                <tr
-                  key={day.date}
-                  className={[
-                    day.isToday ? "employeeProfileTodayRow" : "",
-                    day.dayKind === "off" ? "employeeProfileOffRow" : "",
-                    day.dayKind === "leave" ? "employeeProfileLeaveRow" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                >
-                  <td>{day.weekdayLabel}</td>
-                  <td>{day.date}</td>
-                  <td>{day.isWorkDay ? day.shiftLabel : "—"}</td>
-                  <td>{day.isWorkDay ? day.shiftWindow : "—"}</td>
-                  <td>
-                    <span className={`employeeProfileDayTag employeeProfileDayTag--${day.dayKind}`}>
-                      {day.dayKind === "work"
-                        ? isArabic
-                          ? "عمل"
-                          : "Work"
-                        : day.dayKind === "leave"
-                          ? isArabic
-                            ? "إجازة"
-                            : "Leave"
-                          : isArabic
-                            ? "راحة"
-                            : "Off"}
-                    </span>
-                  </td>
-                  <td>
-                    {day.attendance?.checkIn
-                      ? `${formatTime(day.attendance.checkIn, isArabic)} → ${formatTime(day.attendance.checkOut, isArabic)}`
-                      : day.isWorkDay
-                        ? isArabic
-                          ? "لم يسجل"
-                          : "Not recorded"
-                        : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
 
-      {showAttendanceLog && (
-        <div className="employeePortalSection cardInner">
-          <h3>{isArabic ? "سجل الحضور والانصراف" : "Attendance log"}</h3>
-          {monthRecords.length === 0 ? (
-            <p className="empty">{isArabic ? "لا توجد سجلات هذا الشهر" : "No records this month"}</p>
-          ) : (
-            <div className="tableWrap">
-              <table className="dataTable compactTable">
-                <thead>
-                  <tr>
-                    <th>{isArabic ? "التاريخ" : "Date"}</th>
-                    <th>{isArabic ? "حضور" : "In"}</th>
-                    <th>{isArabic ? "انصراف" : "Out"}</th>
-                    <th>{isArabic ? "طريقة التسجيل" : "Method"}</th>
-                    <th>{isArabic ? "الحالة" : "Status"}</th>
+        <nav
+          className="employeePortalTabs employeeProfileScheduleTabs"
+          aria-label={isArabic ? "جدول الشهر أو سجل الحضور" : "Monthly plan or attendance log"}
+        >
+          <button
+            type="button"
+            className={scheduleTab === "plan" ? "active" : ""}
+            onClick={() => setScheduleTab("plan")}
+          >
+            {isArabic ? "جدول عمل الشهر" : "Monthly work plan"}
+          </button>
+          <button
+            type="button"
+            className={scheduleTab === "log" ? "active" : ""}
+            onClick={() => setScheduleTab("log")}
+          >
+            {isArabic ? "سجل الحضور والانصراف" : "Attendance log"}
+          </button>
+        </nav>
+
+        {scheduleTab === "plan" ? (
+          <div className="tableWrap">
+            <table className="dataTable compactTable employeeProfileMonthTable">
+              <thead>
+                <tr>
+                  <th>{isArabic ? "اليوم" : "Day"}</th>
+                  <th>{isArabic ? "التاريخ" : "Date"}</th>
+                  <th>{isArabic ? "الشيفت" : "Shift"}</th>
+                  <th>{isArabic ? "التوقيت" : "Hours"}</th>
+                  <th>{isArabic ? "النوع" : "Type"}</th>
+                  <th>{isArabic ? "الحضور" : "Attendance"}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {monthPlanDays.map((day) => (
+                  <tr
+                    key={day.date}
+                    className={[
+                      day.isToday ? "employeeProfileTodayRow" : "",
+                      day.dayKind === "off" ? "employeeProfileOffRow" : "",
+                      day.dayKind === "leave" ? "employeeProfileLeaveRow" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    <td>{day.weekdayLabel}</td>
+                    <td>{day.date}</td>
+                    <td>{day.isWorkDay ? day.shiftLabel : "—"}</td>
+                    <td>{day.isWorkDay ? day.shiftWindow : "—"}</td>
+                    <td>
+                      <span className={`employeeProfileDayTag employeeProfileDayTag--${day.dayKind}`}>
+                        {day.dayKind === "work"
+                          ? isArabic
+                            ? "عمل"
+                            : "Work"
+                          : day.dayKind === "leave"
+                            ? isArabic
+                              ? "إجازة"
+                              : "Leave"
+                            : isArabic
+                              ? "راحة"
+                              : "Off"}
+                      </span>
+                    </td>
+                    <td>
+                      {day.attendance?.checkIn
+                        ? `${formatTime(day.attendance.checkIn, isArabic)} → ${formatTime(day.attendance.checkOut, isArabic)}`
+                        : day.isWorkDay
+                          ? isArabic
+                            ? "لم يسجل"
+                            : "Not recorded"
+                          : "—"}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {monthRecords
-                    .slice()
-                    .sort((a, b) => b.workDate.localeCompare(a.workDate))
-                    .map((record) => {
-                      const approvedEarlyLeave = isEarlyLeaveApproved(
-                        record.earlyLeaveOutcome,
-                        pharmacyService.hasApprovedPermissionForDate(
-                          approvedPermissions,
-                          staff.attendanceKey,
-                          staff.employeeId,
-                          record.workDate,
-                        ),
-                      );
-                      const timing = evaluateAttendanceTiming(
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : monthRecords.length === 0 ? (
+          <p className="empty">
+            {isArabic ? "لا توجد سجلات حضور هذا الشهر" : "No attendance records this month"}
+          </p>
+        ) : (
+          <div className="tableWrap">
+            <table className="dataTable compactTable employeeProfileAttendanceTable">
+              <thead>
+                <tr>
+                  <th>{isArabic ? "التاريخ" : "Date"}</th>
+                  <th>{isArabic ? "حضور" : "In"}</th>
+                  <th>{isArabic ? "انصراف" : "Out"}</th>
+                  <th>{isArabic ? "طريقة التسجيل" : "Method"}</th>
+                  <th>{isArabic ? "الحالة" : "Status"}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {monthRecords
+                  .slice()
+                  .sort((a, b) => b.workDate.localeCompare(a.workDate))
+                  .map((record) => {
+                    const approvedEarlyLeave = isEarlyLeaveApproved(
+                      record.earlyLeaveOutcome,
+                      pharmacyService.hasApprovedPermissionForDate(
+                        approvedPermissions,
+                        staff.attendanceKey,
+                        staff.employeeId,
                         record.workDate,
-                        record.checkIn,
-                        record.checkOut,
-                        schedule,
-                        graceMinutes,
-                        { approvedEarlyLeave },
-                      );
-                      const rawEarlyLeave = evaluateAttendanceTiming(
-                        record.workDate,
-                        record.checkIn,
-                        record.checkOut,
-                        schedule,
-                        graceMinutes,
-                        { approvedEarlyLeave: false },
-                      ).isEarlyLeave;
-                      const earlyLeaveBadge = rawEarlyLeave
-                        ? resolveEarlyLeaveOutcome(record.earlyLeaveOutcome)
-                        : null;
-                      const checkInMethod = getAttendanceCheckInMethod(record);
-                      const checkOutMethod = getAttendanceCheckOutMethod(record);
-                      return (
-                        <tr key={record.id || record.workDate}>
-                          <td>{record.workDate}</td>
-                          <td>{formatTime(record.checkIn, isArabic)}</td>
-                          <td>{formatTime(record.checkOut, isArabic)}</td>
-                          <td>
-                            <div className="attendanceMethodCell">
-                              {checkInMethod && (
-                                <span
-                                  className={`attendanceMethodBadge ${checkInMethod === "secure" ? "secure" : "manual"}`}
-                                >
-                                  {isArabic ? "حضور" : "In"}:{" "}
-                                  {formatAttendanceMethodLabel(checkInMethod, isArabic)}
-                                </span>
-                              )}
-                              {checkOutMethod && (
-                                <span
-                                  className={`attendanceMethodBadge ${checkOutMethod === "secure" ? "secure" : "manual"}`}
-                                >
-                                  {isArabic ? "انصراف" : "Out"}:{" "}
-                                  {formatAttendanceMethodLabel(checkOutMethod, isArabic)}
-                                </span>
-                              )}
-                              {!checkInMethod && !checkOutMethod ? "—" : null}
-                            </div>
-                          </td>
-                          <td>
-                            {statusLabel(record.status, isArabic)}
-                            {timing.isLate && (
-                              <span className="hrAttendanceFlag hrAttendanceFlagLate">
-                                {isArabic ? "تأخير" : "Late"}
+                      ),
+                    );
+                    const timing = evaluateAttendanceTiming(
+                      record.workDate,
+                      record.checkIn,
+                      record.checkOut,
+                      schedule,
+                      graceMinutes,
+                      { approvedEarlyLeave },
+                    );
+                    const rawEarlyLeave = evaluateAttendanceTiming(
+                      record.workDate,
+                      record.checkIn,
+                      record.checkOut,
+                      schedule,
+                      graceMinutes,
+                      { approvedEarlyLeave: false },
+                    ).isEarlyLeave;
+                    const earlyLeaveBadge = rawEarlyLeave
+                      ? resolveEarlyLeaveOutcome(record.earlyLeaveOutcome)
+                      : null;
+                    const checkInMethod = getAttendanceCheckInMethod(record);
+                    const checkOutMethod = getAttendanceCheckOutMethod(record);
+                    return (
+                      <tr key={record.id || record.workDate}>
+                        <td>{record.workDate}</td>
+                        <td>{formatTime(record.checkIn, isArabic)}</td>
+                        <td>{formatTime(record.checkOut, isArabic)}</td>
+                        <td>
+                          <div className="attendanceMethodCell">
+                            {checkInMethod && (
+                              <span
+                                className={`attendanceMethodBadge ${checkInMethod === "secure" ? "secure" : "manual"}`}
+                              >
+                                {isArabic ? "حضور" : "In"}:{" "}
+                                {formatAttendanceMethodLabel(checkInMethod, isArabic)}
                               </span>
                             )}
-                            {earlyLeaveBadge === "permission" && (
-                              <span className="hrAttendanceFlag hrAttendanceFlagPermission">
-                                {isArabic ? "إذن" : "Permission"}
+                            {checkOutMethod && (
+                              <span
+                                className={`attendanceMethodBadge ${checkOutMethod === "secure" ? "secure" : "manual"}`}
+                              >
+                                {isArabic ? "انصراف" : "Out"}:{" "}
+                                {formatAttendanceMethodLabel(checkOutMethod, isArabic)}
                               </span>
                             )}
-                            {earlyLeaveBadge === "deduction" && (
-                              <span className="hrAttendanceFlag hrAttendanceFlagDeduction">
-                                {isArabic ? "خصم" : "Deduction"}
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
+                            {!checkInMethod && !checkOutMethod ? "—" : null}
+                          </div>
+                        </td>
+                        <td>
+                          {statusLabel(record.status, isArabic)}
+                          {timing.isLate && (
+                            <span className="hrAttendanceFlag hrAttendanceFlagLate">
+                              {isArabic ? "تأخير" : "Late"}
+                            </span>
+                          )}
+                          {earlyLeaveBadge === "permission" && (
+                            <span className="hrAttendanceFlag hrAttendanceFlagPermission">
+                              {isArabic ? "إذن" : "Permission"}
+                            </span>
+                          )}
+                          {earlyLeaveBadge === "deduction" && (
+                            <span className="hrAttendanceFlag hrAttendanceFlagDeduction">
+                              {isArabic ? "خصم" : "Deduction"}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       <div className="employeePortalSection cardInner">
         <h3>{isArabic ? "طلباتي" : "My requests"}</h3>

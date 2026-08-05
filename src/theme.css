@@ -2058,3 +2058,122 @@ html[data-theme="dark"] .attendanceMethodBadge.manual {
   color: var(--color-text-muted);
   border-color: var(--color-border-strong);
 }
+
+/* ===== Dark mode — global tables ===== */
+html[data-theme="dark"] th {
+  color: var(--color-text-muted);
+  background: var(--color-table-head);
+  border-bottom-color: var(--color-border);
+}
+
+html[data-theme="dark"] td {
+  border-bottom-color: var(--color-border);
+}
+
+/* ===== Dark mode — Employee portal / profile ===== */
+html[data-theme="dark"] .employeePortalPage .tableWrap tbody td,
+html[data-theme="dark"] .employeeProfilePage .tableWrap tbody td {
+  color: var(--color-text-secondary);
+  background: var(--color-bg-surface);
+}
+
+html[data-theme="dark"] .employeeProfileMonthTable .employeeProfileTodayRow td {
+  background: rgba(46, 144, 250, 0.16);
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .employeeProfileMonthTable .employeeProfileOffRow td {
+  background: var(--color-bg-muted);
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .employeeProfileMonthTable .employeeProfileLeaveRow td {
+  background: rgba(247, 144, 9, 0.14);
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .employeeProfileDayTag--work {
+  background: rgba(18, 183, 106, 0.2);
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .employeeProfileDayTag--off {
+  background: rgba(152, 162, 179, 0.18);
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .employeeProfileDayTag--leave {
+  background: rgba(247, 144, 9, 0.2);
+  color: #fdba74;
+}
+
+html[data-theme="dark"] .employeeProfileTodayDate,
+html[data-theme="dark"] .employeeProfileMonthTitle,
+html[data-theme="dark"] .employeePortalLabel {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .employeeProfileSummaryCard {
+  background: var(--color-bg-muted);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .employeeProfileSummaryCard span {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .employeeProfileSummaryCard strong {
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .employeeProfileActionCard {
+  background: var(--color-bg-muted);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .employeeProfileActionCard strong {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .employeeProfileActionCard span:last-child {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .employeeProfileActionCard--leave {
+  background: rgba(46, 144, 250, 0.1);
+  border-color: rgba(132, 202, 255, 0.28);
+}
+
+html[data-theme="dark"] .employeeProfileActionCard--permission {
+  background: rgba(247, 144, 9, 0.1);
+  border-color: rgba(253, 186, 116, 0.28);
+}
+
+html[data-theme="dark"] .employeeProfileActionCard--attendance {
+  background: rgba(18, 183, 106, 0.1);
+  border-color: rgba(110, 231, 183, 0.28);
+}
+
+html[data-theme="dark"] .employeePortalPage .employeePortalTabs button {
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
+  background: var(--color-bg-muted);
+}
+
+html[data-theme="dark"] .employeePortalPage .employeePortalTabs button.active {
+  color: var(--color-text);
+  border-color: rgba(110, 231, 183, 0.45);
+  background: rgba(18, 183, 106, 0.14);
+}
+
+html[data-theme="dark"] .employeeProfileScheduleTabs button {
+  background: var(--color-bg-muted);
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .employeeProfileScheduleTabs button.active {
+  color: var(--color-text);
+  border-color: rgba(110, 231, 183, 0.45);
+  background: rgba(18, 183, 106, 0.14);
+}

@@ -19,6 +19,7 @@ import { currentMonthBounds, mapAttendanceActionError } from "./helpers";
 import type {
   EmployeePortalPageProps,
   EmployeePortalPanel,
+  EmployeeScheduleTab,
   LeaveFormState,
   PermissionFormState,
   StaffContext,
@@ -42,7 +43,7 @@ export function useEmployeePortalState({
   const [monthRecords, setMonthRecords] = useState<AttendanceRecord[]>([]);
   const [requests, setRequests] = useState<EmployeeRequest[]>([]);
   const [activePanel, setActivePanel] = useState<EmployeePortalPanel>("profile");
-  const [showAttendanceLog, setShowAttendanceLog] = useState(false);
+  const [scheduleTab, setScheduleTab] = useState<EmployeeScheduleTab>("plan");
 
   const [leaveForm, setLeaveForm] = useState<LeaveFormState>({
     workDate: "",
@@ -321,8 +322,8 @@ export function useEmployeePortalState({
     requests,
     activePanel,
     setActivePanel,
-    showAttendanceLog,
-    setShowAttendanceLog,
+    scheduleTab,
+    setScheduleTab,
     monthPlanDays,
     monthBounds,
     leaveForm,
