@@ -1798,14 +1798,17 @@ html[data-theme="dark"] .subscriptionPaymentHeader h3 {
   color: #6ce9a6;
 }
 
-html[data-theme="dark"] .subscriptionPaymentHeader p,
-html[data-theme="dark"] .subscriptionPaymentSteps {
+html[data-theme="dark"] .subscriptionPaymentHeader p {
   color: var(--color-text-muted);
 }
 
+html[data-theme="dark"] .subscriptionPaymentSteps {
+  color: var(--color-text-secondary);
+}
+
 html[data-theme="dark"] .subscriptionPaymentMeta > div {
-  background: rgba(18, 183, 106, 0.1);
-  border-color: rgba(61, 206, 160, 0.3);
+  background: rgba(18, 183, 106, 0.14);
+  border-color: rgba(110, 231, 183, 0.28);
 }
 
 html[data-theme="dark"] .subscriptionPaymentMeta span,
@@ -1813,13 +1816,97 @@ html[data-theme="dark"] .subscriptionPaymentAccount span {
   color: var(--color-text-muted);
 }
 
-html[data-theme="dark"] .subscriptionPaymentMeta strong {
+html[data-theme="dark"] .subscriptionPaymentMeta strong,
+html[data-theme="dark"] .subscriptionPaymentAccount strong {
   color: var(--color-text);
 }
 
 html[data-theme="dark"] .subscriptionPaymentAccount > div {
+  background: var(--color-bg-muted);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .subscriptionPaymentModal .closeBtn {
+  background: rgba(180, 35, 24, 0.18);
+  color: #fda29b;
+}
+
+html[data-theme="dark"] .subscriptionCompareSection {
+  background: var(--color-bg-surface);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .subscriptionCompareIntro h3 {
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .subscriptionCompareIntro p {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .subscriptionBillingToggle {
+  background: var(--color-bg-muted);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .subscriptionBillingToggle button {
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .subscriptionBillingToggle button.active {
+  background: linear-gradient(135deg, #007b49, #12b76a);
+  color: #fff;
+}
+
+html[data-theme="dark"] .subscriptionCompareCard {
+  background: var(--color-bg-surface);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .subscriptionCompareCard.featured {
+  border-color: rgba(110, 231, 183, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(110, 231, 183, 0.25),
+    0 14px 32px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="dark"] .subscriptionCompareCard.current {
+  border-color: rgba(110, 231, 183, 0.4);
+}
+
+html[data-theme="dark"] .subscriptionCompareCardBody,
+html[data-theme="dark"] .subscriptionCompareCardAction,
+html[data-theme="dark"] .subscriptionCompareHint {
+  background: var(--color-bg-muted);
+}
+
+html[data-theme="dark"] .subscriptionCompareCardBody h5 {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .subscriptionCompareFeatureList {
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .subscriptionCompareBtn {
   background: var(--color-bg-input);
   border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .subscriptionCompareBtn:hover:not(:disabled) {
+  background: rgba(18, 183, 106, 0.12);
+  border-color: rgba(110, 231, 183, 0.45);
+}
+
+html[data-theme="dark"] .subscriptionCompareBtn.outline {
+  background: rgba(18, 183, 106, 0.12);
+  border-color: rgba(110, 231, 183, 0.45);
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .subscriptionCompareHint {
+  color: var(--color-text-muted);
 }
 
 /* ===== Dark mode — Branches page ===== */

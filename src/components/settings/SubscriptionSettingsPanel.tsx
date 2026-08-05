@@ -2,8 +2,7 @@ import SubscriptionPaymentInstructions from "../SubscriptionPaymentInstructions"
 import SubscriptionHeroSection, { SubscriptionProgressSection } from "./subscription/SubscriptionHeroSection";
 import SubscriptionRenewalForm from "./subscription/SubscriptionRenewalForm";
 import SubscriptionRequestsHistory from "./subscription/SubscriptionRequestsHistory";
-import SubscriptionTierFeaturesSection from "./subscription/SubscriptionTierFeaturesSection";
-import SubscriptionTierUpgradeSection from "./subscription/SubscriptionTierUpgradeSection";
+import SubscriptionTierComparisonSection from "./subscription/SubscriptionTierComparisonSection";
 import { useSubscriptionSettingsState } from "./subscription/useSubscriptionSettingsState";
 import type { SubscriptionSettingsPanelProps } from "./subscription/types";
 
@@ -17,14 +16,14 @@ export default function SubscriptionSettingsPanel(props: SubscriptionSettingsPan
     settingsForm,
     getSubscriptionPlanLabel,
     subscriptionTierLabel,
-    submitTierUpgradeRequest,
+    subscriptionTier = "basic",
     pharmacySubscriptionRequests,
     subscriptionRenewLogs,
     subscriptionDaysLeft,
   } = props;
 
   const state = useSubscriptionSettingsState(props);
-  const { tierDerived, displayValues } = state;
+  const { displayValues } = state;
 
   return (
     <>
@@ -41,27 +40,16 @@ export default function SubscriptionSettingsPanel(props: SubscriptionSettingsPan
           renewalsCount={subscriptionRenewLogs.length}
         />
 
-        <SubscriptionTierFeaturesSection
+        <SubscriptionTierComparisonSection
           isArabic={isArabic}
-          tierConfig={tierDerived.tierConfig}
-          tierFeatures={tierDerived.tierFeatures}
+          currentTier={subscriptionTier}
+          isOrgAdmin={isOrgAdmin}
+          pendingTierUpgrade={state.pendingTierUpgrade}
+          pendingRequest={state.pendingRequest}
+          submittingTierUpgrade={state.submittingTierUpgrade}
+          onSubmitUpgrade={(targetTier) => void state.handleSubmitTierUpgradeRequest(targetTier)}
+          onShowPaymentInfo={state.setPaymentRequest}
         />
-
-        {isOrgAdmin &&
-          tierDerived.tierUpgradeTarget &&
-          tierDerived.tierUpgradeConfig &&
-          submitTierUpgradeRequest && (
-            <SubscriptionTierUpgradeSection
-              isArabic={isArabic}
-              tierUpgradeConfig={tierDerived.tierUpgradeConfig}
-              tierUpgradeAmount={tierDerived.tierUpgradeAmount}
-              pendingTierUpgrade={state.pendingTierUpgrade}
-              pendingRequest={state.pendingRequest}
-              submittingTierUpgrade={state.submittingTierUpgrade}
-              onSubmitUpgrade={state.handleSubmitTierUpgradeRequest}
-              onShowPaymentInfo={state.setPaymentRequest}
-            />
-          )}
 
         {settingsForm.subscriptionPlan !== "lifetime" && (
           <SubscriptionProgressSection

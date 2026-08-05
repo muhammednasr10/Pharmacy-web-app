@@ -71,8 +71,9 @@ export function useSubscriptionSettingsState({
     tierDerived.tierConfig.packagePrice,
   );
 
-  async function handleSubmitTierUpgradeRequest() {
-    if (!tierDerived.tierUpgradeTarget || !submitTierUpgradeRequest) return;
+  async function handleSubmitTierUpgradeRequest(targetTier?: SubscriptionTier) {
+    const upgradeTarget = targetTier ?? tierDerived.tierUpgradeTarget;
+    if (!upgradeTarget || !submitTierUpgradeRequest) return;
     if (pendingRequest) {
       alert(
         isArabic
@@ -84,7 +85,7 @@ export function useSubscriptionSettingsState({
 
     setSubmittingTierUpgrade(true);
     try {
-      const created = await submitTierUpgradeRequest(tierDerived.tierUpgradeTarget);
+      const created = await submitTierUpgradeRequest(upgradeTarget);
       if (created) {
         setPaymentRequest(created);
       }
