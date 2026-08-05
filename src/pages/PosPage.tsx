@@ -417,6 +417,34 @@ export default function PosPage({
     </div>
   );
 
+  const handleSelectCashierShift = useCallback(
+    (shift: CashierShift) => {
+      if (cart.length > 0) {
+        const confirmed = window.confirm(
+          isArabic
+            ? "تغيير الوردية سيفرغ السلة الحالية. هل تريد المتابعة؟"
+            : "Switching shifts will clear the current cart. Continue?",
+        );
+        if (!confirmed) return;
+        onClearCart();
+      }
+      onCashierShiftChange(shift);
+      setQuickSaleCardOpen(true);
+      focusBarcode();
+    },
+    [cart.length, isArabic, onClearCart, onCashierShiftChange, focusBarcode],
+  );
+
+  const handleShiftClosedFromTable = useCallback(
+    (closed: CashierShift) => {
+      if (activeCashierShift?.id === closed.id) {
+        onCashierShiftChange(null);
+        setQuickSaleCardOpen(false);
+      }
+    },
+    [activeCashierShift?.id, onCashierShiftChange],
+  );
+
   const shiftsTable = shiftGateEnabled ? (
     <PosShiftsTable
       isArabic={isArabic}
@@ -427,6 +455,8 @@ export default function PosPage({
       getPaymentLabel={getPaymentLabel}
       activeShiftId={activeCashierShift?.id}
       refreshKey={`${activeCashierShift?.id ?? "none"}-${activeCashierShift?.status ?? "none"}`}
+      onSelectShift={handleSelectCashierShift}
+      onShiftClosed={handleShiftClosedFromTable}
     />
   ) : null;
 

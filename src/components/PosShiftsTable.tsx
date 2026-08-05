@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { AppUser, CashierShift, PharmacySettings } from "../types";
 import * as pharmacyService from "../services/pharmacyService";
+import CashierShiftCloseModal from "./CashierShiftCloseModal";
 import { downloadCashierShiftPdf } from "../utils/cashierShiftReport";
 import { isPharmacyManager } from "../utils/roles";
 import { getReportQuickRange } from "../utils/reportDateRange";
@@ -14,6 +15,8 @@ type PosShiftsTableProps = {
   getPaymentLabel: (method: string) => string;
   activeShiftId?: number;
   refreshKey?: string | number;
+  onSelectShift?: (shift: CashierShift) => void;
+  onShiftClosed?: (shift: CashierShift) => void;
 };
 
 function formatMoney(value: number, currency: string) {
@@ -37,10 +40,13 @@ export default function PosShiftsTable({
   getPaymentLabel,
   activeShiftId,
   refreshKey = 0,
+  onSelectShift,
+  onShiftClosed,
 }: PosShiftsTableProps) {
   const [rows, setRows] = useState<CashierShift[]>([]);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [closingShift, setClosingShift] = useState<CashierShift | null>(null);
   const monthRange = getReportQuickRange("month");
   const [fromDate, setFromDate] = useState(monthRange.from);
   const [toDate, setToDate] = useState(monthRange.to);
@@ -83,6 +89,15 @@ export default function PosShiftsTable({
   useEffect(() => {
     void loadRows();
   }, [loadRows, refreshKey]);
+
+  async function handleShiftClosedFromTable(closed: CashierShift) {
+    setClosingShift(null);
+    setRows((current) =>
+      current.map((row) => (row.id === closed.id ? { ...row, ...closed, status: "closed" } : row)),
+    );
+    onShiftClosed?.(closed);
+    await loadRows();
+  }
 
   async function handleDownload(shift: CashierShift) {
     const summary = await pharmacyService.computeCashierShiftSummary(shift);
@@ -213,7 +228,7 @@ export default function PosShiftsTable({
                 <th>{isArabic ? "المبيعات" : "Sales"}</th>
                 <th>{isArabic ? "الفواتير" : "Invoices"}</th>
                 <th>{isArabic ? "الفرق" : "Variance"}</th>
-                <th className="posShiftsTableActionsCol">{isArabic ? "طباعة" : "Print"}</th>
+                <th className="posShiftsTableActionsCol">{isArabic ? "إجراءات" : "Actions"}</th>
               </tr>
             </thead>
             <tbody>
@@ -237,6 +252,12 @@ export default function PosShiftsTable({
                     shift.status === "closed" &&
                     (canManageAllShifts || shift.cashierId === appUser?.uid) &&
                     (shift.invoiceCount ?? 0) === 0;
+
+                  const canClose =
+                    shift.status === "open" &&
+                    (canManageAllShifts || shift.cashierId === appUser?.uid);
+                  const canSelect =
+                    shift.status === "open" && !isActive && Boolean(onSelectShift);
 
                   return (
                     <tr key={shift.id} className={isActive ? "posShiftsTableRowActive" : undefined}>
@@ -281,6 +302,26 @@ export default function PosShiftsTable({
                       </td>
                       <td className="posShiftsTableActionsCol">
                         <div className="posShiftsTableActions">
+                          {canSelect ? (
+                            <button
+                              type="button"
+                              className="smallBtn posShiftsTableUseBtn"
+                              onClick={() => onSelectShift?.(shift)}
+                              title={isArabic ? "فتح البيع على هذه الوردية" : "Use this shift for sales"}
+                            >
+                              {isArabic ? "فتح البيع" : "Use shift"}
+                            </button>
+                          ) : null}
+                          {canClose ? (
+                            <button
+                              type="button"
+                              className="dangerBtn posShiftsTableCloseBtn"
+                              onClick={() => setClosingShift(shift)}
+                              title={isArabic ? "إغلاق الوردية" : "Close shift"}
+                            >
+                              {isArabic ? "إغلاق" : "Close"}
+                            </button>
+                          ) : null}
                           {shift.status === "closed" ? (
                             <button
                               type="button"
@@ -314,6 +355,19 @@ export default function PosShiftsTable({
           </table>
         </div>
       </div>
+
+      {closingShift && appUser ? (
+        <CashierShiftCloseModal
+          isArabic={isArabic}
+          currency={currency}
+          shift={closingShift}
+          appUser={appUser}
+          pharmacySettings={pharmacySettings}
+          getPaymentLabel={getPaymentLabel}
+          onClose={() => setClosingShift(null)}
+          onClosed={(closed) => void handleShiftClosedFromTable(closed)}
+        />
+      ) : null}
     </div>
   );
 }

@@ -2860,7 +2860,7 @@ select optgroup {
 }
 
 .posShiftsTableActionsCol {
-  width: 88px;
+  width: min(220px, 28vw);
   text-align: center;
 }
 
@@ -2868,7 +2868,20 @@ select optgroup {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.posShiftsTableUseBtn {
+  padding: 6px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.posShiftsTableCloseBtn {
+  padding: 6px 10px;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .tableIconBtn {
