@@ -43,10 +43,19 @@ const TIER_PAGE_LABELS: Record<Page, { ar: string; en: string }> = {
   hr: { ar: "الموارد البشرية", en: "HR" },
 };
 
-const basicDefaultPages: Page[] = TIER_CONFIGURABLE_PAGES.filter((page) => page !== "branches");
-
+/** Basic plan: core pharmacy ops only — no CRM, reports, staff admin, branches, or HR portal. */
 export const defaultTierEnabledPages: Record<SubscriptionTier, Page[]> = {
-  basic: [...basicDefaultPages],
+  basic: [
+    "dashboard",
+    "inventory",
+    "pos",
+    "invoices",
+    "returns",
+    "purchases",
+    "stockMovements",
+    "settings",
+    "userGuide",
+  ],
   professional: [...TIER_CONFIGURABLE_PAGES],
   premium: [...TIER_CONFIGURABLE_PAGES],
 };

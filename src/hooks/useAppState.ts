@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useAppSharedState, useAppOrgContext } from "./app-state/shared";
 import { useAppAuthSlice } from "./app-state/useAppAuthSlice";
 import { useAppDataSlice } from "./app-state/useAppDataSlice";
@@ -10,6 +10,7 @@ import { useAppPermissions } from "./useAppPermissions";
 import { getAllowedPages } from "../utils/roles";
 import { filterPagesBySubscriptionTier } from "../utils/subscriptionFeatures";
 import { getSubscriptionStatus } from "../utils/subscriptionStatus";
+import * as pharmacyService from "../services/pharmacyService";
 import type { Page } from "../types";
 
 export function useAppState() {
@@ -36,6 +37,17 @@ export function useAppState() {
     [data.pharmacySettings],
   );
 
+  const [tierConfigsVersion, setTierConfigsVersion] = useState(0);
+
+  useEffect(() => {
+    void pharmacyService.loadSubscriptionTierConfigs().catch((error) => {
+      console.error("[SubscriptionTiers] load failed", error);
+    });
+    return pharmacyService.subscribeSubscriptionTierConfigs(() => {
+      setTierConfigsVersion((value) => value + 1);
+    });
+  }, [auth.appUser?.uid]);
+
   const allowedPages = useMemo(() => {
     if (!auth.appUser) return [];
     return filterPagesBySubscriptionTier(
@@ -43,7 +55,7 @@ export function useAppState() {
       auth.appUser,
       org.orgSubscriptionTier,
     );
-  }, [auth.appUser, org.orgSubscriptionTier]);
+  }, [auth.appUser, org.orgSubscriptionTier, tierConfigsVersion]);
 
   const displayPage = useMemo((): Page => {
     if (!auth.appUser) return shared.activePage;
