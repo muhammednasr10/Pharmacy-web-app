@@ -24,6 +24,7 @@ export default function PurchaseBatchModal({ state }: Props) {
     draftItems,
     setDraftItems,
     branchMedicines,
+    lookupPurchaseMedicineByBarcode,
     saving,
     isEditMode,
     editingDraftKey,
@@ -130,6 +131,7 @@ export default function PurchaseBatchModal({ state }: Props) {
               qtyPlaceholder={isArabic ? "كمية التوريد" : "Purchase quantity"}
               resetKey={`${itemLookupResetKey}-${editingDraftKey || "new"}`}
               enableHardwareScanner
+              lookupBarcode={lookupPurchaseMedicineByBarcode}
             />
           </div>
           <div className="purchaseAddItemActions">

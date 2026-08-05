@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Medicine, PharmacySettings } from "../../types";
 import * as pharmacyService from "../../services/pharmacyService";
+import { lookupInventoryMedicineByBarcode } from "../../services/pharmacy/inventoryPaginationService";
+import { runWithPharmacyScope } from "../../services/pharmacy/medicineQueryService";
+import { findMedicineByBarcode } from "../../utils/medicineLookup";
 import { getBranchLabel } from "../../utils/branchLabel";
 import {
   consumeReorderModalFlag,
@@ -110,6 +113,18 @@ export function usePurchasesPageState(props: PurchasesPageProps) {
     if (!showPurchaseModal || !targetBranchId) return;
     void pharmacyService.getMedicinesForPharmacy(targetBranchId).then(setBranchMedicines);
   }, [showPurchaseModal, targetBranchId]);
+
+  const lookupPurchaseMedicineByBarcode = useCallback(
+    async (barcode: string): Promise<Medicine | null> => {
+      if (!targetBranchId) return null;
+      return runWithPharmacyScope(targetBranchId, async () => {
+        const fromServer = await lookupInventoryMedicineByBarcode(barcode);
+        if (fromServer) return fromServer;
+        return findMedicineByBarcode(branchMedicines, barcode) || null;
+      });
+    },
+    [branchMedicines, targetBranchId],
+  );
 
   const purchaseGroups = useMemo(
     () => groupPurchasesByNumber(allPurchases, safeNumber),
@@ -469,6 +484,7 @@ export function usePurchasesPageState(props: PurchasesPageProps) {
     draftItems,
     setDraftItems,
     branchMedicines,
+    lookupPurchaseMedicineByBarcode,
     saving,
     isEditMode,
     editingDraftKey,

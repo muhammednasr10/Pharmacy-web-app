@@ -26,6 +26,7 @@ type MedicineEntryGridProps = {
   showBarcodeCamera?: boolean;
   enableHardwareScanner?: boolean;
   showBuyPrice?: boolean;
+  lookupBarcode?: (barcode: string) => Promise<Medicine | null | undefined>;
 };
 
 type ActiveField = "barcode" | "name_ar" | "name_en" | null;
@@ -43,11 +44,14 @@ export default function MedicineEntryGrid({
   showBarcodeCamera = true,
   enableHardwareScanner = true,
   showBuyPrice = true,
+  lookupBarcode,
 }: MedicineEntryGridProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
+  const lookupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeField, setActiveField] = useState<ActiveField>(null);
   const [matchedMedicine, setMatchedMedicine] = useState<Medicine | null>(null);
+  const [barcodeLookupLoading, setBarcodeLookupLoading] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
   const cameraSupported = canUseBarcodeCameraScanner();
 
@@ -72,18 +76,102 @@ export default function MedicineEntryGrid({
 
   useEffect(() => {
     setActiveField(null);
-    const byBarcode = findMedicineByBarcode(catalog, value.barcode);
-    if (byBarcode) {
-      setMatchedMedicine(byBarcode);
+    setMatchedMedicine(null);
+  }, [resetKey]);
+
+  useEffect(() => {
+    return () => {
+      if (lookupTimerRef.current) clearTimeout(lookupTimerRef.current);
+    };
+  }, []);
+
+  const applyMedicine = useCallback(
+    (medicine: Medicine, current?: Partial<MedicineEntryValues>) => {
+      setMatchedMedicine(medicine);
+      onChange(medicineToEntryValues(medicine, current ?? value));
+      setActiveField(null);
+    },
+    [onChange, value],
+  );
+
+  const resolveMedicineByBarcode = useCallback(
+    async (barcode: string): Promise<Medicine | undefined> => {
+      const code = normalizeMedicineText(barcode);
+      if (!code) return undefined;
+
+      const local = findMedicineByBarcode(catalog, code);
+      if (local) return local;
+
+      if (!lookupBarcode) return undefined;
+      return (await lookupBarcode(code)) || undefined;
+    },
+    [catalog, lookupBarcode],
+  );
+
+  const lookupAndApplyBarcode = useCallback(
+    async (barcode: string, current?: Partial<MedicineEntryValues>) => {
+      const code = normalizeMedicineText(barcode);
+      if (!code) {
+        setMatchedMedicine(null);
+        return false;
+      }
+
+      const local = findMedicineByBarcode(catalog, code);
+      if (local) {
+        applyMedicine(local, current);
+        return true;
+      }
+
+      if (!lookupBarcode) {
+        setMatchedMedicine(null);
+        return false;
+      }
+
+      setBarcodeLookupLoading(true);
+      try {
+        const remote = await lookupBarcode(code);
+        if (remote) {
+          applyMedicine(remote, current);
+          return true;
+        }
+        setMatchedMedicine(null);
+        return false;
+      } finally {
+        setBarcodeLookupLoading(false);
+      }
+    },
+    [applyMedicine, catalog, lookupBarcode],
+  );
+
+  useEffect(() => {
+    const code = normalizeMedicineText(value.barcode);
+    if (!code) {
+      setMatchedMedicine(null);
       return;
     }
+
+    const local = findMedicineByBarcode(catalog, code);
+    if (local) {
+      setMatchedMedicine(local);
+      return;
+    }
+
     const byName = findMedicineByExactName(catalog, value.name_ar);
     if (byName) {
       setMatchedMedicine(byName);
       return;
     }
-    setMatchedMedicine(null);
-  }, [resetKey, catalog, value.barcode, value.name_ar]);
+
+    if (!lookupBarcode) {
+      setMatchedMedicine(null);
+      return;
+    }
+
+    if (lookupTimerRef.current) clearTimeout(lookupTimerRef.current);
+    lookupTimerRef.current = setTimeout(() => {
+      void lookupAndApplyBarcode(code);
+    }, 350);
+  }, [catalog, lookupAndApplyBarcode, lookupBarcode, value.barcode, value.name_ar]);
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
@@ -96,43 +184,42 @@ export default function MedicineEntryGrid({
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, []);
 
-  function applyMedicine(medicine: Medicine) {
-    setMatchedMedicine(medicine);
-    onChange(medicineToEntryValues(medicine, value));
-    setActiveField(null);
+  function applyMedicineSelection(medicine: Medicine) {
+    applyMedicine(medicine);
   }
 
   const processScannedBarcode = useCallback(
-    (raw: string) => {
+    async (raw: string) => {
       const clean = raw.trim();
       if (!clean) return;
 
-      const byBarcode = findMedicineByBarcode(catalog, clean);
-      if (byBarcode) {
+      const found = await resolveMedicineByBarcode(clean);
+      if (found) {
         playBarcodeBeep(true);
-        setMatchedMedicine(byBarcode);
-        onChange(medicineToEntryValues(byBarcode, value));
-        setActiveField(null);
+        applyMedicine(found);
         return;
       }
 
       playBarcodeBeep(false);
       onChange({ ...value, barcode: clean });
       setActiveField("barcode");
+      setMatchedMedicine(null);
     },
-    [catalog, onChange, value],
+    [applyMedicine, onChange, resolveMedicineByBarcode, value],
   );
 
   useHardwareBarcodeScanner({
     disabled: disabled || !enableHardwareScanner,
-    onScan: processScannedBarcode,
+    onScan: (code) => {
+      void processScannedBarcode(code);
+    },
     ignoreInputRef: barcodeInputRef,
     allowScanWhileEditing: true,
   });
 
   function handleCameraBarcode(code: string) {
     setCameraOpen(false);
-    processScannedBarcode(code);
+    void processScannedBarcode(code);
   }
 
   function openCameraScanner() {
@@ -143,16 +230,23 @@ export default function MedicineEntryGrid({
   function tryAutoMatch(nextValue: MedicineEntryValues, field: ActiveField) {
     const byBarcode = findMedicineByBarcode(catalog, nextValue.barcode);
     if (byBarcode) {
-      setMatchedMedicine(byBarcode);
-      onChange(medicineToEntryValues(byBarcode, nextValue));
+      applyMedicine(byBarcode, nextValue);
+      return;
+    }
+
+    if (field === "barcode" && lookupBarcode && normalizeMedicineText(nextValue.barcode)) {
+      onChange(nextValue);
+      if (lookupTimerRef.current) clearTimeout(lookupTimerRef.current);
+      lookupTimerRef.current = setTimeout(() => {
+        void lookupAndApplyBarcode(nextValue.barcode, nextValue);
+      }, 350);
       return;
     }
 
     if (field === "name_ar") {
       const byName = findMedicineByExactName(catalog, nextValue.name_ar);
       if (byName) {
-        setMatchedMedicine(byName);
-        onChange(medicineToEntryValues(byName, nextValue));
+        applyMedicine(byName, nextValue);
         return;
       }
     }
@@ -160,8 +254,7 @@ export default function MedicineEntryGrid({
     if (field === "name_en") {
       const byName = findMedicineByExactName(catalog, nextValue.name_en);
       if (byName) {
-        setMatchedMedicine(byName);
-        onChange(medicineToEntryValues(byName, nextValue));
+        applyMedicine(byName, nextValue);
         return;
       }
     }
@@ -179,22 +272,30 @@ export default function MedicineEntryGrid({
     onChange(nextValue);
   }
 
-  const statusText = matchedMedicine
+  const statusText = barcodeLookupLoading
     ? isArabic
-      ? `موجود في المخزن · الكمية الحالية ${matchedMedicine.qty}`
-      : `In stock · current qty ${matchedMedicine.qty}`
-    : normalizeMedicineText(value.barcode) || normalizeMedicineText(value.name_ar)
+      ? "جاري البحث في المخزن..."
+      : "Looking up in inventory..."
+    : matchedMedicine
       ? isArabic
-        ? "دواء جديد — سيُضاف للمخزون عند الحفظ"
-        : "New medicine — will be added to stock on save"
-      : "";
+        ? `موجود في المخزن · الكمية الحالية ${matchedMedicine.qty}`
+        : `In stock · current qty ${matchedMedicine.qty}`
+      : normalizeMedicineText(value.barcode) || normalizeMedicineText(value.name_ar)
+        ? isArabic
+          ? "دواء جديد — سيُضاف للمخزون عند الحفظ"
+          : "New medicine — will be added to stock on save"
+        : "";
 
   return (
     <div className="medicineEntryGrid" ref={rootRef}>
       {statusText && (
         <div
           className={
-            matchedMedicine ? "medicineLookupStatus isExisting" : "medicineLookupStatus isNew"
+            barcodeLookupLoading
+              ? "medicineLookupStatus isLoading"
+              : matchedMedicine
+                ? "medicineLookupStatus isExisting"
+                : "medicineLookupStatus isNew"
           }
         >
           {statusText}
@@ -213,7 +314,12 @@ export default function MedicineEntryGrid({
               onKeyDown={(event) => {
                 if (event.key !== "Enter") return;
                 event.preventDefault();
-                processScannedBarcode(value.barcode);
+                void processScannedBarcode(value.barcode);
+              }}
+              onBlur={() => {
+                if (normalizeMedicineText(value.barcode)) {
+                  void lookupAndApplyBarcode(value.barcode);
+                }
               }}
               placeholder={t.barcode}
               disabled={disabled}
@@ -240,7 +346,7 @@ export default function MedicineEntryGrid({
                   type="button"
                   className="medicineLookupSuggestion"
                   onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => applyMedicine(medicine)}
+                  onClick={() => applyMedicineSelection(medicine)}
                 >
                   <strong>{getMedicineDisplayName(medicine, isArabic)}</strong>
                   <span>
@@ -272,7 +378,7 @@ export default function MedicineEntryGrid({
                   type="button"
                   className="medicineLookupSuggestion"
                   onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => applyMedicine(medicine)}
+                  onClick={() => applyMedicineSelection(medicine)}
                 >
                   <strong>{medicine.name_ar}</strong>
                   <span>
@@ -304,7 +410,7 @@ export default function MedicineEntryGrid({
                   type="button"
                   className="medicineLookupSuggestion"
                   onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => applyMedicine(medicine)}
+                  onClick={() => applyMedicineSelection(medicine)}
                 >
                   <strong>{medicine.name_en}</strong>
                   <span>

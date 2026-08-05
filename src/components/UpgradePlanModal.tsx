@@ -1,6 +1,6 @@
 import {
   getUpgradeModalCopy,
-  useSubscription,
+  useSubscriptionOptional,
 } from "../contexts/SubscriptionContext";
 
 type UpgradePlanModalProps = {
@@ -8,13 +8,16 @@ type UpgradePlanModalProps = {
 };
 
 export default function UpgradePlanModal({ isArabic }: UpgradePlanModalProps) {
+  const subscription = useSubscriptionOptional();
+  if (!subscription) return null;
+
   const {
     tier,
     upgradeModalOpen,
     upgradeTarget,
     closeUpgradeModal,
     onNavigateToSubscription,
-  } = useSubscription();
+  } = subscription;
 
   if (!upgradeModalOpen) return null;
 
