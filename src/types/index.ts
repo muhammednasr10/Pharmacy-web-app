@@ -157,9 +157,9 @@ export type CartItem = Medicine & {
 };
 
 export type InvoiceItem = {
-  id?: number;
-  invoiceId?: number;
-  medicineId: number;
+  id?: number | string;
+  invoiceId?: number | string;
+  medicineId: number | string;
   name_ar: string;
   name_en: string;
   barcode: string;

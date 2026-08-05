@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import * as pharmacyService from "../services/pharmacyService";
 import type { Invoice, InvoiceItem } from "../types";
 import { playBarcodeBeep } from "../utils/barcodeBeep";
+import { normalizeMedicineIdKey, sameMedicineId } from "../utils/returnHelpers";
 import InstantReturnBarcodeInput from "./InstantReturnBarcodeInput";
 
 type InstantReturnModalProps = {
@@ -33,7 +34,7 @@ export default function InstantReturnModal({
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Invoice[]>([]);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-  const [selectedMedicineId, setSelectedMedicineId] = useState<number | null>(null);
+  const [selectedMedicineId, setSelectedMedicineId] = useState<string | null>(null);
   const [returnQty, setReturnQty] = useState(1);
   const [reason, setReason] = useState("");
   const [refundMethod, setRefundMethod] = useState<"cash" | "deduct_from_cart">("cash");
@@ -56,7 +57,7 @@ export default function InstantReturnModal({
       }
 
       setSelectedInvoice(invoice);
-      setSelectedMedicineId(item.medicineId);
+      setSelectedMedicineId(normalizeMedicineIdKey(item.medicineId));
       setReturnQty(1);
       setSearchQuery(String(item.barcode || "").trim());
       setSearchResults([]);
@@ -162,7 +163,7 @@ export default function InstantReturnModal({
 
   const selectedItem = useMemo(() => {
     if (!selectedInvoice || selectedMedicineId === null) return null;
-    return selectedInvoice.items?.find((item) => item.medicineId === selectedMedicineId) || null;
+    return selectedInvoice.items?.find((item) => sameMedicineId(item.medicineId, selectedMedicineId)) || null;
   }, [selectedInvoice, selectedMedicineId]);
 
   const availableQty =
@@ -181,13 +182,13 @@ export default function InstantReturnModal({
       );
       const returnable = matchingItems.find((item) => getAvailableReturnQty(invoice, item) > 0);
       if (returnable) {
-        setSelectedMedicineId(returnable.medicineId);
+        setSelectedMedicineId(normalizeMedicineIdKey(returnable.medicineId));
       }
     }
   }
 
   function selectItem(item: InvoiceItem) {
-    setSelectedMedicineId(item.medicineId);
+    setSelectedMedicineId(normalizeMedicineIdKey(item.medicineId));
     const available = selectedInvoice ? getAvailableReturnQty(selectedInvoice, item) : 0;
     setReturnQty(available > 0 ? 1 : 0);
   }
@@ -387,7 +388,7 @@ export default function InstantReturnModal({
                               disabled={available <= 0}
                               onClick={() => selectItem(item)}
                             >
-                              {selectedMedicineId === item.medicineId
+                              {sameMedicineId(selectedMedicineId, item.medicineId)
                                 ? isArabic
                                   ? "محدد"
                                   : "Selected"

@@ -31,8 +31,8 @@ export type UseAppBindingsInput = AppPageRouterProps & {
   setAvailabilityModal: Dispatch<SetStateAction<AvailabilityModalState | null>>;
   returnInvoice: Invoice | null;
   setReturnInvoice: Dispatch<SetStateAction<Invoice | null>>;
-  returnQuantities: Record<number, number>;
-  setReturnQuantities: Dispatch<SetStateAction<Record<number, number>>>;
+  returnQuantities: Record<string, number>;
+  setReturnQuantities: Dispatch<SetStateAction<Record<string, number>>>;
   showHeldInvoicesModal: boolean;
   setShowHeldInvoicesModal: Dispatch<SetStateAction<boolean>>;
   showInstantReturnModal: boolean;

@@ -8,6 +8,7 @@ import {
   addStockMovement,
 } from "./medicineService";
 import { createManagedRealtimeChannel, disposeManagedRealtimeChannel } from "./dbHelpers";
+import { sameMedicineId } from "../../utils/returnHelpers";
 
 function resolveMedicineIdValue(raw: unknown): number | string {
   if (raw === null || raw === undefined || raw === "") {
@@ -276,7 +277,7 @@ export async function calculateAvailableReturnQuantity(
   const alreadyReturned = allReturns
     .filter((r) => r.invoiceNumber === invoiceNumber)
     .flatMap((r) => r.items || [])
-    .filter((item) => item.medicineId === medicineId)
+    .filter((item) => sameMedicineId(item.medicineId, medicineId))
     .reduce((sum, item) => sum + (item.quantity || 0), 0);
 
   return Math.max(0, soldQuantity - alreadyReturned);
@@ -291,7 +292,7 @@ export async function createInstantSaleReturn(
   }
 
   for (const item of selectedItems) {
-    const original = input.invoice.items?.find((i) => i.medicineId === item.medicineId);
+    const original = input.invoice.items?.find((i) => sameMedicineId(i.medicineId, item.medicineId));
     if (!original) {
       throw new Error("item_not_in_invoice");
     }

@@ -5,6 +5,25 @@ function safeNumber(value: unknown) {
   return Number.isFinite(numberValue) ? numberValue : 0;
 }
 
+/** Stable key for medicine IDs stored as text ("26563") or number (26563). */
+export function normalizeMedicineIdKey(value: unknown): string {
+  const raw = value ?? "";
+  if (typeof raw === "string" && raw.includes("-")) {
+    return raw.trim();
+  }
+  const asNumber = Number(raw);
+  if (Number.isFinite(asNumber) && asNumber > 0) {
+    return String(asNumber);
+  }
+  return String(raw).trim();
+}
+
+export function sameMedicineId(a: unknown, b: unknown): boolean {
+  const left = normalizeMedicineIdKey(a);
+  const right = normalizeMedicineIdKey(b);
+  return left !== "" && left !== "0" && left === right;
+}
+
 export function findMedicineForReturnItem(
   item: NonNullable<ReturnRecord["items"]>[number],
   medicinesList: Medicine[],
@@ -24,11 +43,7 @@ export function getReturnItemMedicineId(item: {
   medicineId?: number | string;
   medicine_id?: number | string;
 }) {
-  const raw = item.medicineId ?? item.medicine_id ?? 0;
-  if (typeof raw === "string" && raw.includes("-")) {
-    return raw;
-  }
-  return Number(raw);
+  return normalizeMedicineIdKey(item.medicineId ?? item.medicine_id);
 }
 
 export function getReturnItemQuantity(item: { quantity?: number; qty?: number }) {

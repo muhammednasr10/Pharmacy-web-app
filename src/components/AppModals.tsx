@@ -4,6 +4,7 @@ import InstantReturnModal from "./InstantReturnModal";
 import InvoiceModal from "./InvoiceModal";
 import ReturnModal from "./ReturnModal";
 import type { AppTranslation } from "../i18n/appTranslations";
+import { normalizeMedicineIdKey } from "../utils/returnHelpers";
 import type {
   AppUser,
   CartItem,
@@ -54,9 +55,9 @@ export type AppModalsProps = {
   getRefundMethodLabel: (record: ReturnRecord) => string;
   returnInvoice: Invoice | null;
   onCloseReturnInvoice: () => void;
-  returnQuantities: Record<number, number>;
-  setReturnQuantities: Dispatch<SetStateAction<Record<number, number>>>;
-  getReturnedQtyForInvoice: (invoiceNumber: string, medicineId: number) => number;
+  returnQuantities: Record<string, number>;
+  setReturnQuantities: Dispatch<SetStateAction<Record<string, number>>>;
+  getReturnedQtyForInvoice: (invoiceNumber: string, medicineId: number | string) => number;
   getAvailableReturnQty: (invoice: Invoice, item: InvoiceItem) => number;
   completeReturn: () => void;
   isReturning: boolean;
@@ -261,7 +262,8 @@ export default function AppModals({
 
                 <tbody>
                   {returnInvoice.items?.map((item) => {
-                    const returnQty = returnQuantities[item.medicineId] || 0;
+                    const medicineKey = normalizeMedicineIdKey(item.medicineId);
+                    const returnQty = returnQuantities[medicineKey] || 0;
                     const alreadyReturnedQty = getReturnedQtyForInvoice(
                       returnInvoice.invoiceNumber,
                       item.medicineId,
@@ -304,7 +306,7 @@ export default function AppModals({
 
                               setReturnQuantities({
                                 ...returnQuantities,
-                                [item.medicineId]: value,
+                                [medicineKey]: value,
                               });
                             }}
                           />

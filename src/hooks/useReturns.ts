@@ -9,6 +9,8 @@ import {
   getReturnItemsSummary as formatReturnItemsSummary,
   getReturnTypeLabel as formatReturnTypeLabel,
   getReturnedQtyForInvoice as calcReturnedQtyForInvoice,
+  normalizeMedicineIdKey,
+  sameMedicineId,
 } from "../utils/returnHelpers";
 
 type ActivityLogInput = {
@@ -70,7 +72,7 @@ export function useReturns({
 }: UseReturnsOptions) {
   const [selectedReturn, setSelectedReturn] = useState<ReturnRecord | null>(null);
   const [returnInvoice, setReturnInvoice] = useState<Invoice | null>(null);
-  const [returnQuantities, setReturnQuantities] = useState<Record<number, number>>({});
+  const [returnQuantities, setReturnQuantities] = useState<Record<string, number>>({});
   const [isReturning, setIsReturning] = useState(false);
   const [deletingReturnId, setDeletingReturnId] = useState<number | string | null>(null);
   const [showInstantReturnModal, setShowInstantReturnModal] = useState(false);
@@ -118,13 +120,13 @@ export function useReturns({
   const openReturnModal = useCallback((invoice: Invoice) => {
     setReturnInvoice(invoice);
 
-    const initialQuantities: Record<number, number> = {};
+    const initialQuantities: Record<string, number> = {};
     invoice.items?.forEach((item) => {
-      const medicineId = Number(
-        item.medicineId ?? (item as { medicine_id?: number }).medicine_id ?? 0,
+      const medicineKey = normalizeMedicineIdKey(
+        item.medicineId ?? (item as { medicine_id?: number | string }).medicine_id,
       );
-      if (medicineId > 0) {
-        initialQuantities[medicineId] = 0;
+      if (medicineKey && medicineKey !== "0") {
+        initialQuantities[medicineKey] = 0;
       }
     });
 
@@ -148,23 +150,21 @@ export function useReturns({
 
     const selectedReturnItems = (returnInvoice.items || [])
       .map((item) => {
-        const medicineId = Number(
-          item.medicineId ?? (item as { medicine_id?: number }).medicine_id ?? 0,
+        const medicineKey = normalizeMedicineIdKey(
+          item.medicineId ?? (item as { medicine_id?: number | string }).medicine_id,
         );
-        const quantity = Number(
-          returnQuantities[medicineId] ?? returnQuantities[item.medicineId] ?? 0,
-        );
+        const quantity = Number(returnQuantities[medicineKey] ?? 0);
         const unitPrice = Number(
           item.unitPrice ?? (item as { unit_price?: number }).unit_price ?? 0,
         );
         const buyPrice = Number(item.buyPrice ?? (item as { buy_price?: number }).buy_price ?? 0);
 
-        if (quantity <= 0 || medicineId <= 0) {
+        if (quantity <= 0 || !medicineKey || medicineKey === "0") {
           return null;
         }
 
         return {
-          medicineId,
+          medicineId: medicineKey,
           name_ar: item.name_ar || (item as { medicine_name?: string }).medicine_name || "",
           name_en: item.name_en || "",
           barcode: item.barcode || "",
@@ -184,8 +184,8 @@ export function useReturns({
     }
 
     for (const item of selectedReturnItems) {
-      const originalItem = returnInvoice.items.find(
-        (invoiceItem) => invoiceItem.medicineId === item.medicineId,
+      const originalItem = returnInvoice.items.find((invoiceItem) =>
+        sameMedicineId(invoiceItem.medicineId, item.medicineId),
       );
 
       if (!originalItem) {
