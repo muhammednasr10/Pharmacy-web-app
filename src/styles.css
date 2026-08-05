@@ -3071,6 +3071,176 @@ html[data-theme="dark"] .posQuickSaleIconBtn {
   color: #e2e8f0;
 }
 
+html[data-theme="dark"] .posQuickSaleCardMeta {
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .posQuickSaleCardBody {
+  background: var(--color-bg-surface);
+}
+
+html[data-theme="dark"] .posWarehouseScopeBar {
+  background: var(--color-bg-muted);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .posWarehouseScopeLabel {
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .posSearchScopeChip {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .posSearchScopeChip.is-active {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(96, 165, 250, 0.55);
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .posLayoutStack.is-compact .posSmartSearchRow {
+  background: linear-gradient(180deg, rgba(18, 183, 106, 0.14) 0%, var(--color-bg-input) 100%);
+  border: 1px solid rgba(61, 206, 160, 0.45);
+}
+
+html[data-theme="dark"] .posSmartSearchResults {
+  background: var(--color-bg-surface);
+  border-color: var(--color-border);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.45);
+}
+
+html[data-theme="dark"] .posSmartSearchOption:hover {
+  background: rgba(18, 183, 106, 0.12);
+}
+
+html[data-theme="dark"] .posSmartSearchOptionName {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .posSmartSearchOptionMeta {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .posPanel.posCartPanel {
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+}
+
+html[data-theme="dark"] .posPanel.posCartPanel:not(.posCartPanel--split) {
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+}
+
+html[data-theme="dark"] .posCartSplitMain,
+html[data-theme="dark"] .posCartSplitSide {
+  background: var(--color-bg-muted);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .cartHeader h3 {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .cartMiniStats span {
+  background: var(--color-bg-input);
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .clearCartBtn {
+  background: rgba(240, 68, 56, 0.15);
+  color: #fda29b;
+}
+
+html[data-theme="dark"] .clearCartBtn:hover {
+  background: rgba(240, 68, 56, 0.25);
+}
+
+html[data-theme="dark"] .posCartEmpty {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .posCartEmpty p {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .posCartEmpty small {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .posCartItem,
+html[data-theme="dark"] .cartItem {
+  background: var(--color-bg-input);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .posCartItemMain strong,
+html[data-theme="dark"] .cartItem strong {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .posCartItemMain p,
+html[data-theme="dark"] .cartItem p {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .posCartLineTotal {
+  background: rgba(18, 183, 106, 0.18);
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .posCartCheckout {
+  border-top-color: var(--color-border);
+}
+
+html[data-theme="dark"] .subtotalLine,
+html[data-theme="dark"] .posCartSubtotal {
+  background: var(--color-bg-input);
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .subtotalLine strong {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .totalBox,
+html[data-theme="dark"] .posCartTotal {
+  background: rgba(18, 183, 106, 0.18);
+  border: 1px solid rgba(110, 231, 183, 0.35);
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .totalBox strong,
+html[data-theme="dark"] .posCartTotal strong {
+  color: #86efac;
+}
+
+html[data-theme="dark"] .posCartSplitSide .paymentBox input,
+html[data-theme="dark"] .posCartSplitSide .paymentBox select,
+html[data-theme="dark"] .posCartCheckout .paymentBox input,
+html[data-theme="dark"] .posCartCheckout .paymentBox select {
+  background: var(--color-bg-input) !important;
+  border-color: var(--color-border-strong) !important;
+  color: var(--color-text) !important;
+}
+
+html[data-theme="dark"] .qtyControls button {
+  background: rgba(18, 183, 106, 0.2);
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .posCartRemoveBtn,
+html[data-theme="dark"] .deleteBtn {
+  background: rgba(240, 68, 56, 0.15);
+  color: #fda29b;
+}
+
 .posCartSection {
   border: 1px solid rgba(148, 163, 184, 0.35);
   border-radius: 16px;
