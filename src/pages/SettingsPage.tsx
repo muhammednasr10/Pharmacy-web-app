@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { ActivityLog, AppUser, SubscriptionRequest } from "../types";
 import DeveloperCredit from "../components/DeveloperCredit";
+import CustomerSupportPanel from "../components/CustomerSupportPanel";
 import PayrollSettingsPanel from "../components/PayrollSettingsPanel";
 import EmployeeSettingsPanel from "../components/EmployeeSettingsPanel";
 import SubscriptionSettingsPanel from "../components/settings/SubscriptionSettingsPanel";
@@ -16,7 +17,8 @@ export type SettingsTab =
   | "employees"
   | "payroll"
   | "subscription"
-  | "display";
+  | "display"
+  | "support";
 
 export type SettingsForm = {
   name: string;
@@ -126,12 +128,17 @@ export default function SettingsPage({
     { id: "payroll", ar: "إعدادات المرتبات", en: "Payroll" },
     { id: "subscription", ar: "الاشتراك والترخيص", en: "Subscription" },
     { id: "display", ar: "المظهر والخط", en: "Display" },
+    { id: "support", ar: "خدمة العملاء", en: "Customer Support" },
   ];
 
   const tabs = isOrgAdmin
     ? allTabs
     : allTabs.filter(
-        (tab) => tab.id === "pharmacy" || tab.id === "invoice" || tab.id === "display",
+        (tab) =>
+          tab.id === "pharmacy" ||
+          tab.id === "invoice" ||
+          tab.id === "display" ||
+          tab.id === "support",
       );
 
   function renderSaveActions(showBackup = false) {
@@ -546,6 +553,34 @@ export default function SettingsPage({
             onThemeModeChange={onThemeModeChange}
             onFontScaleChange={onFontScaleChange}
           />
+        </div>
+      )}
+
+      {activeTab === "support" && (
+        <div className="settingsForm settingsTabPanel">
+          <div className="settingsSectionTitle">
+            <h3>{isArabic ? "خدمة العملاء" : "Customer Support"}</h3>
+            <p>
+              {isArabic
+                ? "تواصل مع فريق الدعم الفني عبر واتساب لأي استفسار أو مشكلة في النظام"
+                : "Reach our support team on WhatsApp for any question or system issue"}
+            </p>
+          </div>
+          <CustomerSupportPanel
+            isArabic={isArabic}
+            variant="settings"
+            pharmacyName={isArabic ? settingsForm.name : settingsForm.name_en || settingsForm.name}
+            userName={appUser?.name || appUser?.email || undefined}
+            userEmail={appUser?.email}
+            userRole={appUser?.role}
+          />
+          <div className="settingsSectionTitle settingsSectionTitleSpaced">
+            <h3>{isArabic ? "عن المطوّر" : "About the Developer"}</h3>
+            <p>{isArabic ? "الدعم الفني والتطوير" : "Technical support & development"}</p>
+          </div>
+          <div className="settingsFieldFull">
+            <DeveloperCredit isArabic={isArabic} variant="inline" />
+          </div>
         </div>
       )}
     </section>

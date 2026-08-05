@@ -319,8 +319,12 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
           if (error.message === "invalid_credentials") {
             setLoginError(
               isArabic
-                ? "الإيميل أو كلمة المرور غير صحيحة. مالك النظام: admin@victory.com — إن فشل الدخول شغّل reset-owner-login.sql في Supabase (وضع JWT Secret)."
-                : "Invalid email or password. System owner: admin@victory.com — if login fails, run reset-owner-login.sql in Supabase (set JWT Secret).",
+                ? import.meta.env.DEV
+                  ? "الإيميل أو كلمة المرور غير صحيحة. مالك النظام: admin@victory.com — إن فشل الدخول شغّل reset-owner-login.sql في Supabase."
+                  : "الإيميل أو كلمة المرور غير صحيحة"
+                : import.meta.env.DEV
+                  ? "Invalid email or password. System owner: admin@victory.com — if login fails, run reset-owner-login.sql in Supabase."
+                  : "Invalid email or password",
             );
             return;
           }

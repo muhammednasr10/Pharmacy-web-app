@@ -2,7 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 import type { AppPageRouterProps } from "../components/AppPageRouter";
 import type { AppModalsProps } from "../components/AppModals";
 import type { AppShellProps } from "../components/AppShell";
-import type { AlertItem } from "../components/Topbar";
+import type { InventoryAlertFilter } from "../components/Topbar";
 import type { GlobalSearchResult } from "../utils/globalSearch";
 import type {
   HeldInvoice,
@@ -48,8 +48,14 @@ export type UseAppBindingsInput = AppPageRouterProps & {
   openInvoiceByNumber: (invoiceNumber: string) => void;
   handleGlobalSearchSelect: (result: GlobalSearchResult) => void;
   adminNavBadges?: Partial<Record<Page, number>>;
-  alertItems: AlertItem[];
   alertTotal: number;
+  lowStockCount: number;
+  expiringCount: number;
+  expiredCount: number;
+  isSubscriptionExpiringSoon?: boolean;
+  isSubscriptionExpired?: boolean;
+  subscriptionDaysLeft?: number;
+  onOpenTenants?: () => void;
   writeBranchLabel: string;
   isMenuOpen: boolean;
   setIsMenuOpen: Dispatch<SetStateAction<boolean>>;
@@ -120,8 +126,14 @@ export function useAppBindings(input: UseAppBindingsInput): AppBindingsResult {
     openInvoiceByNumber,
     handleGlobalSearchSelect,
     adminNavBadges,
-    alertItems,
     alertTotal,
+    lowStockCount,
+    expiringCount,
+    expiredCount,
+    isSubscriptionExpiringSoon,
+    isSubscriptionExpired,
+    subscriptionDaysLeft,
+    onOpenTenants,
     writeBranchLabel,
     isMenuOpen,
     setIsMenuOpen,
@@ -221,8 +233,14 @@ export function useAppBindings(input: UseAppBindingsInput): AppBindingsResult {
     orgSubscriptionTier: input.orgSubscriptionTier,
     branches: input.branches,
     activeBranchId: input.activeBranchId,
-    alertItems,
     alertTotal,
+    lowStockCount,
+    expiringCount,
+    expiredCount,
+    isSubscriptionExpiringSoon,
+    isSubscriptionExpired,
+    subscriptionDaysLeft,
+    adminPendingCount: adminNavBadges?.tenants ?? 0,
     isMenuOpen,
     onToggleLang: () => setLang(lang === "ar" ? "en" : "ar"),
     onToggleTheme: toggleTheme,
@@ -240,7 +258,7 @@ export function useAppBindings(input: UseAppBindingsInput): AppBindingsResult {
     onToggleMenu: () => setIsMenuOpen((value) => !value),
     onSwitchBranch: input.switchBranch,
     onSelectPage: setActivePage,
-    onAlertNavigate: (filter) => {
+    onAlertNavigate: (filter: InventoryAlertFilter) => {
       setActivePage("inventory");
       setInventoryStatusFilter(filter);
       setIsMenuOpen(false);
@@ -255,6 +273,7 @@ export function useAppBindings(input: UseAppBindingsInput): AppBindingsResult {
     isSyncingOfflineSales: input.isSyncingOfflineSales,
     subscriptionReadOnly: input.subscriptionReadOnly,
     subscriptionEndDate: input.subscriptionEndDate,
+    onOpenTenants,
   };
 
   return { pageRouterProps, appModalsProps, appShellProps };

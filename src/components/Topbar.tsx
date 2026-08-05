@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getSubscriptionTierLabel } from "../config/subscriptionTiers";
 import type { SubscriptionTier } from "../config/subscriptionTiers";
 import type { AppUser, CustomerDebt, Invoice, Medicine, Page, PharmacySettings } from "../types";
@@ -8,6 +8,22 @@ import type { GlobalSearchResult } from "../utils/globalSearch";
 import { ALL_BRANCHES_ID } from "../constants/branches";
 import BranchScopeSelect from "./BranchScopeSelect";
 import TopbarGlobalSearch from "./TopbarGlobalSearch";
+import CustomerSupportPanel from "./CustomerSupportPanel";
+
+export type InventoryAlertFilter = "low" | "expiring" | "expired";
+
+type SystemAlertKind = "subscription" | "offline-sales" | "admin-pending";
+
+type SystemAlertRow = {
+  id: SystemAlertKind;
+  dot: string;
+  labelAr: string;
+  labelEn: string;
+  count: number;
+  detailAr: string;
+  detailEn: string;
+  onClick: () => void;
+};
 
 type TopbarProps = {
   title: string;
@@ -37,9 +53,18 @@ type TopbarProps = {
   onLogout: () => void;
   onToggleMenu: () => void;
   isMenuOpen: boolean;
-  alertItems: AlertItem[];
+  lowStockCount: number;
+  expiringCount: number;
+  expiredCount: number;
   alertTotal: number;
-  onAlertNavigate: (filter: "low" | "expiring" | "expired") => void;
+  isSubscriptionExpiringSoon?: boolean;
+  isSubscriptionExpired?: boolean;
+  subscriptionDaysLeft?: number;
+  pendingOfflineSalesCount?: number;
+  adminPendingCount?: number;
+  onAlertNavigate: (filter: InventoryAlertFilter) => void;
+  onOpenPos?: () => void;
+  onOpenTenants?: () => void;
   branches: Pick<PharmacySettings, "id" | "name" | "name_en" | "organizationId">[];
   activeBranchId: string | null;
   onSwitchBranch: (id: string) => void;
@@ -47,10 +72,31 @@ type TopbarProps = {
   userPhotoBase64?: string;
 };
 
-const KIND_META: Record<AlertKind, { dot: string; ar: string; en: string }> = {
-  expired: { dot: "#f04438", ar: "أدوية منتهية", en: "Expired" },
-  low: { dot: "#f79009", ar: "نواقص المخزون", en: "Low stock" },
-  expiring: { dot: "#2e90fa", ar: "قرب الانتهاء", en: "Expiring soon" },
+const INVENTORY_ALERT_META: Record<
+  InventoryAlertFilter,
+  { dot: string; labelAr: string; labelEn: string; detailAr: string; detailEn: string }
+> = {
+  low: {
+    dot: "#f79009",
+    labelAr: "أدوية ناقصة",
+    labelEn: "Low stock medicines",
+    detailAr: "اضغط لعرض النواقص في المخزون",
+    detailEn: "Tap to view low stock in inventory",
+  },
+  expired: {
+    dot: "#f04438",
+    labelAr: "أدوية منتهية الصلاحية",
+    labelEn: "Expired medicines",
+    detailAr: "اضغط لعرض الأدوية المنتهية",
+    detailEn: "Tap to view expired medicines",
+  },
+  expiring: {
+    dot: "#2e90fa",
+    labelAr: "أدوية قرب انتهاء الصلاحية",
+    labelEn: "Expiring soon",
+    detailAr: "اضغط لعرض الأدوية القريبة من الانتهاء",
+    detailEn: "Tap to view medicines expiring soon",
+  },
 };
 
 export default function Topbar({
@@ -80,9 +126,18 @@ export default function Topbar({
   onLogout,
   onToggleMenu,
   isMenuOpen,
-  alertItems,
+  lowStockCount,
+  expiringCount,
+  expiredCount,
   alertTotal,
+  isSubscriptionExpiringSoon = false,
+  isSubscriptionExpired = false,
+  subscriptionDaysLeft = 0,
+  pendingOfflineSalesCount = 0,
+  adminPendingCount = 0,
   onAlertNavigate,
+  onOpenPos,
+  onOpenTenants,
   branches,
   activeBranchId,
   onSwitchBranch,
@@ -103,10 +158,85 @@ export default function Topbar({
     return () => document.removeEventListener("mousedown", handleClick);
   }, [alertsOpen]);
 
-  const navigate = (filter: "low" | "expiring" | "expired") => {
+  const navigateInventory = (filter: InventoryAlertFilter) => {
     onAlertNavigate(filter);
     setAlertsOpen(false);
   };
+
+  const inventorySummaryRows: Array<{ filter: InventoryAlertFilter; count: number }> = [
+    { filter: "low", count: lowStockCount },
+    { filter: "expired", count: expiredCount },
+    { filter: "expiring", count: expiringCount },
+  ];
+
+  const systemAlerts = useMemo((): SystemAlertRow[] => {
+    const rows: SystemAlertRow[] = [];
+
+    if (isSubscriptionExpired || isSubscriptionExpiringSoon) {
+      rows.push({
+        id: "subscription",
+        dot: isSubscriptionExpired ? "#f04438" : "#f79009",
+        labelAr: isSubscriptionExpired ? "انتهى الاشتراك" : "الاشتراك ينتهي قريباً",
+        labelEn: isSubscriptionExpired ? "Subscription expired" : "Subscription ending soon",
+        count: isSubscriptionExpired ? 1 : Math.max(subscriptionDaysLeft, 1),
+        detailAr: isSubscriptionExpired
+          ? "اضغط لتجديد الاشتراك من الإعدادات"
+          : `باقي ${Math.max(subscriptionDaysLeft, 0)} يوم — اضغط للتجديد`,
+        detailEn: isSubscriptionExpired
+          ? "Tap to renew from settings"
+          : `${Math.max(subscriptionDaysLeft, 0)} days left — tap to renew`,
+        onClick: () => {
+          onOpenSubscriptionSettings?.();
+          setAlertsOpen(false);
+        },
+      });
+    }
+
+    if (pendingOfflineSalesCount > 0) {
+      rows.push({
+        id: "offline-sales",
+        dot: "#7a5af8",
+        labelAr: "مبيعات بانتظار المزامنة",
+        labelEn: "Sales pending sync",
+        count: pendingOfflineSalesCount,
+        detailAr: "اضغط لفتح نقطة البيع ومزامنة المبيعات",
+        detailEn: "Tap to open POS and sync sales",
+        onClick: () => {
+          onOpenPos?.();
+          setAlertsOpen(false);
+        },
+      });
+    }
+
+    if (adminPendingCount > 0) {
+      rows.push({
+        id: "admin-pending",
+        dot: "#12b76a",
+        labelAr: "طلبات إدارية معلّقة",
+        labelEn: "Pending admin requests",
+        count: adminPendingCount,
+        detailAr: "اضغط لمراجعة طلبات الصيدليات والحسابات",
+        detailEn: "Tap to review pharmacy and account requests",
+        onClick: () => {
+          onOpenTenants?.();
+          setAlertsOpen(false);
+        },
+      });
+    }
+
+    return rows;
+  }, [
+    adminPendingCount,
+    isSubscriptionExpired,
+    isSubscriptionExpiringSoon,
+    onOpenPos,
+    onOpenSubscriptionSettings,
+    onOpenTenants,
+    pendingOfflineSalesCount,
+    subscriptionDaysLeft,
+  ]);
+
+  const hasSystemAlerts = systemAlerts.length > 0;
 
   const canSwitchBranches =
     allowBranchSwitch ?? canSwitchOrganizationBranches(appUser, branches.length);
@@ -149,51 +279,59 @@ export default function Topbar({
           <div className="alertDropdownHeader">
             <strong>{isArabic ? "التنبيهات" : "Notifications"}</strong>
             <span>
-              {alertTotal} {isArabic ? "تنبيه" : "alerts"}
+              {alertTotal} {isArabic ? "تنبيه مخزون" : "inventory alerts"}
             </span>
           </div>
 
-          {alertItems.length === 0 ? (
-            <div className="alertEmpty">
-              {isArabic ? "لا توجد تنبيهات حالياً 🎉" : "No notifications 🎉"}
-            </div>
-          ) : (
-            <ul className="alertList">
-              {alertItems.map((item) => (
-                <li key={item.id}>
+          <ul className="alertList alertSummaryList">
+            {inventorySummaryRows.map(({ filter, count }) => {
+              const meta = INVENTORY_ALERT_META[filter];
+              return (
+                <li key={filter}>
                   <button
                     type="button"
-                    className="alertRow"
-                    onClick={() =>
-                      navigate(
-                        item.kind === "expired"
-                          ? "expired"
-                          : item.kind === "low"
-                            ? "low"
-                            : "expiring",
-                      )
-                    }
+                    className="alertRow alertSummaryRow"
+                    onClick={() => navigateInventory(filter)}
+                    disabled={count <= 0}
                   >
-                    <span
-                      className="alertDot"
-                      style={{ background: KIND_META[item.kind].dot }}
-                    />
+                    <span className="alertDot" style={{ background: meta.dot }} />
                     <span className="alertText">
-                      <span className="alertName">{item.name}</span>
-                      <span className="alertDetail">{item.detail}</span>
+                      <span className="alertName">{isArabic ? meta.labelAr : meta.labelEn}</span>
+                      <span className="alertDetail">
+                        {isArabic ? meta.detailAr : meta.detailEn}
+                      </span>
                     </span>
-                    <span className="alertKindLabel">
-                      {isArabic ? KIND_META[item.kind].ar : KIND_META[item.kind].en}
+                    <span className={`alertSummaryCount ${count > 0 ? "hasAlerts" : "zero"}`}>
+                      {count}
                     </span>
                   </button>
                 </li>
-              ))}
-            </ul>
-          )}
+              );
+            })}
+
+            {systemAlerts.map((alert) => (
+              <li key={alert.id}>
+                <button type="button" className="alertRow alertSummaryRow" onClick={alert.onClick}>
+                  <span className="alertDot" style={{ background: alert.dot }} />
+                  <span className="alertText">
+                    <span className="alertName">{isArabic ? alert.labelAr : alert.labelEn}</span>
+                    <span className="alertDetail">{isArabic ? alert.detailAr : alert.detailEn}</span>
+                  </span>
+                  <span className="alertSummaryCount hasAlerts">{alert.count}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          {alertTotal === 0 && !hasSystemAlerts ? (
+            <div className="alertEmpty alertSummaryEmpty">
+              {isArabic ? "لا توجد تنبيهات أخرى حالياً 🎉" : "No other alerts right now 🎉"}
+            </div>
+          ) : null}
 
           <div className="alertDropdownFooter">
-            <button type="button" className="alertFooterBtn" onClick={() => navigate("low")}>
-              {isArabic ? "عرض كل النواقص في المخزون" : "View all in inventory"}
+            <button type="button" className="alertFooterBtn" onClick={() => navigateInventory("low")}>
+              {isArabic ? "فتح المخزون" : "Open inventory"}
             </button>
           </div>
         </div>
@@ -382,6 +520,15 @@ export default function Topbar({
 
             <div className="topbarUtilityStack">
               <div className="topbarUtilityIcons">
+                <CustomerSupportPanel
+                  isArabic={isArabic}
+                  variant="topbar"
+                  pharmacyName={title}
+                  userName={appUser?.name || appUser?.email || undefined}
+                  userEmail={appUser?.email}
+                  userRole={appUser?.role}
+                />
+
                 <button
                   type="button"
                   className="topbarIconBtn topbarActionChip topbarActionChip--theme topbarActionChip--iconOnly"

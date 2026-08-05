@@ -119,7 +119,6 @@ export function useAppMetricsSlice({
     lowStockCount: derivedLowStockCount,
     expiringCount: derivedExpiringCount,
     expiredCount: derivedExpiredCount,
-    alertItems,
     alertTotal: derivedAlertTotal,
     useBranchAwareInventoryAlerts: derivedUseBranchAwareInventoryAlerts,
   } = useInventoryDerived({
@@ -304,7 +303,6 @@ export function useAppMetricsSlice({
     lowStockCount,
     expiringCount,
     expiredCount,
-    alertItems,
     alertTotal,
     useBranchAwareInventoryAlerts,
     filteredInvoicesList,

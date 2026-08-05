@@ -17,13 +17,6 @@ import { LARGE_MEDICINE_CATALOG } from "../constants/medicineCatalog";
 
 type InventoryStatusFilter = "all" | "low" | "expired" | "expiring";
 
-type AlertItem = {
-  id: string;
-  kind: "expired" | "low" | "expiring";
-  name: string;
-  detail: string;
-};
-
 type UseInventoryDerivedParams = {
   query: string;
   medicines: Medicine[];
@@ -133,46 +126,6 @@ export function useInventoryDerived({
   const expiringCount = expiringSoonMedicines.length;
   const expiredCount = expiredMedicines.length;
 
-  const medicineName = (m: Medicine) =>
-    (isArabic ? m.name_ar : m.name_en) || m.name_ar || m.name_en;
-
-  const branchLabelForAlert = (medicine: Medicine) =>
-    useBranchAwareInventoryAlerts || isViewingAllBranches
-      ? resolveBranchLabel(medicine.pharmacyId)
-      : "";
-
-  const alertItems: AlertItem[] = [
-    ...expiredMedicines.slice(0, 6).map((m) => ({
-      id: `expired-${m.id}`,
-      kind: "expired" as const,
-      name: medicineName(m),
-      detail: [branchLabelForAlert(m), `${isArabic ? "انتهت في" : "Expired"}: ${m.expiry}`]
-        .filter(Boolean)
-        .join(" · "),
-    })),
-    ...lowStockMedicines.slice(0, 6).map((m) => ({
-      id: `low-${m.id}`,
-      kind: "low" as const,
-      name: medicineName(m),
-      detail: [
-        branchLabelForAlert(m),
-        `${isArabic ? "الكمية المتبقية" : "Remaining qty"}: ${m.qty}`,
-      ]
-        .filter(Boolean)
-        .join(" · "),
-    })),
-    ...expiringSoonMedicines.slice(0, 6).map((m) => ({
-      id: `expiring-${m.id}`,
-      kind: "expiring" as const,
-      name: medicineName(m),
-      detail: [branchLabelForAlert(m), `${isArabic ? "تنتهي في" : "Expires"}: ${m.expiry}`]
-        .filter(Boolean)
-        .join(" · "),
-    })),
-  ];
-
-  const alertTotal = lowStockCount + expiringCount + expiredCount;
-
   return {
     lowStockThreshold,
     expiringSoonDays,
@@ -184,8 +137,7 @@ export function useInventoryDerived({
     lowStockCount,
     expiringCount,
     expiredCount,
-    alertItems,
-    alertTotal,
+    alertTotal: lowStockCount + expiringCount + expiredCount,
     useBranchAwareInventoryAlerts,
   };
 }

@@ -2,6 +2,7 @@ import type { AppUser, BuiltinUserRole, Page, UserRole } from "../types";
 import { getPharmacyCustomRoleByKey } from "../services/pharmacy/customRoleCache";
 import { getEffectiveRoleAccess, roleHasConfiguredPermission } from "./roleAccess";
 import type { RolePermissionKey } from "./rolePermissions";
+import { devOnlyDemoPassword } from "./devOnlyCredentials";
 
 const BUILTIN_ROLES: BuiltinUserRole[] = [
   "super_admin",
@@ -356,15 +357,12 @@ export function pharmacyManagedRoleKeysForBranch(
   return [...builtin, ...custom];
 }
 
-export const defaultLoginAccountDrafts: Record<
-  (typeof loginAccountRoleOptions)[number],
-  { email: string; password: string }
-> = {
-  pharmacy_admin: { email: "manager@pharmacy.com", password: "1234567" },
-  branch_manager: { email: "branch@pharmacy.com", password: "1234567" },
-  cashier: { email: "cashier@pharmacy.com", password: "1234567" },
-  accountant: { email: "acc@pharmacy.com", password: "1234567" },
-  inventory: { email: "inv@pharmacy.com", password: "1234567" },
+const defaultLoginAccountEmails: Record<(typeof loginAccountRoleOptions)[number], string> = {
+  pharmacy_admin: "manager@pharmacy.com",
+  branch_manager: "branch@pharmacy.com",
+  cashier: "cashier@pharmacy.com",
+  accountant: "acc@pharmacy.com",
+  inventory: "inv@pharmacy.com",
 };
 
 /** Roles assignable to pharmacy employees (stored in employees.job_title). */
@@ -383,11 +381,15 @@ export function parseLoginAccountRole(value?: string | null): UserRole {
 
 export function getDefaultLoginAccountDraft(role: UserRole | string): { email: string; password: string } {
   const parsed = parseLoginAccountRole(String(role));
+  const password = devOnlyDemoPassword();
   if (isCustomRole(parsed)) {
     const slug = parsed.replace(/^custom_/, "") || "user";
-    return { email: `${slug}@pharmacy.com`, password: "1234567" };
+    return { email: `${slug}@pharmacy.com`, password };
   }
-  return defaultLoginAccountDrafts[parsed as (typeof loginAccountRoleOptions)[number]];
+  return {
+    email: defaultLoginAccountEmails[parsed as (typeof loginAccountRoleOptions)[number]],
+    password,
+  };
 }
 
 export function parseEmployeeJobRole(value?: string | null): UserRole {

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import type { Page } from "../types";
 import { useSubscriptionOptional } from "../contexts/SubscriptionContext";
 import DeveloperCredit from "./DeveloperCredit";
+import CustomerSupportPanel from "./CustomerSupportPanel";
+import type { AppUser } from "../types";
 import {
   BILLING_NAV_GROUP_ID,
   buildNavigationTree,
@@ -22,6 +24,7 @@ type SidebarProps = {
   onCloseMenu: () => void;
   onSelectPage: (page: Page) => void;
   pageBadges?: Partial<Record<Page, number>>;
+  appUser?: AppUser | null;
 };
 
 function groupBadgeTotal(
@@ -44,6 +47,7 @@ export default function Sidebar({
   onCloseMenu,
   onSelectPage,
   pageBadges,
+  appUser = null,
 }: SidebarProps) {
   const subscription = useSubscriptionOptional();
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -204,6 +208,15 @@ export default function Sidebar({
               );
             })}
           </nav>
+
+          <CustomerSupportPanel
+            isArabic={isArabic}
+            variant="sidebar"
+            pharmacyName={pharmacyName}
+            userName={appUser?.name || appUser?.email || undefined}
+            userEmail={appUser?.email}
+            userRole={appUser?.role}
+          />
 
           <div className="sidebarFooter">
             <DeveloperCredit isArabic={isArabic} variant="sidebar" />

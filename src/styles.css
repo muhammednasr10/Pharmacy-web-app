@@ -773,6 +773,39 @@ select {
   flex-shrink: 0;
 }
 
+.alertSummaryRow:disabled {
+  cursor: default;
+}
+
+.alertSummaryRow:disabled:hover {
+  background: transparent;
+}
+
+.alertSummaryCount {
+  min-width: 34px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.alertSummaryCount.hasAlerts {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.alertSummaryCount.zero {
+  background: #f2f4f7;
+  color: #667085;
+}
+
+.alertSummaryEmpty {
+  padding-top: 0;
+  border-top: 1px solid #f2f4f7;
+}
+
 .alertDropdownFooter {
   padding: 10px 12px;
   border-top: 1px solid #f2f4f7;
@@ -1250,6 +1283,21 @@ select {
   background: #fee4e2;
   border-color: #fda29b;
   color: #912018;
+}
+
+.topbarActionChip--support,
+.customerSupportTopbarBtn {
+  border-color: #abefc6;
+  background: #ecfdf3;
+  color: #05693b;
+  text-decoration: none;
+}
+
+.topbarActionChip--support:hover,
+.customerSupportTopbarBtn:hover {
+  background: #d1fadf;
+  border-color: #6ce9a6;
+  color: #05693b;
 }
 
 .topbarBranchChip {
@@ -9484,6 +9532,142 @@ button:disabled {
 .devCreditWaBtn:hover {
   filter: brightness(1.08);
   transform: translateY(-1px);
+}
+
+/* ===== Customer support (WhatsApp) ===== */
+.customerSupportSidebar {
+  flex-shrink: 0;
+  padding: 0 16px 12px;
+}
+
+.customerSupportSidebarBtn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(110, 231, 183, 0.35);
+  background: linear-gradient(135deg, rgba(5, 105, 59, 0.55), rgba(18, 183, 106, 0.35));
+  color: #fff;
+  text-decoration: none;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.customerSupportSidebarBtn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(110, 231, 183, 0.65);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+}
+
+.customerSupportSidebarIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.16);
+  flex-shrink: 0;
+}
+
+.customerSupportSidebarText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  text-align: start;
+}
+
+.customerSupportSidebarText strong {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.customerSupportSidebarText span {
+  font-size: 11px;
+  opacity: 0.92;
+  line-height: 1.3;
+}
+
+.customerSupportSettings {
+  display: grid;
+  gap: 16px;
+}
+
+.customerSupportSettingsIntro {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-muted);
+}
+
+.customerSupportSettingsIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: #ecfdf3;
+  border: 1px solid #abefc6;
+  color: #05693b;
+  flex-shrink: 0;
+}
+
+.customerSupportSettingsIntro h4 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.customerSupportSettingsIntro p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.customerSupportSettingsMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.customerSupportSettingsMeta strong {
+  color: var(--color-text);
+}
+
+.customerSupportSettingsMeta a {
+  color: #05693b;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.customerSupportSettingsMeta a:hover {
+  text-decoration: underline;
+}
+
+.customerSupportWaBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.settingsSectionTitleSpaced {
+  margin-top: 8px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border);
 }
 
 @media (max-width: 1100px) {

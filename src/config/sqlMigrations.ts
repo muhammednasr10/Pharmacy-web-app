@@ -1,20 +1,21 @@
-export type MigrationProbe =
-  | { type: "table"; name: string }
-  | { type: "column"; table: string; column: string }
-  | { type: "rpc"; name: string; args?: Record<string, unknown> };
+import { SQL_MIGRATION_EXTRA_ENTRIES } from "./sqlMigrationExtraEntries";
+import type {
+  MigrationProbe,
+  SqlMigrationDefinition,
+  SqlMigrationFileKind,
+  SqlMigrationGroup,
+  SqlMigrationRunEntry,
+} from "./sqlMigrationTypes";
 
-export type SqlMigrationGroup = "core" | "branches" | "pos" | "hr" | "saas";
+export type {
+  MigrationProbe,
+  SqlMigrationDefinition,
+  SqlMigrationFileKind,
+  SqlMigrationGroup,
+  SqlMigrationRunEntry,
+} from "./sqlMigrationTypes";
 
-export type SqlMigrationDefinition = {
-  id: string;
-  file: string;
-  group: SqlMigrationGroup;
-  titleAr: string;
-  titleEn: string;
-  noteAr?: string;
-  noteEn?: string;
-  probe: MigrationProbe;
-};
+export { SQL_MIGRATION_RUN_ORDER } from "./sqlMigrationRunOrder";
 
 export const SQL_MIGRATION_GROUPS: Record<SqlMigrationGroup, { labelAr: string; labelEn: string }> =
   {
@@ -413,8 +414,8 @@ export const SQL_MIGRATIONS: SqlMigrationDefinition[] = [
     group: "core",
     titleAr: "إعادة ضبط دخول مالك النظام",
     titleEn: "Reset system owner login",
-    noteAr: "admin@victory.com / Mn01125526012# — الصق JWT Secret ثم شغّل الملف",
-    noteEn: "admin@victory.com / Mn01125526012# — paste JWT Secret then run",
+    noteAr: "الصق JWT Secret في Supabase ثم شغّل الملف لإعادة ضبط حساب مالك النظام",
+    noteEn: "Paste JWT Secret in Supabase, then run to reset the system owner account",
     probe: { type: "rpc", name: "app_client_login", args: {} },
   },
   {
@@ -517,4 +518,5 @@ export const SQL_MIGRATIONS: SqlMigrationDefinition[] = [
     noteEn: "Allows login and reads; blocks INSERT/UPDATE when subscription end date passed",
     probe: { type: "rpc", name: "pharmacy_subscription_write_allowed", args: { target_pharmacy_id: "main" } },
   },
+  ...SQL_MIGRATION_EXTRA_ENTRIES,
 ];

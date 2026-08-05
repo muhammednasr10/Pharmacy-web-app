@@ -7,7 +7,7 @@ import OfflineAppBanner from "./OfflineAppBanner";
 import SubscriptionReadOnlyBanner from "./SubscriptionReadOnlyBanner";
 import PreviewDeployBanner from "./PreviewDeployBanner";
 import Sidebar from "./Sidebar";
-import Topbar, { type AlertItem } from "./Topbar";
+import Topbar, { type InventoryAlertFilter } from "./Topbar";
 import type { AppTranslation } from "../i18n/appTranslations";
 import type { SubscriptionTier } from "../config/subscriptionTiers";
 import { canSwitchBranchesWithTier, type TierUpgradePrompt } from "../utils/subscriptionFeatures";
@@ -35,8 +35,14 @@ export type AppShellProps = {
   orgSubscriptionTier: SubscriptionTier;
   branches: PharmacySettings[];
   activeBranchId: string | null;
-  alertItems: AlertItem[];
   alertTotal: number;
+  lowStockCount: number;
+  expiringCount: number;
+  expiredCount: number;
+  isSubscriptionExpiringSoon?: boolean;
+  isSubscriptionExpired?: boolean;
+  subscriptionDaysLeft?: number;
+  adminPendingCount?: number;
   isMenuOpen: boolean;
   onToggleLang: () => void;
   onToggleTheme: () => void;
@@ -53,7 +59,8 @@ export type AppShellProps = {
   onToggleMenu: () => void;
   onSwitchBranch: (branchId: string) => void;
   onSelectPage: (page: Page) => void;
-  onAlertNavigate: (filter: "low" | "expiring" | "expired") => void;
+  onAlertNavigate: (filter: InventoryAlertFilter) => void;
+  onOpenTenants?: () => void;
   onCloseMenu: () => void;
   resolveBranchLabel: (branchId?: string) => string;
   onOpenSubscriptionSettings: () => void;
@@ -86,8 +93,14 @@ export default function AppShell({
   orgSubscriptionTier,
   branches,
   activeBranchId,
-  alertItems,
   alertTotal,
+  lowStockCount,
+  expiringCount,
+  expiredCount,
+  isSubscriptionExpiringSoon = false,
+  isSubscriptionExpired = false,
+  subscriptionDaysLeft = 0,
+  adminPendingCount = 0,
   isMenuOpen,
   onToggleLang,
   onToggleTheme,
@@ -105,6 +118,7 @@ export default function AppShell({
   onSwitchBranch,
   onSelectPage,
   onAlertNavigate,
+  onOpenTenants,
   onCloseMenu,
   resolveBranchLabel,
   onOpenSubscriptionSettings,
@@ -207,9 +221,18 @@ export default function AppShell({
               orgSubscriptionTier,
               branches.length,
             )}
-            alertItems={alertItems}
             alertTotal={alertTotal}
+            lowStockCount={lowStockCount}
+            expiringCount={expiringCount}
+            expiredCount={expiredCount}
+            isSubscriptionExpiringSoon={isSubscriptionExpiringSoon}
+            isSubscriptionExpired={isSubscriptionExpired}
+            subscriptionDaysLeft={subscriptionDaysLeft}
+            pendingOfflineSalesCount={pendingOfflineSalesCount}
+            adminPendingCount={adminPendingCount}
             onAlertNavigate={onAlertNavigate}
+            onOpenPos={() => onSelectPage("pos")}
+            onOpenTenants={onOpenTenants}
             userPhotoBase64={userPhotoBase64}
           />
 
@@ -277,6 +300,7 @@ export default function AppShell({
           onSelectPage(page);
           onCloseMenu();
         }}
+        appUser={appUser}
       />
 
       {modals}
