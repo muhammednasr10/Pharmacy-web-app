@@ -40,12 +40,12 @@ declare
   v_qty integer;
   v_buy_price numeric;
   v_sell_price numeric;
-  v_medicine_id bigint;
+  v_medicine_id text;
   v_med public.medicines%rowtype;
   v_qty_before integer;
   v_qty_after integer;
-  v_purchase_id bigint;
-  v_movement_id bigint;
+  v_purchase_id text;
+  v_movement_id text;
   v_display_name text;
   v_purchase_date text;
   v_saved_count integer := 0;
@@ -116,7 +116,7 @@ begin
     for update;
 
     if not found then
-      v_medicine_id := public.next_table_row_id('public.medicines'::regclass);
+      v_medicine_id := public.next_table_row_id('public.medicines'::regclass)::text;
       insert into public.medicines (
         id,
         name_ar,
@@ -160,7 +160,7 @@ begin
     where id = v_medicine_id
       and pharmacy_id = p_pharmacy_id;
 
-    v_purchase_id := public.next_table_row_id('public.purchases'::regclass);
+    v_purchase_id := public.next_table_row_id('public.purchases'::regclass)::text;
     insert into public.purchases (
       id,
       purchase_number,
@@ -202,7 +202,7 @@ begin
       now()
     );
 
-    v_movement_id := public.next_table_row_id('public.stock_movements'::regclass);
+    v_movement_id := public.next_table_row_id('public.stock_movements'::regclass)::text;
     insert into public.stock_movements (
       id,
       type,

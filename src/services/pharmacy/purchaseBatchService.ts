@@ -53,6 +53,9 @@ function formatPurchaseError(message: string) {
   if (lower.includes("not_authorized")) {
     return "غير مصرح بحفظ التوريد لهذا الفرع";
   }
+  if (lower.includes("operator does not exist") && lower.includes("text = bigint")) {
+    return "خطأ في نوع المعرّفات بقاعدة البيانات. شغّل supabase/complete-purchase-rpc.sql في Supabase SQL Editor ثم أعد المحاولة.";
+  }
   if (lower.includes("complete_purchase_with_stock_addition")) {
     return "دالة حفظ التوريد غير مفعّلة في قاعدة البيانات. شغّل supabase/complete-purchase-rpc.sql في Supabase SQL Editor.";
   }

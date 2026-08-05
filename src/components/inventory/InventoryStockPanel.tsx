@@ -280,7 +280,7 @@ export default function InventoryStockPanel({
           )}
           {canManageInventory && (
             <button type="button" className="editBtn" onClick={() => setShowCatalogImportModal(true)}>
-              {isArabic ? "📥 استيراد كatalog أدوية" : "📥 Import medicine catalog"}
+              {isArabic ? "📥 استيراد قاعدة بيانات أدوية" : "📥 Import medicine database"}
             </button>
           )}
           {canManageInventory && (
