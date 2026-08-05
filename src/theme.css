@@ -2224,3 +2224,38 @@ html[data-theme="dark"] .employeePortalForm label {
 html[data-theme="dark"] .attendanceDynamicQrVisual img {
   background: #fff;
 }
+
+/* ===== Dark mode — Customer CRM ===== */
+html[data-theme="dark"] .crmTab.is-active {
+  background: rgba(18, 183, 106, 0.14);
+  border-color: rgba(110, 231, 183, 0.45);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .crmTabCount {
+  background: #059669;
+}
+
+html[data-theme="dark"] .crmTag {
+  background: rgba(99, 102, 241, 0.18);
+  color: #c7d2fe;
+}
+
+html[data-theme="dark"] .crmDetailSectionHead,
+html[data-theme="dark"] .crmFollowUpHead {
+  color: var(--color-text);
+}
+
+/* ===== Dark mode — User guide ===== */
+html[data-theme="dark"] .userGuideTips {
+  background: rgba(18, 183, 106, 0.12);
+  border-color: rgba(110, 231, 183, 0.28);
+}
+
+html[data-theme="dark"] .userGuideTips strong {
+  color: #6ce9a6;
+}
+
+html[data-theme="dark"] .userGuideTab.active {
+  box-shadow: none;
+}

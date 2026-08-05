@@ -4310,19 +4310,20 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
   gap: 14px;
 }
 .summaryGrid div {
-  background: #f9fafb;
-  border: 1px solid #eaecf0;
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 14px;
 }
 .summaryGrid span {
   display: block;
-  color: #667085;
+  color: var(--color-text-muted);
   font-size: 13px;
   margin-bottom: 8px;
 }
 .summaryGrid strong {
   font-size: 22px;
+  color: var(--color-text);
 }
 .reportFilters {
   display: grid;
@@ -4653,14 +4654,14 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
   gap: 8px;
   padding: 4px;
   border-radius: 999px;
-  background: #f2f4f7;
-  border: 1px solid #eaecf0;
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
 }
 
 .userGuideTab {
   border: none;
   background: transparent;
-  color: #475467;
+  color: var(--color-text-secondary);
   border-radius: 999px;
   padding: 10px 16px;
   font-weight: 800;
@@ -4683,6 +4684,7 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
   align-items: center;
   gap: 10px;
   margin: 0 0 12px;
+  color: var(--color-text);
 }
 
 .userGuideSectionIcon {
@@ -4692,7 +4694,7 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
 .userGuideList {
   margin: 0;
   padding-inline-start: 1.2rem;
-  color: #344054;
+  color: var(--color-text-secondary);
   line-height: 1.7;
 }
 
@@ -4704,8 +4706,8 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
   margin-top: 14px;
   padding: 12px 14px;
   border-radius: 12px;
-  background: #ecfdf3;
-  border: 1px solid #abefc6;
+  background: rgba(236, 253, 243, 0.65);
+  border: 1px solid rgba(171, 239, 198, 0.8);
 }
 
 .userGuideTips strong {
@@ -4717,7 +4719,7 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
 .userGuideTips ul {
   margin: 0;
   padding-inline-start: 1.1rem;
-  color: #344054;
+  color: var(--color-text-secondary);
 }
 
 .userGuideShortcuts {
@@ -4727,6 +4729,7 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
 
 .userGuideShortcutBlock h3 {
   margin: 0 0 6px;
+  color: var(--color-text);
 }
 
 .guideShortcutKeys {
@@ -5759,14 +5762,14 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
 .posShortcutKbd {
   display: inline-block;
   padding: 0.2rem 0.5rem;
-  border: 1px solid #d0d5dd;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: #f9fafb;
+  background: var(--color-bg-muted);
   font-family: inherit;
   font-size: 12px;
   font-weight: 600;
-  color: #344054;
-  box-shadow: 0 1px 0 #e4e7ec;
+  color: var(--color-text);
+  box-shadow: 0 1px 0 var(--color-border);
 }
 
 .cashierShiftPanel {
@@ -14681,27 +14684,27 @@ html[data-theme="dark"] .invMgmtWarehouseLockedBtn {
   gap: 4px;
   padding: 12px 14px;
   border-radius: 14px;
-  border: 1px solid #dcefe4;
-  background: #f8fcfa;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-muted);
   cursor: pointer;
   text-align: start;
 }
 
 .crmTab.is-active {
   border-color: #05693b;
-  background: linear-gradient(180deg, #ecfdf3, #f6fffa);
+  background: linear-gradient(180deg, rgba(236, 253, 243, 0.95), rgba(246, 255, 250, 0.98));
   box-shadow: 0 8px 20px rgba(5, 105, 59, 0.08);
 }
 
 .crmTabLabel {
   font-size: 14px;
   font-weight: 800;
-  color: #14532d;
+  color: var(--color-text);
 }
 
 .crmTabHint {
   font-size: 11px;
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
 .crmTabCount {
@@ -14736,7 +14739,7 @@ html[data-theme="dark"] .invMgmtWarehouseLockedBtn {
 .crmInferredBadge {
   display: block;
   margin-top: 4px;
-  color: #64748b;
+  color: var(--color-text-muted);
   font-size: 11px;
 }
 
@@ -14764,12 +14767,13 @@ html[data-theme="dark"] .invMgmtWarehouseLockedBtn {
   gap: 4px;
   padding: 12px;
   border-radius: 12px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
 }
 
 .crmDetailSection h3 {
   margin: 0 0 10px;
+  color: var(--color-text);
 }
 
 .crmDetailSectionHead {
@@ -14803,8 +14807,13 @@ html[data-theme="dark"] .invMgmtWarehouseLockedBtn {
 .crmTimelineItem {
   padding: 12px 14px;
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-surface);
+}
+
+.crmTimelineTitle {
+  font-weight: 700;
+  color: var(--color-text);
 }
 
 .crmTimelineHead {
@@ -14812,10 +14821,6 @@ html[data-theme="dark"] .invMgmtWarehouseLockedBtn {
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 6px;
-}
-
-.crmTimelineTitle {
-  font-weight: 700;
 }
 
 .crmActivityForm textarea.fullWidth {
@@ -14831,8 +14836,8 @@ html[data-theme="dark"] .invMgmtWarehouseLockedBtn {
 .crmFollowUpCard {
   padding: 14px;
   border-radius: 14px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-surface);
 }
 
 .crmFollowUpHead {
@@ -14846,8 +14851,12 @@ html[data-theme="dark"] .invMgmtWarehouseLockedBtn {
   display: flex;
   gap: 12px;
   margin: 8px 0;
-  color: #64748b;
+  color: var(--color-text-muted);
   font-size: 12px;
+}
+
+.crmOverviewSection h3 {
+  color: var(--color-text);
 }
 
 .crmFormModal {
