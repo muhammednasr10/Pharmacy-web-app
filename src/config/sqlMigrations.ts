@@ -195,6 +195,14 @@ export const SQL_MIGRATIONS: SqlMigrationDefinition[] = [
     probe: { type: "rpc", name: "complete_purchase_with_stock_addition", args: {} },
   },
   {
+    id: "fix-rpc-text-ids",
+    file: "fix-rpc-text-ids.sql",
+    group: "pos",
+    titleAr: "إصلاح text/bigint في دوال البيع والتوريد",
+    titleEn: "Fix text/bigint ID mismatch in sale/purchase RPCs",
+    probe: { type: "rpc", name: "complete_sale_with_stock_deduction", args: {} },
+  },
+  {
     id: "branch-transfers",
     file: "branch-stock-transfers.sql",
     group: "branches",

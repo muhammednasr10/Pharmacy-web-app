@@ -87,16 +87,16 @@ set search_path = public
 as $$
 declare
   v_item jsonb;
-  v_medicine_id bigint;
+  v_medicine_id text;
   v_qty integer;
   v_required integer;
   v_med public.medicines%rowtype;
   v_running_qty integer;
   v_qty_before integer;
   v_qty_after integer;
-  v_invoice_id bigint;
-  v_line_id bigint;
-  v_movement_id bigint;
+  v_invoice_id text;
+  v_line_id text;
+  v_movement_id text;
   v_invoice_number text;
   v_cashier_id text;
   v_cashier_name text;
@@ -126,12 +126,12 @@ begin
     raise exception 'invoice_required';
   end if;
 
-  v_invoice_id := (p_invoice->>'id')::bigint;
-  if v_invoice_id is null or v_invoice_id <= 0 then
+  v_invoice_id := nullif(trim(p_invoice->>'id'), '');
+  if v_invoice_id is null then
     raise exception 'invoice_required';
   end if;
 
-  v_invoice_number := coalesce(nullif(trim(p_invoice->>'invoice_number'), ''), 'INV-' || v_invoice_id::text);
+  v_invoice_number := coalesce(nullif(trim(p_invoice->>'invoice_number'), ''), 'INV-' || v_invoice_id);
   v_cashier_id := nullif(trim(p_invoice->>'cashier_id'), '');
   v_cashier_name := nullif(trim(p_invoice->>'cashier_name'), '');
   v_shift_id := nullif(trim(p_invoice->>'shift_id'), '');
@@ -151,12 +151,12 @@ begin
   end if;
 
   create temp table _sale_qty_required (
-    medicine_id bigint primary key,
+    medicine_id text primary key,
     required_qty integer not null check (required_qty > 0)
   ) on commit drop;
 
   create temp table _sale_med_state (
-    medicine_id bigint primary key,
+    medicine_id text primary key,
     qty_remaining integer not null
   ) on commit drop;
 
@@ -164,10 +164,10 @@ begin
     select value
     from jsonb_array_elements(p_items)
   loop
-    v_medicine_id := (v_item->>'medicine_id')::bigint;
+    v_medicine_id := nullif(trim(v_item->>'medicine_id'), '');
     v_qty := floor(coalesce((v_item->>'quantity')::numeric, 0))::integer;
 
-    if v_medicine_id is null or v_medicine_id <= 0 or v_qty <= 0 then
+    if v_medicine_id is null or v_qty <= 0 then
       raise exception 'empty_cart';
     end if;
 
@@ -242,7 +242,7 @@ begin
     select value
     from jsonb_array_elements(p_items)
   loop
-    v_medicine_id := (v_item->>'medicine_id')::bigint;
+    v_medicine_id := nullif(trim(v_item->>'medicine_id'), '');
     v_qty := floor(coalesce((v_item->>'quantity')::numeric, 0))::integer;
 
     select qty_remaining
@@ -258,7 +258,10 @@ begin
     set qty_remaining = v_qty_after
     where medicine_id = v_medicine_id;
 
-    v_line_id := coalesce((v_item->>'id')::bigint, public.next_table_row_id('public.invoice_items'::regclass));
+    v_line_id := coalesce(
+      nullif(trim(v_item->>'id'), ''),
+      public.next_table_row_id('public.invoice_items'::regclass)::text
+    );
 
     v_display_name := coalesce(
       nullif(trim(v_item->>'name_ar'), ''),
@@ -299,7 +302,7 @@ begin
       p_pharmacy_id
     );
 
-    v_movement_id := public.next_table_row_id('public.stock_movements'::regclass);
+    v_movement_id := public.next_table_row_id('public.stock_movements'::regclass)::text;
     insert into public.stock_movements (
       id,
       type,

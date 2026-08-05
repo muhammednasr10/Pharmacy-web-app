@@ -8,6 +8,10 @@ import {
 import { prepareInvoicePayload, prepareInvoiceItemPayload } from "./payloads";
 
 function parseSaleRpcError(message: string): string {
+  const lower = message.toLowerCase();
+  if (lower.includes("operator does not exist") && lower.includes("text = bigint")) {
+    return "text_id_mismatch";
+  }
   const known = [
     "pharmacy_required",
     "not_authorized",
@@ -51,6 +55,11 @@ export async function completeSaleWithStockDeduction(
 
   if (error) {
     const code = parseSaleRpcError(error.message);
+    if (code === "text_id_mismatch") {
+      throw new Error(
+        "خطأ في نوع المعرّفات بقاعدة البيانات. شغّل supabase/fix-rpc-text-ids.sql في Supabase SQL Editor ثم أعد المحاولة.",
+      );
+    }
     if (code === "insufficient_stock") {
       const shortItem = cart.find((item) => item.cartQty > item.qty);
       throw new Error(shortItem ? `Not enough stock: ${shortItem.name_en}` : "insufficient_stock");
