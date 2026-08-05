@@ -8470,6 +8470,10 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
   overflow-y: auto;
 }
 
+.subscriptionPaymentOverlay {
+  z-index: 12050;
+}
+
 .subscriptionPaymentCard {
   background: transparent;
   border: 0;

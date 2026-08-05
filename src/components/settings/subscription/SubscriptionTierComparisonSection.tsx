@@ -12,17 +12,19 @@ import {
   type SubscriptionTierConfig,
 } from "../../../config/subscriptionTiers";
 import { parseTierUpgradePlan } from "../../../utils/subscriptionFeatures";
-
-type BillingView = "monthly" | "yearly";
+import type { BillingView } from "./types";
 
 type SubscriptionTierComparisonSectionProps = {
   isArabic: boolean;
   currentTier: SubscriptionTier;
   isOrgAdmin: boolean;
   pendingTierUpgrade?: SubscriptionRequest;
+  pendingRenewal?: SubscriptionRequest;
   pendingRequest?: SubscriptionRequest;
   submittingTierUpgrade: boolean;
+  submittingRequest: boolean;
   onSubmitUpgrade: (targetTier: SubscriptionTier) => void;
+  onSubmitRenewal: (billingView: BillingView) => void;
   onShowPaymentInfo: (request: SubscriptionRequest) => void;
 };
 
@@ -54,9 +56,12 @@ export default function SubscriptionTierComparisonSection({
   currentTier,
   isOrgAdmin,
   pendingTierUpgrade,
+  pendingRenewal,
   pendingRequest,
   submittingTierUpgrade,
+  submittingRequest,
   onSubmitUpgrade,
+  onSubmitRenewal,
   onShowPaymentInfo,
 }: SubscriptionTierComparisonSectionProps) {
   const [billingView, setBillingView] = useState<BillingView>("monthly");
@@ -73,8 +78,8 @@ export default function SubscriptionTierComparisonSection({
         <h3>{isArabic ? "مقارنة الباقات" : "Compare packages"}</h3>
         <p>
           {isArabic
-            ? "اختر الباقة المناسبة لصيدليتك — الأسعار بالجنيه المصري"
-            : "Choose the package that fits your pharmacy — prices in EGP"}
+            ? "اختر الباقة ومدة الفوترة من الأعلى، ثم أرسل طلب التجديد أو الترقية"
+            : "Choose a package and billing cycle above, then submit a renewal or upgrade request"}
         </p>
       </div>
 
@@ -179,12 +184,41 @@ export default function SubscriptionTierComparisonSection({
               {isOrgAdmin ? (
                 <div className="subscriptionCompareCardAction">
                   {isCurrent ? (
-                    <button type="button" className="subscriptionCompareBtn current" disabled>
-                      {isArabic ? "باقتك الحالية" : "Current plan"}
-                    </button>
+                    pendingRenewal ? (
+                      <button
+                        type="button"
+                        className="subscriptionCompareBtn outline"
+                        onClick={() => onShowPaymentInfo(pendingRenewal)}
+                      >
+                        {isArabic ? "تعليمات الدفع" : "Payment info"}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="subscriptionCompareBtn primary"
+                        disabled={submittingRequest || Boolean(pendingRequest)}
+                        onClick={() => onSubmitRenewal(billingView)}
+                      >
+                        {submittingRequest
+                          ? isArabic
+                            ? "جاري الإرسال..."
+                            : "Submitting..."
+                          : billingView === "yearly"
+                            ? isArabic
+                              ? `تجديد سنوي — ${price.toLocaleString("ar-EG")} ${currency}`
+                              : `Renew yearly — ${price.toLocaleString("en-US")} ${currency}`
+                            : isArabic
+                              ? `تجديد شهري — ${price.toLocaleString("ar-EG")} ${currency}`
+                              : `Renew monthly — ${price.toLocaleString("en-US")} ${currency}`}
+                      </button>
+                    )
                   ) : isLower ? (
                     <button type="button" className="subscriptionCompareBtn muted" disabled>
                       {isArabic ? "باقة أدنى" : "Lower tier"}
+                    </button>
+                  ) : pendingRequest && !pendingForThisTier ? (
+                    <button type="button" className="subscriptionCompareBtn muted" disabled>
+                      {isArabic ? "طلب قيد المراجعة" : "Request pending"}
                     </button>
                   ) : pendingForThisTier && pendingTierUpgrade ? (
                     <button

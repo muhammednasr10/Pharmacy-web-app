@@ -37,7 +37,9 @@ export default function SubscriptionPaymentInstructions({
     <section className="subscriptionPaymentCard">
       <div className="subscriptionPaymentHeader">
         <div>
-          <h3>{isArabic ? "تعليمات الدفع عبر InstaPay" : "InstaPay Payment Instructions"}</h3>
+          <h3 id="subscriptionPaymentTitle">
+            {isArabic ? "تعليمات الدفع عبر InstaPay" : "InstaPay Payment Instructions"}
+          </h3>
           <p>
             {isArabic
               ? "بعد إتمام التحويل، أرسل إيصال الدفع على واتساب لتفعيل الطلب"

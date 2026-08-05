@@ -1,6 +1,5 @@
-import SubscriptionPaymentInstructions from "../SubscriptionPaymentInstructions";
+import SubscriptionPaymentModal from "./subscription/SubscriptionPaymentModal";
 import SubscriptionHeroSection, { SubscriptionProgressSection } from "./subscription/SubscriptionHeroSection";
-import SubscriptionRenewalForm from "./subscription/SubscriptionRenewalForm";
 import SubscriptionRequestsHistory from "./subscription/SubscriptionRequestsHistory";
 import SubscriptionTierComparisonSection from "./subscription/SubscriptionTierComparisonSection";
 import { useSubscriptionSettingsState } from "./subscription/useSubscriptionSettingsState";
@@ -45,9 +44,12 @@ export default function SubscriptionSettingsPanel(props: SubscriptionSettingsPan
           currentTier={subscriptionTier}
           isOrgAdmin={isOrgAdmin}
           pendingTierUpgrade={state.pendingTierUpgrade}
+          pendingRenewal={state.pendingRenewal}
           pendingRequest={state.pendingRequest}
           submittingTierUpgrade={state.submittingTierUpgrade}
+          submittingRequest={state.submittingRequest}
           onSubmitUpgrade={(targetTier) => void state.handleSubmitTierUpgradeRequest(targetTier)}
+          onSubmitRenewal={(billingView) => void state.handleSubmitRenewalRequest(billingView)}
           onShowPaymentInfo={state.setPaymentRequest}
         />
 
@@ -60,21 +62,6 @@ export default function SubscriptionSettingsPanel(props: SubscriptionSettingsPan
           />
         )}
 
-        {isOrgAdmin && (
-          <SubscriptionRenewalForm
-            isArabic={isArabic}
-            requestPlan={state.requestPlan}
-            onRequestPlanChange={state.setRequestPlan}
-            requestPlanOptions={state.requestPlanOptions}
-            customDays={state.customDays}
-            onCustomDaysChange={state.setCustomDays}
-            requestDays={state.requestDays}
-            requestAmount={state.requestAmount}
-            submittingRequest={state.submittingRequest}
-            onSubmit={state.handleSubmitSubscriptionRequest}
-          />
-        )}
-
         <SubscriptionRequestsHistory
           isArabic={isArabic}
           t={t}
@@ -84,20 +71,13 @@ export default function SubscriptionSettingsPanel(props: SubscriptionSettingsPan
         />
       </div>
 
-      {state.paymentRequest && (
-        <div className="modalOverlay">
-          <div
-            className="invoiceModal subscriptionPaymentModal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <SubscriptionPaymentInstructions
-              isArabic={isArabic}
-              request={state.paymentRequest}
-              onClose={() => state.setPaymentRequest(null)}
-            />
-          </div>
-        </div>
-      )}
+      {state.paymentRequest ? (
+        <SubscriptionPaymentModal
+          isArabic={isArabic}
+          request={state.paymentRequest}
+          onClose={() => state.setPaymentRequest(null)}
+        />
+      ) : null}
     </>
   );
 }

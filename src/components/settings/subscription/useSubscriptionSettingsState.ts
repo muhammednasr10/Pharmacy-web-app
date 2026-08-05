@@ -1,13 +1,15 @@
 import { useMemo, useState } from "react";
 import type { SubscriptionRequest } from "../../../types";
+import { getPlanAmountForTier, getPlanDays } from "../../../config/subscription";
+import type { SubscriptionTier } from "../../../config/subscriptionTiers";
 import { isTierUpgradePlan } from "../../../utils/subscriptionFeatures";
 import {
-  buildRequestPlanOptions,
-  getRequestPricing,
   getSubscriptionDisplayValues,
   getTierDerivedValues,
 } from "./subscriptionSettingsHelpers";
-import type { RequestPlan, SubscriptionSettingsPanelProps } from "./types";
+import type { BillingView, SubscriptionSettingsPanelProps } from "./types";
+
+export type { BillingView } from "./types";
 
 export function useSubscriptionSettingsState({
   isArabic,
@@ -21,8 +23,6 @@ export function useSubscriptionSettingsState({
   pharmacySubscriptionRequests,
   subscriptionDaysLeft,
 }: SubscriptionSettingsPanelProps) {
-  const [requestPlan, setRequestPlan] = useState<RequestPlan>("monthly");
-  const [customDays, setCustomDays] = useState(30);
   const [submittingRequest, setSubmittingRequest] = useState(false);
   const [submittingTierUpgrade, setSubmittingTierUpgrade] = useState(false);
   const [paymentRequest, setPaymentRequest] = useState<SubscriptionRequest | null>(null);
@@ -54,21 +54,12 @@ export function useSubscriptionSettingsState({
     ],
   );
 
-  const requestPlanOptions = useMemo(
-    () => buildRequestPlanOptions(isArabic, tierDerived.tierConfig.packagePrice),
-    [isArabic, tierDerived.tierConfig.packagePrice],
-  );
-
   const pendingRequest = pharmacySubscriptionRequests.find((r) => r.status === "pending");
   const pendingTierUpgrade = pharmacySubscriptionRequests.find(
     (r) => r.status === "pending" && isTierUpgradePlan(r.plan),
   );
-
-  const { requestDays, requestAmount } = getRequestPricing(
-    requestPlan,
-    customDays,
-    subscriptionTier,
-    tierDerived.tierConfig.packagePrice,
+  const pendingRenewal = pharmacySubscriptionRequests.find(
+    (r) => r.status === "pending" && !isTierUpgradePlan(r.plan),
   );
 
   async function handleSubmitTierUpgradeRequest(targetTier?: SubscriptionTier) {
@@ -89,56 +80,59 @@ export function useSubscriptionSettingsState({
       if (created) {
         setPaymentRequest(created);
       }
+    } catch (error) {
+      console.error(error);
+      alert(isArabic ? "تعذر إرسال طلب الترقية" : "Could not submit upgrade request");
     } finally {
       setSubmittingTierUpgrade(false);
     }
   }
 
-  async function handleSubmitSubscriptionRequest() {
+  async function handleSubmitRenewalRequest(billingView: BillingView) {
     if (pendingRequest) {
       alert(
         isArabic
           ? "لديك طلب اشتراك قيد المراجعة. أكمل الدفع أو انتظر الاعتماد."
           : "You already have a pending subscription request.",
       );
-      if (!isTierUpgradePlan(pendingRequest.plan)) {
-        setPaymentRequest(pendingRequest);
+      if (pendingRenewal) {
+        setPaymentRequest(pendingRenewal);
       }
       return;
     }
 
+    const plan = billingView === "yearly" ? "yearly" : "monthly";
+    const requestDays = getPlanDays(plan);
+    const requestAmount = getPlanAmountForTier(plan, subscriptionTier);
+
     setSubmittingRequest(true);
     try {
       const created = await submitSubscriptionRequest({
-        plan: requestPlan,
+        plan,
         days: requestDays,
         amount: requestAmount,
       });
       if (created) {
         setPaymentRequest(created);
       }
+    } catch (error) {
+      console.error(error);
+      alert(isArabic ? "تعذر إرسال طلب التجديد" : "Could not submit renewal request");
     } finally {
       setSubmittingRequest(false);
     }
   }
 
   return {
-    requestPlan,
-    setRequestPlan,
-    customDays,
-    setCustomDays,
     submittingRequest,
     submittingTierUpgrade,
     paymentRequest,
     setPaymentRequest,
-    tierDerived,
     displayValues,
-    requestPlanOptions,
     pendingRequest,
     pendingTierUpgrade,
-    requestDays,
-    requestAmount,
+    pendingRenewal,
     handleSubmitTierUpgradeRequest,
-    handleSubmitSubscriptionRequest,
+    handleSubmitRenewalRequest,
   };
 }

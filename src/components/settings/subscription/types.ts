@@ -26,4 +26,6 @@ export type SubscriptionSettingsPanelProps = {
 
 export type RequestPlan = "monthly" | "quarterly" | "yearly" | "custom";
 
+export type BillingView = "monthly" | "yearly";
+
 export type SubscriptionTone = "expired" | "warning" | "trial" | "active";
