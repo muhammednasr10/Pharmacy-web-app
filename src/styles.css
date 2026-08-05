@@ -3203,6 +3203,78 @@ html[data-theme="dark"] .posShiftsTableCurrentTag {
   color: #bbf7d0;
 }
 
+html[data-theme="dark"] .posShiftsTableHeading {
+  background: linear-gradient(180deg, rgba(113, 63, 18, 0.22) 0%, rgba(15, 23, 42, 0.4) 100%);
+  border-bottom-color: rgba(71, 85, 105, 0.75);
+}
+
+html[data-theme="dark"] .posShiftsTableHeading h3 {
+  color: #fcd34d;
+}
+
+html[data-theme="dark"] .posShiftsTableFilters {
+  background: var(--color-bg-muted);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .posShiftsTableFilters label {
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .posShiftsTable tbody td {
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .posShiftsTable td strong {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .posShiftsTableWrap .emptyCell {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .posShiftStatusBadge--open {
+  background: rgba(46, 144, 250, 0.2);
+  color: #84caff;
+}
+
+html[data-theme="dark"] .posShiftStatusBadge--closed {
+  background: rgba(152, 162, 179, 0.16);
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .cashierShiftPanel {
+  background: var(--color-bg-muted);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .cashierShiftPanelMeta {
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .cashierShiftCloseGrid > div {
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border);
+}
+
+html[data-theme="dark"] .cashierShiftCloseGrid span {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="dark"] .cashierShiftCloseHighlight {
+  background: rgba(18, 183, 106, 0.14) !important;
+  border-color: rgba(110, 231, 183, 0.35);
+}
+
+html[data-theme="dark"] .posShiftGateIntro h3 {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .posShiftGateIntro p,
+html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
+  color: var(--color-text-muted);
+}
+
 .posSplit {
   display: flex;
   flex-direction: row;

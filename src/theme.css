@@ -1004,6 +1004,32 @@ html[data-theme="dark"] .rangeChip:hover {
   color: #fff;
 }
 
+html[data-theme="dark"] .tableInput,
+html[data-theme="dark"] .tableSelect {
+  background: var(--color-bg-input);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .tableInput:focus,
+html[data-theme="dark"] .tableSelect:focus {
+  border-color: #3dcea0;
+  box-shadow: 0 0 0 3px var(--color-input-focus-ring);
+}
+
+html[data-theme="dark"] .cashierShiftsReportCard .hrFilters label,
+html[data-theme="dark"] .reportsPage .hrFilters label {
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .textDanger {
+  color: #fda29b;
+}
+
+html[data-theme="dark"] .textSuccess {
+  color: #6ce9a6;
+}
+
 html[data-theme="dark"] .secondaryBtn {
   background: var(--color-bg-input);
   border-color: var(--color-border-strong);
