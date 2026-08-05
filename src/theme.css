@@ -2203,3 +2203,24 @@ html[data-theme="dark"] .employeeProfileScheduleTabs button.active {
   border-color: rgba(110, 231, 183, 0.45);
   background: rgba(18, 183, 106, 0.14);
 }
+
+html[data-theme="dark"] .employeeProfileModalCard {
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+}
+
+html[data-theme="dark"] .employeeProfileModalClose:hover {
+  background: var(--color-border-strong);
+}
+
+html[data-theme="dark"] .employeePortalForm h3,
+html[data-theme="dark"] .employeeProfileSectionHead h3 {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .employeePortalForm label {
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .attendanceDynamicQrVisual img {
+  background: #fff;
+}
