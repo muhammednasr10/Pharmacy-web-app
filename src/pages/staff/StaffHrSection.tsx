@@ -47,7 +47,7 @@ export default function StaffHrSection({ state }: Props) {
         >
           <LazyHrPage
             embedded
-            activeTab={activeTab}
+            activeTab={activeTab as import("../hr/types").HrTab}
             isArabic={isArabic}
             appUser={appUser}
             pharmacyId={pharmacyId}

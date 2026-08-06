@@ -4,7 +4,7 @@ import type { BranchStockTransfer, Medicine, Page } from "../../types";
 
 export type PendingBranchTransferGroup = {
   transferNumber: string;
-  items: BranchStockTransfer[];
+  items?: BranchStockTransfer[];
   fromPharmacyId?: string;
   toPharmacyId?: string;
   createdAt?: string;
@@ -32,7 +32,7 @@ export type DashboardPageProps = {
   lowStockMedicines: Medicine[];
   expiringSoonMedicines: Medicine[];
   expiredMedicines: Medicine[];
-  subscriptionDaysLeft: number | null;
+  subscriptionDaysLeft: number | string | null;
   isSubscriptionExpired: boolean;
   isSubscriptionExpiringSoon: boolean;
   isTrialSubscription?: boolean;

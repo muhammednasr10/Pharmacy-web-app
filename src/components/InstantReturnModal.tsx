@@ -237,7 +237,7 @@ export default function InstantReturnModal({
         invoice: selectedInvoice,
         items: [
           {
-            medicineId: selectedItem.medicineId,
+            medicineId: selectedItem.medicineId as number,
             quantity: returnQty,
             unitPrice: selectedItem.unitPrice,
             buyPrice: selectedItem.buyPrice,

@@ -64,12 +64,12 @@ export default function ManageTenantModalShell({ state, children }: Props) {
           </div>
           <div>
             <span>{isArabic ? "بدء الاشتراك" : "Subscription start"}</span>
-            <strong>{getPharmacyStartDate(selected)}</strong>
+            <strong>{getPharmacyStartDate(selected, isArabic)}</strong>
           </div>
           <div>
             <span>{isArabic ? "انتهاء الاشتراك" : "Subscription end"}</span>
             <strong>
-              {getPharmacyEndDate(selected)}
+              {getPharmacyEndDate(selected, isArabic)}
               {selectedTrialStatus?.isTrialSubscription &&
               selectedTrialStatus.subscriptionDaysLeft !== null ? (
                 <span className="saasFreeTrialDaysLeft">

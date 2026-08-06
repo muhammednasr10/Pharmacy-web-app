@@ -8,24 +8,20 @@ import {
 import type { AppUser, Medicine } from "../../types";
 import {
   getPharmacyCustomRoleByKey,
-  getPharmacyCustomRoles,
   setPharmacyCustomRoles,
 } from "./customRoleCache";
 import {
   getPharmacyRoleConfig,
-  getPharmacyRoleConfigs,
   setPharmacyRoleConfigs,
 } from "./roleConfigCache";
+import { toSnakeCase } from "./mappers";
 
 export {
   getPharmacyCustomRoleByKey,
-  getPharmacyCustomRoles,
   setPharmacyCustomRoles,
   getPharmacyRoleConfig,
-  getPharmacyRoleConfigs,
   setPharmacyRoleConfigs,
 };
-import { toSnakeCase } from "./mappers";
 
 // Active tenant scope for reads/writes. Super admin may set this to view a tenant.
 let activePharmacyId: string | null = null;
@@ -58,9 +54,9 @@ export function getCurrentAppUser() {
 
 export { isSuperAdmin };
 
-type PharmacyScopedQuery<T> = T & {
-  eq: (col: string, val: string) => T;
-  in?: (col: string, vals: string[]) => T;
+type PharmacyScopedQuery = {
+  eq: (col: string, val: string) => unknown;
+  in?: (col: string, vals: string[]) => unknown;
 };
 
 export function shouldQueryAllOrganizationBranches(appUser: AppUser | null): boolean {
@@ -71,44 +67,46 @@ export function shouldQueryAllOrganizationBranches(appUser: AppUser | null): boo
   );
 }
 
-export function applyPharmacyScopeFilter<T extends PharmacyScopedQuery<T>>(
+export function applyPharmacyScopeFilter<T>(
   query: T,
   pharmacyIds?: string[],
   appUser: AppUser | null = currentAppUser,
 ): T {
+  const scoped = query as PharmacyScopedQuery;
   const ids = [...new Set((pharmacyIds || []).filter(Boolean))];
   if (ids.length > 0) {
     if (ids.length === 1) {
-      return query.eq("pharmacy_id", ids[0]);
+      return scoped.eq("pharmacy_id", ids[0]) as T;
     }
-    if (query.in) {
-      return query.in("pharmacy_id", ids);
+    if (scoped.in) {
+      return scoped.in("pharmacy_id", ids) as T;
     }
   }
   return applyPharmacyFilter(query, appUser);
 }
 
-export function applyPharmacyFilter<T extends PharmacyScopedQuery<T>>(
+export function applyPharmacyFilter<T>(
   query: T,
   appUser: AppUser | null = currentAppUser,
 ): T {
+  const scoped = query as PharmacyScopedQuery;
   if (isSuperAdmin(appUser)) {
     if (activePharmacyId && activePharmacyId !== ALL_BRANCHES_ID) {
-      return query.eq("pharmacy_id", activePharmacyId);
+      return scoped.eq("pharmacy_id", activePharmacyId) as T;
     }
-    if (activePharmacyId === ALL_BRANCHES_ID && organizationBranchIds.length > 0 && query.in) {
-      return query.in("pharmacy_id", organizationBranchIds);
+    if (activePharmacyId === ALL_BRANCHES_ID && organizationBranchIds.length > 0 && scoped.in) {
+      return scoped.in("pharmacy_id", organizationBranchIds) as T;
     }
     const fallbackPharmacyId = appUser?.pharmacyId || "main";
-    return query.eq("pharmacy_id", fallbackPharmacyId);
+    return scoped.eq("pharmacy_id", fallbackPharmacyId) as T;
   }
 
   if (shouldQueryAllOrganizationBranches(appUser)) {
     if (organizationBranchIds.length === 1) {
-      return query.eq("pharmacy_id", organizationBranchIds[0]);
+      return scoped.eq("pharmacy_id", organizationBranchIds[0]) as T;
     }
-    if (query.in) {
-      return query.in("pharmacy_id", organizationBranchIds);
+    if (scoped.in) {
+      return scoped.in("pharmacy_id", organizationBranchIds) as T;
     }
   }
 
@@ -117,7 +115,7 @@ export function applyPharmacyFilter<T extends PharmacyScopedQuery<T>>(
       ? activePharmacyId
       : appUser?.pharmacyId;
   if (pharmacyId) {
-    return query.eq("pharmacy_id", pharmacyId);
+    return scoped.eq("pharmacy_id", pharmacyId) as T;
   }
   return query;
 }

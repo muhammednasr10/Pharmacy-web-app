@@ -1,3 +1,4 @@
+import { useLocation } from "react-router-dom";
 import { InventoryPage } from "../../pages/lazyPages";
 import * as pharmacyService from "../../services/pharmacyService";
 import { canTransferStockWithTier } from "../../utils/subscriptionFeatures";
@@ -5,7 +6,6 @@ import type { AppPageRouterProps } from "./types";
 
 export type AppInventoryRouteProps = Pick<
   AppPageRouterProps,
-  | "displayPage"
   | "canOpenPage"
   | "appUser"
   | "activeBranchId"
@@ -51,7 +51,6 @@ export type AppInventoryRouteProps = Pick<
 };
 
 export default function AppInventoryRoute({
-  displayPage,
   canOpenPage,
   appUser,
   activeBranchId,
@@ -94,16 +93,14 @@ export default function AppInventoryRoute({
   activityLogs,
   subscriptionBlocksWrite,
 }: AppInventoryRouteProps) {
-  if (
-    displayPage !== "inventory" &&
-    !(displayPage === "stockMovements" && canOpenPage("stockMovements"))
-  ) {
-    return null;
-  }
+  const location = useLocation();
+  const initialTab = location.pathname.includes("/movements") ? "movements" : "stock";
+
+  if (!canOpenPage("inventory") && !canOpenPage("stockMovements")) return null;
 
   return (
     <InventoryPage
-      initialTab={displayPage === "stockMovements" ? "movements" : "stock"}
+      initialTab={initialTab}
       appUser={appUser}
       activeBranchId={activeBranchId}
       orgSubscriptionTier={orgSubscriptionTier}
@@ -126,7 +123,7 @@ export default function AppInventoryRoute({
       onOpenSubscriptionSettings={openSubscriptionSettings}
       onTransferComplete={handleBranchTransferComplete}
       onPrintTransfer={printBranchTransferRecords}
-      onApplyStockCount={handleApplyStockCount}
+      onApplyStockCount={(session) => Promise.resolve(handleApplyStockCount(session))}
       onOpenPurchasesWithReorder={
         canUsePurchases() && !subscriptionBlocksWrite
           ? () => setActivePage("purchases")

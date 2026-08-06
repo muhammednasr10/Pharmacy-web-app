@@ -357,7 +357,14 @@ export function pharmacyManagedRoleKeysForBranch(
   return [...builtin, ...custom];
 }
 
-const defaultLoginAccountEmails: Record<(typeof loginAccountRoleOptions)[number], string> = {
+type LoginAccountBuiltinRole =
+  | "pharmacy_admin"
+  | "branch_manager"
+  | "cashier"
+  | "accountant"
+  | "inventory";
+
+const defaultLoginAccountEmails: Record<LoginAccountBuiltinRole, string> = {
   pharmacy_admin: "manager@pharmacy.com",
   branch_manager: "branch@pharmacy.com",
   cashier: "cashier@pharmacy.com",
@@ -387,7 +394,7 @@ export function getDefaultLoginAccountDraft(role: UserRole | string): { email: s
     return { email: `${slug}@pharmacy.com`, password };
   }
   return {
-    email: defaultLoginAccountEmails[parsed as (typeof loginAccountRoleOptions)[number]],
+    email: defaultLoginAccountEmails[parsed as LoginAccountBuiltinRole],
     password,
   };
 }

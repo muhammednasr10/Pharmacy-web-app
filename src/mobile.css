@@ -4,6 +4,10 @@
    ============================================================================= */
 
 @media (max-width: 768px) {
+  .app {
+    min-height: 100dvh;
+  }
+
   .content {
     padding: 12px;
     padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
@@ -183,7 +187,7 @@
     bottom: max(12px, env(safe-area-inset-bottom, 0px));
     width: auto;
     max-width: none;
-    max-height: min(70vh, 520px);
+    max-height: min(70dvh, 520px);
   }
 
   /* Cards & page sections */
@@ -302,12 +306,13 @@
 
   .invoiceModal,
   .crmFormModal,
+  .crmDetailModal,
   .upgradePlanModal,
   .branchTransferModal,
   .staffAccessModal {
     width: 100%;
     max-width: none;
-    max-height: min(92vh, 900px);
+    max-height: min(92dvh, 900px);
     border-radius: 18px 18px 0 0;
     padding: 16px;
     margin: 0;
@@ -342,6 +347,41 @@
     gap: 12px;
   }
 
+  .posCartPanel {
+    min-height: 0;
+    position: static;
+  }
+
+  .posCartPanel--split,
+  .posCartSection--split > .posCartPanel {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .posCartSplitMain,
+  .posCartSplitSide {
+    min-height: auto;
+  }
+
+  .posCartList {
+    max-height: min(240px, 38dvh);
+  }
+
+  .posActionBtn {
+    flex: 1 1 100%;
+    min-width: 0;
+    min-height: 44px;
+  }
+
+  .posCartCompleteBtn {
+    min-height: 48px;
+  }
+
+  .posPageHeaderActions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
   .posQuickSaleOverlay {
     padding: 0;
   }
@@ -349,14 +389,47 @@
   .posQuickSaleCard {
     width: 100%;
     max-width: none;
-    min-height: 100vh;
+    min-height: 100dvh;
     border-radius: 0;
+  }
+
+  .topbarSearchDropdown {
+    max-height: min(280px, 45dvh);
+  }
+
+  /* Inventory management */
+  .invMgmtWarehouseBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .invMgmtWarehouseSwitch,
+  .invMgmtWarehouseActions {
+    width: 100%;
+  }
+
+  .invMgmtWarehouseSelect {
+    width: 100%;
+    max-width: none;
   }
 
   /* Settings / tabs */
   .settingsTabsNav {
     gap: 6px;
     padding-bottom: 6px;
+  }
+
+  .crmPage .crmTabs {
+    grid-template-columns: 1fr;
+  }
+
+  .attendanceScanModeBtns {
+    flex-direction: column;
+  }
+
+  .attendanceScanModeBtns button {
+    width: 100%;
+    min-height: 44px;
   }
 
   .settingsTabBtn {

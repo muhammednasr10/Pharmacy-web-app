@@ -61,6 +61,7 @@ export function useAppState() {
     if (!auth.appUser) return shared.activePage;
     if (shared.activePage === "hr") return "users";
     if (shared.activePage === "costs") return "reports";
+    if (shared.activePage === "stockMovements") return "inventory";
     if (allowedPages.includes(shared.activePage)) return shared.activePage;
     return allowedPages[0] || "dashboard";
   }, [auth.appUser, shared.activePage, allowedPages]);

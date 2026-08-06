@@ -17,6 +17,7 @@ export default function SuperAdminRolesTab({ state }: Props) {
     openEditBuiltinRole,
     openEditRoleModal,
     tryDeleteBuiltinRole,
+    deleteCustomRole,
   } = state;
 
   return (

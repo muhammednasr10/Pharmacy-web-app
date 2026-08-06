@@ -1,9 +1,11 @@
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import * as pharmacyService from "../../services/pharmacyService";
-import { medicinesSeed } from "../../data/medicinesSeed";
 import { usePharmacySettings } from "../usePharmacySettings";
 import { usePharmacyData } from "../usePharmacyData";
+import { usePharmacyScopeKey } from "../../queries/usePharmacyScopeKey";
+import { useMedicinesCatalogQuery } from "../../queries/useMedicinesCatalogQuery";
+import { useInvoicesCatalogQuery } from "../../queries/useInvoicesCatalogQuery";
 import type {
   ActivityLog,
   CustomerPayment,
@@ -55,9 +57,18 @@ export function useAppDataSlice({
   activeBranchId,
   getPharmacyId,
 }: UseAppDataSliceInput) {
-  const [medicines, setMedicines] = useState<Medicine[]>(medicinesSeed);
+  const scopeKey = usePharmacyScopeKey(activeBranchId, appUser?.pharmacyId);
+  const catalogEnabled = Boolean(appUser);
+
+  const {
+    medicines,
+    setMedicines,
+    refreshMedicinesFromDb,
+  } = useMedicinesCatalogQuery(scopeKey, catalogEnabled);
+
+  const { invoices, setInvoices } = useInvoicesCatalogQuery(scopeKey, catalogEnabled);
+
   const [orgAlertMedicines, setOrgAlertMedicines] = useState<Medicine[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
   const [returns, setReturns] = useState<ReturnRecord[]>([]);
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
@@ -101,13 +112,6 @@ export function useAppDataSlice({
     orgSubscriptionTier,
     branches.length,
   );
-
-  const refreshMedicinesFromDb = useCallback(async () => {
-    const rows = await pharmacyService.getMedicines();
-    startTransition(() => {
-      setMedicines(rows);
-    });
-  }, []);
 
   const addActivityLog = useCallback(
     async (data: {
@@ -168,13 +172,11 @@ export function useAppDataSlice({
       activeBranchId,
       branches,
       isViewingAllBranches,
-      medicinesSeed,
+      scopeKey,
       heldInvoicesSetterRef,
       setBranches,
       setPharmacySettings,
       setSettingsForm,
-      setMedicines,
-      setInvoices,
       setReturns,
       setPurchases,
       setCustomerPayments,

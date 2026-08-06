@@ -30,9 +30,22 @@ export default function AppBranchesRoute({
   displayPage,
   canOpenPage,
   subscriptionBlocksWrite,
+  refreshBranchTransfers,
+  handleBranchTransferComplete,
+  switchBranch,
+  addActivityLog,
   ...props
 }: AppBranchesRouteProps) {
-  if (displayPage !== "branches" || !canOpenPage("branches")) return null;
+  if (!canOpenPage("branches")) return null;
 
-  return <BranchesPage {...props} subscriptionBlocksWrite={subscriptionBlocksWrite} />;
+  return (
+    <BranchesPage
+      {...props}
+      subscriptionBlocksWrite={subscriptionBlocksWrite}
+      onRefreshBranchTransfers={refreshBranchTransfers}
+      onTransferComplete={() => Promise.resolve(handleBranchTransferComplete())}
+      onSwitchBranch={switchBranch}
+      onActivityLog={addActivityLog}
+    />
+  );
 }

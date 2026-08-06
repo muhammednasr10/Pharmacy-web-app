@@ -72,7 +72,7 @@ export default function AppSettingsRoute({
   setThemeMode,
   setFontScale,
 }: AppSettingsRouteProps) {
-  if (displayPage !== "settings" || !canOpenPage("settings")) return null;
+  if (!canOpenPage("settings")) return null;
 
   return (
     <SettingsPage

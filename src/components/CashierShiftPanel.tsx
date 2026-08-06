@@ -15,6 +15,9 @@ type CashierShiftPanelProps = {
   onShiftChange: (shift: CashierShift | null) => void;
   getPaymentLabel: (method: string) => string;
   onShiftOpened?: () => void;
+  showQuickSaleButton?: boolean;
+  quickSaleOpen?: boolean;
+  onOpenQuickSale?: () => void;
 };
 
 function formatMoney(value: number, currency: string) {
@@ -32,6 +35,9 @@ export default function CashierShiftPanel({
   onShiftChange,
   getPaymentLabel,
   onShiftOpened,
+  showQuickSaleButton = false,
+  quickSaleOpen = false,
+  onOpenQuickSale,
 }: CashierShiftPanelProps) {
   const [summary, setSummary] = useState<CashierShiftSummary | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
@@ -205,6 +211,19 @@ export default function CashierShiftPanel({
               )}
             </div>
             <div className="cashierShiftPanelActions">
+              {showQuickSaleButton && !quickSaleOpen && onOpenQuickSale ? (
+                <button
+                  type="button"
+                  className="completeBtn posQuickSaleOpenBtn"
+                  onClick={onOpenQuickSale}
+                  disabled={Boolean(busy)}
+                >
+                  <span className="posQuickSaleOpenBtnIcon" aria-hidden="true">
+                    🛒
+                  </span>
+                  {isArabic ? "فتح البيع السريع" : "Open quick sale"}
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="secondaryBtn"

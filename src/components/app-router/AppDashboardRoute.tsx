@@ -5,7 +5,6 @@ import type { AppPageRouterProps } from "./types";
 
 export type AppDashboardRouteProps = Pick<
   AppPageRouterProps,
-  | "displayPage"
   | "isArabic"
   | "t"
   | "allowedPages"
@@ -51,7 +50,6 @@ export type AppDashboardRouteProps = Pick<
 >;
 
 export default function AppDashboardRoute({
-  displayPage,
   isArabic,
   t,
   allowedPages,
@@ -95,8 +93,6 @@ export default function AppDashboardRoute({
   handleApproveBranchTransfer,
   handleRejectBranchTransfer,
 }: AppDashboardRouteProps) {
-  if (displayPage !== "dashboard") return null;
-
   return (
     <DashboardPage
       isArabic={isArabic}

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
-import type { SubscriptionRequest } from "../../types";
+import type { SubscriptionRequest } from "../../../types";
 import SubscriptionPaymentInstructions from "../../SubscriptionPaymentInstructions";
 
 type SubscriptionPaymentModalProps = {

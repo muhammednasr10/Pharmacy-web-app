@@ -1,10 +1,11 @@
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import CostsPage from "../../pages/CostsPage";
 import { ReportsPage } from "../../pages/lazyPages";
 import type { AppPageRouterProps } from "./types";
 
 export type AppReportsRouteProps = Pick<
   AppPageRouterProps,
-  | "displayPage"
   | "canOpenPage"
   | "isArabic"
   | "t"
@@ -51,7 +52,6 @@ export type AppReportsRouteProps = Pick<
 >;
 
 export default function AppReportsRoute({
-  displayPage,
   canOpenPage,
   isArabic,
   t,
@@ -96,10 +96,21 @@ export default function AppReportsRoute({
   downloadCSV,
   refreshPharmacyCostsFromDb,
 }: AppReportsRouteProps) {
+  const location = useLocation();
   const showFinancialTab = canOpenPage("reports");
   const showInvestmentTab = canOpenPage("costs");
 
-  if (displayPage !== "reports" || (!showFinancialTab && !showInvestmentTab)) {
+  useEffect(() => {
+    if (location.pathname.includes("/investment")) {
+      setReportsTab("investment");
+      return;
+    }
+    if (showFinancialTab) {
+      setReportsTab("financial");
+    }
+  }, [location.pathname, setReportsTab, showFinancialTab]);
+
+  if (!showFinancialTab && !showInvestmentTab) {
     return null;
   }
 

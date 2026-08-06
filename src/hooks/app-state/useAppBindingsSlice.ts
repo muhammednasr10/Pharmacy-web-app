@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect } from "react";
+import { useLocation } from "react-router-dom";
 import * as pharmacyService from "../../services/pharmacyService";
+import { pageToPath } from "../../routes/pageRoutes";
 import { useAppBindings } from "../useAppBindings";
 import { useGlobalSearchShortcut } from "../useGlobalSearchShortcut";
 import { useSuperAdminNotifications } from "../useSuperAdminNotifications";
@@ -54,6 +56,7 @@ export function useAppBindingsSlice({
     setLang,
     activePage,
     setActivePage,
+    navigate,
     settingsInitialTab,
     openSubscriptionSettings,
     isMenuOpen,
@@ -91,6 +94,8 @@ export function useAppBindingsSlice({
     goToCustomerPaymentForm,
   } = shared;
 
+  const location = useLocation();
+
   const { user, appUser, handleLogout, branches, setBranches, activeBranchId, getPharmacyId } =
     auth;
 
@@ -117,10 +122,12 @@ export function useAppBindingsSlice({
 
   useLayoutEffect(() => {
     if (!appUser) return;
-    if (displayPage !== activePage) {
-      setActivePage(displayPage);
+    const targetPage = allowedPages.includes(activePage) ? activePage : displayPage;
+    const targetPath = pageToPath(targetPage);
+    if (location.pathname !== targetPath) {
+      navigate(targetPath, { replace: true });
     }
-  }, [appUser, displayPage, activePage, setActivePage]);
+  }, [appUser, activePage, displayPage, allowedPages, location.pathname, navigate]);
 
   useEffect(() => {
     if (displayPage !== "pos" || !appUser) return;
@@ -447,7 +454,6 @@ export function useAppBindingsSlice({
     refreshPharmacies: tenant.refreshPharmacies,
     setBranches,
     lang,
-    invoices: data.invoices,
     selectedReturn: operations.selectedReturn,
     selectedInvoice: operations.selectedInvoice,
     availabilityModal: operations.availabilityModal,
@@ -473,12 +479,6 @@ export function useAppBindingsSlice({
     handleGlobalSearchSelect,
     adminNavBadges: tenant.adminNavBadges,
     alertTotal: metrics.alertTotal,
-    lowStockCount: metrics.lowStockCount,
-    expiringCount: metrics.expiringCount,
-    expiredCount: metrics.expiredCount,
-    isSubscriptionExpiringSoon: metrics.isSubscriptionExpiringSoon,
-    isSubscriptionExpired: metrics.isSubscriptionExpired,
-    subscriptionDaysLeft: metrics.subscriptionDaysLeft,
     onOpenTenants: tenant.onOpenTenants,
     writeBranchLabel: org.writeBranchLabel,
     isMenuOpen,
@@ -486,10 +486,7 @@ export function useAppBindingsSlice({
     setLang,
     toggleTheme,
     handleLogout,
-    isOnline: operations.isOnline,
-    pendingOfflineSalesCount: operations.pendingOfflineSalesCount,
     appDataCacheAt: data.appDataCacheAt ?? operations.offlineMedicinesCacheAt,
-    isSyncingOfflineSales: operations.isSyncingOfflineSales,
     subscriptionReadOnly: isSubscriptionWriteBlocked(auth.appUser, metrics.isSubscriptionExpired),
     subscriptionEndDate: metrics.subscriptionEndDate,
   });

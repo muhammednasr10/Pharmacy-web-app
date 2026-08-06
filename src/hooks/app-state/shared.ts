@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAppPageNavigation } from "../useAppPageNavigation";
 import { appTranslations } from "../../i18n/appTranslations";
 import { formatDateInput } from "../../utils/date";
 import { useDisplayPreferences } from "../useDisplayPreferences";
@@ -22,7 +23,7 @@ export function useAppSharedState() {
   const { themeMode, fontScale, resolvedTheme, setThemeMode, setFontScale, toggleTheme } =
     useDisplayPreferences();
   const [lang, setLang] = useState<Lang>("ar");
-  const [activePage, setActivePage] = useState<Page>("dashboard");
+  const { activePage, setActivePage, navigate } = useAppPageNavigation();
   const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTab | undefined>();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [globalSearchFocusToken, setGlobalSearchFocusToken] = useState(0);
@@ -77,12 +78,12 @@ export function useAppSharedState() {
     setActivePage("inventory");
     setInventoryStatusFilter("expiring");
     setQuery("");
-  }, []);
+  }, [setActivePage]);
 
   const goToCustomerPaymentForm = useCallback(() => {
     setActivePage("customers");
     setCustomerPaymentModalRequest((count) => count + 1);
-  }, []);
+  }, [setActivePage]);
 
   const focusGlobalSearch = useCallback(() => {
     setGlobalSearchFocusToken((token) => token + 1);
@@ -101,6 +102,7 @@ export function useAppSharedState() {
     t,
     activePage,
     setActivePage,
+    navigate,
     settingsInitialTab,
     setSettingsInitialTab,
     openSubscriptionSettings,

@@ -39,8 +39,8 @@ export default function MedicineForm({
       {!hideTitle && <h3>{editingMedicineId ? t.editMedicine : t.addMedicine}</h3>}
       <MedicineEntryGrid
         medicines={medicines}
-        value={newMedicine}
-        onChange={onFormChange}
+        value={{ ...newMedicine, buyPrice: newMedicine.buyPrice ?? 0 }}
+        onChange={(form) => onFormChange({ ...form, buyPrice: form.buyPrice ?? 0 })}
         isArabic={isArabic}
         t={t}
         disabled={disabled || isSaving}

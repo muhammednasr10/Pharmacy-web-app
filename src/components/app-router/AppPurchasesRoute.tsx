@@ -49,7 +49,7 @@ export default function AppPurchasesRoute({
   barcodeCSV,
   downloadCSV,
 }: AppPurchasesRouteProps) {
-  if (displayPage !== "purchases" || !canOpenPage("purchases")) return null;
+  if (!canOpenPage("purchases")) return null;
 
   return (
     <PurchasesPage
@@ -71,7 +71,7 @@ export default function AppPurchasesRoute({
       medicines={medicines}
       fallbackSettings={pharmacySettings}
       safeNumber={safeNumber}
-      barcodeCSV={barcodeCSV}
+      barcodeCSV={(value) => barcodeCSV(Array.isArray(value) ? value : [value])}
       downloadCSV={downloadCSV}
     />
   );

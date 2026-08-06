@@ -1,4 +1,4 @@
-import type { AttendanceStatus, EarlyLeaveOutcome } from "../types";
+import type { AttendanceStatus, EarlyLeaveOutcome } from "../../types";
 import { statusLabel } from "../../utils/hrFormatters";
 
 type AttendanceStatusBadgeProps = {

@@ -22,10 +22,8 @@ export {
   setCurrentAppUser,
   getCurrentAppUser,
   setPharmacyCustomRoles,
-  getPharmacyCustomRoles,
   getPharmacyCustomRoleByKey,
   setPharmacyRoleConfigs,
-  getPharmacyRoleConfigs,
   applyPharmacyFilter,
   applyPharmacyScopeFilter,
 } from "./pharmacy/scope";

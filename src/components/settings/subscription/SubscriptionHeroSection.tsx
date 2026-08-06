@@ -72,7 +72,7 @@ export default function SubscriptionHeroSection({
 type SubscriptionProgressSectionProps = {
   isArabic: boolean;
   subscriptionTone: SubscriptionTone;
-  subscriptionDaysLeft: number | null;
+  subscriptionDaysLeft: number | string | null;
   progressPercent: number;
 };
 
@@ -87,7 +87,7 @@ export function SubscriptionProgressSection({
       <div className="subscriptionProgressHeader">
         <span>{isArabic ? "مدة الاشتراك المتبقية" : "Remaining subscription period"}</span>
         <strong>
-          {subscriptionDaysLeft !== null && subscriptionDaysLeft >= 0
+          {subscriptionDaysLeft !== null && Number(subscriptionDaysLeft) >= 0
             ? `${subscriptionDaysLeft} ${isArabic ? "يوم" : "days"}`
             : isArabic
               ? "منتهي"

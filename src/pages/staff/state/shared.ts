@@ -77,7 +77,7 @@ export type StaffSharedContext = {
   canShowEmployeesAccessPanels: boolean;
   shouldLoadLoginCatalog: boolean;
   loadOrgEmployeeScope: boolean;
-  centralHrUpgradeNotice: string;
+  centralHrUpgradeNotice: string | null;
   orgBranchIds: string[];
   isCatalogOwner: boolean;
   pharmacyName: string;

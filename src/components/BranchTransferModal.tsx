@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { BranchStockTransfer, Medicine, PharmacySettings } from "../types";
 import * as pharmacyService from "../services/pharmacyService";
 import BranchScopeSelect from "./BranchScopeSelect";
+import TransferBarcodeInput from "./TransferBarcodeInput";
 
 type BranchTransferModalProps = {
   branches: PharmacySettings[];

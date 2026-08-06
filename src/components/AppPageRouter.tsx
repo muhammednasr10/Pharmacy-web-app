@@ -1,4 +1,6 @@
+import { Navigate, Route, Routes } from "react-router-dom";
 import { isSubscriptionWriteBlocked } from "../utils/subscriptionAccess";
+import { pageToPath } from "../routes/pageRoutes";
 import type { AppPageRouterProps } from "./app-router/types";
 import AppActivityLogsRoute from "./app-router/AppActivityLogsRoute";
 import AppBranchesRoute from "./app-router/AppBranchesRoute";
@@ -24,25 +26,33 @@ export default function AppPageRouter(props: AppPageRouterProps) {
     props.appUser,
     props.isSubscriptionExpired,
   );
+  const routeProps = { ...props, subscriptionBlocksWrite };
 
   return (
-    <>
-      <AppDashboardRoute {...props} />
-      <AppInventoryRoute {...props} subscriptionBlocksWrite={subscriptionBlocksWrite} />
-      <AppPurchasesRoute {...props} />
-      <AppPosRoute {...props} subscriptionBlocksWrite={subscriptionBlocksWrite} />
-      <AppInvoicesRoute {...props} />
-      <AppReturnsRoute {...props} subscriptionBlocksWrite={subscriptionBlocksWrite} />
-      <AppCustomersRoute {...props} />
-      <AppActivityLogsRoute {...props} />
-      <AppReportsRoute {...props} />
-      <AppEmployeesRoute {...props} subscriptionBlocksWrite={subscriptionBlocksWrite} />
-      <AppEmployeePortalRoute {...props} />
-      <AppSuperAdminRoute {...props} />
-      <AppSqlMigrationsRoute {...props} />
-      <AppBranchesRoute {...props} subscriptionBlocksWrite={subscriptionBlocksWrite} />
-      <AppUserGuideRoute {...props} />
-      <AppSettingsRoute {...props} />
-    </>
+    <Routes>
+      <Route index element={<Navigate to={pageToPath("dashboard")} replace />} />
+      <Route path="/dashboard" element={<AppDashboardRoute {...props} />} />
+      <Route path="/inventory/movements" element={<AppInventoryRoute {...routeProps} />} />
+      <Route path="/inventory" element={<AppInventoryRoute {...routeProps} />} />
+      <Route path="/pos" element={<AppPosRoute {...routeProps} />} />
+      <Route path="/invoices" element={<AppInvoicesRoute {...props} />} />
+      <Route path="/returns" element={<AppReturnsRoute {...routeProps} />} />
+      <Route path="/purchases" element={<AppPurchasesRoute {...props} />} />
+      <Route path="/customers" element={<AppCustomersRoute {...props} />} />
+      <Route path="/reports/investment" element={<AppReportsRoute {...props} />} />
+      <Route path="/reports" element={<AppReportsRoute {...props} />} />
+      <Route path="/activity-logs" element={<AppActivityLogsRoute {...props} />} />
+      <Route path="/staff" element={<AppEmployeesRoute {...routeProps} />} />
+      <Route path="/employee-portal" element={<AppEmployeePortalRoute {...props} />} />
+      <Route path="/admin/tenants" element={<AppSuperAdminRoute {...props} />} />
+      <Route path="/admin/sql" element={<AppSqlMigrationsRoute {...props} />} />
+      <Route path="/branches" element={<AppBranchesRoute {...routeProps} />} />
+      <Route path="/guide" element={<AppUserGuideRoute {...props} />} />
+      <Route path="/settings" element={<AppSettingsRoute {...props} />} />
+      <Route
+        path="*"
+        element={<Navigate to={pageToPath(props.displayPage)} replace />}
+      />
+    </Routes>
   );
 }

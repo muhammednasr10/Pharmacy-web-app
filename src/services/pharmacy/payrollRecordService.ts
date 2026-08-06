@@ -36,7 +36,9 @@ export async function getPayrollRecords(
   periodEnd: string,
   pharmacyIds?: string[],
 ): Promise<PayrollRecord[]> {
-  let query = applyPharmacyScopeFilter(supabase.from("payroll_records").select("*"), pharmacyIds)
+  const tableQuery = supabase.from("payroll_records").select("*");
+  let query = applyPharmacyScopeFilter(tableQuery as never, pharmacyIds) as typeof tableQuery;
+  query = query
     .eq("period_start", periodStart)
     .eq("period_end", periodEnd)
     .order("user_name", { ascending: true });

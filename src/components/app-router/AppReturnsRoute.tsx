@@ -72,7 +72,7 @@ export default function AppReturnsRoute({
   safeNumber,
   subscriptionBlocksWrite,
 }: AppReturnsRouteProps) {
-  if (displayPage !== "returns" || !canOpenPage("returns")) return null;
+  if (!canOpenPage("returns")) return null;
 
   return (
     <ReturnsPage

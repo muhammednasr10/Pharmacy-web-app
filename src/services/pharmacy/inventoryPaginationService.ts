@@ -65,25 +65,31 @@ function applyMedicineSearch<T extends { or: (filters: string) => T }>(
   );
 }
 
-function applyStockCatalogFilter(
-  query: ReturnType<typeof supabase.from>,
+type StockFilterQuery = {
+  lte: (column: string, value: number | string) => StockFilterQuery;
+  lt: (column: string, value: string) => StockFilterQuery;
+  gte: (column: string, value: string) => StockFilterQuery;
+};
+
+function applyStockCatalogFilter<T extends StockFilterQuery>(
+  query: T,
   stockFilter: StockCatalogFilter,
   lowStockThreshold: number,
   expiringSoonDays: number,
-) {
+): T {
   if (stockFilter === "low") {
-    return query.lte("qty", Math.max(0, lowStockThreshold));
+    return query.lte("qty", Math.max(0, lowStockThreshold)) as T;
   }
 
   const today = formatDateInput(new Date());
   if (stockFilter === "expired") {
-    return query.lt("expiry", today);
+    return query.lt("expiry", today) as T;
   }
 
   if (stockFilter === "expiring") {
     const limit = new Date();
     limit.setDate(limit.getDate() + Math.max(1, expiringSoonDays));
-    return query.gte("expiry", today).lte("expiry", formatDateInput(limit));
+    return query.gte("expiry", today).lte("expiry", formatDateInput(limit)) as T;
   }
 
   return query;
@@ -194,7 +200,7 @@ export async function fetchMedicinesPage(
   } else if (scopedPharmacyIds.length > 1) {
     request = request.in("pharmacy_id", scopedPharmacyIds);
   } else {
-    request = applyPharmacyFilter(request);
+    request = applyPharmacyFilter(request as never) as typeof request;
   }
   request = applyMedicineSearch(request, query.search);
   request = applyStockCatalogFilter(request, stockFilter, lowStockThreshold, expiringSoonDays);

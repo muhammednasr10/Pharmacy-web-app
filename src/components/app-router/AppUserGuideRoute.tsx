@@ -11,7 +11,7 @@ export default function AppUserGuideRoute({
   canOpenPage,
   isArabic,
 }: AppUserGuideRouteProps) {
-  if (displayPage !== "userGuide" || !canOpenPage("userGuide")) return null;
+  if (!canOpenPage("userGuide")) return null;
 
   return <UserGuidePage isArabic={isArabic} />;
 }

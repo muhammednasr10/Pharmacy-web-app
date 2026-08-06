@@ -55,7 +55,7 @@ export default function HrAttendanceFilters({ state }: Props) {
             {isArabic ? "الفرع" : "Branch"}
             <BranchScopeSelect
               className="tableInput"
-              pharmacies={orgBranches}
+              pharmacies={orgBranches ?? []}
               value={attendanceBranchFilter}
               onChange={setAttendanceBranchFilter}
               isArabic={isArabic}

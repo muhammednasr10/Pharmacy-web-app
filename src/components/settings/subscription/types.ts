@@ -21,7 +21,7 @@ export type SubscriptionSettingsPanelProps = {
   submitTierUpgradeRequest?: (targetTier: SubscriptionTier) => Promise<SubscriptionRequest | null>;
   pharmacySubscriptionRequests: SubscriptionRequest[];
   subscriptionRenewLogs: ActivityLog[];
-  subscriptionDaysLeft: number | null;
+  subscriptionDaysLeft: number | string | null;
 };
 
 export type RequestPlan = "monthly" | "quarterly" | "yearly" | "custom";

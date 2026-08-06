@@ -80,7 +80,7 @@ export function buildExpiryAlertSummary(params: {
   const items: ExpiryAlertItem[] = [
     ...expired.map((medicine) => ({
       id: medicine.id,
-      name: medicine.name,
+      name: params.isArabic ? medicine.name_ar : medicine.name_en || medicine.name_ar,
       expiry: medicine.expiry,
       qty: medicine.qty,
       pharmacyId: medicine.pharmacyId,
@@ -89,7 +89,7 @@ export function buildExpiryAlertSummary(params: {
     })),
     ...expiring.map((medicine) => ({
       id: medicine.id,
-      name: medicine.name,
+      name: params.isArabic ? medicine.name_ar : medicine.name_en || medicine.name_ar,
       expiry: medicine.expiry,
       qty: medicine.qty,
       pharmacyId: medicine.pharmacyId,

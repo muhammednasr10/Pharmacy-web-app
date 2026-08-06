@@ -555,7 +555,7 @@ export function useSuperAdminTenants({
 
   const handleDeleteTenantStaff = useCallback(
     async (target: { uid?: string; employeeId?: string }): Promise<boolean> => {
-      if (!isSuperAdmin(appUser)) return false;
+      if (!isSuperAdmin(appUser) || !appUser) return false;
       if (!target.employeeId && !target.uid) return false;
       try {
         if (target.employeeId) {

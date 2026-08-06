@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import * as pharmacyService from "../../services/pharmacyService";
 import { ACTIVE_PAGE_STORAGE_KEY } from "../../utils/sessionNavigation";
+import { pageFromPath } from "../../routes/pageRoutes";
 import { getAllowedPages } from "../../utils/roles";
 import {
   canSwitchBranchesWithTier,
@@ -14,6 +16,7 @@ import type { AppSharedStateReturn } from "./shared";
 type UseAppAuthSliceInput = Pick<AppSharedStateReturn, "isArabic" | "activePage" | "setActivePage">;
 
 export function useAppAuthSlice({ isArabic, activePage, setActivePage }: UseAppAuthSliceInput) {
+  const location = useLocation();
   const [branches, setBranches] = useState<PharmacySettings[]>([]);
   const [activeBranchId, setActiveBranchId] = useState<string | null>(null);
 
@@ -44,13 +47,22 @@ export function useAppAuthSlice({ isArabic, activePage, setActivePage }: UseAppA
 
   useEffect(() => {
     if (!appUser) return;
+    const urlPage = pageFromPath(location.pathname);
+    const allowed = getAllowedPages(appUser);
+    const isDefaultLanding =
+      location.pathname === "/" || location.pathname === "/dashboard";
+
+    if (!isDefaultLanding && allowed.includes(urlPage)) {
+      return;
+    }
+
     const savedPage = sessionStorage.getItem(ACTIVE_PAGE_STORAGE_KEY) as Page | null;
     if (!savedPage) return;
     const page = savedPage === "hr" ? "users" : savedPage;
-    if (getAllowedPages(appUser).includes(page)) {
+    if (allowed.includes(page) && page !== urlPage) {
       setActivePage(page);
     }
-  }, [appUser?.uid, setActivePage]);
+  }, [appUser?.uid, setActivePage, location.pathname]);
 
   useEffect(() => {
     if (!appUser) return;

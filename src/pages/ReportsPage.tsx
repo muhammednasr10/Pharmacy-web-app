@@ -163,7 +163,7 @@ export default function ReportsPage({
         name_en: medicine.name_en,
         barcode: medicine.barcode,
         qty: medicine.qty,
-        buyPrice: medicine.buyPrice,
+        buyPrice: medicine.buyPrice ?? 0,
         price: medicine.price,
         expiry: medicine.expiry,
       })),

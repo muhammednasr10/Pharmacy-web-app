@@ -53,6 +53,7 @@
   { "file": "medicines-search-trgm-index.sql", "kind": "required", "group": "core", "titleAr": "فهرس TRGM", "titleEn": "TRGM index" },
   { "file": "complete-sale-rpc.sql", "kind": "required", "group": "pos", "titleAr": "RPC بيع", "titleEn": "Sale RPC" },
   { "file": "complete-purchase-rpc.sql", "kind": "required", "group": "pos", "titleAr": "RPC شراء", "titleEn": "Purchase RPC" },
+  { "file": "fix-rpc-text-ids.sql", "kind": "required", "group": "pos", "titleAr": "إصلاح RPC text IDs", "titleEn": "Fix RPC text IDs" },
   { "file": "add-purchases-columns.sql", "kind": "required", "group": "pos", "titleAr": "أعمدة مشتريات", "titleEn": "Purchase columns" },
   { "file": "fix-purchases-complete.sql", "kind": "required", "group": "pos", "titleAr": "إصلاح مشتريات", "titleEn": "Fix purchases" },
   { "file": "fix-purchase-number-unique.sql", "kind": "required", "group": "pos", "titleAr": "رقم شراء فريد", "titleEn": "Unique purchase #" },

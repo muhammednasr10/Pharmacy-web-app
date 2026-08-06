@@ -60,16 +60,17 @@ export async function attachInvoiceItems(invoices: Invoice[]): Promise<Invoice[]
   const itemsByInvoiceId = items.reduce(
     (acc, item) => {
       if (item.invoiceId !== undefined) {
-        acc[item.invoiceId] = acc[item.invoiceId] || [];
-        acc[item.invoiceId].push(item);
+        const key = String(item.invoiceId);
+        acc[key] = acc[key] || [];
+        acc[key].push(item);
       }
       return acc;
     },
-    {} as Record<number, InvoiceItem[]>,
+    {} as Record<string, InvoiceItem[]>,
   );
 
   return invoices.map((invoice) => ({
     ...invoice,
-    items: itemsByInvoiceId[invoice.id] || [],
+    items: itemsByInvoiceId[String(invoice.id)] || [],
   }));
 }

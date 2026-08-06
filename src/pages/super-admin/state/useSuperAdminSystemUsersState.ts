@@ -70,7 +70,7 @@ export function useSuperAdminSystemUsersState(params: SystemUsersParams) {
 
   const operatorAppUser = useMemo(
     (): AppUser => ({
-      uid: operatorUid,
+      uid: operatorUid ?? "",
       role: "super_admin",
       name: "",
       email: "",

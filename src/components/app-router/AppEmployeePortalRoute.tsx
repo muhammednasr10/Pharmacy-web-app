@@ -13,7 +13,7 @@ export default function AppEmployeePortalRoute({
   appUser,
   getPharmacyId,
 }: AppEmployeePortalRouteProps) {
-  if (displayPage !== "employeePortal" || !canOpenPage("employeePortal")) return null;
+  if (!canOpenPage("employeePortal")) return null;
 
   return (
     <EmployeePortalPage isArabic={isArabic} appUser={appUser} pharmacyId={getPharmacyId()} />

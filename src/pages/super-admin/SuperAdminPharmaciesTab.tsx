@@ -157,8 +157,8 @@ export default function SuperAdminPharmaciesTab({ state }: Props) {
                               {branchUsage.used} / {branchUsage.max}
                             </span>
                           </td>
-                          <td className="saasDateCell">{getPharmacyStartDate(pharmacy)}</td>
-                          <td className="saasDateCell">{getPharmacyEndDate(pharmacy)}</td>
+                          <td className="saasDateCell">{getPharmacyStartDate(pharmacy, isArabic)}</td>
+                          <td className="saasDateCell">{getPharmacyEndDate(pharmacy, isArabic)}</td>
                           <td>
                             <span className={`saasBadge ${active ? "ok" : "danger"}`}>
                               {active

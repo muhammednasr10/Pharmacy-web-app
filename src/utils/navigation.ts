@@ -97,7 +97,7 @@ function buildPageEntry(
 }
 
 export function isBillingNavPage(page: Page): boolean {
-  return BILLING_NAV_PAGES.includes(page);
+  return (BILLING_NAV_PAGES as readonly Page[]).includes(page);
 }
 
 export function flattenNavigationEntries(entries: NavEntry[]): NavItem[] {
@@ -121,9 +121,9 @@ export function buildNavigationTree(
   lockedPages?: Set<Page>,
 ): NavEntry[] {
   const mergedPages = pages.filter((page) => page !== "stockMovements" && page !== "costs");
-  const billingChildren = BILLING_NAV_PAGES.filter((page) => mergedPages.includes(page)).map((page) =>
-    buildPageEntry(page, isArabic, t, lockedPages),
-  );
+  const billingChildren = (BILLING_NAV_PAGES as Page[])
+    .filter((page) => (mergedPages as Page[]).includes(page))
+    .map((page) => buildPageEntry(page, isArabic, t, lockedPages));
 
   const entries: NavEntry[] = [];
   let billingGroupInserted = false;

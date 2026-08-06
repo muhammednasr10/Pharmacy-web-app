@@ -134,7 +134,7 @@ export function buildBranchInventoryAlertRowsFromStats(params: {
     .map((branchId) => {
       const stats = params.branchStats[branchId] ?? empty;
       return {
-        branchId,
+        branchId: branchId || "",
         branchLabel: getBranchLabel(branchId, params.branches, params.isArabic),
         lowStockCount: stats.lowStock,
         outOfStockCount: stats.outOfStock,
@@ -175,7 +175,7 @@ export function buildBranchInventoryAlertRows(params: {
       ).length;
 
       return {
-        branchId,
+        branchId: branchId || "",
         branchLabel: getBranchLabel(branchId, params.branches, params.isArabic),
         lowStockCount,
         outOfStockCount,

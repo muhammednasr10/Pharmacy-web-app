@@ -63,7 +63,7 @@ type SettingsPageProps = {
   pharmacySubscriptionRequests: SubscriptionRequest[];
   hasRole: (roles: AppUser["role"][]) => boolean;
   subscriptionRenewLogs: ActivityLog[];
-  subscriptionDaysLeft: number | null;
+  subscriptionDaysLeft: number | string | null;
   handleLogoUpload: (file: File | null) => void;
   savePharmacySettings: () => Promise<void>;
   exportBackupCSV: () => void;

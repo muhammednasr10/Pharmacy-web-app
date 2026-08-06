@@ -36,11 +36,11 @@ function aggregateTopSellingMedicines(invoices: Invoice[]): TopSellingMedicine[]
       .flatMap((invoice) => invoice.items || [])
       .reduce(
         (result, item) => {
-          const key = item.medicineId;
+          const key = String(item.medicineId);
 
           if (!result[key]) {
             result[key] = {
-              medicineId: item.medicineId,
+              medicineId: Number(item.medicineId) || 0,
               name_ar: item.name_ar,
               name_en: item.name_en,
               quantity: 0,
@@ -53,7 +53,7 @@ function aggregateTopSellingMedicines(invoices: Invoice[]): TopSellingMedicine[]
 
           return result;
         },
-        {} as Record<number, TopSellingMedicine>,
+        {} as Record<string, TopSellingMedicine>,
       ),
   )
     .sort((a, b) => b.quantity - a.quantity)

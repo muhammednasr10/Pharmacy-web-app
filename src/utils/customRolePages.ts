@@ -1,4 +1,4 @@
-import type { Page, UserRole } from "../types";
+import type { Page, UserRole, BuiltinUserRole } from "../types";
 import { defaultPagesForBuiltinRole, ROLE_PAGE_OPTIONS } from "./rolePermissions";
 
 export type CustomRolePageOption = {
@@ -19,7 +19,7 @@ export const CUSTOM_ROLE_TEMPLATE_OPTIONS: UserRole[] = [
 ];
 
 export function defaultPagesForCustomRoleTemplate(baseRole: UserRole): Page[] {
-  const pages = defaultPagesForBuiltinRole(baseRole);
+  const pages = defaultPagesForBuiltinRole(baseRole as BuiltinUserRole);
   const allowed = new Set(CUSTOM_ROLE_PAGE_OPTIONS.map((item) => item.page));
   return pages.filter((page) => allowed.has(page));
 }

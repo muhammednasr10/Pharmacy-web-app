@@ -77,7 +77,7 @@ export default function AppSuperAdminRoute({
   refreshSystemUsersStable,
   refreshPharmacies,
 }: AppSuperAdminRouteProps) {
-  if (displayPage !== "tenants" || !canOpenPage("tenants")) return null;
+  if (!canOpenPage("tenants")) return null;
 
   return (
     <SuperAdminPage

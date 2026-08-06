@@ -135,6 +135,15 @@ export default function AppShell({
   const [userPhotoBase64, setUserPhotoBase64] = useState("");
 
   useEffect(() => {
+    if (!isMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMenuOpen]);
+
+  useEffect(() => {
     if (!appUser) {
       setUserPhotoBase64("");
       return;

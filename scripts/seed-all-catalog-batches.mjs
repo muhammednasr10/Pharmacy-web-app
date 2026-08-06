@@ -74,7 +74,8 @@ async function createSeedClient(env) {
 
   if (error) throw new Error(`Login failed: ${error.message}`);
 
-  const payload = data as { access_token?: string } | null;
+  const payload =
+    data && typeof data === "object" ? /** @type {{ access_token?: string }} */ (data) : null;
   const accessToken = payload?.access_token;
   if (!accessToken) throw new Error("Login did not return access_token");
 

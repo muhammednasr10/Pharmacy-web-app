@@ -4,7 +4,6 @@ import type { AppPageRouterProps } from "./types";
 
 export type AppPosRouteProps = Pick<
   AppPageRouterProps,
-  | "displayPage"
   | "medicines"
   | "t"
   | "isArabic"
@@ -59,7 +58,6 @@ export type AppPosRouteProps = Pick<
 };
 
 export default function AppPosRoute({
-  displayPage,
   medicines,
   t,
   isArabic,
@@ -111,7 +109,7 @@ export default function AppPosRoute({
   isSyncingOfflineSales,
   subscriptionBlocksWrite,
 }: AppPosRouteProps) {
-  if (displayPage !== "pos") return null;
+  if (!canUsePOS()) return null;
 
   return (
     <PosPage

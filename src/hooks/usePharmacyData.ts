@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useRef, startTransition, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import * as pharmacyService from "../services/pharmacyService";
 import { ALL_BRANCHES_ID, isAllBranchesMode } from "../constants/branches";
+import { medicinesSeed } from "../data/medicinesSeed";
 import { canViewOrgActivityLogs, isPharmacyManager, isSuperAdmin } from "../utils/roles";
 import { mapPharmacySettingsToForm } from "../utils/pharmacySettingsForm";
 import {
@@ -10,14 +12,15 @@ import {
   saveAppDataSnapshot,
   type AppDataSnapshot,
 } from "../utils/offlinePosStorage";
+import { invalidateInvoicesQueries, invalidateMedicinesQueries, pharmacyQueryKeys } from "../queries/queryKeys";
+import { syncInvoicesQueryCache } from "../queries/useInvoicesCatalogQuery";
+import { syncMedicinesQueryCache } from "../queries/useMedicinesCatalogQuery";
 import { useOnlineStatus } from "./useOnlineStatus";
 import type {
   ActivityLog,
   AppUser,
   CustomerPayment,
   HeldInvoice,
-  Invoice,
-  Medicine,
   PharmacyCost,
   PharmacyLoginAccount,
   PharmacySettings,
@@ -33,15 +36,13 @@ type UsePharmacyDataOptions = {
   activeBranchId: string | null;
   branches: PharmacySettings[];
   isViewingAllBranches: boolean;
-  medicinesSeed: Medicine[];
+  scopeKey: string;
   heldInvoicesSetterRef: MutableRefObject<Dispatch<SetStateAction<HeldInvoice[]>>>;
   setBranches: Dispatch<SetStateAction<PharmacySettings[]>>;
   setPharmacySettings: Dispatch<SetStateAction<PharmacySettings | null>>;
   setSettingsForm: Dispatch<
     SetStateAction<import("../utils/pharmacySettingsForm").SettingsFormState>
   >;
-  setMedicines: Dispatch<SetStateAction<Medicine[]>>;
-  setInvoices: Dispatch<SetStateAction<Invoice[]>>;
   setReturns: Dispatch<SetStateAction<ReturnRecord[]>>;
   setPurchases: Dispatch<SetStateAction<PurchaseRecord[]>>;
   setCustomerPayments: Dispatch<SetStateAction<CustomerPayment[]>>;
@@ -58,13 +59,11 @@ export function usePharmacyData({
   activeBranchId,
   branches,
   isViewingAllBranches,
-  medicinesSeed,
+  scopeKey,
   heldInvoicesSetterRef,
   setBranches,
   setPharmacySettings,
   setSettingsForm,
-  setMedicines,
-  setInvoices,
   setReturns,
   setPurchases,
   setCustomerPayments,
@@ -75,6 +74,7 @@ export function usePharmacyData({
   setPendingPharmacyLoginAccounts,
   setSystemUsers,
 }: UsePharmacyDataOptions) {
+  const queryClient = useQueryClient();
   const isOnline = useOnlineStatus();
   const [appDataCacheAt, setAppDataCacheAt] = useState<string | null>(null);
   const wasOfflineRef = useRef(false);
@@ -107,10 +107,8 @@ export function usePharmacyData({
         setPharmacySettings(snapshot.pharmacySettings);
         setSettingsForm(mapPharmacySettingsToForm(snapshot.pharmacySettings));
       }
-      startTransition(() => {
-        setMedicines(snapshot.medicines);
-      });
-      setInvoices(snapshot.invoices);
+      syncMedicinesQueryCache(queryClient, scopeKey, snapshot.medicines);
+      syncInvoicesQueryCache(queryClient, scopeKey, snapshot.invoices);
       setReturns(snapshot.returns);
       setPurchases(snapshot.purchases);
       setCustomerPayments(snapshot.customerPayments);
@@ -140,20 +138,26 @@ export function usePharmacyData({
         }
 
         if (isPharmacyManager(user) && !isAllBranches && scopedBranchId === "main") {
-          const medicinesList = await pharmacyService.getMedicines();
+          const medicinesList = await queryClient.fetchQuery({
+            queryKey: pharmacyQueryKeys.medicines(scopeKey),
+            queryFn: () => pharmacyService.getMedicines(),
+          });
           if (medicinesList.length === 0 && medicinesSeed.length > 0) {
             for (const medicine of medicinesSeed) {
               await pharmacyService.addMedicine(medicine);
             }
+            await invalidateMedicinesQueries(queryClient, scopeKey);
           }
         }
 
-        const loadedMedicines = await pharmacyService.getMedicines();
-        startTransition(() => {
-          setMedicines(loadedMedicines);
+        const loadedMedicines = await queryClient.fetchQuery({
+          queryKey: pharmacyQueryKeys.medicines(scopeKey),
+          queryFn: () => pharmacyService.getMedicines(),
         });
-        const invoices = await pharmacyService.getInvoices();
-        setInvoices(invoices);
+        const invoices = await queryClient.fetchQuery({
+          queryKey: pharmacyQueryKeys.invoices(scopeKey),
+          queryFn: () => pharmacyService.getInvoices(),
+        });
         const returns = await pharmacyService.getReturns();
         setReturns(returns);
         const purchases = await pharmacyService.getPurchases();
@@ -250,10 +254,14 @@ export function usePharmacyData({
 
     cleanup.push(
       pharmacyService.subscribeMedicines((rows) => {
-        startTransition(() => setMedicines(rows));
+        syncMedicinesQueryCache(queryClient, scopeKey, rows);
       }),
     );
-    cleanup.push(pharmacyService.subscribeInvoices(setInvoices));
+    cleanup.push(
+      pharmacyService.subscribeInvoices((rows) => {
+        syncInvoicesQueryCache(queryClient, scopeKey, rows);
+      }),
+    );
     cleanup.push(pharmacyService.subscribeReturns(setReturns));
     cleanup.push(pharmacyService.subscribePurchases(setPurchases));
     cleanup.push(pharmacyService.subscribeCustomerPayments(setCustomerPayments));
@@ -279,12 +287,11 @@ export function usePharmacyData({
     activeBranchId,
     appUser,
     heldInvoicesSetterRef,
-    medicinesSeed,
+    queryClient,
+    scopeKey,
     setActivityLogs,
     setBranches,
     setCustomerPayments,
-    setInvoices,
-    setMedicines,
     setPendingPharmacyLoginAccounts,
     setPharmacyCosts,
     setPharmacySettings,

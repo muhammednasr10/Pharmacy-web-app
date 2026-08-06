@@ -13,7 +13,12 @@ export async function getAttendanceRecords(
   toDate: string,
   pharmacyIds?: string[],
 ): Promise<AttendanceRecord[]> {
-  let query = applyPharmacyScopeFilter(supabase.from("attendance_records").select("*"), pharmacyIds)
+  const tableQuery = supabase.from("attendance_records").select("*");
+  let query = applyPharmacyScopeFilter(
+    tableQuery as never,
+    pharmacyIds,
+  ) as typeof tableQuery;
+  query = query
     .gte("work_date", fromDate)
     .lte("work_date", toDate)
     .order("work_date", { ascending: false });

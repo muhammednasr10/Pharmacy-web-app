@@ -110,7 +110,7 @@ type SubscriptionDisplayInput = {
   isSubscriptionExpired: boolean;
   isSubscriptionExpiringSoon: boolean;
   isTrialSubscription: boolean;
-  subscriptionDaysLeft: number | null;
+  subscriptionDaysLeft: number | string | null;
   subscriptionPlan: string;
   subscriptionEndDate: string;
 };
@@ -148,12 +148,14 @@ export function getSubscriptionDisplayValues({
           ? "نشط"
           : "Active";
 
+  const daysLeftNumeric =
+    subscriptionDaysLeft === null ? null : Number(subscriptionDaysLeft);
   const daysLeftLabel =
     subscriptionDaysLeft === null
       ? isArabic
         ? "غير محدد"
         : "Not set"
-      : subscriptionDaysLeft < 0
+      : daysLeftNumeric !== null && daysLeftNumeric < 0
         ? isArabic
           ? "منتهي"
           : "Expired"
@@ -195,8 +197,8 @@ export function getSubscriptionDisplayValues({
             : 30;
 
   const progressPercent =
-    progressCap && subscriptionDaysLeft !== null && subscriptionDaysLeft >= 0
-      ? Math.min(100, Math.max(8, (subscriptionDaysLeft / progressCap) * 100))
+    progressCap && daysLeftNumeric !== null && daysLeftNumeric >= 0
+      ? Math.min(100, Math.max(8, (daysLeftNumeric / progressCap) * 100))
       : subscriptionPlan === "lifetime"
         ? 100
         : 0;

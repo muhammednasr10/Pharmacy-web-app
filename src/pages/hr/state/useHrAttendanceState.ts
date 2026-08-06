@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   AttendanceRecord,
   AttendanceStatus,
@@ -7,6 +7,7 @@ import type {
   ShiftId,
 } from "../../../types";
 import * as pharmacyService from "../../../services/pharmacyService";
+import { useAttendanceRecordsQuery } from "../../../queries/useAttendanceRecordsQuery";
 import { resolveStaffFromAttendanceCode } from "../../../utils/employeeAttendanceCode";
 import { playBarcodeBeep } from "../../../utils/barcodeBeep";
 import {
@@ -75,7 +76,6 @@ export function useHrAttendanceState(params: AttendanceParams) {
   const [attendanceMonth, setAttendanceMonth] = useState(currentMonthValue);
   const [attendanceEmployeeFilter, setAttendanceEmployeeFilter] = useState("");
   const [attendanceBranchFilter, setAttendanceBranchFilter] = useState("all");
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [attendanceLogEdit, setAttendanceLogEdit] = useState<AttendanceLogDraft | null>(null);
   const [attendanceScanMode, setAttendanceScanMode] = useState<"auto" | "in" | "out">("auto");
   const [attendanceScanFeedback, setAttendanceScanFeedback] = useState<{
@@ -83,21 +83,28 @@ export function useHrAttendanceState(params: AttendanceParams) {
     ok: boolean;
   } | null>(null);
 
-  const loadAttendance = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      await loadStaff();
-      const { start, end } = monthBoundsFromDate(monthAnchorDate(attendanceMonth));
-      const scopeIds = showOrgHr && orgBranchIds.length > 0 ? orgBranchIds : undefined;
-      const rows = await pharmacyService.getAttendanceRecords(start, end, scopeIds);
-      setAttendanceRecords(rows);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "load_failed");
-    } finally {
-      setLoading(false);
-    }
-  }, [attendanceMonth, loadStaff, showOrgHr, orgBranchIds, setLoading, setError]);
+  const {
+    attendanceRecords,
+    loadAttendance,
+    invalidateAttendance,
+    isAttendanceFetching,
+    attendanceError,
+  } = useAttendanceRecordsQuery({
+    attendanceMonth,
+    pharmacyId,
+    showOrgHr,
+    orgBranchIds,
+    onBeforeFetch: loadStaff,
+  });
+
+  useEffect(() => {
+    setLoading(isAttendanceFetching);
+  }, [isAttendanceFetching, setLoading]);
+
+  useEffect(() => {
+    if (!attendanceError) return;
+    setError(attendanceError instanceof Error ? attendanceError.message : "load_failed");
+  }, [attendanceError, setError]);
 
   async function handleCheckIn(userId: string, userName: string, workDate = todayIso) {
     setBusyAction(`in-${userId}`);
@@ -114,7 +121,7 @@ export function useHrAttendanceState(params: AttendanceParams) {
         shiftId: schedule?.shiftId,
         graceMinutes,
       });
-      await loadAttendance();
+      await invalidateAttendance();
     } catch (err) {
       const code = err instanceof Error ? err.message : "";
       alert(
@@ -182,7 +189,7 @@ export function useHrAttendanceState(params: AttendanceParams) {
       await pharmacyService.recordCheckOut(staff.attendanceKey, staff.name, todayIso);
     }
 
-    await loadAttendance();
+    await invalidateAttendance();
     playBarcodeBeep();
 
     const time = new Date().toLocaleTimeString(isArabic ? "ar-EG" : "en-GB", {
@@ -206,7 +213,7 @@ export function useHrAttendanceState(params: AttendanceParams) {
     setBusyAction(`out-${userId}`);
     try {
       await pharmacyService.recordCheckOut(userId, userName, workDate);
-      await loadAttendance();
+      await invalidateAttendance();
     } catch (err) {
       const code = err instanceof Error ? err.message : "";
       alert(
@@ -236,7 +243,7 @@ export function useHrAttendanceState(params: AttendanceParams) {
     setBusyAction(`status-${userId}`);
     try {
       await pharmacyService.setAttendanceStatus(userId, userName, workDate, status);
-      await loadAttendance();
+      await invalidateAttendance();
     } catch {
       alert(isArabic ? "تعذر تحديث الحالة" : "Could not update status");
     } finally {
@@ -295,7 +302,7 @@ export function useHrAttendanceState(params: AttendanceParams) {
           shiftId: actualShiftId,
         });
       }
-      await loadAttendance();
+      await invalidateAttendance();
     } catch {
       alert(isArabic ? "تعذر تحديث الشيفت الفعلي" : "Could not update actual shift");
     } finally {
@@ -322,7 +329,7 @@ export function useHrAttendanceState(params: AttendanceParams) {
         shiftId: record.shiftId,
         earlyLeaveOutcome: outcome,
       });
-      await loadAttendance();
+      await invalidateAttendance();
     } catch {
       alert(isArabic ? "تعذر حفظ قرار الانصراف المبكر" : "Could not save early leave decision");
     } finally {
@@ -380,7 +387,7 @@ export function useHrAttendanceState(params: AttendanceParams) {
           shiftId: actualSchedule.shiftId,
         });
       }
-      await loadAttendance();
+      await invalidateAttendance();
       setAttendanceLogEdit(null);
     } catch {
       alert(isArabic ? "تعذر حفظ سجل الحضور" : "Could not save attendance record");

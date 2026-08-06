@@ -3,7 +3,6 @@ import type { AppPageRouterProps } from "./types";
 
 export type AppInvoicesRouteProps = Pick<
   AppPageRouterProps,
-  | "displayPage"
   | "filteredInvoicesList"
   | "isViewingAllBranches"
   | "resolveBranchLabel"
@@ -27,7 +26,6 @@ export type AppInvoicesRouteProps = Pick<
 >;
 
 export default function AppInvoicesRoute({
-  displayPage,
   filteredInvoicesList,
   isViewingAllBranches,
   resolveBranchLabel,
@@ -49,8 +47,6 @@ export default function AppInvoicesRoute({
   t,
   isArabic,
 }: AppInvoicesRouteProps) {
-  if (displayPage !== "invoices") return null;
-
   return (
     <InvoicesPage
       filteredInvoicesList={filteredInvoicesList}

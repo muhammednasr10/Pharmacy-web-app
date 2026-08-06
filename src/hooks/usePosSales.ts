@@ -10,6 +10,7 @@ import type {
   InvoiceItem,
   Medicine,
   PaymentMethod,
+  PharmacySettings,
 } from "../types";
 import {
   applyOptimisticStockDeduction,
@@ -47,13 +48,7 @@ type UsePosSalesOptions = {
   user: { uid: string; email?: string } | null;
   medicines: Medicine[];
   setMedicines: Dispatch<SetStateAction<Medicine[]>>;
-  pharmacySettings: {
-    name?: string;
-    name_en?: string;
-    invoiceFooter?: string;
-    phone?: string;
-    address?: string;
-  } | null;
+  pharmacySettings: PharmacySettings | null;
   activeCashierShift: CashierShift | null;
   currentWorkShiftId: string;
   cart: CartItem[];

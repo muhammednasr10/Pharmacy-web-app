@@ -48,7 +48,7 @@ export default function DashboardPendingTransfers({
                 <td>
                   {getBranchLabel ? getBranchLabel(group.toPharmacyId) : group.toPharmacyId}
                 </td>
-                <td>{group.items.length}</td>
+                <td>{group.items?.length ?? 0}</td>
                 <td>{group.totalQty}</td>
                 <td>{group.createdAt ? new Date(group.createdAt).toLocaleString() : "—"}</td>
                 <td>

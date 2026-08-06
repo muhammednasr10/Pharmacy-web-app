@@ -145,7 +145,10 @@ export async function createPharmacyCustomRole(input: {
     nameEn,
     baseRole: input.baseRole,
     allowedPages: pages,
-    permissions: normalizeRolePermissionFlags(input.baseRole, input.permissions || {}),
+    permissions: normalizeRolePermissionFlags(
+      input.baseRole as import("../../types").BuiltinUserRole,
+      input.permissions || {},
+    ),
     isActive: input.isActive !== false,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

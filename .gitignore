@@ -1,8 +1,14 @@
 node_modules
 dist
+dev-dist
 .env
 .tmp/
 .DS_Store
 .vercel
 .env*
 !.env.example
+!.env.e2e.example
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

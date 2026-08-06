@@ -7,7 +7,8 @@ import { attachInvoiceItems } from "./medicineService";
 import { createManagedRealtimeChannel, disposeManagedRealtimeChannel } from "./dbHelpers";
 
 export async function getInvoices(limit = 100): Promise<Invoice[]> {
-  let invoiceQuery = applyPharmacyFilter(supabase.from("invoices").select("*"));
+  const tableQuery = supabase.from("invoices").select("*");
+  const invoiceQuery = applyPharmacyFilter(tableQuery as never) as typeof tableQuery;
 
   const { data, error } = await invoiceQuery.order("id", { ascending: false }).limit(limit);
 

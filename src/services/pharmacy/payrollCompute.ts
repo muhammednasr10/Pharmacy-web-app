@@ -1,4 +1,4 @@
-import type { EmployeeRequest, PayrollRecord } from "../../types";
+import type { AttendanceRecord, EmployeeRequest, PayrollRecord } from "../../types";
 
 export function applyMaxLeavePolicy(
   rawLeaveDays: number,
@@ -224,7 +224,7 @@ export function sumPayrollAdditions(record: Partial<PayrollRecord>): number {
 }
 
 export function filterAttendanceForEmployee(
-  attendance: Array<{ userId: string }>,
+  attendance: AttendanceRecord[],
   userId: string,
   employeeId?: string,
 ) {

@@ -32,7 +32,7 @@ export default function AppEmployeesRoute({
   openSubscriptionSettings,
   t,
 }: AppEmployeesRouteProps) {
-  if (displayPage !== "users" || !canOpenPage("users")) return null;
+  if (!canOpenPage("users")) return null;
 
   return (
     <EmployeesUsersPage

@@ -2,7 +2,7 @@ import { TRIAL_SUBSCRIPTION_DAYS } from "../../config/subscription";
 
 type DashboardSubscriptionAlertProps = {
   isArabic: boolean;
-  subscriptionDaysLeft: number | null;
+  subscriptionDaysLeft: number | string | null;
   isSubscriptionExpired: boolean;
   isSubscriptionExpiringSoon: boolean;
   isTrialSubscription: boolean;
@@ -26,8 +26,8 @@ export default function DashboardSubscriptionAlert({
   }
 
   const daysRemaining =
-    subscriptionDaysLeft != null && Number.isFinite(subscriptionDaysLeft)
-      ? subscriptionDaysLeft
+    subscriptionDaysLeft != null && Number.isFinite(Number(subscriptionDaysLeft))
+      ? Number(subscriptionDaysLeft)
       : null;
   const daysLabel =
     daysRemaining != null

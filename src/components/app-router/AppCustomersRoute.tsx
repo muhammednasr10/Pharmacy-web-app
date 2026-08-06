@@ -50,7 +50,7 @@ export default function AppCustomersRoute({
   customerSearchSeed,
   setCustomerSearchSeed,
 }: AppCustomersRouteProps) {
-  if (displayPage !== "customers" || !canOpenPage("customers")) return null;
+  if (!canOpenPage("customers")) return null;
 
   return (
     <CustomersPage

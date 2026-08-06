@@ -224,7 +224,7 @@ export async function getReturns(): Promise<ReturnRecord[]> {
       return record;
     }
 
-    const recoveredItems = rebuildReturnItemsFromMovements(record, movements);
+    const recoveredItems = rebuildReturnItemsFromMovements(record, movements) ?? [];
     if (recoveredItems.length === 0) {
       return record;
     }

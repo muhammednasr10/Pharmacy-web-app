@@ -4,17 +4,15 @@ import type { AppPageRouterProps } from "./types";
 
 export type AppSqlMigrationsRouteProps = Pick<
   AppPageRouterProps,
-  "displayPage" | "canOpenPage" | "isArabic" | "appUser"
+  "canOpenPage" | "isArabic" | "appUser"
 >;
 
 export default function AppSqlMigrationsRoute({
-  displayPage,
   canOpenPage,
   isArabic,
   appUser,
 }: AppSqlMigrationsRouteProps) {
   if (
-    displayPage !== "sqlMigrations" ||
     !canOpenPage("sqlMigrations") ||
     !canAccessSqlMigrationsPage(appUser)
   ) {

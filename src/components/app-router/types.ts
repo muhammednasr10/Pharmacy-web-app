@@ -40,6 +40,7 @@ export type PendingBranchTransferGroup = {
   status: string;
   createdAt?: string;
   totalQty: number;
+  items?: import("../../types").BranchStockTransfer[];
 };
 
 export type AppPageRouterProps = {

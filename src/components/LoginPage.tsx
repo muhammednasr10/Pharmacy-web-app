@@ -148,6 +148,7 @@ export default function LoginPage({
 
         <input
           type="text"
+          data-testid="login-email"
           value={loginEmail}
           onChange={(e) => onEmailChange(e.target.value)}
           placeholder={isArabic ? "البريد الإلكتروني" : "Email"}
@@ -156,6 +157,7 @@ export default function LoginPage({
         <div className="loginPasswordField">
           <input
             type={showPassword ? "text" : "password"}
+            data-testid="login-password"
             value={loginPassword}
             onChange={(e) => onPasswordChange(e.target.value)}
             placeholder={isArabic ? "كلمة المرور" : "Password"}
@@ -220,7 +222,7 @@ export default function LoginPage({
         {loginError && <div className="loginError">{loginError}</div>}
         {registerSuccess && <div className="loginSuccess">{registerSuccess}</div>}
 
-        <button type="submit" disabled={registering}>
+        <button type="submit" data-testid="login-submit" disabled={registering}>
           {registering
             ? isArabic
               ? "جاري فتح التجربة..."

@@ -1,7 +1,10 @@
 import ReactDOM from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { registerSW } from "virtual:pwa-register";
 import App from "./App";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { queryClient } from "./queries/queryClient";
 import { supabaseConfigError } from "./services/supabaseClient";
 import { initDisplayPreferences } from "./utils/displayPreferences";
 import { initErrorReporting } from "./utils/errorReporting";
@@ -68,9 +71,15 @@ if (!root) {
 if (supabaseConfigError) {
   ReactDOM.createRoot(root).render(<ConfigErrorScreen message={supabaseConfigError} />);
 } else {
+  const routerBasename = import.meta.env.BASE_URL.replace(/\/$/, "") || undefined;
+
   ReactDOM.createRoot(root).render(
     <ErrorBoundary>
-      <App />
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter basename={routerBasename}>
+          <App />
+        </BrowserRouter>
+      </QueryClientProvider>
     </ErrorBoundary>,
   );
 }

@@ -42,7 +42,7 @@ export type UseAppBindingsInput = AppPageRouterProps & {
   handleResumeHeldInvoice: (held: HeldInvoice) => void | Promise<void>;
   handleDeleteHeldInvoice: (held: HeldInvoice) => void | Promise<void>;
   handleInstantReturnSuccess: AppModalsProps["handleInstantReturnSuccess"];
-  getReturnedQtyForInvoice: (invoiceNumber: string, medicineId: number) => number;
+  getReturnedQtyForInvoice: (invoiceNumber: string, medicineId: string | number) => number;
   getAvailableReturnQty: (invoice: Invoice, item: InvoiceItem) => number;
   completeReturn: () => void;
   openInvoiceByNumber: (invoiceNumber: string) => void;
@@ -54,7 +54,7 @@ export type UseAppBindingsInput = AppPageRouterProps & {
   expiredCount: number;
   isSubscriptionExpiringSoon?: boolean;
   isSubscriptionExpired?: boolean;
-  subscriptionDaysLeft?: number;
+  subscriptionDaysLeft?: number | null;
   onOpenTenants?: () => void;
   writeBranchLabel: string;
   isMenuOpen: boolean;
@@ -153,6 +153,14 @@ export function useAppBindings(input: UseAppBindingsInput): AppBindingsResult {
   const pageRouterProps: AppPageRouterProps = {
     ...routerFields,
     invoices,
+    lowStockCount,
+    expiringCount,
+    expiredCount,
+    showHeldInvoicesModal,
+    setShowHeldInvoicesModal,
+    isHeldInvoiceProcessing,
+    handleResumeHeldInvoice,
+    handleDeleteHeldInvoice,
     isSubscriptionExpired,
     isSubscriptionExpiringSoon,
     subscriptionDaysLeft: subscriptionDaysLeft ?? null,
@@ -242,7 +250,7 @@ export function useAppBindings(input: UseAppBindingsInput): AppBindingsResult {
     expiredCount,
     isSubscriptionExpiringSoon,
     isSubscriptionExpired,
-    subscriptionDaysLeft,
+    subscriptionDaysLeft: subscriptionDaysLeft ?? undefined,
     adminPendingCount: adminNavBadges?.tenants ?? 0,
     isMenuOpen,
     onToggleLang: () => setLang(lang === "ar" ? "en" : "ar"),

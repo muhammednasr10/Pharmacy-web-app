@@ -382,30 +382,16 @@ export default function PosPage({
   );
 
   const saleWorkspaceShift = (
-    <>
-      <PosQuickSaleCard
-        open={quickSaleCardOpen}
-        isArabic={isArabic}
-        activeShift={activeCashierShift}
-        branchLabel={branchLabel}
-        onClose={() => setQuickSaleCardOpen(false)}
-        onFullscreenChange={setQuickSaleFullscreen}
-      >
-        {saleWorkspaceContent}
-      </PosQuickSaleCard>
-
-      {!quickSaleCardOpen ? (
-        <div className="posQuickSaleCollapsed">
-          <button
-            type="button"
-            className="primaryBtn posQuickSaleReopenBtn"
-            onClick={() => setQuickSaleCardOpen(true)}
-          >
-            {isArabic ? "فتح البيع السريع (باركود + سلة)" : "Open quick sale (barcode + cart)"}
-          </button>
-        </div>
-      ) : null}
-    </>
+    <PosQuickSaleCard
+      open={quickSaleCardOpen}
+      isArabic={isArabic}
+      activeShift={activeCashierShift}
+      branchLabel={branchLabel}
+      onClose={() => setQuickSaleCardOpen(false)}
+      onFullscreenChange={setQuickSaleFullscreen}
+    >
+      {saleWorkspaceContent}
+    </PosQuickSaleCard>
   );
 
   const saleWorkspaceInline = (
@@ -507,6 +493,12 @@ export default function PosPage({
               workShiftId={workShiftId}
               onShiftChange={onCashierShiftChange}
               getPaymentLabel={getPaymentLabel}
+              showQuickSaleButton
+              quickSaleOpen={quickSaleCardOpen}
+              onOpenQuickSale={() => {
+                setQuickSaleCardOpen(true);
+                focusBarcode();
+              }}
               onShiftOpened={() => {
                 setQuickSaleCardOpen(true);
                 focusBarcode();

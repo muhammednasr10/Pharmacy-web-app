@@ -27,7 +27,7 @@ export default function AppActivityLogsRoute({
   refreshActivityLogsFromDb,
   downloadCSV,
 }: AppActivityLogsRouteProps) {
-  if (displayPage !== "activityLogs" || !canOpenPage("activityLogs")) return null;
+  if (!canOpenPage("activityLogs")) return null;
 
   return (
     <ActivityLogsPage

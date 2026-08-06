@@ -16,7 +16,7 @@ type UsePosInventorySourceOptions = {
   searchPharmacyIds?: string[];
   enabled?: boolean;
   search?: string;
-  refreshKey?: number;
+  refreshKey?: number | string;
   lowStockThreshold?: number;
   expiringSoonDays?: number;
 };
