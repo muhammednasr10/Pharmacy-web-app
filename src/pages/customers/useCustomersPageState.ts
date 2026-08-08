@@ -353,7 +353,7 @@ export function useCustomersPageState(props: CustomersPageProps) {
         referenceType: "customerPayment",
         referenceId: paymentNumber,
       });
-      printCustomerPaymentReceipt(paymentRecord, exportCtx);
+      void printCustomerPaymentReceipt(paymentRecord, exportCtx);
       alert(isArabic ? "تم تسجيل التحصيل بنجاح" : "Payment saved successfully");
 
       setPaymentCustomerName("");

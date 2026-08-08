@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 import { ARABIC_FONT_BASE64 } from "../arabicFont";
-import { LOGO_BASE64 } from "../logoBase64";
+import { tryAddPdfLogoImage } from "./pdfLogo";
 import { getBranchLabel } from "./branchLabel";
 import type { BranchStockTransfer, PharmacySettings } from "../types";
 
@@ -50,7 +50,7 @@ function formatPrintDate(value?: string, isArabic?: boolean) {
   return parsed.toLocaleString(isArabic ? "ar-EG" : "en-GB");
 }
 
-function addHeader(
+async function addHeader(
   docPdf: jsPDF,
   params: BranchTransferPrintParams,
   title: string,
@@ -59,14 +59,19 @@ function addHeader(
   setupPdfFont(docPdf, params.isArabic);
   const pageWidth = docPdf.internal.pageSize.getWidth();
   const settings = params.pharmacySettings;
-  const logo = params.logoBase64 || LOGO_BASE64;
   let y = 15;
 
-  try {
-    docPdf.addImage(logo, "PNG", pageWidth / 2 - 10, y - 8, 20, 20);
+  if (
+    await tryAddPdfLogoImage(
+      docPdf,
+      params.logoBase64 || params.pharmacySettings?.logoBase64,
+      pageWidth / 2 - 10,
+      y - 8,
+      20,
+      20,
+    )
+  ) {
     y += 15;
-  } catch (error) {
-    console.error("Branch transfer PDF logo error:", error);
   }
 
   docPdf.setFontSize(18);
@@ -137,13 +142,13 @@ export function buildBranchTransferPrintParams(input: {
   };
 }
 
-export function printBranchTransferPDF(params: BranchTransferPrintParams) {
+export async function printBranchTransferPDF(params: BranchTransferPrintParams) {
   const docPdf = new jsPDF();
   const pageWidth = docPdf.internal.pageSize.getWidth();
   const margin = 10;
   const ar = params.isArabic;
 
-  let y = addHeader(
+  let y = await addHeader(
     docPdf,
     params,
     label(ar, "سند نقل مخزون بين الفروع", "Branch Stock Transfer Note"),

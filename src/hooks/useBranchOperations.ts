@@ -52,7 +52,7 @@ export function useBranchOperations({
         logoBase64: appLogo,
       });
       if (!params) return;
-      printBranchTransferPDF(params);
+      await printBranchTransferPDF(params);
     },
     [appLogo, branches, isArabic, pharmacySettings],
   );

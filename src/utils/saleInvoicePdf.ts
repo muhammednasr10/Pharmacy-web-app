@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 import { ARABIC_FONT_BASE64 } from "../arabicFont";
-import { LOGO_BASE64 } from "../logoBase64";
+import { tryAddPdfLogoImage } from "./pdfLogo";
 import type { Invoice, PharmacySettings } from "../types";
 
 type PrintSaleInvoiceOptions = {
@@ -37,7 +37,7 @@ function setupArabicPdfFont(docPdf: jsPDF, isArabic: boolean) {
   }
 }
 
-function addPdfHeader(
+async function addPdfHeader(
   docPdf: jsPDF,
   isArabic: boolean,
   pharmacySettings: PharmacySettings | null,
@@ -48,11 +48,17 @@ function addPdfHeader(
   const pageWidth = docPdf.internal.pageSize.getWidth();
   let y = 15;
 
-  try {
-    docPdf.addImage(LOGO_BASE64, "PNG", pageWidth / 2 - 10, y - 8, 20, 20);
+  if (
+    await tryAddPdfLogoImage(
+      docPdf,
+      pharmacySettings?.logoBase64,
+      pageWidth / 2 - 10,
+      y - 8,
+      20,
+      20,
+    )
+  ) {
     y += 15;
-  } catch (error) {
-    console.error("PDF logo error:", error);
   }
 
   docPdf.setFontSize(18);
@@ -122,7 +128,7 @@ function addPdfFooter(
   });
 }
 
-export function printSaleInvoice({
+export async function printSaleInvoice({
   invoice,
   isArabic,
   currency,
@@ -133,7 +139,7 @@ export function printSaleInvoice({
   const pageWidth = docPdf.internal.pageSize.getWidth();
   const margin = 10;
 
-  let y = addPdfHeader(
+  let y = await addPdfHeader(
     docPdf,
     isArabic,
     pharmacySettings,

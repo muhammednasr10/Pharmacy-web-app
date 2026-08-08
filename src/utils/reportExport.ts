@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 import { ARABIC_FONT_BASE64 } from "../arabicFont";
-import { LOGO_BASE64 } from "../logoBase64";
+import { tryAddPdfLogoImage } from "./pdfLogo";
 import type { BranchReportRow } from "./branchReports";
 
 type SellingMedicine = {
@@ -30,6 +30,7 @@ export type ReportExportSnapshot = {
   pharmacyNameEn?: string;
   pharmacyPhone?: string;
   pharmacyAddress?: string;
+  logoSource?: string;
   invoiceFooter?: string;
   filteredReportInvoicesCount: number;
   filteredReportTotal: number;
@@ -104,16 +105,22 @@ function setupArabicPdfFont(docPdf: jsPDF, isArabic: boolean) {
   }
 }
 
-function addPdfHeader(docPdf: jsPDF, snapshot: ReportExportSnapshot, title: string) {
+async function addPdfHeader(docPdf: jsPDF, snapshot: ReportExportSnapshot, title: string) {
   setupArabicPdfFont(docPdf, snapshot.isArabic);
   const pageWidth = docPdf.internal.pageSize.getWidth();
   let y = 15;
 
-  try {
-    docPdf.addImage(LOGO_BASE64, "PNG", pageWidth / 2 - 10, y - 8, 20, 20);
+  if (
+    await tryAddPdfLogoImage(
+      docPdf,
+      snapshot.logoSource,
+      pageWidth / 2 - 10,
+      y - 8,
+      20,
+      20,
+    )
+  ) {
     y += 15;
-  } catch {
-    /* logo optional */
   }
 
   const pharmacyName = snapshot.isArabic
@@ -286,11 +293,15 @@ export function downloadFinancialReportCsv(snapshot: ReportExportSnapshot) {
   downloadCsv(`financial-report-${snapshot.reportFrom}_${snapshot.reportTo}.csv`, rows);
 }
 
-export function downloadFinancialReportPdf(snapshot: ReportExportSnapshot) {
+export async function downloadFinancialReportPdf(snapshot: ReportExportSnapshot) {
   const docPdf = new jsPDF();
   const margin = 10;
   const pageWidth = docPdf.internal.pageSize.getWidth();
-  let y = addPdfHeader(docPdf, snapshot, label(snapshot, "التقرير المالي", "Financial Report"));
+  let y = await addPdfHeader(
+    docPdf,
+    snapshot,
+    label(snapshot, "التقرير المالي", "Financial Report"),
+  );
 
   const summaryLines: Array<[string, string]> = [
     [

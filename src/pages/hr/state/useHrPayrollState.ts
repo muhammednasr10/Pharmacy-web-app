@@ -418,7 +418,7 @@ export function useHrPayrollState(params: PayrollParams) {
 
   function handleExportPayrollPdf() {
     if (payrollRows.length === 0) return;
-    downloadPayrollPdf({
+    void downloadPayrollPdf({
       isArabic,
       currency,
       pharmacyName: pharmacyName || pharmacyId,

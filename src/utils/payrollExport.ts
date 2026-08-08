@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 import { ARABIC_FONT_BASE64 } from "../arabicFont";
-import { LOGO_BASE64 } from "../logoBase64";
+import { tryAddPdfLogoImage } from "./pdfLogo";
 import type { PayrollRecord } from "../types";
 import { sumPayrollAdditions, sumPayrollDeductions } from "../services/pharmacyService";
 
@@ -8,6 +8,7 @@ export type PayrollExportSnapshot = {
   isArabic: boolean;
   currency: string;
   pharmacyName: string;
+  logoSource?: string;
   periodStart: string;
   periodEnd: string;
   records: PayrollRecord[];
@@ -62,17 +63,16 @@ function truncateText(value: string, max = 22) {
   return `${text.slice(0, max - 1)}…`;
 }
 
-function addHeader(docPdf: jsPDF, snapshot: PayrollExportSnapshot) {
+async function addHeader(docPdf: jsPDF, snapshot: PayrollExportSnapshot) {
   setupArabicPdfFont(docPdf, snapshot.isArabic);
   const pageWidth = docPdf.internal.pageSize.getWidth();
   const margin = 10;
   let y = 12;
 
-  try {
-    docPdf.addImage(LOGO_BASE64, "PNG", pageWidth / 2 - 8, y - 6, 16, 16);
+  if (
+    await tryAddPdfLogoImage(docPdf, snapshot.logoSource, pageWidth / 2 - 8, y - 6, 16, 16)
+  ) {
     y += 12;
-  } catch {
-    /* logo optional */
   }
 
   docPdf.setFontSize(14);
@@ -103,12 +103,12 @@ function addHeader(docPdf: jsPDF, snapshot: PayrollExportSnapshot) {
   return y + 8;
 }
 
-export function downloadPayrollPdf(snapshot: PayrollExportSnapshot) {
+export async function downloadPayrollPdf(snapshot: PayrollExportSnapshot) {
   const docPdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const margin = 8;
   const pageWidth = docPdf.internal.pageSize.getWidth();
   const tableWidth = pageWidth - margin * 2;
-  let y = addHeader(docPdf, snapshot);
+  let y = await addHeader(docPdf, snapshot);
 
   const showBranch = snapshot.showBranchColumn && !!snapshot.getBranchLabel;
   const headers = [

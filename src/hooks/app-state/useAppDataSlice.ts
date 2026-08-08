@@ -29,6 +29,7 @@ import {
   resolveOrganizationTier,
 } from "../../utils/subscriptionFeatures";
 import { isSubscriptionWriteBlocked } from "../../utils/subscriptionAccess";
+import { resolveAppLogoUrl } from "../../utils/appLogoAsset";
 import { getSubscriptionStatus } from "../../utils/subscriptionStatus";
 import type { AppAuthSliceReturn } from "./useAppAuthSlice";
 import type { AppSharedStateReturn } from "./shared";
@@ -84,7 +85,7 @@ export function useAppDataSlice({
   const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
   const heldInvoicesSetterRef = useRef<Dispatch<SetStateAction<HeldInvoice[]>>>(() => {});
 
-  const appLogo = pharmacySettings?.logoBase64 || "/icon.svg";
+  const appLogo = resolveAppLogoUrl(pharmacySettings?.logoBase64);
 
   const orgSubscriptionTier = useMemo(
     () => resolveOrganizationTier(branches, appUser?.pharmacyId),

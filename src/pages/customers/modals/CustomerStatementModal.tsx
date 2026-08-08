@@ -133,7 +133,7 @@ export default function CustomerStatementModal({ state }: Props) {
           <button
             className="printFullBtn"
             onClick={() =>
-              printCustomerStatement(
+              void printCustomerStatement(
                 selectedCustomer,
                 getCustomerPayments(selectedCustomer.customerName),
                 exportCtx,

@@ -288,7 +288,7 @@ export function useBranchesPageState(props: BranchesPageProps) {
     }
   }
 
-  function printBranchTransferRecords(records: BranchStockTransfer[]) {
+  async function printBranchTransferRecords(records: BranchStockTransfer[]) {
     const params = buildBranchTransferPrintParams({
       records,
       branches,
@@ -297,7 +297,7 @@ export function useBranchesPageState(props: BranchesPageProps) {
       logoBase64: appLogo,
     });
     if (!params) return;
-    printBranchTransferPDF(params);
+    await printBranchTransferPDF(params);
   }
 
   async function handleApproveBranchTransfer(transferNumber: string) {

@@ -70,7 +70,7 @@ export default function CustomersPaymentsTab({ state }: Props) {
                     <div className="actionButtons">
                       <button
                         className="printBtn"
-                        onClick={() => printCustomerPaymentReceipt(payment, exportCtx)}
+                        onClick={() => void printCustomerPaymentReceipt(payment, exportCtx)}
                       >
                         <span aria-hidden="true">🖨️</span>
                         <span>{t.print}</span>

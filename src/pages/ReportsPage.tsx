@@ -1,3 +1,4 @@
+import { resolveAppLogoUrl } from "../utils/appLogoAsset";
 import DashboardCharts from "../components/DashboardCharts";
 import TierUpgradeNotice from "../components/TierUpgradeNotice";
 import CashierShiftsReport from "../components/CashierShiftsReport";
@@ -136,6 +137,7 @@ export default function ReportsPage({
       pharmacyNameEn: pharmacySettings?.name_en,
       pharmacyPhone: pharmacySettings?.phone,
       pharmacyAddress: pharmacySettings?.address,
+      logoSource: resolveAppLogoUrl(pharmacySettings?.logoBase64),
       invoiceFooter: pharmacySettings?.invoiceFooter,
       filteredReportInvoicesCount,
       filteredReportTotal,
@@ -292,7 +294,7 @@ export default function ReportsPage({
             <button
               type="button"
               className="secondaryBtn"
-              onClick={() => downloadFinancialReportPdf(buildExportSnapshot())}
+              onClick={() => void downloadFinancialReportPdf(buildExportSnapshot())}
             >
               {isArabic ? "تصدير PDF" : "Export PDF"}
             </button>

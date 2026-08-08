@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 import { ARABIC_FONT_BASE64 } from "../arabicFont";
-import { LOGO_BASE64 } from "../logoBase64";
+import { tryAddPdfLogoImage } from "./pdfLogo";
 import type { CustomerDebt, CustomerPayment, PharmacySettings } from "../types";
 import { formatDateInput } from "./date";
 import { downloadCSV } from "./csvExport";
@@ -31,16 +31,22 @@ function setupArabicPdfFont(docPdf: jsPDF, isArabic: boolean) {
   }
 }
 
-function addPdfHeader(docPdf: jsPDF, ctx: CustomerExportContext, title: string, subtitle?: string) {
+async function addPdfHeader(docPdf: jsPDF, ctx: CustomerExportContext, title: string, subtitle?: string) {
   setupArabicPdfFont(docPdf, ctx.isArabic);
   const pageWidth = docPdf.internal.pageSize.getWidth();
   let y = 15;
 
-  try {
-    docPdf.addImage(LOGO_BASE64, "PNG", pageWidth / 2 - 10, y - 8, 20, 20);
+  if (
+    await tryAddPdfLogoImage(
+      docPdf,
+      ctx.pharmacySettings?.logoBase64,
+      pageWidth / 2 - 10,
+      y - 8,
+      20,
+      20,
+    )
+  ) {
     y += 15;
-  } catch (error) {
-    console.error("PDF logo error:", error);
   }
 
   const pharmacyName = ctx.isArabic
@@ -97,12 +103,12 @@ function addPdfFooter(docPdf: jsPDF, ctx: CustomerExportContext, y: number) {
   docPdf.text(pharmacyName, pageWidth / 2, y, { align: "center" });
 }
 
-export function printCustomerPaymentReceipt(payment: CustomerPayment, ctx: CustomerExportContext) {
+export async function printCustomerPaymentReceipt(payment: CustomerPayment, ctx: CustomerExportContext) {
   const docPdf = new jsPDF();
   const pageWidth = docPdf.internal.pageSize.getWidth();
   const margin = 10;
 
-  let y = addPdfHeader(
+  let y = await addPdfHeader(
     docPdf,
     ctx,
     ctx.isArabic ? "إيصال تحصيل" : "Customer Payment Receipt",
@@ -147,7 +153,7 @@ export function printCustomerPaymentReceipt(payment: CustomerPayment, ctx: Custo
   docPdf.save(`${payment.paymentNumber}.pdf`);
 }
 
-export function printCustomerStatement(
+export async function printCustomerStatement(
   customer: CustomerDebt,
   payments: CustomerPayment[],
   ctx: CustomerExportContext,
@@ -156,7 +162,7 @@ export function printCustomerStatement(
   const pageWidth = docPdf.internal.pageSize.getWidth();
   const margin = 10;
 
-  let y = addPdfHeader(
+  let y = await addPdfHeader(
     docPdf,
     ctx,
     ctx.isArabic ? "كشف حساب العميل" : "Customer Statement",

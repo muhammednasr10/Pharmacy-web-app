@@ -117,7 +117,7 @@ export function usePosSales({
   const printSavedInvoice = useCallback(
     async (invoice: Invoice) => {
       const { printSaleInvoice } = await import("../utils/saleInvoicePdf");
-      printSaleInvoice({
+      await printSaleInvoice({
         invoice,
         isArabic,
         currency: t.currency,
