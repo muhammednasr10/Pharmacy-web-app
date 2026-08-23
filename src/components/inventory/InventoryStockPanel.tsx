@@ -8,7 +8,6 @@ import ReorderSuggestionsModal from "../ReorderSuggestionsModal";
 import StockCountModal from "../StockCountModal";
 import MedicineCatalogImportModal from "../MedicineCatalogImportModal";
 import TierUpgradeNotice from "../TierUpgradeNotice";
-import FeatureGate from "../FeatureGate";
 import { saveReorderPurchaseDraft, type ReorderPurchaseDraft } from "../../utils/reorderSuggestions";
 import type { StockCountSession } from "../../utils/stockCount";
 import type { StockCatalogFilter } from "../../services/pharmacy/inventoryPaginationService";
@@ -16,6 +15,7 @@ import { usePaginatedMedicines } from "../../hooks/usePaginatedMedicines";
 import { useOnlineStatus } from "../../hooks/useOnlineStatus";
 import { inventoryEmptySearchMessage } from "../../utils/inventorySearchErrors";
 import InventoryPaginationBar from "./InventoryPaginationBar";
+import InventoryStockToolbar from "./InventoryStockToolbar";
 
 type InventoryStockPanelProps = {
   medicines: Medicine[];
@@ -61,13 +61,6 @@ type InventoryStockPanelProps = {
   stockCountLaunchKey?: number;
 };
 
-const stockFilterOptions: { value: StockCatalogFilter; ar: string; en: string }[] = [
-  { value: "all", ar: "الكل", en: "All" },
-  { value: "low", ar: "ناقص", en: "Low stock" },
-  { value: "expiring", ar: "قرب الانتهاء", en: "Expiring" },
-  { value: "expired", ar: "منتهي", en: "Expired" },
-];
-
 export default function InventoryStockPanel({
   medicines,
   branches,
@@ -94,7 +87,6 @@ export default function InventoryStockPanel({
   onOpenAdd,
   disabled,
   exportInventoryCSV,
-  isSubscriptionExpired,
   canManageInventory,
   canDeleteMedicine,
   canViewInventoryCostProfit,
@@ -229,74 +221,25 @@ export default function InventoryStockPanel({
 
   return (
     <div className="invMgmtPanel" role="tabpanel">
-      <div className="invMgmtPanelToolbar invMgmtStockToolbar">
-        <div className="filtersBar invMgmtFiltersBar">
-          <input
-            className="invMgmtSearchInput"
-            type="search"
-            enterKeyHint="search"
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={
-              isArabic ? "بحث بالاسم أو المادة الفعالة أو الباركود" : "Search name, ingredient, or barcode"
-            }
-          />
-          <div className="invMgmtStockChips" role="group" aria-label={isArabic ? "فلتر المخزون" : "Stock filter"}>
-            {stockFilterOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                className={`invMgmtStockChip ${stockFilter === option.value ? "is-active" : ""}`}
-                onClick={() => setStockFilter(option.value)}
-              >
-                {isArabic ? option.ar : option.en}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="inventoryHeaderActions">
-          {branches.length > 1 && (canTransferStock || transferUpgradeNotice) ? (
-            <FeatureGate feature="branchTransfers">
-              <button
-                type="button"
-                className="editBtn"
-                onClick={() => {
-                  if (canTransferStock) setShowTransferModal(true);
-                }}
-              >
-                {isArabic ? "⇄ نقل بين الفروع" : "⇄ Branch transfer"}
-              </button>
-            </FeatureGate>
-          ) : null}
-          {canManageInventory && onOpenPurchasesWithReorder && (
-            <button type="button" className="editBtn" onClick={() => setShowReorderModal(true)}>
-              {isArabic ? "🛒 اقتراح توريد" : "🛒 Reorder"}
-            </button>
-          )}
-          {canManageInventory && onApplyStockCount && (
-            <button type="button" className="editBtn" onClick={() => setShowStockCountModal(true)}>
-              {isArabic ? "📋 جرد مخزون" : "📋 Stock count"}
-            </button>
-          )}
-          {canManageInventory && (
-            <button type="button" className="editBtn" onClick={() => setShowCatalogImportModal(true)}>
-              {isArabic ? "📥 استيراد قاعدة بيانات أدوية" : "📥 Import medicine database"}
-            </button>
-          )}
-          {canManageInventory && (
-            <button type="button" className="addMedicineBtn" onClick={openAddForm}>
-              {isArabic ? "+ إضافة دواء جديد" : "+ Add New Medicine"}
-            </button>
-          )}
-          <button type="button" className="printBtn" onClick={exportInventoryCSV}>
-            <span aria-hidden="true">⬇️</span>
-            <span>{isArabic ? "تصدير Excel" : "Export Excel"}</span>
-          </button>
-        </div>
-      </div>
+      <InventoryStockToolbar
+        isArabic={isArabic}
+        search={search}
+        onSearchChange={setSearch}
+        stockFilter={stockFilter}
+        onStockFilterChange={setStockFilter}
+        branchesCount={branches.length}
+        canTransferStock={canTransferStock}
+        transferUpgradeNotice={transferUpgradeNotice}
+        canManageInventory={canManageInventory}
+        showReorder={Boolean(onOpenPurchasesWithReorder)}
+        showStockCount={Boolean(onApplyStockCount)}
+        onOpenTransfer={() => setShowTransferModal(true)}
+        onOpenReorder={() => setShowReorderModal(true)}
+        onOpenStockCount={() => setShowStockCountModal(true)}
+        onOpenCatalogImport={() => setShowCatalogImportModal(true)}
+        onOpenAdd={openAddForm}
+        onExportCSV={exportInventoryCSV}
+      />
 
       {transferUpgradeNotice && onOpenSubscriptionSettings && (
         <TierUpgradeNotice

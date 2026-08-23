@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import * as pharmacyService from "../../services/pharmacyService";
 import { ACTIVE_PAGE_STORAGE_KEY } from "../../utils/sessionNavigation";
@@ -19,6 +19,7 @@ export function useAppAuthSlice({ isArabic, activePage, setActivePage }: UseAppA
   const location = useLocation();
   const [branches, setBranches] = useState<PharmacySettings[]>([]);
   const [activeBranchId, setActiveBranchId] = useState<string | null>(null);
+  const didRestoreSavedPageRef = useRef(false);
 
   const { user, appUser, userLoading, loginScreenStatus, loginFormProps, handleLogout } =
     useAppAuth({ isArabic, activeBranchId, setActiveBranchId });
@@ -45,24 +46,35 @@ export function useAppAuthSlice({ isArabic, activePage, setActivePage }: UseAppA
     });
   }, [appUser?.uid, appUser?.pharmacyId, branches]);
 
+  // Restore last page once after login when landing on `/` or `/dashboard`.
+  // Do not re-run on later navigations to dashboard (that blocked returning to it).
   useEffect(() => {
-    if (!appUser) return;
+    if (!appUser) {
+      didRestoreSavedPageRef.current = false;
+      return;
+    }
+    if (didRestoreSavedPageRef.current) return;
+
     const urlPage = pageFromPath(location.pathname);
     const allowed = getAllowedPages(appUser);
     const isDefaultLanding =
       location.pathname === "/" || location.pathname === "/dashboard";
 
-    if (!isDefaultLanding && allowed.includes(urlPage)) {
+    if (!isDefaultLanding) {
+      if (allowed.includes(urlPage)) {
+        didRestoreSavedPageRef.current = true;
+      }
       return;
     }
 
+    didRestoreSavedPageRef.current = true;
     const savedPage = sessionStorage.getItem(ACTIVE_PAGE_STORAGE_KEY) as Page | null;
     if (!savedPage) return;
     const page = savedPage === "hr" ? "users" : savedPage;
     if (allowed.includes(page) && page !== urlPage) {
       setActivePage(page);
     }
-  }, [appUser?.uid, setActivePage, location.pathname]);
+  }, [appUser, setActivePage, location.pathname]);
 
   useEffect(() => {
     if (!appUser) return;
