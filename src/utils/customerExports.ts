@@ -1,16 +1,12 @@
 import { jsPDF } from "jspdf";
 import { ARABIC_FONT_BASE64 } from "../arabicFont";
 import { tryAddPdfLogoImage } from "./pdfLogo";
-import type { CustomerDebt, CustomerPayment, PharmacySettings } from "../types";
+import type { CustomerDebt, CustomerPayment } from "../types";
 import { formatDateInput } from "./date";
 import { downloadCSV } from "./csvExport";
+import type { CustomerExportContext } from "./customerExportTypes";
 
-export type CustomerExportContext = {
-  isArabic: boolean;
-  currency: string;
-  pharmacySettings: PharmacySettings | null;
-  getPaymentLabel: (method: string) => string;
-};
+export type { CustomerExportContext } from "./customerExportTypes";
 
 function safeNumber(value: unknown) {
   const parsed = Number(value);

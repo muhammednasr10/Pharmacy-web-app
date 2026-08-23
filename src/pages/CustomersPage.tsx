@@ -1,7 +1,6 @@
 import CustomerCrmTabs from "../components/customers/CustomerCrmTabs";
 import CustomerFormModal from "../components/customers/CustomerFormModal";
 import CustomerCrmDetailModal from "../components/customers/CustomerCrmDetailModal";
-import { exportCustomersDebtsCSV } from "../utils/customerExports";
 import CustomersOverviewTab from "./customers/CustomersOverviewTab";
 import CustomersListTab from "./customers/CustomersListTab";
 import CustomersDebtsTab from "./customers/CustomersDebtsTab";
@@ -71,7 +70,11 @@ export default function CustomersPage(props: CustomersPageProps) {
           )}
           <button
             className="printBtn"
-            onClick={() => exportCustomersDebtsCSV(filteredCustomerDebts, exportCtx)}
+            onClick={() =>
+              void import("../utils/customerExports").then((m) =>
+                m.exportCustomersDebtsCSV(filteredCustomerDebts, exportCtx),
+              )
+            }
           >
             <span aria-hidden="true">⬇️</span>
             <span>{isArabic ? "تصدير المديونيات" : "Export debts"}</span>

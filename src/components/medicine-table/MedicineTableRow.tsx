@@ -13,6 +13,7 @@ type MedicineTableRowProps = {
   splitNameColumns: boolean;
   showBranchColumn: boolean;
   showCostProfitColumns: boolean;
+  showProfitColumn: boolean;
   showManagementActions: boolean;
   canUsePOS: boolean;
   canManageInventory: boolean;
@@ -34,6 +35,7 @@ export default function MedicineTableRow({
   splitNameColumns,
   showBranchColumn,
   showCostProfitColumns,
+  showProfitColumn,
   showManagementActions,
   canUsePOS,
   canManageInventory,
@@ -123,7 +125,7 @@ export default function MedicineTableRow({
       <td>
         {(medicine.price || 0).toFixed(2)} {currency}
       </td>
-      {showCostProfitColumns && (
+      {showProfitColumn && (
         <td>
           {((medicine.price || 0) - (medicine.buyPrice || 0)).toFixed(2)} {currency}
         </td>

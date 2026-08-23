@@ -47,6 +47,8 @@ type InventoryStockPanelProps = {
   canManageInventory: boolean;
   canDeleteMedicine: boolean;
   canViewInventoryCostProfit: boolean;
+  /** When true (14-day trial), hide inventory profit column. */
+  isTrialSubscription?: boolean;
   onEditMedicine: (medicine: Medicine) => void;
   onDeleteMedicine: (medicine: Medicine) => void;
   pharmacyId: string;
@@ -96,6 +98,7 @@ export default function InventoryStockPanel({
   canManageInventory,
   canDeleteMedicine,
   canViewInventoryCostProfit,
+  isTrialSubscription = false,
   onEditMedicine,
   onDeleteMedicine,
   pharmacyId,
@@ -334,6 +337,7 @@ export default function InventoryStockPanel({
           canManageInventory={canManageInventory}
           canDeleteMedicine={canDeleteMedicine}
           showCostProfitColumns={canViewInventoryCostProfit}
+          showProfitColumn={canViewInventoryCostProfit && !isTrialSubscription}
           onEditMedicine={handleEditMedicine}
           onDeleteMedicine={handleDelete}
           onViewStockDetail={setStockDetailMedicine}

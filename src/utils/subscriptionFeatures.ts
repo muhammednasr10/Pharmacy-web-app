@@ -40,6 +40,8 @@ export function filterPagesBySubscriptionTier(
 ): Page[] {
   if (isSuperAdmin(appUser)) return pages;
   const enabled = new Set(getSubscriptionTier(tier).enabledPages);
+  // Dashboard is always available on every paid/trial package.
+  enabled.add("dashboard");
   return pages.filter((page) => enabled.has(page));
 }
 

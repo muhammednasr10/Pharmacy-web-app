@@ -13,6 +13,7 @@ export default function MedicineTable({
   showColumnFilters = false,
   showSplitNameColumns,
   showCostProfitColumns = false,
+  showProfitColumn,
   showBranchColumn = false,
   getBranchLabel,
   canUsePOS,
@@ -51,6 +52,7 @@ export default function MedicineTable({
     showColumnFilters,
     showSplitNameColumns,
     showCostProfitColumns,
+    showProfitColumn,
     showBranchColumn,
     lowStockThreshold,
     expiringSoonDays,
@@ -83,6 +85,7 @@ export default function MedicineTable({
         splitNameColumns={splitNameColumns}
         showBranchColumn={showBranchColumn}
         showCostProfitColumns={showCostProfitColumns}
+        showProfitColumn={showProfitColumn ?? showCostProfitColumns}
         isArabic={isArabic}
         currency={currency}
         t={t}

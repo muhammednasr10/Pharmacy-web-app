@@ -26,6 +26,8 @@
   { "file": "subscription-request-notify.sql", "kind": "optional", "group": "saas", "titleAr": "Webhook اشتراك", "titleEn": "Subscription webhook" },
   { "file": "trial-signup.sql", "kind": "required", "group": "saas", "titleAr": "تجربة 14 يوم", "titleEn": "Trial signup" },
   { "file": "fix-trial-registration.sql", "kind": "required", "group": "core", "titleAr": "إصلاح التجربة", "titleEn": "Fix trial signup" },
+  { "file": "trial-professional-tier.sql", "kind": "required", "group": "saas", "titleAr": "تجربة على احترافي", "titleEn": "Trial on Professional" },
+  { "file": "fix-basic-dashboard-and-trial-professional.sql", "kind": "required", "group": "saas", "titleAr": "فتح لوحة التحكم + تجربة احترافي", "titleEn": "Unlock dashboard + Professional trial" },
   { "file": "subscription-readonly-expired.sql", "kind": "required", "group": "saas", "titleAr": "اشتراك منتهي read-only", "titleEn": "Expired read-only" },
   { "file": "delete-pharmacy-cascade.sql", "kind": "required", "group": "saas", "titleAr": "حذف صيدلية", "titleEn": "Cascade delete" },
   { "file": "fix-super-admin-subscription-approve.sql", "kind": "optional", "group": "saas", "titleAr": "اعتماد Super Admin", "titleEn": "Super admin approve fix" },

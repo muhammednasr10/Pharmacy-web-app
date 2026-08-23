@@ -13,6 +13,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
+    "test:e2e:ci": "node scripts/verify-e2e-env.mjs && playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:install": "playwright install chromium",
@@ -56,8 +57,8 @@
     "playwright": "^1.49.0",
     "prettier": "3.6.2",
     "typescript": "6.0.3",
-    "vite": "8.0.13",
+    "vite": "8.2.1",
     "vite-plugin-pwa": "1.3.0",
-    "vitest": "3.2.4"
+    "vitest": "3.2.7"
   }
 }

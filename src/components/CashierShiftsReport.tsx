@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { AppUser, CashierShift, PharmacySettings } from "../types";
 import * as pharmacyService from "../services/pharmacyService";
-import { downloadCashierShiftPdf } from "../utils/cashierShiftReport";
 import { isPharmacyManager } from "../utils/roles";
 
 type CashierShiftsReportProps = {
@@ -66,6 +65,7 @@ export default function CashierShiftsReport({
 
   async function handleDownload(shift: CashierShift) {
     const summary = await pharmacyService.computeCashierShiftSummary(shift);
+    const { downloadCashierShiftPdf } = await import("../utils/cashierShiftReport");
     downloadCashierShiftPdf({
       shift,
       summary,

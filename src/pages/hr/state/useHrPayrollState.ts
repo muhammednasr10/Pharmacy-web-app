@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import type { Employee, PayrollRecord, SystemUser } from "../../../types";
 import * as pharmacyService from "../../../services/pharmacyService";
-import { downloadPayrollPdf } from "../../../utils/payrollExport";
 import { formatMoney } from "../../../utils/formatMoney";
 import { countPeriodDays, monthBounds } from "../../../utils/hrFormatters";
 import { computeWorkHoursFromSchedule, resolveWorkSchedule } from "../../../utils/workSchedule";
@@ -418,7 +417,8 @@ export function useHrPayrollState(params: PayrollParams) {
 
   function handleExportPayrollPdf() {
     if (payrollRows.length === 0) return;
-    void downloadPayrollPdf({
+    void import("../../../utils/payrollExport").then((m) =>
+      m.downloadPayrollPdf({
       isArabic,
       currency,
       pharmacyName: pharmacyName || pharmacyId,
@@ -428,7 +428,8 @@ export function useHrPayrollState(params: PayrollParams) {
       totalNetPay,
       showBranchColumn: showOrgHr && !!resolveBranchLabel,
       getBranchLabel: resolveBranchLabel,
-    });
+      }),
+    );
   }
 
   return {

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { AppUser, CashierShift, CashierShiftSummary, PharmacySettings } from "../types";
 import * as pharmacyService from "../services/pharmacyService";
-import { downloadCashierShiftPdf } from "../utils/cashierShiftReport";
 
 type CashierShiftCloseModalProps = {
   isArabic: boolean;
@@ -68,6 +67,7 @@ export default function CashierShiftCloseModal({
         closedByName: appUser.name,
       });
       const closedSummary = await pharmacyService.computeCashierShiftSummary(closed);
+      const { downloadCashierShiftPdf } = await import("../utils/cashierShiftReport");
       downloadCashierShiftPdf({
         shift: closed,
         summary: closedSummary,

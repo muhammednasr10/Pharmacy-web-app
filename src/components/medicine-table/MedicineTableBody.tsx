@@ -7,6 +7,7 @@ type MedicineTableBodyProps = {
   splitNameColumns: boolean;
   showBranchColumn: boolean;
   showCostProfitColumns: boolean;
+  showProfitColumn: boolean;
   isArabic: boolean;
   currency: string;
   t: Record<string, string>;
@@ -30,6 +31,7 @@ export default function MedicineTableBody({
   splitNameColumns,
   showBranchColumn,
   showCostProfitColumns,
+  showProfitColumn,
   isArabic,
   currency,
   t,
@@ -60,7 +62,7 @@ export default function MedicineTableBody({
             <col className="medicineColExpiry" />
             {showCostProfitColumns && <col className="medicineColBuy" />}
             <col className="medicineColSell" />
-            {showCostProfitColumns && <col className="medicineColProfit" />}
+            {showProfitColumn && <col className="medicineColProfit" />}
             <col className="medicineColAction" />
           </colgroup>
         )}
@@ -87,7 +89,7 @@ export default function MedicineTableBody({
             <th>{t.expiry}</th>
             {showCostProfitColumns && <th>{isArabic ? "سعر الشراء" : "Buy Price"}</th>}
             <th>{isArabic ? "سعر البيع" : "Sell Price"}</th>
-            {showCostProfitColumns && <th>{isArabic ? "الربح" : "Profit"}</th>}
+            {showProfitColumn && <th>{isArabic ? "الربح" : "Profit"}</th>}
             <th>{t.action}</th>
           </tr>
         </thead>
@@ -110,6 +112,7 @@ export default function MedicineTableBody({
                 splitNameColumns={splitNameColumns}
                 showBranchColumn={showBranchColumn}
                 showCostProfitColumns={showCostProfitColumns}
+                showProfitColumn={showProfitColumn}
                 showManagementActions={showManagementActions}
                 canUsePOS={canUsePOS}
                 canManageInventory={canManageInventory}

@@ -1,7 +1,3 @@
-import {
-  exportCustomerStatementCSV,
-  printCustomerStatement,
-} from "../../../utils/customerExports";
 import { safeNumber } from "../helpers";
 import type { CustomersPageState } from "../useCustomersPageState";
 
@@ -133,10 +129,12 @@ export default function CustomerStatementModal({ state }: Props) {
           <button
             className="printFullBtn"
             onClick={() =>
-              void printCustomerStatement(
-                selectedCustomer,
-                getCustomerPayments(selectedCustomer.customerName),
-                exportCtx,
+              void import("../../../utils/customerExports").then((m) =>
+                m.printCustomerStatement(
+                  selectedCustomer,
+                  getCustomerPayments(selectedCustomer.customerName),
+                  exportCtx,
+                ),
               )
             }
           >
@@ -146,10 +144,12 @@ export default function CustomerStatementModal({ state }: Props) {
           <button
             className="printBtn"
             onClick={() =>
-              exportCustomerStatementCSV(
-                selectedCustomer,
-                getCustomerPayments(selectedCustomer.customerName),
-                exportCtx,
+              void import("../../../utils/customerExports").then((m) =>
+                m.exportCustomerStatementCSV(
+                  selectedCustomer,
+                  getCustomerPayments(selectedCustomer.customerName),
+                  exportCtx,
+                ),
               )
             }
           >

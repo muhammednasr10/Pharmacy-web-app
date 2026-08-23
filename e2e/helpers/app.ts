@@ -72,15 +72,50 @@ export async function acceptNextDialog(page: Page): Promise<string> {
   });
 }
 
+export async function ensureLoginForm(page: Page) {
+  const registerHeading = page.getByRole("heading", { name: /صيدلية جديدة|New pharmacy/i });
+  if (await registerHeading.isVisible().catch(() => false)) {
+    await page.getByTestId("auth-mode-toggle").click();
+  }
+  await expect(page.getByRole("heading", { name: /تسجيل الدخول|Sign in/i })).toBeVisible({
+    timeout: 10_000,
+  });
+}
+
 export async function login(page: Page, email: string, password: string) {
   await page.goto("/");
+  await ensureLoginForm(page);
   await expect(page.getByTestId("login-email")).toBeVisible();
 
   await page.getByTestId("login-email").fill(email);
   await page.getByTestId("login-password").fill(password);
 
   await page.getByTestId("login-submit").click();
-  await expect(page.locator(".app")).toBeVisible({ timeout: 30_000 });
+
+  const appShell = page.locator(".app");
+  const loginError = page.locator(".loginError");
+  const denied = page.getByRole("heading", { name: /غير مسموح بالدخول|Access denied/i });
+
+  const outcome = await Promise.race([
+    appShell.waitFor({ state: "visible", timeout: 30_000 }).then(() => "app" as const),
+    loginError.waitFor({ state: "visible", timeout: 30_000 }).then(() => "error" as const),
+    denied.waitFor({ state: "visible", timeout: 30_000 }).then(() => "denied" as const),
+  ]).catch(() => "timeout" as const);
+
+  if (outcome === "app") return;
+
+  if (outcome === "error") {
+    const message = (await loginError.textContent())?.trim() || "Unknown login error";
+    throw new Error(`E2E login failed: ${message}`);
+  }
+
+  if (outcome === "denied") {
+    throw new Error("E2E login denied — account is inactive or not linked to a pharmacy.");
+  }
+
+  throw new Error(
+    "E2E login timed out — check E2E_LOGIN_EMAIL / E2E_LOGIN_PASSWORD in .env.e2e (not the .example placeholders).",
+  );
 }
 
 export async function navigateToPage(page: Page, pageName: AppPageName) {

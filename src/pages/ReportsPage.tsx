@@ -1,15 +1,11 @@
-import { resolveAppLogoUrl } from "../utils/appLogoAsset";
+import type { ReportExportSnapshot } from "../utils/reportExportTypes";
 import DashboardCharts from "../components/DashboardCharts";
 import TierUpgradeNotice from "../components/TierUpgradeNotice";
 import CashierShiftsReport from "../components/CashierShiftsReport";
 import { getCostCategoryLabel } from "../utils/costCategories";
 import type { BranchReportRow } from "../utils/branchReports";
 import type { AppUser, Medicine, PharmacySettings, ReportsTab } from "../types";
-import {
-  downloadFinancialReportCsv,
-  downloadFinancialReportPdf,
-  type ReportExportSnapshot,
-} from "../utils/reportExport";
+import { resolveAppLogoUrl } from "../utils/appLogoAsset";
 import { formatMoney } from "../utils/formatMoney";
 import { useEffect, type ReactNode } from "react";
 
@@ -294,14 +290,22 @@ export default function ReportsPage({
             <button
               type="button"
               className="secondaryBtn"
-              onClick={() => void downloadFinancialReportPdf(buildExportSnapshot())}
+              onClick={() =>
+                void import("../utils/reportExport").then((m) =>
+                  m.downloadFinancialReportPdf(buildExportSnapshot()),
+                )
+              }
             >
               {isArabic ? "تصدير PDF" : "Export PDF"}
             </button>
             <button
               type="button"
               className="printBtn"
-              onClick={() => downloadFinancialReportCsv(buildExportSnapshot())}
+              onClick={() =>
+                void import("../utils/reportExport").then((m) =>
+                  m.downloadFinancialReportCsv(buildExportSnapshot()),
+                )
+              }
             >
               {isArabic ? "تصدير Excel" : "Export Excel"}
             </button>

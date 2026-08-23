@@ -10,10 +10,7 @@ import type {
   PaymentMethod,
 } from "../../types";
 import { buildCrmCustomerProfiles } from "../../utils/crmProfiles";
-import {
-  printCustomerPaymentReceipt,
-  type CustomerExportContext,
-} from "../../utils/customerExports";
+import type { CustomerExportContext } from "../../utils/customerExportTypes";
 import { safeNumber } from "./helpers";
 import type { CustomersPageProps } from "./types";
 
@@ -353,7 +350,9 @@ export function useCustomersPageState(props: CustomersPageProps) {
         referenceType: "customerPayment",
         referenceId: paymentNumber,
       });
-      void printCustomerPaymentReceipt(paymentRecord, exportCtx);
+      void import("../../utils/customerExports").then((m) =>
+        m.printCustomerPaymentReceipt(paymentRecord, exportCtx),
+      );
       alert(isArabic ? "تم تسجيل التحصيل بنجاح" : "Payment saved successfully");
 
       setPaymentCustomerName("");

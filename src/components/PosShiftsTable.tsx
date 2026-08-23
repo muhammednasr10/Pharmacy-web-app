@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import type { AppUser, CashierShift, PharmacySettings } from "../types";
 import * as pharmacyService from "../services/pharmacyService";
 import CashierShiftCloseModal from "./CashierShiftCloseModal";
-import { downloadCashierShiftPdf } from "../utils/cashierShiftReport";
 import { isPharmacyManager } from "../utils/roles";
 import { getReportQuickRange } from "../utils/reportDateRange";
 
@@ -101,6 +100,7 @@ export default function PosShiftsTable({
 
   async function handleDownload(shift: CashierShift) {
     const summary = await pharmacyService.computeCashierShiftSummary(shift);
+    const { downloadCashierShiftPdf } = await import("../utils/cashierShiftReport");
     downloadCashierShiftPdf({
       shift,
       summary,

@@ -122,8 +122,8 @@ export default function LoginPage({
         {isRegister && (
           <p className="loginTrialBadge" role="status">
             {isArabic
-              ? `نسخة تجربة ${TRIAL_SUBSCRIPTION_DAYS} يوم — بدون التزام`
-              : `${TRIAL_SUBSCRIPTION_DAYS}-day trial — no commitment`}
+              ? `نسخة تجربة ${TRIAL_SUBSCRIPTION_DAYS} يوم على باقة احترافي — بدون التزام`
+              : `${TRIAL_SUBSCRIPTION_DAYS}-day Professional trial — no commitment`}
           </p>
         )}
 
@@ -239,6 +239,7 @@ export default function LoginPage({
         <button
           type="button"
           className="loginLangBtn"
+          data-testid="auth-mode-toggle"
           onClick={() => {
             onAuthModeChange(isRegister ? "login" : "register");
           }}

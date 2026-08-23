@@ -1,5 +1,5 @@
 /** Default brand logo served from /public — not bundled in JS. */
-export const DEFAULT_APP_LOGO_URL = "/victory-logo-transparent.png";
+export const DEFAULT_APP_LOGO_URL = "/victory-logo.png";
 
 export function isInlineLogoSource(value: string): boolean {
   return value.startsWith("data:") || value.startsWith("blob:");

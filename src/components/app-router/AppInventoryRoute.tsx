@@ -38,6 +38,7 @@ export type AppInventoryRouteProps = Pick<
   | "canManageInventory"
   | "canDeleteMedicine"
   | "canViewInventoryCostProfit"
+  | "isTrialSubscription"
   | "startEditMedicine"
   | "deleteMedicine"
   | "getPharmacyId"
@@ -83,6 +84,7 @@ export default function AppInventoryRoute({
   canManageInventory,
   canDeleteMedicine,
   canViewInventoryCostProfit,
+  isTrialSubscription = false,
   startEditMedicine,
   deleteMedicine,
   getPharmacyId,
@@ -141,6 +143,7 @@ export default function AppInventoryRoute({
       canManageInventory={canManageInventory() && !subscriptionBlocksWrite}
       canDeleteMedicine={canDeleteMedicine() && !subscriptionBlocksWrite}
       canViewInventoryCostProfit={canViewInventoryCostProfit}
+      isTrialSubscription={isTrialSubscription}
       onEditMedicine={startEditMedicine}
       onDeleteMedicine={deleteMedicine}
       pharmacyId={getPharmacyId()}

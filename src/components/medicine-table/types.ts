@@ -9,6 +9,8 @@ export type MedicineTableProps = {
   showColumnFilters?: boolean;
   showSplitNameColumns?: boolean;
   showCostProfitColumns?: boolean;
+  /** Defaults to showCostProfitColumns when omitted. Hidden during trial. */
+  showProfitColumn?: boolean;
   showBranchColumn?: boolean;
   getBranchLabel?: (branchId: string | undefined) => string;
   canUsePOS: boolean;

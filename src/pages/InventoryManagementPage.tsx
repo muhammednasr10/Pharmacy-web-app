@@ -45,6 +45,7 @@ export type InventoryManagementPageProps = {
   canManageInventory: boolean;
   canDeleteMedicine: boolean;
   canViewInventoryCostProfit: boolean;
+  isTrialSubscription?: boolean;
   onEditMedicine: (medicine: Medicine) => void;
   onDeleteMedicine: (medicine: Medicine) => void;
   pharmacyId: string;

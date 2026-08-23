@@ -21,6 +21,7 @@ type UseMedicineTableStateArgs = Pick<
   | "showColumnFilters"
   | "showSplitNameColumns"
   | "showCostProfitColumns"
+  | "showProfitColumn"
   | "showBranchColumn"
   | "lowStockThreshold"
   | "expiringSoonDays"
@@ -35,6 +36,7 @@ export function useMedicineTableState({
   showColumnFilters = false,
   showSplitNameColumns,
   showCostProfitColumns = false,
+  showProfitColumn,
   showBranchColumn = false,
   lowStockThreshold = DEFAULT_LOW_STOCK_THRESHOLD,
   expiringSoonDays = DEFAULT_EXPIRING_SOON_DAYS,
@@ -58,8 +60,13 @@ export function useMedicineTableState({
   const [page, setPage] = useState(0);
 
   const splitNameColumns = showSplitNameColumns ?? showColumnFilters;
+  const showProfit = showProfitColumn ?? showCostProfitColumns;
   const tableColumnCount =
-    (showBranchColumn ? 1 : 0) + (splitNameColumns ? 3 : 1) + 5 + (showCostProfitColumns ? 2 : 0);
+    (showBranchColumn ? 1 : 0) +
+    (splitNameColumns ? 3 : 1) +
+    5 +
+    (showCostProfitColumns ? 1 : 0) +
+    (showProfit ? 1 : 0);
 
   const todayValue = formatDateInput(new Date());
   const defaultExpiringLimitValue = getExpiryLimitValue(expiringSoonDays);

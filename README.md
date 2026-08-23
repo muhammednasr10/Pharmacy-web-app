@@ -14,8 +14,9 @@ npm run dev
 
 ```bash
 npm test              # unit tests (sales, auth, inventory, purchases, returns, shifts)
-npm run typecheck     # TypeScript (local — strict check, some legacy errors remain)
+npm run typecheck     # TypeScript strict check
 npm run test:e2e      # Playwright E2E (login → POS → invoice → return)
+npm run test:e2e:ci   # E2E with env validation (used in CI)
 npm run qa:checklist  # manual pilot QA checklist
 npm run build         # production build
 ```
@@ -26,8 +27,8 @@ Every push/PR to `main` runs [`.github/workflows/ci.yml`](.github/workflows/ci.y
 
 | Job | Steps |
 |-----|--------|
-| **quality** | `sql:audit` → `npm test` → `npm run build` |
-| **e2e** | Playwright (optional — see below) |
+| **quality** | `sql:audit` → `typecheck` → `npm test` → `npm run build` |
+| **e2e** | `test:e2e:ci` (optional — see below) |
 
 **Optional E2E in CI** — enable only when a staging Supabase + test account exist:
 
