@@ -1,6 +1,8 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { VICTORY_BRAND_LOGO, VICTORY_BRAND_TITLE } from "../config/brand";
 import { TRIAL_SUBSCRIPTION_DAYS } from "../config/subscription";
+import * as pharmacyService from "../services/pharmacyService";
+import type { PharmacySignupStatusLookup } from "../services/pharmacy/pharmacySignupRequestService";
 import type { FontScale, ThemeMode } from "../utils/displayPreferences";
 import AuthLoadingScreen from "./AuthLoadingScreen";
 import DeveloperCredit from "./DeveloperCredit";
@@ -13,6 +15,8 @@ type LoginPageProps = {
   loginPassword: string;
   registerName: string;
   registerPharmacyName: string;
+  registerPhone: string;
+  registerAddress: string;
   loginError: string;
   registerSuccess: string;
   registering: boolean;
@@ -22,6 +26,8 @@ type LoginPageProps = {
   onPasswordChange: (value: string) => void;
   onRegisterNameChange: (value: string) => void;
   onRegisterPharmacyNameChange: (value: string) => void;
+  onRegisterPhoneChange: (value: string) => void;
+  onRegisterAddressChange: (value: string) => void;
   onAuthModeChange: (mode: "login" | "register") => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onRegisterSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -42,6 +48,8 @@ export default function LoginPage({
   loginPassword,
   registerName,
   registerPharmacyName,
+  registerPhone,
+  registerAddress,
   loginError,
   registerSuccess,
   registering,
@@ -51,6 +59,8 @@ export default function LoginPage({
   onPasswordChange,
   onRegisterNameChange,
   onRegisterPharmacyNameChange,
+  onRegisterPhoneChange,
+  onRegisterAddressChange,
   onAuthModeChange,
   onSubmit,
   onRegisterSubmit,
@@ -64,6 +74,40 @@ export default function LoginPage({
   onLogout,
 }: LoginPageProps) {
   const [showPassword, setShowPassword] = useState(false);
+  const [signupStatus, setSignupStatus] = useState<PharmacySignupStatusLookup | null>(null);
+  const [signupStatusLoading, setSignupStatusLoading] = useState(false);
+
+  const isRegister = authMode === "register";
+
+  useEffect(() => {
+    if (status !== "login" || isRegister) {
+      setSignupStatus(null);
+      setSignupStatusLoading(false);
+      return;
+    }
+
+    const email = loginEmail.trim();
+    if (!email.includes("@") || email.length < 5) {
+      setSignupStatus(null);
+      setSignupStatusLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setSignupStatusLoading(true);
+    const timer = window.setTimeout(() => {
+      void pharmacyService.getPharmacySignupStatusByEmail(email).then((result) => {
+        if (cancelled) return;
+        setSignupStatus(result);
+        setSignupStatusLoading(false);
+      });
+    }, 450);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [isRegister, loginEmail, status]);
 
   if (status === "loading") {
     return <AuthLoadingScreen isArabic={isArabic} />;
@@ -91,7 +135,33 @@ export default function LoginPage({
     );
   }
 
-  const isRegister = authMode === "register";
+  const signupStatusMessage = (() => {
+    if (isRegister || !signupStatus) return null;
+    const note = signupStatus.reviewNote?.trim();
+    const req = signupStatus.requestNumber ? ` (${signupStatus.requestNumber})` : "";
+    if (signupStatus.status === "pending") {
+      return {
+        kind: "pending" as const,
+        text: isArabic
+          ? `طلب التسجيل قيد الاعتماد${req} — انتظر موافقة مالك النظام ثم سجّل الدخول`
+          : `Signup request pending approval${req} — wait for the system owner, then sign in`,
+      };
+    }
+    if (signupStatus.status === "approved") {
+      return {
+        kind: "approved" as const,
+        text: isArabic
+          ? `تم اعتماد الطلب${req} — يمكنك تسجيل الدخول واستخدام البرنامج`
+          : `Request approved${req} — you can sign in and use the app`,
+      };
+    }
+    return {
+      kind: "rejected" as const,
+      text: isArabic
+        ? `تم رفض طلب التسجيل${req}${note ? `: ${note}` : ""}`
+        : `Signup request rejected${req}${note ? `: ${note}` : ""}`,
+    };
+  })();
 
   return (
     <div className="loginPage" dir={isArabic ? "rtl" : "ltr"}>
@@ -142,6 +212,21 @@ export default function LoginPage({
               onChange={(e) => onRegisterNameChange(e.target.value)}
               placeholder={isArabic ? "اسم المدير" : "Your full name"}
               autoComplete="name"
+            />
+            <input
+              type="tel"
+              value={registerPhone}
+              onChange={(e) => onRegisterPhoneChange(e.target.value)}
+              placeholder={isArabic ? "رقم التليفون" : "Phone number"}
+              autoComplete="tel"
+              inputMode="tel"
+            />
+            <input
+              type="text"
+              value={registerAddress}
+              onChange={(e) => onRegisterAddressChange(e.target.value)}
+              placeholder={isArabic ? "عنوان الصيدلية" : "Pharmacy address"}
+              autoComplete="street-address"
             />
           </>
         )}
@@ -214,9 +299,28 @@ export default function LoginPage({
         {isRegister && (
           <p className="loginHint">
             {isArabic
-              ? "كلمة المرور 6 أحرف على الأقل — بعد الإنشاء تُفتح صيدليتك مباشرة"
-              : "Password must be at least 6 characters — your pharmacy opens right after signup"}
+              ? "كلمة المرور 6 أحرف على الأقل — سيتم الاعتماد ثم يمكنك استخدام البرنامج"
+              : "Password must be at least 6 characters — after approval you can use the app"}
           </p>
+        )}
+
+        {!isRegister && signupStatusLoading && loginEmail.includes("@") && (
+          <p className="loginHint">{isArabic ? "جاري التحقق من حالة الطلب..." : "Checking request status..."}</p>
+        )}
+
+        {!isRegister && signupStatusMessage && (
+          <div
+            className={
+              signupStatusMessage.kind === "approved"
+                ? "loginSuccess"
+                : signupStatusMessage.kind === "pending"
+                  ? "loginStatusPending"
+                  : "loginError"
+            }
+            role="status"
+          >
+            {signupStatusMessage.text}
+          </div>
         )}
 
         {loginError && <div className="loginError">{loginError}</div>}
@@ -225,12 +329,12 @@ export default function LoginPage({
         <button type="submit" data-testid="login-submit" disabled={registering}>
           {registering
             ? isArabic
-              ? "جاري فتح التجربة..."
-              : "Starting trial..."
+              ? "جاري إرسال الطلب..."
+              : "Sending request..."
             : isRegister
               ? isArabic
-                ? "ابدأ التجربة المجانية"
-                : "Start free trial"
+                ? "إرسال طلب التسجيل"
+                : "Submit signup request"
               : isArabic
                 ? "تسجيل الدخول"
                 : "Sign in"}

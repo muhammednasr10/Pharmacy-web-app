@@ -60,12 +60,14 @@ export function resolveBranchDisplay(
   const isMainSite = branch.id === primary.id;
   const branchSiteName = readPharmacyName(branch, isArabic);
   const mainSiteLabel = isArabic ? "المقر الرئيسي" : "Main site";
-  const branchName = isMainSite ? mainSiteLabel : branchSiteName;
+  // Main site: "صيدلية النصر-المقر الرئيسي" (pharmacy name + main HQ)
+  const mainBranchLabel = `${organizationName}-${mainSiteLabel}`;
+  const branchName = isMainSite ? mainBranchLabel : branchSiteName;
   const optionLabel = branchName;
 
   const combinedLabel = isMainSite
-    ? `${organizationName} — ${mainSiteLabel}`
-    : `${organizationName} — ${branchSiteName}`;
+    ? mainBranchLabel
+    : `${organizationName}-${branchSiteName}`;
 
   return {
     organizationName,

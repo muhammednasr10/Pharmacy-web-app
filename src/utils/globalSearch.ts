@@ -51,7 +51,6 @@ const PAGE_KEYWORDS: Partial<Record<Page, string[]>> = {
   customers: ["عملاء", "عميل", "customer", "ديون"],
   reports: ["تقارير", "report"],
   stockMovements: ["حركة", "movement"],
-  activityLogs: ["سجل", "نشاط", "audit", "log"],
   users: ["موظف", "مستخدم", "staff", "hr"],
   branches: ["فرع", "فروع", "branch"],
   tenants: ["saas", "صيدليات", "tenant"],

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch, FormEvent, SetStateAction } from "react";
 import * as pharmacyService from "../services/pharmacyService";
-import { TRIAL_SUBSCRIPTION_DAYS } from "../config/subscription";
 import { branchPreferenceStorageKey } from "../constants/branches";
 import { clearSessionNavigationState } from "../utils/sessionNavigation";
 import { formatUserCreationError } from "../utils/userCreationErrors";
@@ -30,6 +29,8 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
   const [authMode, setAuthMode] = useState<"login" | "register">("register");
   const [registerName, setRegisterName] = useState("");
   const [registerPharmacyName, setRegisterPharmacyName] = useState("");
+  const [registerPhone, setRegisterPhone] = useState("");
+  const [registerAddress, setRegisterAddress] = useState("");
   const [registerSuccess, setRegisterSuccess] = useState("");
   const [registering, setRegistering] = useState(false);
   const [subscriptionBlocked, setSubscriptionBlocked] = useState("");
@@ -349,26 +350,23 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
         const result = await pharmacyService.registerPublicUser({
           name: registerName,
           pharmacyName: registerPharmacyName,
+          phone: registerPhone,
+          address: registerAddress,
           email: loginEmail,
           password: loginPassword,
         });
 
-        if (result.needsEmailConfirmation) {
-          setRegisterSuccess(
-            isArabic
-              ? "تم إنشاء الحساب. سجّل الدخول يدوياً بنفس الإيميل وكلمة المرور."
-              : "Account created. Sign in manually with the same email and password.",
-          );
-          setAuthMode("login");
-          setLoginPassword("");
-          return;
-        }
-
         setRegisterSuccess(
           isArabic
-            ? `تم إنشاء الصيدلية والتجربة ${TRIAL_SUBSCRIPTION_DAYS} يوماً — تم تسجيل الدخول`
-            : `Pharmacy and ${TRIAL_SUBSCRIPTION_DAYS}-day free trial created — you are signed in`,
+            ? result.requestNumber
+              ? `تم إرسال طلب التسجيل (${result.requestNumber}). سيظهر لمالك النظام في «طلبات العملاء» للاعتماد قبل فتح الحساب.`
+              : "تم إرسال طلب التسجيل. سيظهر لمالك النظام في «طلبات العملاء» للاعتماد قبل فتح الحساب."
+            : result.requestNumber
+              ? `Signup request sent (${result.requestNumber}). The system owner must approve it in Customer requests before you can sign in.`
+              : "Signup request sent. The system owner must approve it in Customer requests before you can sign in.",
         );
+        setAuthMode("login");
+        setLoginPassword("");
       } catch (error) {
         console.error(error);
         const raw = error instanceof Error ? error.message : "";
@@ -380,7 +378,15 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
         setRegistering(false);
       }
     },
-    [isArabic, loginEmail, loginPassword, registerName, registerPharmacyName],
+    [
+      isArabic,
+      loginEmail,
+      loginPassword,
+      registerAddress,
+      registerName,
+      registerPharmacyName,
+      registerPhone,
+    ],
   );
 
   const switchAuthMode = useCallback((mode: "login" | "register") => {
@@ -409,6 +415,8 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
     loginPassword,
     registerName,
     registerPharmacyName,
+    registerPhone,
+    registerAddress,
     loginError,
     registerSuccess,
     registering,
@@ -416,6 +424,8 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
     onPasswordChange: setLoginPassword,
     onRegisterNameChange: setRegisterName,
     onRegisterPharmacyNameChange: setRegisterPharmacyName,
+    onRegisterPhoneChange: setRegisterPhone,
+    onRegisterAddressChange: setRegisterAddress,
     onAuthModeChange: switchAuthMode,
     onSubmit: handleLogin,
     onRegisterSubmit: handleRegister,

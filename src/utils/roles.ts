@@ -276,7 +276,6 @@ export const allowedPagesByRole: Record<BuiltinUserRole, Page[]> = {
     "customers",
     "reports",
     "stockMovements",
-    "activityLogs",
     "users",
     "tenants",
     "sqlMigrations",
@@ -296,7 +295,6 @@ export const allowedPagesByRole: Record<BuiltinUserRole, Page[]> = {
     "costs",
     "reports",
     "stockMovements",
-    "activityLogs",
     "users",
   ],
 };
@@ -306,7 +304,7 @@ export function getAllowedPages(appUser: AppUser | null): Page[] {
   const pages = getEffectiveRoleAccess(
     normalizeRole(appUser.role),
     appUser.pharmacyId,
-  ).allowedPages;
+  ).allowedPages.filter((page) => page !== "activityLogs");
   return pages.includes("userGuide") ? pages : [...pages, "userGuide"];
 }
 

@@ -22,6 +22,7 @@ import type {
   PaymentMethod,
   PharmacyCost,
   PharmacyLoginAccount,
+  PharmacySignupRequest,
   PharmacyCustomRole,
   PharmacySettings,
   PurchaseRecord,
@@ -100,6 +101,7 @@ export type AppPageRouterProps = {
   systemUsers: SystemUser[];
   subscriptionRequests: SubscriptionRequest[];
   pendingPharmacyLoginAccounts: PharmacyLoginAccount[];
+  pendingPharmacySignupRequests: PharmacySignupRequest[];
   pendingCustomRoles: PharmacyCustomRole[];
   branchTransfers: BranchStockTransfer[];
   pharmacySettings: PharmacySettings | null;
@@ -334,6 +336,11 @@ export type AppPageRouterProps = {
   handleRejectSubscriptionRequest: (requestId: number, note?: string) => Promise<boolean>;
   handleApprovePharmacyLoginAccount: (accountId: string) => Promise<boolean>;
   handleRejectPharmacyLoginAccount: (accountId: string, note?: string) => Promise<boolean>;
+  handleApprovePharmacySignupRequest: (
+    requestId: string,
+    options?: { subscriptionTier?: string; reviewNote?: string },
+  ) => Promise<boolean>;
+  handleRejectPharmacySignupRequest: (requestId: string, note?: string) => Promise<boolean>;
   refreshAdminRequestsStable: () => Promise<void>;
   refreshSystemUsersStable: () => Promise<void>;
   refreshPharmacies: () => Promise<void>;

@@ -4964,6 +4964,14 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
   font-size: 14px;
 }
 
+.loginStatusPending {
+  background: #fffaeb;
+  color: #b54708;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
 .loginHint {
   margin: -6px 0 0;
   font-size: 13px;

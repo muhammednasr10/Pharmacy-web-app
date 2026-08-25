@@ -1,21 +1,7 @@
 -- =============================================================================
--- Atomic purchase — توريد + إضافة مخزون + حركات في معاملة واحدة
--- Run AFTER complete-sale-rpc.sql (reuses next_table_row_id)
+-- Fix: medicines.expiry is date but purchase RPC inserted text
+-- Run in Supabase SQL Editor
 -- =============================================================================
-
-alter table stock_movements
-  add column if not exists movement_type text,
-  add column if not exists medicine_name text,
-  add column if not exists medicine_name_ar text,
-  add column if not exists medicine_name_en text,
-  add column if not exists purchase_number text,
-  add column if not exists supplier_name text;
-
-alter table purchases
-  add column if not exists medicine_name text,
-  add column if not exists medicine_name_ar text,
-  add column if not exists medicine_name_en text,
-  add column if not exists barcode text;
 
 create or replace function public.complete_purchase_with_stock_addition(
   p_pharmacy_id text,

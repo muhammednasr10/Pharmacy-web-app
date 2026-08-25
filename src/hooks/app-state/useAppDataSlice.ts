@@ -20,6 +20,7 @@ import type {
   ReturnRecord,
   StockMovement,
   SubscriptionRequest,
+  PharmacySignupRequest,
   SystemUser,
 } from "../../types";
 import { isAllBranchesMode } from "../../constants/branches";
@@ -80,6 +81,9 @@ export function useAppDataSlice({
   const [subscriptionRequests, setSubscriptionRequests] = useState<SubscriptionRequest[]>([]);
   const [pendingPharmacyLoginAccounts, setPendingPharmacyLoginAccounts] = useState<
     PharmacyLoginAccount[]
+  >([]);
+  const [pendingPharmacySignupRequests, setPendingPharmacySignupRequests] = useState<
+    PharmacySignupRequest[]
   >([]);
   const [pendingCustomRoles, setPendingCustomRoles] = useState<PharmacyCustomRole[]>([]);
   const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
@@ -186,6 +190,7 @@ export function useAppDataSlice({
       setActivityLogs,
       setSubscriptionRequests,
       setPendingPharmacyLoginAccounts,
+      setPendingPharmacySignupRequests,
       setSystemUsers,
     });
 
@@ -249,6 +254,8 @@ export function useAppDataSlice({
     setSubscriptionRequests,
     pendingPharmacyLoginAccounts,
     setPendingPharmacyLoginAccounts,
+    pendingPharmacySignupRequests,
+    setPendingPharmacySignupRequests,
     pendingCustomRoles,
     setPendingCustomRoles,
     systemUsers,

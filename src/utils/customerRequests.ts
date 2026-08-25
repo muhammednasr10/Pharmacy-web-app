@@ -1,9 +1,14 @@
 import { getSubscriptionTierLabel } from "../config/subscriptionTiers";
-import type { PharmacyCustomRole, PharmacyLoginAccount, SubscriptionRequest } from "../types";
+import type {
+  PharmacyCustomRole,
+  PharmacyLoginAccount,
+  PharmacySignupRequest,
+  SubscriptionRequest,
+} from "../types";
 import { getRoleLabel } from "./roles";
 import { isTierUpgradePlan, parseTierUpgradePlan } from "./subscriptionFeatures";
 
-export type CustomerRequestCategory = "subscription" | "login" | "role";
+export type CustomerRequestCategory = "subscription" | "login" | "role" | "signup";
 
 export type CustomerRequestFilter = "all" | CustomerRequestCategory;
 
@@ -21,6 +26,7 @@ export type CustomerRequestRow = {
   subscriptionRequest?: SubscriptionRequest;
   loginAccount?: PharmacyLoginAccount;
   customRole?: PharmacyCustomRole;
+  signupRequest?: PharmacySignupRequest;
 };
 
 export function getSubscriptionRequestTypeLabel(
@@ -85,6 +91,7 @@ export function buildCustomerRequestRows(input: {
   subscriptionRequests: SubscriptionRequest[];
   loginAccounts: PharmacyLoginAccount[];
   customRoles?: PharmacyCustomRole[];
+  signupRequests?: PharmacySignupRequest[];
   pharmacyNameById: Map<string, string>;
   isArabic: boolean;
   filter?: CustomerRequestFilter;
@@ -93,12 +100,42 @@ export function buildCustomerRequestRows(input: {
     subscriptionRequests,
     loginAccounts,
     customRoles = [],
+    signupRequests = [],
     pharmacyNameById,
     isArabic,
     filter = "all",
   } = input;
 
   const rows: CustomerRequestRow[] = [];
+
+  if (filter === "all" || filter === "signup") {
+    signupRequests
+      .filter((request) => request.status === "pending")
+      .forEach((request) => {
+        rows.push({
+          key: `signup-${request.id}`,
+          category: "signup",
+          pharmacyId: request.pharmacyId || "—",
+          pharmacyName: request.pharmacyName,
+          requestNumber: request.requestNumber,
+          typeLabel: isArabic ? "تسجيل صيدلية جديدة" : "New pharmacy signup",
+          details: [
+            request.email,
+            request.adminName,
+            request.phone,
+            request.address,
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          requestedBy: request.adminName,
+          createdAt: request.createdAt,
+          resultAfterApproval: isArabic
+            ? "فتح صيدلية بتجربة 14 يوماً — الباقة تُختار عند الاعتماد"
+            : "Create pharmacy with 14-day trial — tier chosen on approval",
+          signupRequest: request,
+        });
+      });
+  }
 
   if (filter === "all" || filter === "subscription") {
     subscriptionRequests
@@ -166,6 +203,9 @@ export function getCustomerRequestCategoryLabel(
   category: CustomerRequestCategory,
   isArabic: boolean,
 ): string {
+  if (category === "signup") {
+    return isArabic ? "تسجيل جديد" : "New signup";
+  }
   if (category === "subscription") {
     return isArabic ? "اشتراك" : "Subscription";
   }

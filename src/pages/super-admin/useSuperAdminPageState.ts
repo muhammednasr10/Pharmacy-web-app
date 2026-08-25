@@ -16,6 +16,7 @@ export function useSuperAdminPageState(props: SuperAdminPageProps) {
     onRefreshSystemUsers,
     subscriptionRequests,
     pendingPharmacyLoginAccounts,
+    pendingPharmacySignupRequests,
     pendingCustomRoles,
     selectedPharmacyId,
     onSelectPharmacy,
@@ -42,6 +43,7 @@ export function useSuperAdminPageState(props: SuperAdminPageProps) {
     pharmacies: shared.pharmacies,
     subscriptionRequests,
     pendingPharmacyLoginAccounts,
+    pendingPharmacySignupRequests,
     pendingCustomRoles,
   });
 
@@ -92,6 +94,8 @@ export function useSuperAdminPageState(props: SuperAdminPageProps) {
     onRejectSubscriptionRequest: props.onRejectSubscriptionRequest,
     onApprovePharmacyLoginAccount: props.onApprovePharmacyLoginAccount,
     onRejectPharmacyLoginAccount: props.onRejectPharmacyLoginAccount,
+    onApprovePharmacySignupRequest: props.onApprovePharmacySignupRequest,
+    onRejectPharmacySignupRequest: props.onRejectPharmacySignupRequest,
     onRefreshAdminRequests,
   });
 
@@ -136,6 +140,7 @@ export function useSuperAdminPageState(props: SuperAdminPageProps) {
     subscriptionRequests,
     pendingPharmacyLoginAccounts,
     pendingCustomRoles,
+    pendingPharmacySignupRequests,
     addModalOpen: manage.addModalOpen,
     setAddModalOpen: manage.setAddModalOpen,
     manageModalOpen: manage.manageModalOpen,
@@ -198,6 +203,11 @@ export function useSuperAdminPageState(props: SuperAdminPageProps) {
     pendingCustomerRequestsCount: overview.pendingCustomerRequestsCount,
     pharmacyNameById: overview.pharmacyNameById,
     requestUpdating: requests.requestUpdating,
+    signupApproveTarget: requests.signupApproveTarget,
+    signupApproveTier: requests.signupApproveTier,
+    setSignupApproveTier: requests.setSignupApproveTier,
+    closeSignupApproveModal: requests.closeSignupApproveModal,
+    confirmSignupApprove: requests.confirmSignupApprove,
     maxBranchSavingId: tier.maxBranchSavingId,
     maxUserSavingId: tier.maxUserSavingId,
     tierSavingId: tier.tierSavingId,
@@ -233,6 +243,8 @@ export function useSuperAdminPageState(props: SuperAdminPageProps) {
     handleRejectRequest: requests.handleRejectRequest,
     handleApproveLoginRequest: requests.handleApproveLoginRequest,
     handleRejectLoginRequest: requests.handleRejectLoginRequest,
+    handleApproveSignupRequest: requests.handleApproveSignupRequest,
+    handleRejectSignupRequest: requests.handleRejectSignupRequest,
     handleApproveRoleRequest: requests.handleApproveRoleRequest,
     handleRejectRoleRequest: requests.handleRejectRoleRequest,
     openManage: manage.openManage,

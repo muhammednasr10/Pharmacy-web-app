@@ -5,13 +5,19 @@ import {
   buildCustomerRequestRows,
   type CustomerRequestFilter,
 } from "../../../utils/customerRequests";
-import type { PharmacyCustomRole, PharmacyLoginAccount, SubscriptionRequest } from "../../../types";
+import type {
+  PharmacyCustomRole,
+  PharmacyLoginAccount,
+  PharmacySignupRequest,
+  SubscriptionRequest,
+} from "../../../types";
 import type { SaasTab } from "../types";
 import type { SuperAdminSharedContext } from "./shared";
 
 type OverviewParams = Pick<SuperAdminSharedContext, "isArabic" | "pharmacies"> & {
   subscriptionRequests: SubscriptionRequest[];
   pendingPharmacyLoginAccounts: PharmacyLoginAccount[];
+  pendingPharmacySignupRequests: PharmacySignupRequest[];
   pendingCustomRoles: PharmacyCustomRole[];
 };
 
@@ -21,6 +27,7 @@ export function useSuperAdminOverviewState(params: OverviewParams) {
     pharmacies,
     subscriptionRequests,
     pendingPharmacyLoginAccounts,
+    pendingPharmacySignupRequests,
     pendingCustomRoles,
   } = params;
 
@@ -35,6 +42,7 @@ export function useSuperAdminOverviewState(params: OverviewParams) {
   const pendingCustomerRequestsCount =
     pendingSubscriptionRequests.length +
     pendingPharmacyLoginAccounts.length +
+    pendingPharmacySignupRequests.length +
     pendingCustomRoles.length;
 
   const pharmacyNameById = useMemo(() => {
@@ -76,6 +84,7 @@ export function useSuperAdminOverviewState(params: OverviewParams) {
         subscriptionRequests,
         loginAccounts: pendingPharmacyLoginAccounts,
         customRoles: pendingCustomRoles,
+        signupRequests: pendingPharmacySignupRequests,
         pharmacyNameById,
         isArabic,
         filter: customerRequestFilter,
@@ -83,6 +92,7 @@ export function useSuperAdminOverviewState(params: OverviewParams) {
     [
       subscriptionRequests,
       pendingPharmacyLoginAccounts,
+      pendingPharmacySignupRequests,
       pendingCustomRoles,
       pharmacyNameById,
       isArabic,

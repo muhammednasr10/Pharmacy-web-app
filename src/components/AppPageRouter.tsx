@@ -2,7 +2,6 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { isSubscriptionWriteBlocked } from "../utils/subscriptionAccess";
 import { pageToPath } from "../routes/pageRoutes";
 import type { AppPageRouterProps } from "./app-router/types";
-import AppActivityLogsRoute from "./app-router/AppActivityLogsRoute";
 import AppBranchesRoute from "./app-router/AppBranchesRoute";
 import AppCustomersRoute from "./app-router/AppCustomersRoute";
 import AppDashboardRoute from "./app-router/AppDashboardRoute";
@@ -41,7 +40,7 @@ export default function AppPageRouter(props: AppPageRouterProps) {
       <Route path="/customers" element={<AppCustomersRoute {...props} />} />
       <Route path="/reports/investment" element={<AppReportsRoute {...props} />} />
       <Route path="/reports" element={<AppReportsRoute {...props} />} />
-      <Route path="/activity-logs" element={<AppActivityLogsRoute {...props} />} />
+      <Route path="/activity-logs" element={<Navigate to={pageToPath("dashboard")} replace />} />
       <Route path="/staff" element={<AppEmployeesRoute {...routeProps} />} />
       <Route path="/employee-portal" element={<AppEmployeePortalRoute {...props} />} />
       <Route path="/admin/tenants" element={<AppSuperAdminRoute {...props} />} />

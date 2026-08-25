@@ -7,3 +7,4 @@ export * from "./loginAccountRequestService";
 export * from "./loginAccountCatalogService";
 export * from "./pharmacyProvisioningService";
 export * from "./systemUserService";
+export * from "./pharmacySignupRequestService";

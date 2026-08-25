@@ -17,6 +17,8 @@ export default function SuperAdminCustomerRequestsTab({ state }: Props) {
     handleRejectRequest,
     handleApproveLoginRequest,
     handleRejectLoginRequest,
+    handleApproveSignupRequest,
+    handleRejectSignupRequest,
     handleApproveRoleRequest,
     handleRejectRoleRequest,
     formatEndDateAfterApproval,
@@ -31,8 +33,8 @@ export default function SuperAdminCustomerRequestsTab({ state }: Props) {
                 <h3>{isArabic ? "طلبات العملاء" : "Customer requests"}</h3>
                 <p className="pageHint">
                   {isArabic
-                    ? "كل الطلبات الواردة من الصيدليات: تجديد اشتراك، ترقية باقة، مستخدمين جدد، تعديلات حسابات، ربط، وأدوار جديدة — الطلبات المعتمدة أو المرفوضة تختفي من القائمة"
-                    : "All pharmacy requests: renewals, upgrades, new users, account edits, links, and new roles — approved or rejected requests leave this list"}
+                    ? "كل الطلبات الواردة: تسجيل صيدلية جديدة، تجديد اشتراك، ترقية باقة، مستخدمين جدد، تعديلات حسابات، ربط، وأدوار جديدة — الطلبات المعتمدة أو المرفوضة تختفي من القائمة"
+                    : "All requests: new pharmacy signups, renewals, upgrades, new users, account edits, links, and new roles — approved or rejected requests leave this list"}
                 </p>
               </div>
               <span className={`saasRequestsCount${pendingCustomerRequestsCount ? " active" : ""}`}>
@@ -47,6 +49,7 @@ export default function SuperAdminCustomerRequestsTab({ state }: Props) {
               {(
                 [
                   { id: "all" as const, ar: "الكل", en: "All" },
+                  { id: "signup" as const, ar: "تسجيل جديد", en: "New signup" },
                   { id: "subscription" as const, ar: "اشتراك", en: "Subscription" },
                   { id: "login" as const, ar: "حسابات دخول", en: "Login accounts" },
                   { id: "role" as const, ar: "أدوار", en: "Roles" },
@@ -89,6 +92,7 @@ export default function SuperAdminCustomerRequestsTab({ state }: Props) {
                     {customerRequestRows.map((row) => {
                       const loginAccount = row.loginAccount;
                       const subscriptionRequest = row.subscriptionRequest;
+                      const signupRequest = row.signupRequest;
                       const proposedPassword =
                         loginAccount?.pendingPassword || loginAccount?.password;
 
@@ -108,6 +112,8 @@ export default function SuperAdminCustomerRequestsTab({ state }: Props) {
                               className={`badge ${
                                 row.category === "subscription"
                                   ? "ok"
+                                  : row.category === "signup"
+                                    ? "ok"
                                   : row.category === "role"
                                     ? "warn"
                                     : "warn"
@@ -155,6 +161,10 @@ export default function SuperAdminCustomerRequestsTab({ state }: Props) {
                                 className="smallBtn"
                                 disabled={isCustomerRequestBusy(row)}
                                 onClick={() => {
+                                  if (signupRequest) {
+                                    void handleApproveSignupRequest(signupRequest);
+                                    return;
+                                  }
                                   if (subscriptionRequest) {
                                     void handleApproveRequest(subscriptionRequest.id);
                                     return;
@@ -175,6 +185,10 @@ export default function SuperAdminCustomerRequestsTab({ state }: Props) {
                                 className="dangerBtn"
                                 disabled={isCustomerRequestBusy(row)}
                                 onClick={() => {
+                                  if (signupRequest) {
+                                    void handleRejectSignupRequest(signupRequest.id);
+                                    return;
+                                  }
                                   if (subscriptionRequest) {
                                     void handleRejectRequest(subscriptionRequest.id);
                                     return;

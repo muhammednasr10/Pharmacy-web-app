@@ -2,6 +2,7 @@ import type {
   AppUser,
   PharmacyCustomRole,
   PharmacyLoginAccount,
+  PharmacySignupRequest,
   PharmacySettings,
   SubscriptionRequest,
   UserRole,
@@ -139,9 +140,15 @@ export type SuperAdminPageProps = {
   onApproveSubscriptionRequest: (requestId: number) => Promise<boolean>;
   onRejectSubscriptionRequest: (requestId: number, note?: string) => Promise<boolean>;
   pendingPharmacyLoginAccounts: PharmacyLoginAccount[];
+  pendingPharmacySignupRequests: PharmacySignupRequest[];
   pendingCustomRoles: PharmacyCustomRole[];
   onApprovePharmacyLoginAccount: (accountId: string) => Promise<boolean>;
   onRejectPharmacyLoginAccount: (accountId: string, note?: string) => Promise<boolean>;
+  onApprovePharmacySignupRequest: (
+    requestId: string,
+    options?: { subscriptionTier?: string; reviewNote?: string },
+  ) => Promise<boolean>;
+  onRejectPharmacySignupRequest: (requestId: string, note?: string) => Promise<boolean>;
   onRefreshAdminRequests: () => Promise<void>;
   onRefreshSystemUsers: () => Promise<void>;
   onRefreshPharmacies: () => Promise<void>;

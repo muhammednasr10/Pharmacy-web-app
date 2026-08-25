@@ -1,5 +1,4 @@
-import { supabase, supabaseAnonKey, supabaseUrl } from "../supabaseClient";
-import { loginWithAppAuth } from "../appAuthSession";
+import { supabase } from "../supabaseClient";
 import { isSuperAdmin, normalizeAppUser, normalizeRole } from "../../utils/roles";
 import type { AppUser, SystemUser } from "../../types";
 import { toCamelCase, toSnakeCase } from "./mappers";
@@ -179,10 +178,14 @@ export async function registerPublicUser(params: {
   password: string;
   name: string;
   pharmacyName: string;
-}): Promise<{ needsEmailConfirmation: boolean }> {
+  phone: string;
+  address: string;
+}): Promise<{ pendingApproval: boolean; requestNumber?: string }> {
   const email = params.email.trim().toLowerCase();
   const name = params.name.trim();
   const pharmacyName = params.pharmacyName.trim();
+  const phone = params.phone.trim();
+  const address = params.address.trim();
   const password = params.password;
 
   const emailIssue = validateNewUserEmail(email);
@@ -198,6 +201,14 @@ export async function registerPublicUser(params: {
     throw new Error("pharmacy_name_required");
   }
 
+  if (phone.length < 8) {
+    throw new Error("phone_required");
+  }
+
+  if (address.length < 3) {
+    throw new Error("address_required");
+  }
+
   if (!password || password.length < 6) {
     throw new Error("password_too_short");
   }
@@ -207,6 +218,8 @@ export async function registerPublicUser(params: {
     p_password: password,
     p_name: name,
     p_pharmacy_name: pharmacyName,
+    p_phone: phone,
+    p_address: address,
   });
 
   if (error) {
@@ -222,8 +235,17 @@ export async function registerPublicUser(params: {
     if (error.message.includes("pharmacy_name_required")) {
       throw new Error("pharmacy_name_required");
     }
+    if (error.message.includes("phone_required")) {
+      throw new Error("phone_required");
+    }
+    if (error.message.includes("address_required")) {
+      throw new Error("address_required");
+    }
     if (error.message.includes("email_already_registered")) {
       throw new Error("email_already_registered");
+    }
+    if (error.message.includes("signup_request_already_pending")) {
+      throw new Error("signup_request_already_pending");
     }
     if (error.message.includes("forbidden") || error.message.includes("not_authorized")) {
       throw new Error("trial_registration_not_configured");
@@ -235,12 +257,11 @@ export async function registerPublicUser(params: {
     throw new Error("register_failed");
   }
 
-  const { error: loginError } = await loginWithAppAuth(supabaseUrl, supabaseAnonKey, email, password);
-  if (loginError) {
-    return { needsEmailConfirmation: true };
-  }
-
-  return { needsEmailConfirmation: false };
+  const payload = data as { pending_approval?: boolean; request_number?: string };
+  return {
+    pendingApproval: Boolean(payload.pending_approval ?? true),
+    requestNumber: payload.request_number,
+  };
 }
 
 export async function setAppUserPassword(uid: string, password: string) {

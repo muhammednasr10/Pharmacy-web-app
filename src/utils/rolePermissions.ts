@@ -29,7 +29,6 @@ const builtinDefaultPages: Record<BuiltinUserRole, Page[]> = {
     "customers",
     "reports",
     "stockMovements",
-    "activityLogs",
     "users",
     "tenants",
     "sqlMigrations",
@@ -49,7 +48,6 @@ const builtinDefaultPages: Record<BuiltinUserRole, Page[]> = {
     "costs",
     "reports",
     "stockMovements",
-    "activityLogs",
     "users",
   ],
 };
@@ -90,7 +88,6 @@ export const ROLE_PAGE_OPTIONS: RolePageOption[] = [
   { page: "reports", labelAr: "التقارير", labelEn: "Reports" },
   { page: "stockMovements", labelAr: "حركات المخزون", labelEn: "Stock movements" },
   { page: "users", labelAr: "الموظفين", labelEn: "Staff" },
-  { page: "activityLogs", labelAr: "سجل النشاط", labelEn: "Activity log" },
   { page: "settings", labelAr: "الإعدادات", labelEn: "Settings" },
   { page: "branches", labelAr: "الفروع", labelEn: "Branches" },
   { page: "sqlMigrations", labelAr: "ترحيل SQL", labelEn: "SQL migrations" },

@@ -10,6 +10,7 @@ import SuperAdminTierEditModal from "./super-admin/modals/SuperAdminTierEditModa
 import SuperAdminRoleModal from "./super-admin/modals/SuperAdminRoleModal";
 import SuperAdminBranchModal from "./super-admin/modals/SuperAdminBranchModal";
 import SuperAdminConfirmModals from "./super-admin/modals/SuperAdminConfirmModals";
+import SuperAdminSignupApproveModal from "./super-admin/modals/SuperAdminSignupApproveModal";
 import { useSuperAdminPageState } from "./super-admin/useSuperAdminPageState";
 import type { SuperAdminPageProps, TenantForm } from "./super-admin/types";
 
@@ -85,6 +86,7 @@ export default function SuperAdminPage(props: SuperAdminPageProps) {
       <SuperAdminRoleModal state={state} />
       <SuperAdminBranchModal state={state} />
       <SuperAdminConfirmModals state={state} />
+      <SuperAdminSignupApproveModal state={state} />
     </section>
   );
 }

@@ -7,6 +7,14 @@ export function formatUserCreationError(message: string, isArabic: boolean): str
       ? "أدخل اسم الصيدلية (حرفان على الأقل)"
       : "Enter pharmacy name (at least 2 characters)";
   }
+  if (message === "phone_required") {
+    return isArabic
+      ? "أدخل رقم التليفون (8 أرقام على الأقل)"
+      : "Enter a phone number (at least 8 digits)";
+  }
+  if (message === "address_required") {
+    return isArabic ? "أدخل عنوان الصيدلية" : "Enter the pharmacy address";
+  }
   if (message === "trial_already_provisioned") {
     return isArabic ? "تم إنشاء صيدليتك مسبقاً" : "Your pharmacy was already created";
   }
@@ -47,6 +55,11 @@ export function formatUserCreationError(message: string, isArabic: boolean): str
   }
   if (message === "email_already_registered") {
     return isArabic ? "هذا الإيميل مسجل بالفعل" : "This email is already registered";
+  }
+  if (message === "signup_request_already_pending") {
+    return isArabic
+      ? "طلب تسجيل بهذا الإيميل قيد المراجعة بالفعل. انتظر الاعتماد من مالك النظام."
+      : "A signup request for this email is already pending. Wait for the system owner to approve it.";
   }
   if (message.includes("already registered") || message.includes("already been registered")) {
     return isArabic ? "هذا الإيميل مسجل بالفعل" : "This email is already registered";

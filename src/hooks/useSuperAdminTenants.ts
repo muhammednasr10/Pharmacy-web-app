@@ -468,14 +468,24 @@ export function useSuperAdminTenants({
         console.error(error);
         setBranches(await pharmacyService.getPharmacies());
         const message = error instanceof Error ? error.message : "";
+        const needsCascadeSql =
+          message === "delete_organization_cascade_missing" ||
+          message.includes("delete_organization_cascade") ||
+          message.includes("delete_pharmacy_cascade") ||
+          message.includes("could not find the function") ||
+          /foreign key|violates foreign key|23503/i.test(message);
         alert(
-          message === "delete_organization_cascade_missing"
+          needsCascadeSql
             ? isArabic
-              ? "شغّل ملف delete-pharmacy-cascade.sql في Supabase ثم أعد المحاولة"
-              : "Run delete-pharmacy-cascade.sql in Supabase, then try again"
-            : isArabic
-              ? "تعذر الحذف — قد تكون الصيدلية مرتبطة ببيانات (مستخدمين/أدوية/فواتير)"
-              : "Could not delete — pharmacy may still have linked data (users/medicines/invoices)",
+              ? "شغّل ملف delete-pharmacy-cascade.sql في Supabase SQL Editor ثم أعد المحاولة"
+              : "Run delete-pharmacy-cascade.sql in Supabase SQL Editor, then try again"
+            : message.toLowerCase().includes("forbidden")
+              ? isArabic
+                ? "غير مسموح — لازم تكون Super Admin ومسجّل دخول بصلاحية كاملة"
+                : "Forbidden — you must be signed in as Super Admin"
+              : isArabic
+                ? `تعذر الحذف${message ? `: ${message}` : ""}`
+                : `Could not delete${message ? `: ${message}` : ""}`,
         );
         return false;
       }

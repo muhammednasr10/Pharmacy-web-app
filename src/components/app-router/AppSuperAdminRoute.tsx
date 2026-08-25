@@ -32,9 +32,12 @@ export type AppSuperAdminRouteProps = Pick<
   | "handleApproveSubscriptionRequest"
   | "handleRejectSubscriptionRequest"
   | "pendingPharmacyLoginAccounts"
+  | "pendingPharmacySignupRequests"
   | "pendingCustomRoles"
   | "handleApprovePharmacyLoginAccount"
   | "handleRejectPharmacyLoginAccount"
+  | "handleApprovePharmacySignupRequest"
+  | "handleRejectPharmacySignupRequest"
   | "refreshAdminRequestsStable"
   | "refreshSystemUsersStable"
   | "refreshPharmacies"
@@ -70,9 +73,12 @@ export default function AppSuperAdminRoute({
   handleApproveSubscriptionRequest,
   handleRejectSubscriptionRequest,
   pendingPharmacyLoginAccounts,
+  pendingPharmacySignupRequests,
   pendingCustomRoles,
   handleApprovePharmacyLoginAccount,
   handleRejectPharmacyLoginAccount,
+  handleApprovePharmacySignupRequest,
+  handleRejectPharmacySignupRequest,
   refreshAdminRequestsStable,
   refreshSystemUsersStable,
   refreshPharmacies,
@@ -110,9 +116,12 @@ export default function AppSuperAdminRoute({
       onApproveSubscriptionRequest={handleApproveSubscriptionRequest}
       onRejectSubscriptionRequest={handleRejectSubscriptionRequest}
       pendingPharmacyLoginAccounts={pendingPharmacyLoginAccounts}
+      pendingPharmacySignupRequests={pendingPharmacySignupRequests}
       pendingCustomRoles={pendingCustomRoles}
       onApprovePharmacyLoginAccount={handleApprovePharmacyLoginAccount}
       onRejectPharmacyLoginAccount={handleRejectPharmacyLoginAccount}
+      onApprovePharmacySignupRequest={handleApprovePharmacySignupRequest}
+      onRejectPharmacySignupRequest={handleRejectPharmacySignupRequest}
       onRefreshAdminRequests={refreshAdminRequestsStable}
       onRefreshSystemUsers={refreshSystemUsersStable}
       onRefreshPharmacies={refreshPharmacies}

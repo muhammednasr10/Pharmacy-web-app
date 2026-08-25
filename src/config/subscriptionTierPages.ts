@@ -13,7 +13,6 @@ export const TIER_CONFIGURABLE_PAGES: Page[] = [
   "customers",
   "reports",
   "stockMovements",
-  "activityLogs",
   "users",
   "branches",
   "employeePortal",

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { SubscriptionRequest } from "../../../types";
+import type { PharmacySignupRequest, SubscriptionRequest } from "../../../types";
 import * as pharmacyService from "../../../services/pharmacyService";
 import {
   computeSubscriptionEndDate,
@@ -7,6 +7,7 @@ import {
 import {
   getSubscriptionTierLabel,
   parseSubscriptionTier,
+  type SubscriptionTier,
 } from "../../../config/subscriptionTiers";
 import { parseTierUpgradePlan } from "../../../utils/subscriptionFeatures";
 import type { CustomerRequestRow } from "../../../utils/customerRequests";
@@ -18,6 +19,8 @@ type RequestsParams = Pick<SuperAdminPageProps, "isArabic" | "pharmacies"> & {
   onRejectSubscriptionRequest: SuperAdminPageProps["onRejectSubscriptionRequest"];
   onApprovePharmacyLoginAccount: SuperAdminPageProps["onApprovePharmacyLoginAccount"];
   onRejectPharmacyLoginAccount: SuperAdminPageProps["onRejectPharmacyLoginAccount"];
+  onApprovePharmacySignupRequest: SuperAdminPageProps["onApprovePharmacySignupRequest"];
+  onRejectPharmacySignupRequest: SuperAdminPageProps["onRejectPharmacySignupRequest"];
   onRefreshAdminRequests: SuperAdminPageProps["onRefreshAdminRequests"];
 };
 
@@ -29,6 +32,8 @@ export function useSuperAdminRequestsState(params: RequestsParams) {
     onRejectSubscriptionRequest,
     onApprovePharmacyLoginAccount,
     onRejectPharmacyLoginAccount,
+    onApprovePharmacySignupRequest,
+    onRejectPharmacySignupRequest,
     onRefreshAdminRequests,
   } = params;
 
@@ -38,8 +43,13 @@ export function useSuperAdminRequestsState(params: RequestsParams) {
 
   const [requestActionId, setRequestActionId] = useState<number | null>(null);
   const [loginRequestActionId, setLoginRequestActionId] = useState<string | null>(null);
+  const [signupRequestActionId, setSignupRequestActionId] = useState<string | null>(null);
   const [roleRequestActionId, setRoleRequestActionId] = useState<string | null>(null);
   const [requestUpdating, setRequestUpdating] = useState(false);
+  const [signupApproveTarget, setSignupApproveTarget] = useState<PharmacySignupRequest | null>(
+    null,
+  );
+  const [signupApproveTier, setSignupApproveTier] = useState<SubscriptionTier>("professional");
 
   async function handleApproveRequest(requestId: number) {
     setRequestActionId(requestId);
@@ -89,6 +99,48 @@ export function useSuperAdminRequestsState(params: RequestsParams) {
     }
   }
 
+  function openSignupApproveModal(request: PharmacySignupRequest) {
+    setSignupApproveTier("professional");
+    setSignupApproveTarget(request);
+  }
+
+  function closeSignupApproveModal() {
+    if (requestUpdating) return;
+    setSignupApproveTarget(null);
+  }
+
+  async function confirmSignupApprove() {
+    if (!signupApproveTarget) return;
+    setSignupRequestActionId(signupApproveTarget.id);
+    setRequestUpdating(true);
+    try {
+      const ok = await onApprovePharmacySignupRequest(signupApproveTarget.id, {
+        subscriptionTier: signupApproveTier,
+      });
+      if (ok) setSignupApproveTarget(null);
+    } finally {
+      setRequestUpdating(false);
+      setSignupRequestActionId(null);
+    }
+  }
+
+  async function handleApproveSignupRequest(request: PharmacySignupRequest) {
+    openSignupApproveModal(request);
+  }
+
+  async function handleRejectSignupRequest(requestId: string) {
+    const note = window.prompt(isArabic ? "سبب الرفض (اختياري):" : "Rejection reason (optional):");
+    if (note === null) return;
+    setSignupRequestActionId(requestId);
+    setRequestUpdating(true);
+    try {
+      await onRejectPharmacySignupRequest(requestId, note || undefined);
+    } finally {
+      setRequestUpdating(false);
+      setSignupRequestActionId(null);
+    }
+  }
+
   async function handleApproveRoleRequest(roleId: string) {
     setRoleRequestActionId(roleId);
     setRequestUpdating(true);
@@ -134,6 +186,9 @@ export function useSuperAdminRequestsState(params: RequestsParams) {
   }
 
   function getCustomerRequestResult(row: CustomerRequestRow) {
+    if (row.signupRequest) {
+      return row.resultAfterApproval || (isArabic ? "فتح صيدلية جديدة" : "Create new pharmacy");
+    }
     if (row.subscriptionRequest) {
       return formatEndDateAfterApproval(row.subscriptionRequest);
     }
@@ -154,6 +209,7 @@ export function useSuperAdminRequestsState(params: RequestsParams) {
 
   function isCustomerRequestBusy(row: CustomerRequestRow) {
     if (!requestUpdating) return false;
+    if (row.signupRequest) return signupRequestActionId === row.signupRequest.id;
     if (row.subscriptionRequest) return requestActionId === row.subscriptionRequest.id;
     if (row.loginAccount) return loginRequestActionId === row.loginAccount.id;
     if (row.customRole) return roleRequestActionId === row.customRole.id;
@@ -162,10 +218,17 @@ export function useSuperAdminRequestsState(params: RequestsParams) {
 
   return {
     requestUpdating,
+    signupApproveTarget,
+    signupApproveTier,
+    setSignupApproveTier,
+    closeSignupApproveModal,
+    confirmSignupApprove,
     handleApproveRequest,
     handleRejectRequest,
     handleApproveLoginRequest,
     handleRejectLoginRequest,
+    handleApproveSignupRequest,
+    handleRejectSignupRequest,
     handleApproveRoleRequest,
     handleRejectRoleRequest,
     formatEndDateAfterApproval,

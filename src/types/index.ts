@@ -616,6 +616,25 @@ export type SubscriptionRequest = {
   reviewedAt?: string;
 };
 
+/** Public «new pharmacy» signup waiting for Super Admin approval. */
+export type PharmacySignupRequest = {
+  id: string;
+  requestNumber: string;
+  pharmacyName: string;
+  adminName: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  status: SubscriptionRequestStatus;
+  pharmacyId?: string;
+  reviewedBy?: string;
+  reviewedByName?: string;
+  reviewNote?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  reviewedAt?: string;
+};
+
 export type CreatePharmacyInput = {
   id: string;
   name: string;

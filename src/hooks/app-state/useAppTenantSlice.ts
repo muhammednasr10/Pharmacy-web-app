@@ -28,6 +28,8 @@ type UseAppTenantSliceInput = Pick<
     | "setSubscriptionRequests"
     | "pendingPharmacyLoginAccounts"
     | "setPendingPharmacyLoginAccounts"
+    | "pendingPharmacySignupRequests"
+    | "setPendingPharmacySignupRequests"
     | "pendingCustomRoles"
     | "setPendingCustomRoles"
     | "systemUsers"
@@ -53,6 +55,8 @@ export function useAppTenantSlice({
   setSubscriptionRequests,
   pendingPharmacyLoginAccounts,
   setPendingPharmacyLoginAccounts,
+  pendingPharmacySignupRequests,
+  setPendingPharmacySignupRequests,
   pendingCustomRoles,
   setPendingCustomRoles,
   systemUsers,
@@ -169,8 +173,15 @@ export function useAppTenantSlice({
         pendingApproval: true,
       }),
     );
+    setPendingPharmacySignupRequests(await pharmacyService.getPendingPharmacySignupRequests());
     setPendingCustomRoles(await pharmacyService.getAllPendingPharmacyCustomRoles());
-  }, [appUser, setPendingCustomRoles, setPendingPharmacyLoginAccounts, setSubscriptionRequests]);
+  }, [
+    appUser,
+    setPendingCustomRoles,
+    setPendingPharmacyLoginAccounts,
+    setPendingPharmacySignupRequests,
+    setSubscriptionRequests,
+  ]);
 
   const refreshSystemUsersStable = useCallback(async () => {
     if (!isSuperAdmin(appUser)) return;
@@ -195,10 +206,19 @@ export function useAppTenantSlice({
       (request) => request.status === "pending",
     ).length;
     const pendingTotal =
-      pendingSubscriptions + pendingPharmacyLoginAccounts.length + pendingCustomRoles.length;
+      pendingSubscriptions +
+      pendingPharmacyLoginAccounts.length +
+      pendingPharmacySignupRequests.length +
+      pendingCustomRoles.length;
     if (pendingTotal <= 0) return undefined;
     return { tenants: pendingTotal };
-  }, [appUser, subscriptionRequests, pendingPharmacyLoginAccounts.length, pendingCustomRoles.length]);
+  }, [
+    appUser,
+    subscriptionRequests,
+    pendingPharmacyLoginAccounts.length,
+    pendingPharmacySignupRequests.length,
+    pendingCustomRoles.length,
+  ]);
 
   return {
     selectedTenantId,
@@ -234,6 +254,45 @@ export function useAppTenantSlice({
     handleRejectSubscriptionRequest,
     handleApprovePharmacyLoginAccount,
     handleRejectPharmacyLoginAccount,
+    pendingPharmacySignupRequests,
+    handleApprovePharmacySignupRequest: async (
+      requestId: string,
+      options?: { subscriptionTier?: string; reviewNote?: string },
+    ) => {
+      try {
+        await pharmacyService.approvePharmacySignupRequest(requestId, options);
+        await refreshAdminRequestsStable();
+        await refreshPharmacies();
+        alert(isArabic ? "تم اعتماد التسجيل وفتح الصيدلية" : "Signup approved and pharmacy created");
+        return true;
+      } catch (error) {
+        alert(
+          error instanceof Error
+            ? error.message
+            : isArabic
+              ? "تعذر اعتماد التسجيل"
+              : "Could not approve signup",
+        );
+        return false;
+      }
+    },
+    handleRejectPharmacySignupRequest: async (requestId: string, note?: string) => {
+      try {
+        await pharmacyService.rejectPharmacySignupRequest(requestId, note);
+        await refreshAdminRequestsStable();
+        alert(isArabic ? "تم رفض طلب التسجيل" : "Signup request rejected");
+        return true;
+      } catch (error) {
+        alert(
+          error instanceof Error
+            ? error.message
+            : isArabic
+              ? "تعذر رفض الطلب"
+              : "Could not reject request",
+        );
+        return false;
+      }
+    },
     refreshAdminRequestsStable,
     refreshSystemUsersStable,
     onOpenTenants,

@@ -20,7 +20,7 @@ where tier_id = 'basic';
 update public.subscription_tier_configs
 set enabled_pages = '[
   "dashboard","inventory","pos","invoices","returns","purchases","costs","customers",
-  "reports","stockMovements","activityLogs","users","branches","employeePortal","settings","userGuide"
+  "reports","stockMovements","users","branches","employeePortal","settings","userGuide"
 ]'::jsonb
 where tier_id in ('professional', 'premium');
 

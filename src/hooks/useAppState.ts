@@ -122,6 +122,8 @@ export function useAppState() {
     setSubscriptionRequests: data.setSubscriptionRequests,
     pendingPharmacyLoginAccounts: data.pendingPharmacyLoginAccounts,
     setPendingPharmacyLoginAccounts: data.setPendingPharmacyLoginAccounts,
+    pendingPharmacySignupRequests: data.pendingPharmacySignupRequests,
+    setPendingPharmacySignupRequests: data.setPendingPharmacySignupRequests,
     pendingCustomRoles: data.pendingCustomRoles,
     setPendingCustomRoles: data.setPendingCustomRoles,
     systemUsers: data.systemUsers,

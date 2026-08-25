@@ -319,7 +319,8 @@ declare
   v_barcode text;
   v_name_ar text;
   v_name_en text;
-  v_expiry text;
+  v_expiry date;
+  v_expiry_raw text;
   v_qty integer;
   v_buy_price numeric;
   v_sell_price numeric;
@@ -364,15 +365,22 @@ begin
     v_barcode := trim(coalesce(v_item->>'barcode', ''));
     v_name_ar := trim(coalesce(v_item->>'name_ar', ''));
     v_name_en := trim(coalesce(v_item->>'name_en', ''));
-    v_expiry := trim(coalesce(v_item->>'expiry', ''));
+    v_expiry_raw := trim(coalesce(v_item->>'expiry', ''));
     v_qty := floor(coalesce((v_item->>'qty')::numeric, 0))::integer;
     v_buy_price := coalesce((v_item->>'buy_price')::numeric, 0);
     v_sell_price := coalesce((v_item->>'sell_price')::numeric, 0);
 
+    begin
+      v_expiry := nullif(v_expiry_raw, '')::date;
+    exception
+      when others then
+        raise exception 'invalid_item';
+    end;
+
     if v_barcode = ''
       or v_name_ar = ''
       or v_name_en = ''
-      or v_expiry = ''
+      or v_expiry is null
       or v_qty <= 0 then
       raise exception 'invalid_item';
     end if;

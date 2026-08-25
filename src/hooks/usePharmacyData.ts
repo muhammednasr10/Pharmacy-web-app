@@ -23,6 +23,7 @@ import type {
   HeldInvoice,
   PharmacyCost,
   PharmacyLoginAccount,
+  PharmacySignupRequest,
   PharmacySettings,
   PurchaseRecord,
   ReturnRecord,
@@ -51,6 +52,7 @@ type UsePharmacyDataOptions = {
   setActivityLogs: Dispatch<SetStateAction<ActivityLog[]>>;
   setSubscriptionRequests: Dispatch<SetStateAction<SubscriptionRequest[]>>;
   setPendingPharmacyLoginAccounts: Dispatch<SetStateAction<PharmacyLoginAccount[]>>;
+  setPendingPharmacySignupRequests: Dispatch<SetStateAction<PharmacySignupRequest[]>>;
   setSystemUsers: Dispatch<SetStateAction<SystemUser[]>>;
 };
 
@@ -72,6 +74,7 @@ export function usePharmacyData({
   setActivityLogs,
   setSubscriptionRequests,
   setPendingPharmacyLoginAccounts,
+  setPendingPharmacySignupRequests,
   setSystemUsers,
 }: UsePharmacyDataOptions) {
   const queryClient = useQueryClient();
@@ -192,6 +195,7 @@ export function usePharmacyData({
           setPendingPharmacyLoginAccounts(
             await pharmacyService.getAllPharmacyLoginAccounts({ pendingApproval: true }),
           );
+          setPendingPharmacySignupRequests(await pharmacyService.getPendingPharmacySignupRequests());
         }
 
         let heldInvoices: HeldInvoice[] = [];
