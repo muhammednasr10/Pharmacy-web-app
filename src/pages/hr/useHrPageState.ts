@@ -78,6 +78,7 @@ export function useHrPageState(props: HrPageProps) {
 
   useEffect(() => {
     if (shared.activeTab === "attendance") {
+      void staff.loadStaff();
       void attendance.loadAttendance();
       void requests.loadEmployeeRequests();
     } else if (shared.activeTab === "requests") {
@@ -87,6 +88,7 @@ export function useHrPageState(props: HrPageProps) {
     }
   }, [
     shared.activeTab,
+    staff.loadStaff,
     attendance.loadAttendance,
     payroll.loadPayroll,
     requests.loadEmployeeRequests,
@@ -169,8 +171,13 @@ export function useHrPageState(props: HrPageProps) {
     handleExportPayrollPdf: payroll.handleExportPayrollPdf,
     reviewRequest: requests.reviewRequest,
     todayIso: shared.todayIso,
+    filteredAttendanceEmployees: attendance.filteredAttendanceEmployees,
+    attendanceEmployeeSearch: attendance.attendanceEmployeeSearch,
+    setAttendanceEmployeeSearch: attendance.setAttendanceEmployeeSearch,
     attendanceTableRows: attendance.attendanceTableRows,
     showAttendanceScanner: attendance.showAttendanceScanner,
+    isAttendanceLoading: attendance.isAttendanceLoading,
+    isAttendanceFetching: attendance.isAttendanceFetching,
     payrollBranchId: payroll.payrollBranchId,
   };
 }

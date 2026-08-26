@@ -12,7 +12,10 @@ export type HrStaffRow = {
   employeeId: string;
   pharmacyId: string;
   employeeCode?: string;
+  photoBase64?: string;
   name: string;
+  phone?: string;
+  jobTitle?: string;
   attendanceKey: string;
   salary: number;
   requiredWorkHours: number;

@@ -75,6 +75,7 @@ export function useHrAttendanceState(params: AttendanceParams) {
 
   const [attendanceMonth, setAttendanceMonth] = useState(currentMonthValue);
   const [attendanceEmployeeFilter, setAttendanceEmployeeFilter] = useState("");
+  const [attendanceEmployeeSearch, setAttendanceEmployeeSearch] = useState("");
   const [attendanceBranchFilter, setAttendanceBranchFilter] = useState("all");
   const [attendanceLogEdit, setAttendanceLogEdit] = useState<AttendanceLogDraft | null>(null);
   const [attendanceScanMode, setAttendanceScanMode] = useState<"auto" | "in" | "out">("auto");
@@ -87,6 +88,7 @@ export function useHrAttendanceState(params: AttendanceParams) {
     attendanceRecords,
     loadAttendance,
     invalidateAttendance,
+    isAttendanceLoading,
     isAttendanceFetching,
     attendanceError,
   } = useAttendanceRecordsQuery({
@@ -98,13 +100,15 @@ export function useHrAttendanceState(params: AttendanceParams) {
   });
 
   useEffect(() => {
-    setLoading(isAttendanceFetching);
-  }, [isAttendanceFetching, setLoading]);
+    // Keep shared loading only for the first unresolved fetch — never latch on refetch.
+    setLoading(isAttendanceLoading);
+  }, [isAttendanceLoading, setLoading]);
 
   useEffect(() => {
     if (!attendanceError) return;
     setError(attendanceError instanceof Error ? attendanceError.message : "load_failed");
-  }, [attendanceError, setError]);
+    setLoading(false);
+  }, [attendanceError, setError, setLoading]);
 
   async function handleCheckIn(userId: string, userName: string, workDate = todayIso) {
     setBusyAction(`in-${userId}`);
@@ -553,6 +557,8 @@ export function useHrAttendanceState(params: AttendanceParams) {
     setAttendanceMonth,
     attendanceEmployeeFilter,
     setAttendanceEmployeeFilter,
+    attendanceEmployeeSearch,
+    setAttendanceEmployeeSearch,
     attendanceBranchFilter,
     setAttendanceBranchFilter,
     attendanceRecords,
@@ -571,6 +577,7 @@ export function useHrAttendanceState(params: AttendanceParams) {
     updateActualShiftOnly,
     setEarlyLeaveOutcome,
     saveAttendanceLogEdit,
+    filteredAttendanceEmployees,
     attendanceTableRows,
     attendanceHoursSummary,
     showEmployeeColumn,
@@ -578,5 +585,7 @@ export function useHrAttendanceState(params: AttendanceParams) {
     showAttendanceActions,
     attendanceTableColSpan,
     showAttendanceScanner,
+    isAttendanceLoading,
+    isAttendanceFetching,
   };
 }

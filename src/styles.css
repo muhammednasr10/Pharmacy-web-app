@@ -5104,6 +5104,125 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
   gap: 16px;
 }
 
+.hrAttendanceDetailHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  width: 100%;
+}
+
+.hrAttendanceDetailIdentity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.hrAttendanceDetailIdentity strong {
+  display: block;
+  font-size: 1.05rem;
+}
+
+.hrAttendanceDetailIdentity .saasSub {
+  display: block;
+  margin-top: 2px;
+}
+
+.hrAttendanceCardsSection {
+  margin-top: 8px;
+}
+
+.hrAttendanceCardsToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-bottom: 14px;
+}
+
+.hrAttendanceCardsToolbar h3 {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+}
+
+.hrAttendanceCardsToolbar .pageHint {
+  margin: 0;
+}
+
+.hrAttendanceCardsSearch {
+  min-width: min(280px, 100%);
+}
+
+.hrAttendanceCardsSearch .tableInput {
+  width: 100%;
+}
+
+.hrAttendanceCardsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.hrAttendanceEmployeeCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 14px;
+  border: 1px solid var(--color-border, #d0d5dd);
+  border-radius: 14px;
+  background: var(--color-surface, #fff);
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.hrAttendanceEmployeeCard:hover {
+  border-color: #027a48;
+  box-shadow: 0 8px 20px rgba(2, 122, 72, 0.08);
+  transform: translateY(-1px);
+}
+
+.hrAttendanceEmployeeCard:focus-visible {
+  outline: 2px solid #027a48;
+  outline-offset: 2px;
+}
+
+.hrAttendanceEmployeeCard .employeePhotoThumbForm,
+.hrAttendanceEmployeeCard .employeePhotoPlaceholderForm {
+  width: 64px;
+  height: 64px;
+}
+
+.hrAttendanceEmployeeCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  width: 100%;
+}
+
+.hrAttendanceEmployeeCardBody strong {
+  font-size: 1rem;
+}
+
+.hrAttendanceEmployeeCardMeta {
+  color: var(--color-text-secondary, #667085);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.hrAttendanceEmployeeCardAction {
+  margin-top: auto;
+  font-size: 13px;
+  font-weight: 700;
+  color: #027a48;
+}
+
 .hrFiltersFields {
   display: flex;
   flex-wrap: wrap;

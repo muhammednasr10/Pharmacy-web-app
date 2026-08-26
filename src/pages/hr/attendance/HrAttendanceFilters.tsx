@@ -1,4 +1,5 @@
 import BranchScopeSelect from "../../../components/BranchScopeSelect";
+import { EmployeePhotoThumb } from "../../../components/staff/EmployeePhotoThumb";
 import { formatTotalWorked } from "../../../utils/hrFormatters";
 import type { HrPageState } from "../useHrPageState";
 
@@ -21,8 +22,46 @@ export default function HrAttendanceFilters({ state }: Props) {
     attendanceHoursSummary,
   } = state;
 
+  const selectedEmployee = attendanceEmployeeFilter
+    ? activeEmployees.find((emp) => emp.attendanceKey === attendanceEmployeeFilter)
+    : null;
+  const detailMode = Boolean(selectedEmployee);
+
   return (
     <div className="hrFilters hrAttendanceFilters">
+      {detailMode && selectedEmployee ? (
+        <div className="hrAttendanceDetailHeader">
+          <button
+            type="button"
+            className="smallBtn"
+            onClick={() => setAttendanceEmployeeFilter("")}
+          >
+            {isArabic ? "→ كل الموظفين" : "← All employees"}
+          </button>
+          <div className="hrAttendanceDetailIdentity">
+            <EmployeePhotoThumb
+              photoBase64={selectedEmployee.photoBase64}
+              name={selectedEmployee.name}
+            />
+            <div>
+              <strong>{selectedEmployee.name}</strong>
+              <span className="saasSub">
+                {[
+                  selectedEmployee.jobTitle,
+                  selectedEmployee.employeeCode,
+                  selectedEmployee.phone,
+                  showOrgHr && resolveBranchLabel
+                    ? resolveBranchLabel(selectedEmployee.pharmacyId)
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="hrFiltersFields">
         <label>
           {isArabic ? "الشهر" : "Month"}
@@ -33,24 +72,7 @@ export default function HrAttendanceFilters({ state }: Props) {
             onChange={(e) => setAttendanceMonth(e.target.value)}
           />
         </label>
-        <label>
-          {isArabic ? "الموظف" : "Employee"}
-          <select
-            className="tableInput"
-            value={attendanceEmployeeFilter}
-            onChange={(e) => setAttendanceEmployeeFilter(e.target.value)}
-          >
-            <option value="">{isArabic ? "كل الموظفين" : "All employees"}</option>
-            {activeEmployees.map((emp) => (
-              <option key={emp.employeeId} value={emp.attendanceKey}>
-                {showOrgHr && resolveBranchLabel
-                  ? `${emp.name} — ${resolveBranchLabel(emp.pharmacyId)}`
-                  : emp.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        {showOrgHr && orgBranchIds.length > 1 && (
+        {showOrgHr && orgBranchIds.length > 1 && !detailMode && (
           <label>
             {isArabic ? "الفرع" : "Branch"}
             <BranchScopeSelect
@@ -67,28 +89,33 @@ export default function HrAttendanceFilters({ state }: Props) {
           </label>
         )}
       </div>
-      <div className="hrAttendanceHoursStats">
-        <span className="hrAttendanceHoursStat">
-          <strong>{isArabic ? "الساعات الأساسية:" : "Regular hours:"}</strong>{" "}
-          {formatTotalWorked(attendanceHoursSummary.regularMinutes, isArabic)}
-        </span>
-        <span className="hrAttendanceHoursStat hrAttendanceHoursStatOvertime">
-          <strong>{isArabic ? "الساعات الإضافية:" : "Overtime hours:"}</strong>{" "}
-          {formatTotalWorked(attendanceHoursSummary.overtimeMinutes, isArabic)}
-        </span>
-        <span className="hrAttendanceHoursStat hrAttendanceHoursStatLate">
-          <strong>{isArabic ? "عدد التأخيرات:" : "Late count:"}</strong>{" "}
-          {attendanceHoursSummary.lateCount}
-        </span>
-        <span className="hrAttendanceHoursStat hrAttendanceHoursStatPermission">
-          <strong>{isArabic ? "عدد الأذونات:" : "Early leave count:"}</strong>{" "}
-          {attendanceHoursSummary.permissionCount}
-        </span>
-        <span className="hrAttendanceHoursStat hrAttendanceHoursStatDeduction">
-          <strong>{isArabic ? "خصم انصراف مبكر:" : "Early leave deductions:"}</strong>{" "}
-          {attendanceHoursSummary.earlyLeaveDeductionCount}
-        </span>
-      </div>
+
+      {detailMode ? (
+        <div className="hrAttendanceHoursStats">
+          <span className="hrAttendanceHoursStat">
+            <strong>{isArabic ? "الساعات الأساسية:" : "Regular hours:"}</strong>{" "}
+            {formatTotalWorked(attendanceHoursSummary.regularMinutes, isArabic)}
+          </span>
+          <span className="hrAttendanceHoursStat hrAttendanceHoursStatOvertime">
+            <strong>{isArabic ? "الساعات الإضافية:" : "Overtime hours:"}</strong>{" "}
+            {formatTotalWorked(attendanceHoursSummary.overtimeMinutes, isArabic)}
+          </span>
+          <span className="hrAttendanceHoursStat hrAttendanceHoursStatLate">
+            <strong>{isArabic ? "عدد التأخيرات:" : "Late count:"}</strong>{" "}
+            {attendanceHoursSummary.lateCount}
+          </span>
+          <span className="hrAttendanceHoursStat hrAttendanceHoursStatPermission">
+            <strong>{isArabic ? "عدد الأذونات:" : "Permission count:"}</strong>{" "}
+            {attendanceHoursSummary.permissionCount}
+          </span>
+          <span className="hrAttendanceHoursStat hrAttendanceHoursStatDeduction">
+            <strong>
+              {isArabic ? "انصراف مبكر (خصم):" : "Early leave (deduction):"}
+            </strong>{" "}
+            {attendanceHoursSummary.earlyLeaveDeductionCount}
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }

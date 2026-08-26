@@ -34,6 +34,7 @@ export default function HrAttendanceTable({ state }: Props) {
   const {
     isArabic,
     loading,
+    isAttendanceLoading,
     busyAction,
     showEmployeeColumn,
     showBranchColumn,
@@ -82,7 +83,7 @@ export default function HrAttendanceTable({ state }: Props) {
             </tr>
           </thead>
           <tbody>
-            {loading ? (
+            {isAttendanceLoading || (loading && attendanceTableRows.length === 0) ? (
               <tr>
                 <td colSpan={attendanceTableColSpan} className="empty">
                   {isArabic ? "جاري التحميل..." : "Loading..."}
