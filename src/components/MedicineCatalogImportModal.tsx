@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import * as pharmacyService from "../services/pharmacyService";
 import type { MedicineCatalogMergeFields } from "../services/pharmacy/medicineCatalogService";
 import {
-  downloadMedicineCatalogCsvTemplate,
-  parseMedicineCatalogFile,
-  readMedicineCatalogFileText,
+  downloadMedicineCatalogExcelTemplate,
+  parseMedicineCatalogUpload,
   type MedicineCatalogImportRow,
 } from "../utils/medicineCatalogImport";
 
@@ -48,8 +47,8 @@ function formatCatalogImportError(message: string, isArabic: boolean) {
   }
   if (message === "empty_or_unrecognized_csv" || message === "empty_file") {
     return isArabic
-      ? "الملف فاضي أو الأعمدة مش متعرّفة. حمّل القالب تاني، احفظه CSV UTF-8، وخلي الصف الأول: name_ar,name_en,barcode,qty,price"
-      : "File is empty or columns are unrecognized. Download the template again, save as CSV UTF-8, and keep the header: name_ar,name_en,barcode,qty,price";
+      ? "الملف فاضي أو الأعمدة مش متعرّفة. حمّل قالب Excel، املأه، وارفع ملف .xlsx مباشرة بدون تحويله لـ CSV"
+      : "File is empty or columns are unrecognized. Download the Excel template, fill it, and upload the .xlsx file directly (do not convert to CSV)";
   }
   return message || (isArabic ? "تعذر الاستيراد" : "Import failed");
 }
@@ -148,8 +147,7 @@ export default function MedicineCatalogImportModal({
     setError("");
     setMatchedBarcodeCount(0);
     try {
-      const text = await readMedicineCatalogFileText(file);
-      const rows = parseMedicineCatalogFile(text, file.name);
+      const rows = await parseMedicineCatalogUpload(file);
       if (rows.length === 0) {
         throw new Error("empty_or_unrecognized_csv");
       }
@@ -434,30 +432,30 @@ export default function MedicineCatalogImportModal({
             </div>
 
             <div className="medicineCatalogImportSource">
-              <strong>{isArabic ? "أو رفع ملف CSV" : "Or upload a CSV file"}</strong>
+              <strong>{isArabic ? "أو رفع ملف Excel / CSV" : "Or upload an Excel / CSV file"}</strong>
               <span>
                 {isArabic
-                  ? "بديل — استيراد من ملف على جهازك (مع الكميات)"
-                  : "Alternative — import from a file on your device (with quantities)"}
+                  ? "بديل — استيراد من ملف على جهازك (مع الكميات). استخدم Excel مباشرة عشان العربي ما يتكسرش"
+                  : "Alternative — import from a file on your device (with quantities). Prefer Excel so Arabic stays intact"}
               </span>
               <button
                 type="button"
                 className="editBtn medicineCatalogImportTemplateBtn"
                 disabled={importing}
-                onClick={() => downloadMedicineCatalogCsvTemplate()}
+                onClick={() => void downloadMedicineCatalogExcelTemplate()}
               >
-                {isArabic ? "تحميل قالب CSV جاهز" : "Download CSV template"}
+                {isArabic ? "تحميل قالب Excel جاهز" : "Download Excel template"}
               </button>
               <p className="medicineCatalogImportTemplateHint">
                 {isArabic
-                  ? "افتح القالب في Excel، املأ الأدوية والكميات، ثم احفظه CSV UTF-8 وارفعه من الزر التالي."
-                  : "Open the template in Excel, fill medicines and quantities, save as CSV UTF-8, then upload below."}
+                  ? "افتح القالب في Excel، املأ الأدوية والكميات، واحفظه كملف Excel (.xlsx) ثم ارفعه من الزر التالي — متتحوّلوش لـ CSV."
+                  : "Open the template in Excel, fill medicines and quantities, save as Excel (.xlsx), then upload below — do not convert to CSV."}
               </p>
               <label className="medicineCatalogImportFilePicker">
-                <span>{isArabic ? "اختر ملف CSV" : "Choose CSV file"}</span>
+                <span>{isArabic ? "اختر ملف Excel أو CSV" : "Choose Excel or CSV file"}</span>
                 <input
                   type="file"
-                  accept=".csv,text/csv"
+                  accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
                   disabled={loadingPreview || importing}
                   onChange={(event) => void handleFileChange(event.target.files?.[0] || null)}
                 />

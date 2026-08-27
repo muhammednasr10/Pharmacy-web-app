@@ -322,6 +322,148 @@ export function parseMedicineCatalogFile(text: string, filename = ""): MedicineC
   return rows;
 }
 
+function mapObjectRowToCatalogRow(
+  record: Record<string, unknown>,
+  index: number,
+): MedicineCatalogImportRow | null {
+  const normalized: Record<string, string> = {};
+  Object.entries(record).forEach(([key, value]) => {
+    const mappedKey = normalizeHeader(String(key));
+    normalized[mappedKey] = cleanText(value);
+  });
+
+  const nameAr = cleanText(normalized.name_ar);
+  const nameEn = cleanText(normalized.name_en || nameAr);
+  if (!nameAr && !nameEn) return null;
+
+  const price = Math.max(0, Number(String(normalized.price ?? "0").replace(",", ".")) || 0);
+  const buyRaw = normalized.buy_price;
+  const buyPrice =
+    buyRaw != null && buyRaw !== ""
+      ? Math.max(0, Number(String(buyRaw).replace(",", ".")) || 0)
+      : price > 0
+        ? Math.round(price * 0.85 * 100) / 100
+        : undefined;
+
+  return {
+    name_ar: nameAr.slice(0, 500),
+    name_en: nameEn.slice(0, 500),
+    active_ingredient: cleanText(normalized.active_ingredient) || undefined,
+    barcode: cleanText(normalized.barcode) || buildCatalogBarcode(nameEn || nameAr, index),
+    qty: Math.max(0, Math.floor(Number(String(normalized.qty ?? "0").replace(",", ".")) || 0)),
+    price,
+    buy_price: buyPrice,
+    expiry: cleanText(normalized.expiry) || CATALOG_PLACEHOLDER_EXPIRY,
+  };
+}
+
+function mapPositionalCellsToCatalogRow(
+  cells: string[],
+  index: number,
+): MedicineCatalogImportRow | null {
+  const cleaned = cells.map((cell) => cleanText(cell)).filter((cell, i, arr) => cell || i < arr.length - 1);
+  if (cleaned.length < 2) return null;
+
+  // Common pharmacy sheets: name_ar | name_en | barcode
+  // or name_ar | name_en | qty | barcode
+  const last = cleaned[cleaned.length - 1];
+  const barcodeCandidate = last.replace(/\D/g, "");
+  const hasBarcodeTail = barcodeCandidate.length >= 8;
+
+  if (cleaned.length === 3 && hasBarcodeTail) {
+    return {
+      name_ar: cleaned[0].slice(0, 500) || cleaned[1].slice(0, 500),
+      name_en: cleaned[1].slice(0, 500) || cleaned[0].slice(0, 500),
+      barcode: barcodeCandidate,
+      qty: 0,
+      price: 0,
+      expiry: CATALOG_PLACEHOLDER_EXPIRY,
+    };
+  }
+
+  if (cleaned.length >= 4 && hasBarcodeTail) {
+    const maybeQty = Number(String(cleaned[2]).replace(",", "."));
+    return {
+      name_ar: cleaned[0].slice(0, 500) || cleaned[1].slice(0, 500),
+      name_en: cleaned[1].slice(0, 500) || cleaned[0].slice(0, 500),
+      barcode: barcodeCandidate,
+      qty: Number.isFinite(maybeQty) ? Math.max(0, Math.floor(maybeQty)) : 0,
+      price: 0,
+      expiry: CATALOG_PLACEHOLDER_EXPIRY,
+    };
+  }
+
+  return mapObjectRowToCatalogRow(
+    {
+      name_ar: cleaned[0],
+      name_en: cleaned[1] || cleaned[0],
+      barcode: cleaned[3] || cleaned[2] || "",
+      qty: cleaned[2] || "0",
+    },
+    index,
+  );
+}
+
+export function parseMedicineCatalogExcelWorkbook(
+  buffer: ArrayBuffer,
+  XLSX: typeof import("xlsx"),
+): MedicineCatalogImportRow[] {
+  const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
+  const sheetName = workbook.SheetNames[0];
+  if (!sheetName) throw new Error("empty_or_unrecognized_csv");
+  const sheet = workbook.Sheets[sheetName];
+  const matrix = XLSX.utils.sheet_to_json<(string | number | boolean | Date | null)[]>(sheet, {
+    header: 1,
+    defval: "",
+    raw: false,
+  }) as Array<Array<string | number | boolean | Date | null>>;
+
+  if (!matrix.length) throw new Error("empty_or_unrecognized_csv");
+
+  const headerCells = matrix[0].map((cell) => cleanText(cell));
+  const normalizedHeaders = headerCells.map((header) => normalizeHeader(header));
+  const looksLikeHeader = normalizedHeaders.some((header) =>
+    ["name_ar", "name_en", "barcode", "qty", "price", "buy_price", "expiry", "active_ingredient"].includes(
+      header,
+    ),
+  );
+
+  const rows: MedicineCatalogImportRow[] = [];
+  const startIndex = looksLikeHeader ? 1 : 0;
+
+  for (let index = startIndex; index < matrix.length; index += 1) {
+    const cells = (matrix[index] || []).map((cell) => cleanText(cell));
+    if (cells.every((cell) => !cell)) continue;
+
+    if (looksLikeHeader) {
+      const record: Record<string, string> = {};
+      normalizedHeaders.forEach((header, cellIndex) => {
+        record[header] = cells[cellIndex] ?? "";
+      });
+      const mapped = mapObjectRowToCatalogRow(record, rows.length);
+      if (mapped) rows.push(mapped);
+    } else {
+      const mapped = mapPositionalCellsToCatalogRow(cells, rows.length);
+      if (mapped) rows.push(mapped);
+    }
+  }
+
+  if (rows.length === 0) throw new Error("empty_or_unrecognized_csv");
+  return rows;
+}
+
+export async function parseMedicineCatalogUpload(file: File): Promise<MedicineCatalogImportRow[]> {
+  const lowerName = file.name.toLowerCase();
+  if (lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls")) {
+    const XLSX = await import("xlsx");
+    const buffer = await file.arrayBuffer();
+    return parseMedicineCatalogExcelWorkbook(buffer, XLSX);
+  }
+
+  const text = await readMedicineCatalogFileText(file);
+  return parseMedicineCatalogFile(text, file.name);
+}
+
 export function chunkCatalogRows<T>(rows: T[], size = MEDICINE_CATALOG_IMPORT_BATCH_SIZE): T[][] {
   const chunks: T[][] = [];
   for (let index = 0; index < rows.length; index += size) {
@@ -379,7 +521,6 @@ export function downloadMedicineCatalogCsvTemplate() {
     row
       .map((cell, cellIndex) => {
         const header = MEDICINE_CATALOG_CSV_HEADERS[cellIndex];
-        // Keep barcode as text for Excel.
         if (rowIndex > 0 && header === "barcode") {
           return `="${String(cell).replace(/"/g, '""')}"`;
         }
@@ -396,4 +537,27 @@ export function downloadMedicineCatalogCsvTemplate() {
   link.download = "victory-medicine-import-template.csv";
   link.click();
   URL.revokeObjectURL(url);
+}
+
+export async function downloadMedicineCatalogExcelTemplate() {
+  const XLSX = await import("xlsx");
+  const worksheet = XLSX.utils.aoa_to_sheet(
+    MEDICINE_CATALOG_CSV_TEMPLATE_ROWS.map((row) => [...row]),
+  );
+  // Force barcode column as text for sample rows.
+  worksheet["D2"] = { t: "s", v: "6224000000001" };
+  worksheet["D3"] = { t: "s", v: "6224000000002" };
+  worksheet["!cols"] = [
+    { wch: 22 },
+    { wch: 22 },
+    { wch: 28 },
+    { wch: 16 },
+    { wch: 8 },
+    { wch: 10 },
+    { wch: 10 },
+    { wch: 12 },
+  ];
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "medicines");
+  XLSX.writeFile(workbook, "victory-medicine-import-template.xlsx");
 }
