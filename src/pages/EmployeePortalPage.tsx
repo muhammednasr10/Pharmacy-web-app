@@ -1,5 +1,6 @@
 import AttendanceDynamicQrPanel from "../components/attendance/AttendanceDynamicQrPanel";
 import { formatScheduleWindow, getShiftDisplayName } from "../utils/workSchedule";
+import EmployeePortalIdentityCard from "./employee-portal/EmployeePortalIdentityCard";
 import EmployeePortalLeavePanel from "./employee-portal/EmployeePortalLeavePanel";
 import EmployeePortalPermissionPanel from "./employee-portal/EmployeePortalPermissionPanel";
 import EmployeePortalProfilePanel from "./employee-portal/EmployeePortalProfilePanel";
@@ -39,8 +40,8 @@ export default function EmployeePortalPage(props: EmployeePortalPageProps) {
         </div>
         <p className="empty">
           {isArabic
-            ? "حسابك غير مربوط بموظف نشط. اطلب من المدير ربط حسابك بملف موظف."
-            : "Your account is not linked to an active employee profile. Ask your manager to link your account."}
+            ? "حسابك غير مربوط بموظف نشط. من صفحة الموظفين أنشئ ملف موظف للمدير العام واربطه بالحساب (الاسم، الرقم الوظيفي، الهاتف، الصورة)."
+            : "Your account is not linked to an active employee profile. Create a General Manager employee card in Staff and link it to this account."}
         </p>
       </section>
     );
@@ -71,6 +72,8 @@ export default function EmployeePortalPage(props: EmployeePortalPageProps) {
             : "Run supabase/add-employee-requests.sql in Supabase if tables are missing"}
         </p>
       )}
+
+      <EmployeePortalIdentityCard state={state} />
 
       {branchGeofenceReady && staff && (
         <AttendanceDynamicQrPanel

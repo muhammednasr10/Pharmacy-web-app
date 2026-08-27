@@ -164,11 +164,27 @@ export function useEmployeePortalState({
         return;
       }
 
+      if (!appUser.employeeId || appUser.employeeId !== employee.id) {
+        try {
+          await pharmacyService.linkUserToEmployee(appUser.uid, employee.id);
+        } catch {
+          // Non-blocking: portal still works with resolved employee context.
+        }
+      }
+
       const linked = accountByEmployee.get(employee.id);
       const staffContext: StaffContext = {
         employeeId: employee.id,
         pharmacyId: employee.pharmacyId,
         name: employee.name,
+        employeeCode: employee.employeeCode,
+        photoBase64: employee.photoBase64,
+        phone: employee.phone,
+        jobTitle: employee.jobTitle,
+        hireDate: employee.hireDate,
+        notes: employee.notes,
+        email: linked?.email || appUser.email,
+        role: linked?.role || appUser.role || employee.jobTitle,
         attendanceKey: linked?.uid || employee.id,
         assignedShiftId: (employee.assignedShiftId as ShiftId) || config.defaultShiftId || "A",
         useCustomWorkSchedule: Boolean(employee.useCustomWorkSchedule),

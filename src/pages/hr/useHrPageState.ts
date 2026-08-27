@@ -34,12 +34,15 @@ export function useHrPageState(props: HrPageProps) {
     setError: shared.setError,
     setBusyAction: shared.setBusyAction,
     staffRows: staff.staffRows,
-    loadStaff: staff.loadStaff,
     activeEmployees: staff.activeEmployees,
     employeeRequests,
   });
 
   loadAttendanceRef.current = attendance.loadAttendance;
+  const loadStaffRef = useRef(staff.loadStaff);
+  loadStaffRef.current = staff.loadStaff;
+  const loadEmployeeRequestsRef = useRef<(() => Promise<void>) | null>(null);
+  const loadPayrollRef = useRef<(() => Promise<void>) | null>(null);
 
   const requests = useHrRequestsState({
     isArabic: shared.isArabic,
@@ -76,23 +79,20 @@ export function useHrPageState(props: HrPageProps) {
     staffBranchByKey: staff.staffBranchByKey,
   });
 
+  loadEmployeeRequestsRef.current = requests.loadEmployeeRequests;
+  loadPayrollRef.current = payroll.loadPayroll;
+
   useEffect(() => {
     if (shared.activeTab === "attendance") {
-      void staff.loadStaff();
-      void attendance.loadAttendance();
-      void requests.loadEmployeeRequests();
+      void loadStaffRef.current();
+      void loadAttendanceRef.current?.();
+      void loadEmployeeRequestsRef.current?.();
     } else if (shared.activeTab === "requests") {
-      void requests.loadEmployeeRequests();
+      void loadEmployeeRequestsRef.current?.();
     } else {
-      void payroll.loadPayroll();
+      void loadPayrollRef.current?.();
     }
-  }, [
-    shared.activeTab,
-    staff.loadStaff,
-    attendance.loadAttendance,
-    payroll.loadPayroll,
-    requests.loadEmployeeRequests,
-  ]);
+  }, [shared.activeTab, attendance.attendanceMonth]);
 
   const employeeRequestColSpan =
     5 + (attendance.showBranchColumn ? 1 : 0) + (shared.canManage ? 1 : 0);

@@ -7,6 +7,7 @@ import type {
   SystemUser,
   UserRole,
 } from "../../types";
+import { isPharmacyGeneralManagerRole } from "../../utils/pharmacyGeneralManager";
 import { normalizeRole } from "../../utils/roles";
 import { toCamelCase, toSnakeCase } from "./mappers";
 import {
@@ -133,6 +134,22 @@ export function resolveLinkedEmployeeFromData(
       if (!request.employeeId) continue;
       const linked = employees.find((item) => item.id === request.employeeId && item.isActive);
       if (linked) return linked;
+    }
+  }
+
+  // General manager: link to the unique GM employee card on this branch (or same display name).
+  if (isPharmacyGeneralManagerRole(appUser.role)) {
+    const gmEmployees = employees.filter(
+      (item) => item.isActive && isPharmacyGeneralManagerRole(item.jobTitle),
+    );
+    if (gmEmployees.length === 1) return gmEmployees[0];
+
+    const normalizedName = (appUser.name || "").trim().toLowerCase();
+    if (normalizedName) {
+      const byName = employees.find(
+        (item) => item.isActive && item.name.trim().toLowerCase() === normalizedName,
+      );
+      if (byName) return byName;
     }
   }
 

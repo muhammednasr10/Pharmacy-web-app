@@ -5202,7 +5202,7 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
 .hrAttendanceEmployeeCard {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 12px;
   width: 100%;
   padding: 14px;
@@ -5211,25 +5211,19 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
   background: var(--color-surface, #fff);
   color: inherit;
   text-align: start;
-  cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
-.hrAttendanceEmployeeCard:hover {
-  border-color: #027a48;
-  box-shadow: 0 8px 20px rgba(2, 122, 72, 0.08);
-  transform: translateY(-1px);
-}
-
-.hrAttendanceEmployeeCard:focus-visible {
-  outline: 2px solid #027a48;
-  outline-offset: 2px;
+.hrAttendanceEmployeeCardTop {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .hrAttendanceEmployeeCard .employeePhotoThumbForm,
 .hrAttendanceEmployeeCard .employeePhotoPlaceholderForm {
   width: 64px;
   height: 64px;
+  flex-shrink: 0;
 }
 
 .hrAttendanceEmployeeCardBody {
@@ -5250,11 +5244,51 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
   line-height: 1.35;
 }
 
+.hrAttendanceEmployeeCardToday {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #eaecf0;
+  font-size: 12px;
+  color: #667085;
+}
+
+.hrAttendanceEmployeeCardToday strong {
+  color: #101828;
+  font-weight: 700;
+}
+
+.hrAttendanceEmployeeCardQuick {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.hrAttendanceEmployeeCardQuick .smallBtn {
+  width: 100%;
+  min-height: 36px;
+  font-weight: 700;
+}
+
 .hrAttendanceEmployeeCardAction {
-  margin-top: auto;
+  margin-top: 0;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px dashed #abefc6;
+  border-radius: 10px;
+  background: #ecfdf3;
   font-size: 13px;
   font-weight: 700;
   color: #027a48;
+  cursor: pointer;
+  text-align: center;
+}
+
+.hrAttendanceEmployeeCardAction:hover {
+  background: #d1fadf;
 }
 
 .hrFiltersFields {
@@ -14032,6 +14066,93 @@ button:disabled {
 .employeeProfilePage .employeeProfileHeader {
   margin-bottom: 8px;
 }
+
+.employeePortalIdentityCard {
+  margin: 0 1rem 1rem;
+  padding: 16px;
+  border: 1px solid #eaecf0;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.employeePortalIdentityMain {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.employeePortalIdentityMain .employeePhotoThumbForm,
+.employeePortalIdentityMain .employeePhotoPlaceholderForm {
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+}
+
+.employeePortalIdentityText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.employeePortalIdentityName {
+  font-size: 1.15rem;
+  color: #101828;
+}
+
+.employeePortalIdentityRole {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary, #1570ef);
+}
+
+.employeePortalIdentityHint {
+  font-size: 12px;
+  color: #667085;
+}
+
+.employeePortalIdentityGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px 14px;
+  margin: 0;
+}
+
+.employeePortalIdentityField {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #f2f4f7;
+}
+
+.employeePortalIdentityField dt {
+  margin: 0;
+  font-size: 11px;
+  color: #667085;
+}
+
+.employeePortalIdentityField dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #101828;
+  word-break: break-word;
+}
+
+@media (max-width: 640px) {
+  .employeePortalIdentityCard {
+    margin-inline: 0.75rem;
+  }
+
+  .employeePortalIdentityMain {
+    align-items: flex-start;
+  }
+}
+
 
 .employeeProfileError {
   padding: 0 1rem 0.5rem;

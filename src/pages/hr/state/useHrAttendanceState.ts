@@ -48,7 +48,6 @@ type AttendanceParams = Pick<
   | "setBusyAction"
 > & {
   staffRows: HrStaffRow[];
-  loadStaff: () => Promise<void>;
   activeEmployees: HrStaffRow[];
   employeeRequests: EmployeeRequest[];
 };
@@ -68,7 +67,6 @@ export function useHrAttendanceState(params: AttendanceParams) {
     setError,
     setBusyAction,
     staffRows,
-    loadStaff,
     activeEmployees,
     employeeRequests,
   } = params;
@@ -96,11 +94,10 @@ export function useHrAttendanceState(params: AttendanceParams) {
     pharmacyId,
     showOrgHr,
     orgBranchIds,
-    onBeforeFetch: loadStaff,
   });
 
   useEffect(() => {
-    // Keep shared loading only for the first unresolved fetch — never latch on refetch.
+    // First unresolved fetch only — ignore background refetches to avoid UI flicker.
     setLoading(isAttendanceLoading);
   }, [isAttendanceLoading, setLoading]);
 

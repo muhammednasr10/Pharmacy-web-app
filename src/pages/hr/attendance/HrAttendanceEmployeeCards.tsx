@@ -1,4 +1,6 @@
 import { EmployeePhotoThumb } from "../../../components/staff/EmployeePhotoThumb";
+import { formatTime } from "../../../utils/hrFormatters";
+import { getEmployeeJobRoleLabel } from "../../../utils/roles";
 import { getShiftDisplayName } from "../../../utils/workSchedule";
 import type { HrPageState } from "../useHrPageState";
 
@@ -8,6 +10,9 @@ export default function HrAttendanceEmployeeCards({ state }: Props) {
   const {
     isArabic,
     loading,
+    busyAction,
+    todayIso,
+    attendanceRecords,
     filteredAttendanceEmployees,
     attendanceEmployeeSearch,
     setAttendanceEmployeeSearch,
@@ -15,6 +20,10 @@ export default function HrAttendanceEmployeeCards({ state }: Props) {
     showOrgHr,
     resolveBranchLabel,
     payrollConfig,
+    canManageHrFor,
+    showAttendanceActions,
+    handleCheckIn,
+    handleCheckOut,
   } = state;
 
   const query = attendanceEmployeeSearch.trim().toLowerCase();
@@ -41,8 +50,8 @@ export default function HrAttendanceEmployeeCards({ state }: Props) {
           <h3>{isArabic ? "موظفو الحضور" : "Attendance staff"}</h3>
           <p className="pageHint">
             {isArabic
-              ? "اضغط على كارت الموظف لفتح سجل الحضور والانصراف الخاص به"
-              : "Open an employee card to view their attendance log"}
+              ? "سجّل الحضور أو الانصراف من الكارت، أو افتح السجل الشهري للموظف"
+              : "Check in or out from the card, or open the monthly attendance log"}
           </p>
         </div>
         <label className="hrAttendanceCardsSearch">
@@ -68,41 +77,95 @@ export default function HrAttendanceEmployeeCards({ state }: Props) {
               ? isArabic
                 ? "جدول مخصص"
                 : "Custom schedule"
-              : getShiftDisplayName(
-                  emp.assignedShiftId,
-                  payrollConfig.workShifts,
-                  isArabic,
-                );
+              : getShiftDisplayName(emp.assignedShiftId, payrollConfig.workShifts, isArabic);
+            const todayRecord = attendanceRecords.find(
+              (row) => row.userId === emp.attendanceKey && row.workDate === todayIso,
+            );
+            const canManageThis = canManageHrFor(emp.pharmacyId);
+            const roleLabel = emp.jobTitle
+              ? getEmployeeJobRoleLabel(emp.jobTitle, isArabic)
+              : "";
+            const checkedIn = Boolean(todayRecord?.checkIn);
+            const checkedOut = Boolean(todayRecord?.checkOut);
+            const inBusy = busyAction === `in-${emp.attendanceKey}`;
+            const outBusy = busyAction === `out-${emp.attendanceKey}`;
+
             return (
-              <button
-                key={emp.employeeId}
-                type="button"
-                className="hrAttendanceEmployeeCard"
-                onClick={() => setAttendanceEmployeeFilter(emp.attendanceKey)}
-              >
-                <EmployeePhotoThumb
-                  photoBase64={emp.photoBase64}
-                  name={emp.name}
-                  variant="form"
-                />
-                <div className="hrAttendanceEmployeeCardBody">
-                  <strong>{emp.name}</strong>
-                  {emp.jobTitle ? <span>{emp.jobTitle}</span> : null}
-                  <span dir="ltr" className="hrAttendanceEmployeeCardMeta">
-                    {emp.employeeCode ? <code>{emp.employeeCode}</code> : <code>—</code>}
-                    {emp.phone ? ` · ${emp.phone}` : ""}
+              <article key={emp.employeeId} className="hrAttendanceEmployeeCard">
+                <div className="hrAttendanceEmployeeCardTop">
+                  <EmployeePhotoThumb
+                    photoBase64={emp.photoBase64}
+                    name={emp.name}
+                    variant="form"
+                  />
+                  <div className="hrAttendanceEmployeeCardBody">
+                    <strong>{emp.name}</strong>
+                    {roleLabel ? <span>{roleLabel}</span> : null}
+                    <span dir="ltr" className="hrAttendanceEmployeeCardMeta">
+                      {emp.employeeCode ? <code>{emp.employeeCode}</code> : <code>—</code>}
+                      {emp.phone ? ` · ${emp.phone}` : ""}
+                    </span>
+                    <span className="hrAttendanceEmployeeCardMeta">
+                      {shiftLabel}
+                      {showOrgHr && resolveBranchLabel
+                        ? ` · ${resolveBranchLabel(emp.pharmacyId)}`
+                        : ""}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="hrAttendanceEmployeeCardToday">
+                  <span>
+                    {isArabic ? "حضور اليوم" : "Today in"}:{" "}
+                    <strong>{formatTime(todayRecord?.checkIn, isArabic)}</strong>
                   </span>
-                  <span className="hrAttendanceEmployeeCardMeta">
-                    {shiftLabel}
-                    {showOrgHr && resolveBranchLabel
-                      ? ` · ${resolveBranchLabel(emp.pharmacyId)}`
-                      : ""}
+                  <span>
+                    {isArabic ? "انصراف اليوم" : "Today out"}:{" "}
+                    <strong>{formatTime(todayRecord?.checkOut, isArabic)}</strong>
                   </span>
                 </div>
-                <span className="hrAttendanceEmployeeCardAction">
-                  {isArabic ? "فتح السجل ←" : "Open log →"}
-                </span>
-              </button>
+
+                {showAttendanceActions && canManageThis ? (
+                  <div className="hrAttendanceEmployeeCardQuick">
+                    <button
+                      type="button"
+                      className="smallBtn completeBtn"
+                      disabled={!!busyAction || checkedIn}
+                      onClick={() => void handleCheckIn(emp.attendanceKey, emp.name, todayIso)}
+                    >
+                      {inBusy
+                        ? isArabic
+                          ? "..."
+                          : "..."
+                        : isArabic
+                          ? "حضور"
+                          : "Check in"}
+                    </button>
+                    <button
+                      type="button"
+                      className="smallBtn editBtn"
+                      disabled={!!busyAction || !checkedIn || checkedOut}
+                      onClick={() => void handleCheckOut(emp.attendanceKey, emp.name, todayIso)}
+                    >
+                      {outBusy
+                        ? isArabic
+                          ? "..."
+                          : "..."
+                        : isArabic
+                          ? "انصراف"
+                          : "Check out"}
+                    </button>
+                  </div>
+                ) : null}
+
+                <button
+                  type="button"
+                  className="hrAttendanceEmployeeCardAction"
+                  onClick={() => setAttendanceEmployeeFilter(emp.attendanceKey)}
+                >
+                  {isArabic ? "فتح سجل الحضور ←" : "Open attendance log →"}
+                </button>
+              </article>
             );
           })}
         </div>

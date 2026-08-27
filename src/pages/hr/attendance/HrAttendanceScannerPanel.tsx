@@ -34,8 +34,8 @@ export default function HrAttendanceScannerPanel({ state }: Props) {
           {(
             [
               ["auto", isArabic ? "تلقائي" : "Auto"],
-              ["in", isArabic ? "حضور فقط" : "Check-in only"],
-              ["out", isArabic ? "انصراف فقط" : "Check-out only"],
+              ["in", isArabic ? "مسح حضور" : "Scan in"],
+              ["out", isArabic ? "مسح انصراف" : "Scan out"],
             ] as const
           ).map(([mode, label]) => (
             <button

@@ -14,6 +14,14 @@ export type StaffContext = {
   employeeId: string;
   pharmacyId: string;
   name: string;
+  employeeCode?: string;
+  photoBase64?: string;
+  phone?: string;
+  jobTitle?: string;
+  hireDate?: string;
+  notes?: string;
+  email?: string;
+  role?: string;
   attendanceKey: string;
   assignedShiftId: ShiftId;
   useCustomWorkSchedule: boolean;

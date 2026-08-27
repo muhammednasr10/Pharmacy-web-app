@@ -11,7 +11,6 @@ type UseAttendanceRecordsQueryOptions = {
   showOrgHr: boolean;
   orgBranchIds: string[];
   enabled?: boolean;
-  onBeforeFetch?: () => Promise<void>;
 };
 
 export function useAttendanceRecordsQuery({
@@ -20,7 +19,6 @@ export function useAttendanceRecordsQuery({
   showOrgHr,
   orgBranchIds,
   enabled = true,
-  onBeforeFetch,
 }: UseAttendanceRecordsQueryOptions) {
   const queryClient = useQueryClient();
 
@@ -35,17 +33,15 @@ export function useAttendanceRecordsQuery({
     queryKey,
     enabled: enabled && Boolean(scopeKey),
     queryFn: async (): Promise<AttendanceRecord[]> => {
-      if (onBeforeFetch) await onBeforeFetch();
       const { start, end } = monthBoundsFromDate(monthAnchorDate(attendanceMonth));
       const scopeIds = showOrgHr && orgBranchIds.length > 0 ? orgBranchIds : undefined;
       return pharmacyService.getAttendanceRecords(start, end, scopeIds);
     },
-    placeholderData: [] as AttendanceRecord[],
   });
 
   const loadAttendance = useCallback(async () => {
-    await query.refetch();
-  }, [query]);
+    await queryClient.refetchQueries({ queryKey });
+  }, [queryClient, queryKey]);
 
   const invalidateAttendance = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey });
