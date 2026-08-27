@@ -16,11 +16,73 @@ export const MEDICINE_CATALOG_IMPORT_BATCH_SIZE = 250;
 
 const CATALOG_PLACEHOLDER_EXPIRY = "2099-12-31";
 
+const HEADER_ALIASES: Record<string, keyof MedicineCatalogImportRow | "active_ingredient"> = {
+  name_ar: "name_ar",
+  namear: "name_ar",
+  "اسم عربي": "name_ar",
+  "الاسم العربي": "name_ar",
+  "اسم الدواء": "name_ar",
+  name_en: "name_en",
+  nameen: "name_en",
+  "اسم انجليزي": "name_en",
+  "الاسم الانجليزي": "name_en",
+  "الاسم الإنجليزي": "name_en",
+  active_ingredient: "active_ingredient",
+  activeingredient: "active_ingredient",
+  "المادة الفعالة": "active_ingredient",
+  barcode: "barcode",
+  "الباركود": "barcode",
+  qty: "qty",
+  quantity: "qty",
+  "الكمية": "qty",
+  price: "price",
+  sell_price: "price",
+  "سعر البيع": "price",
+  "السعر": "price",
+  buy_price: "buy_price",
+  buyprice: "buy_price",
+  "سعر الشراء": "buy_price",
+  expiry: "expiry",
+  expiry_date: "expiry",
+  "الصلاحية": "expiry",
+  "تاريخ الصلاحية": "expiry",
+  "تاريخ انتهاء الصلاحية": "expiry",
+};
+
 function cleanText(value: unknown) {
-  return String(value ?? "").trim();
+  return String(value ?? "")
+    .replace(/^\uFEFF/, "")
+    .replace(/^="+|"+$/g, "")
+    .trim();
 }
 
-function parseCsvLine(line: string): string[] {
+function normalizeHeader(header: string) {
+  const cleaned = cleanText(header).toLowerCase().replace(/\s+/g, " ");
+  return HEADER_ALIASES[cleaned] || HEADER_ALIASES[cleaned.replace(/[_-]+/g, "")] || cleaned;
+}
+
+function detectDelimiter(headerLine: string): "," | ";" | "\t" {
+  let commas = 0;
+  let semis = 0;
+  let tabs = 0;
+  let inQuotes = false;
+  for (let index = 0; index < headerLine.length; index += 1) {
+    const char = headerLine[index];
+    if (char === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+    if (inQuotes) continue;
+    if (char === ",") commas += 1;
+    if (char === ";") semis += 1;
+    if (char === "\t") tabs += 1;
+  }
+  if (semis > commas && semis >= tabs) return ";";
+  if (tabs > commas && tabs >= semis) return "\t";
+  return ",";
+}
+
+function parseCsvLine(line: string, delimiter: "," | ";" | "\t" = ","): string[] {
   const cells: string[] = [];
   let current = "";
   let inQuotes = false;
@@ -36,7 +98,7 @@ function parseCsvLine(line: string): string[] {
       }
       continue;
     }
-    if (char === "," && !inQuotes) {
+    if (char === delimiter && !inQuotes) {
       cells.push(current);
       current = "";
       continue;
@@ -44,7 +106,7 @@ function parseCsvLine(line: string): string[] {
     current += char;
   }
   cells.push(current);
-  return cells.map((cell) => cell.trim());
+  return cells.map((cell) => cleanText(cell));
 }
 
 export function buildCatalogBarcode(seed: string, index: number) {
@@ -60,28 +122,38 @@ function readCsvRow(headers: string[], cells: string[]) {
   return record;
 }
 
+function splitCsvLines(text: string) {
+  return text
+    .replace(/^\uFEFF/, "")
+    .replace(/\u0000/g, "")
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim().length > 0);
+}
+
 /** Columns: name_ar, name_en, active_ingredient, barcode, qty, price, buy_price, expiry */
 export function parseAppCatalogCsv(text: string): MedicineCatalogImportRow[] {
-  const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).filter(Boolean);
+  const lines = splitCsvLines(text);
   if (lines.length < 2) return [];
 
-  const headers = parseCsvLine(lines[0]).map((header) => header.toLowerCase());
+  const delimiter = detectDelimiter(lines[0]);
+  const headers = parseCsvLine(lines[0], delimiter).map((header) => normalizeHeader(header));
   const rows: MedicineCatalogImportRow[] = [];
 
   for (let lineIndex = 1; lineIndex < lines.length; lineIndex += 1) {
-    const cells = parseCsvLine(lines[lineIndex]);
-    if (cells.length === 0) continue;
+    const cells = parseCsvLine(lines[lineIndex], delimiter);
+    if (cells.length === 0 || cells.every((cell) => !cell)) continue;
 
     const record = readCsvRow(headers, cells);
     const nameAr = cleanText(record.name_ar);
     const nameEn = cleanText(record.name_en || nameAr);
     if (!nameAr && !nameEn) continue;
 
-    const price = Math.max(0, Number(record.price ?? 0) || 0);
+    const price = Math.max(0, Number(String(record.price ?? "0").replace(",", ".")) || 0);
     const buyRaw = record.buy_price;
     const buyPrice =
       buyRaw != null && buyRaw !== ""
-        ? Math.max(0, Number(buyRaw) || 0)
+        ? Math.max(0, Number(String(buyRaw).replace(",", ".")) || 0)
         : price > 0
           ? Math.round(price * 0.85 * 100) / 100
           : undefined;
@@ -91,7 +163,7 @@ export function parseAppCatalogCsv(text: string): MedicineCatalogImportRow[] {
       name_en: nameEn.slice(0, 500),
       active_ingredient: cleanText(record.active_ingredient) || undefined,
       barcode: cleanText(record.barcode) || buildCatalogBarcode(nameEn || nameAr, lineIndex - 1),
-      qty: Math.max(0, Math.floor(Number(record.qty ?? 0) || 0)),
+      qty: Math.max(0, Math.floor(Number(String(record.qty ?? "0").replace(",", ".")) || 0)),
       price,
       buy_price: buyPrice,
       expiry: cleanText(record.expiry) || CATALOG_PLACEHOLDER_EXPIRY,
@@ -140,14 +212,15 @@ function mapLegacyEgyptianDrug(record: LegacyEgyptianDrugRecord, index: number):
 }
 
 function parseLegacyEgyptianDrugCsv(text: string): MedicineCatalogImportRow[] {
-  const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).filter(Boolean);
+  const lines = splitCsvLines(text);
   if (lines.length < 2) return [];
 
-  const headers = parseCsvLine(lines[0]).map((header) => header.toLowerCase());
+  const delimiter = detectDelimiter(lines[0]);
+  const headers = parseCsvLine(lines[0], delimiter).map((header) => header.toLowerCase());
   const rows: MedicineCatalogImportRow[] = [];
 
   for (let lineIndex = 1; lineIndex < lines.length; lineIndex += 1) {
-    const cells = parseCsvLine(lines[lineIndex]);
+    const cells = parseCsvLine(lines[lineIndex], delimiter);
     if (cells.length === 0) continue;
 
     const record = readCsvRow(headers, cells);
@@ -209,20 +282,44 @@ export function parseMedicineCatalogJson(text: string): MedicineCatalogImportRow
   return rows;
 }
 
+export async function readMedicineCatalogFileText(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) {
+    return new TextDecoder("utf-16le").decode(bytes);
+  }
+  if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) {
+    return new TextDecoder("utf-16be").decode(bytes);
+  }
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    try {
+      return new TextDecoder("windows-1256").decode(bytes);
+    } catch {
+      return new TextDecoder("utf-8").decode(bytes);
+    }
+  }
+}
+
 export function parseMedicineCatalogFile(text: string, filename = ""): MedicineCatalogImportRow[] {
-  const trimmed = text.trimStart();
+  const trimmed = text.replace(/^\uFEFF/, "").trimStart();
   const lowerName = filename.toLowerCase();
 
   if (lowerName.endsWith(".json") || trimmed.startsWith("[") || trimmed.startsWith("{")) {
     return parseMedicineCatalogJson(text);
   }
 
-  const firstLine = text.replace(/^\uFEFF/, "").split(/\r?\n/)[0]?.toLowerCase() ?? "";
+  const firstLine = splitCsvLines(text)[0]?.toLowerCase() ?? "";
   if (firstLine.includes("commercial_name_en")) {
     return parseLegacyEgyptianDrugCsv(text);
   }
 
-  return parseAppCatalogCsv(text);
+  const rows = parseAppCatalogCsv(text);
+  if (rows.length === 0) {
+    throw new Error("empty_or_unrecognized_csv");
+  }
+  return rows;
 }
 
 export function chunkCatalogRows<T>(rows: T[], size = MEDICINE_CATALOG_IMPORT_BATCH_SIZE): T[][] {
@@ -269,19 +366,28 @@ export const MEDICINE_CATALOG_CSV_TEMPLATE_ROWS: string[][] = [
   ],
 ];
 
+function escapeCsvCell(value: string, forceQuote = false) {
+  const text = String(value ?? "");
+  if (forceQuote || /[",\n\r;]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
 export function downloadMedicineCatalogCsvTemplate() {
-  const lines = MEDICINE_CATALOG_CSV_TEMPLATE_ROWS.map((row) =>
+  const lines = MEDICINE_CATALOG_CSV_TEMPLATE_ROWS.map((row, rowIndex) =>
     row
-      .map((cell) => {
-        const text = String(cell ?? "");
-        if (/[",\n\r]/.test(text)) {
-          return `"${text.replace(/"/g, '""')}"`;
+      .map((cell, cellIndex) => {
+        const header = MEDICINE_CATALOG_CSV_HEADERS[cellIndex];
+        // Keep barcode as text for Excel.
+        if (rowIndex > 0 && header === "barcode") {
+          return `="${String(cell).replace(/"/g, '""')}"`;
         }
-        return text;
+        return escapeCsvCell(String(cell), true);
       })
       .join(","),
   );
-  const blob = new Blob(["\uFEFF" + lines.join("\n")], {
+  const blob = new Blob(["\uFEFF" + lines.join("\r\n")], {
     type: "text/csv;charset=utf-8;",
   });
   const link = document.createElement("a");

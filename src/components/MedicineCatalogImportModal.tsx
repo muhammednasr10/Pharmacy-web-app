@@ -4,6 +4,7 @@ import type { MedicineCatalogMergeFields } from "../services/pharmacy/medicineCa
 import {
   downloadMedicineCatalogCsvTemplate,
   parseMedicineCatalogFile,
+  readMedicineCatalogFileText,
   type MedicineCatalogImportRow,
 } from "../utils/medicineCatalogImport";
 
@@ -44,6 +45,11 @@ function formatCatalogImportError(message: string, isArabic: boolean) {
     return isArabic
       ? "الاستيراد استغرق وقتاً أطول من المتوقع — أعد المحاولة (الاستيراد يعمل على دفعات الآن)"
       : "Import took too long — try again (import now runs in smaller batches)";
+  }
+  if (message === "empty_or_unrecognized_csv" || message === "empty_file") {
+    return isArabic
+      ? "الملف فاضي أو الأعمدة مش متعرّفة. حمّل القالب تاني، احفظه CSV UTF-8، وخلي الصف الأول: name_ar,name_en,barcode,qty,price"
+      : "File is empty or columns are unrecognized. Download the template again, save as CSV UTF-8, and keep the header: name_ar,name_en,barcode,qty,price";
   }
   return message || (isArabic ? "تعذر الاستيراد" : "Import failed");
 }
@@ -142,16 +148,17 @@ export default function MedicineCatalogImportModal({
     setError("");
     setMatchedBarcodeCount(0);
     try {
-      const text = await file.text();
+      const text = await readMedicineCatalogFileText(file);
       const rows = parseMedicineCatalogFile(text, file.name);
       if (rows.length === 0) {
-        throw new Error("empty_file");
+        throw new Error("empty_or_unrecognized_csv");
       }
       setPreviewRows(rows);
       await refreshMatchCount(rows);
     } catch (loadError) {
       console.error(loadError);
-      setError(isArabic ? "ملف CSV غير صالح" : "Invalid CSV file");
+      const message = loadError instanceof Error ? loadError.message : String(loadError);
+      setError(formatCatalogImportError(message, isArabic));
       setPreviewRows([]);
       setMatchedBarcodeCount(0);
     } finally {
