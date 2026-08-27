@@ -44,7 +44,10 @@ export default function PosSmartSearch({
   const searchPharmacyIds = useMemo(() => {
     const branchOptions = branches.filter((branch) => Boolean(branch.id));
     if (effectiveSearchScope === "current") return [pharmacyId];
-    if (effectiveSearchScope === "all") return branchOptions.map((branch) => branch.id);
+    if (effectiveSearchScope === "all") {
+      const ids = branchOptions.map((branch) => branch.id).filter(Boolean);
+      return [...new Set(ids.length > 0 ? [pharmacyId, ...ids] : [pharmacyId])];
+    }
     return [effectiveSearchScope];
   }, [branches, effectiveSearchScope, pharmacyId]);
 

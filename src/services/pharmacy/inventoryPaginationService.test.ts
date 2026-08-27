@@ -118,6 +118,36 @@ describe("fetchMedicinesPage", () => {
     expect(queryChain.gt).toHaveBeenCalledWith("qty", 0);
     expect(result.rows[0]?.name_ar).toBe("Fallback");
   });
+
+  it("fans out multi-branch searches through single-pharmacy fetches", async () => {
+    rpcMock
+      .mockResolvedValueOnce({
+        data: {
+          total: 1,
+          rows: [{ id: 1, name_ar: "ون تو ثري", pharmacy_id: "branch" }],
+        },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          total: 1,
+          rows: [{ id: 2, name_ar: "ون تو ثري", pharmacy_id: "wafaa" }],
+        },
+        error: null,
+      });
+
+    const result = await fetchMedicinesPage({
+      pharmacyIds: ["branch", "wafaa"],
+      search: "ون تو",
+      page: 1,
+      pageSize: 20,
+    });
+
+    expect(rpcMock).toHaveBeenCalledTimes(2);
+    expect(result.total).toBe(2);
+    expect(result.rows).toHaveLength(2);
+    expect(result.rows.map((row) => row.pharmacyId)).toEqual(["branch", "wafaa"]);
+  });
 });
 
 describe("fetchStockMovementsPage", () => {

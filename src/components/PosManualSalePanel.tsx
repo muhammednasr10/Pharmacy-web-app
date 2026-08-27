@@ -75,7 +75,10 @@ export default function PosManualSalePanel({
 
   const searchPharmacyIds = useMemo(() => {
     if (effectiveSearchScope === "current") return [pharmacyId];
-    if (effectiveSearchScope === "all") return branchOptions.map((branch) => branch.id);
+    if (effectiveSearchScope === "all") {
+      const ids = branchOptions.map((branch) => branch.id).filter(Boolean);
+      return [...new Set(ids.length > 0 ? [pharmacyId, ...ids] : [pharmacyId])];
+    }
     return [effectiveSearchScope];
   }, [branchOptions, effectiveSearchScope, pharmacyId]);
 

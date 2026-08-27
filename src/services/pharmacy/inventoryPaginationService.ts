@@ -174,12 +174,54 @@ export async function fetchMedicinesPage(
   const expiringSoonDays = query.expiringSoonDays ?? 90;
   const pharmacyId = resolveReadPharmacyId();
   const scopedPharmacyIds = [...new Set((query.pharmacyIds || []).filter(Boolean))];
-  const rpcPharmacyId =
-    scopedPharmacyIds.length === 1
-      ? scopedPharmacyIds[0]
-      : scopedPharmacyIds.length === 0
-        ? pharmacyId
-        : "";
+
+  // Multi-branch: fan out through the single-pharmacy RPC path. Direct
+  // `.in(pharmacy_id, …)` under RLS is slow/empty on large catalogs.
+  if (scopedPharmacyIds.length > 1) {
+    const perBranchSize = Math.min(200, Math.max(pageSize, page * pageSize));
+    const settled = await Promise.allSettled(
+      scopedPharmacyIds.map((id) =>
+        fetchMedicinesPage({
+          ...query,
+          pharmacyIds: [id],
+          page: 1,
+          pageSize: perBranchSize,
+        }),
+      ),
+    );
+
+    const pages = settled
+      .filter((result): result is PromiseFulfilledResult<PaginatedResult<Medicine>> => result.status === "fulfilled")
+      .map((result) => result.value);
+
+    if (pages.length === 0) {
+      const firstRejection = settled.find(
+        (result): result is PromiseRejectedResult => result.status === "rejected",
+      );
+      throw firstRejection?.reason instanceof Error
+        ? firstRejection.reason
+        : new Error(String(firstRejection?.reason || "multi_branch_search_failed"));
+    }
+
+    const activeId = pharmacyId;
+    const mergedRows = pages
+      .flatMap((result) => result.rows)
+      .sort((left, right) => {
+        const leftCurrent = (left.pharmacyId || "") === activeId ? 0 : 1;
+        const rightCurrent = (right.pharmacyId || "") === activeId ? 0 : 1;
+        if (leftCurrent !== rightCurrent) return leftCurrent - rightCurrent;
+        return String(left.name_ar || "").localeCompare(String(right.name_ar || ""), "ar");
+      });
+
+    return {
+      rows: mergedRows.slice(from, from + pageSize),
+      total: pages.reduce((sum, result) => sum + result.total, 0),
+      page,
+      pageSize,
+    };
+  }
+
+  const rpcPharmacyId = scopedPharmacyIds.length === 1 ? scopedPharmacyIds[0] : pharmacyId;
 
   if (rpcPharmacyId) {
     const rpcResult = await fetchMedicinesPageViaRpc(
@@ -197,8 +239,6 @@ export async function fetchMedicinesPage(
   let request = supabase.from("medicines").select("*");
   if (scopedPharmacyIds.length === 1) {
     request = request.eq("pharmacy_id", scopedPharmacyIds[0]);
-  } else if (scopedPharmacyIds.length > 1) {
-    request = request.in("pharmacy_id", scopedPharmacyIds);
   } else {
     request = applyPharmacyFilter(request as never) as typeof request;
   }
@@ -213,9 +253,7 @@ export async function fetchMedicinesPage(
     request.order("id", { ascending: true }).range(from, to),
     scopedPharmacyIds.length === 1
       ? countMedicinesForPage(scopedPharmacyIds[0], query, stockFilter, lowStockThreshold, expiringSoonDays)
-      : scopedPharmacyIds.length === 0
-        ? countMedicinesForPage(pharmacyId, query, stockFilter, lowStockThreshold, expiringSoonDays)
-        : Promise.resolve(null),
+      : countMedicinesForPage(pharmacyId, query, stockFilter, lowStockThreshold, expiringSoonDays),
   ]);
 
   if (error) {
