@@ -11436,6 +11436,50 @@ button:disabled {
   font-weight: 700;
 }
 
+.medicineCatalogImportMatchBox {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #b2ddff;
+  background: #eff8ff;
+}
+
+.medicineCatalogImportMatchSummary {
+  margin: 0 0 8px !important;
+  font-weight: 700 !important;
+  color: #175cd3;
+}
+
+.medicineCatalogImportMatchHint {
+  margin: 0 0 10px !important;
+  font-weight: 500 !important;
+  color: #475467;
+  font-size: 13px;
+}
+
+.medicineCatalogImportMatchActions {
+  margin-bottom: 10px;
+}
+
+.medicineCatalogImportFieldGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.medicineCatalogImportFieldOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #d0d5dd;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
 .medicineCatalogImportProgressBar {
   height: 10px;
   border-radius: 999px;

@@ -189,6 +189,16 @@ export const SQL_MIGRATIONS: SqlMigrationDefinition[] = [
     probe: { type: "rpc", name: "seed_pharmacy_from_catalog_reference_page", args: {} },
   },
   {
+    id: "medicine-catalog-merge-by-barcode",
+    file: "medicine-catalog-merge-by-barcode.sql",
+    group: "core",
+    titleAr: "دمج CSV بالباركود",
+    titleEn: "CSV merge by barcode",
+    noteAr: "بعد medicine-catalog-import.sql — تحديث اختياري للحقول عند تطابق الباركود",
+    noteEn: "After medicine-catalog-import.sql — selective field updates on barcode match",
+    probe: { type: "rpc", name: "merge_medicine_catalog_batch", args: {} },
+  },
+  {
     id: "complete-sale-rpc",
     file: "complete-sale-rpc.sql",
     group: "pos",

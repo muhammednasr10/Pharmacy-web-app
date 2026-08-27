@@ -216,6 +216,121 @@ export async function replacePharmacyMedicineCatalog(
   return { deleted, inserted };
 }
 
+export type MedicineCatalogMergeFields = {
+  price: boolean;
+  buyPrice: boolean;
+  qty: boolean;
+  expiry: boolean;
+  barcode: boolean;
+};
+
+export const DEFAULT_MEDICINE_CATALOG_MERGE_FIELDS: MedicineCatalogMergeFields = {
+  price: true,
+  buyPrice: true,
+  qty: true,
+  expiry: true,
+  barcode: false,
+};
+
+export async function countPharmacyMedicinesByBarcodes(
+  pharmacyId: string,
+  barcodes: string[],
+): Promise<number> {
+  const unique = [...new Set(barcodes.map((code) => code.trim()).filter(Boolean))];
+  if (!pharmacyId || unique.length === 0) return 0;
+
+  let total = 0;
+  const chunks = chunkCatalogRows(unique, 400);
+  for (const chunk of chunks) {
+    const { data, error } = await supabase.rpc("count_pharmacy_medicines_by_barcodes", {
+      p_pharmacy_id: pharmacyId,
+      p_barcodes: chunk,
+    });
+    if (error) {
+      if (error.message.includes("count_pharmacy_medicines_by_barcodes")) {
+        throw new Error("sql_migration_required");
+      }
+      throw new Error(error.message);
+    }
+    total += Number(data || 0);
+  }
+  return total;
+}
+
+export async function mergeMedicineCatalogBatch(
+  pharmacyId: string,
+  rows: Array<{
+    name_ar: string;
+    name_en: string;
+    barcode: string;
+    qty: number;
+    price: number;
+    buy_price?: number;
+    expiry: string;
+  }>,
+  fields: MedicineCatalogMergeFields,
+): Promise<{ inserted: number; updated: number; skipped: number }> {
+  const { data, error } = await supabase.rpc("merge_medicine_catalog_batch", {
+    p_pharmacy_id: pharmacyId,
+    p_rows: rows,
+    p_update_price: fields.price,
+    p_update_buy_price: fields.buyPrice,
+    p_update_qty: fields.qty,
+    p_update_expiry: fields.expiry,
+    p_update_barcode: fields.barcode,
+  });
+
+  if (error) {
+    if (error.message.includes("merge_medicine_catalog_batch")) {
+      throw new Error("sql_migration_required");
+    }
+    throw new Error(error.message);
+  }
+
+  const payload = data as { inserted?: number; updated?: number; skipped?: number } | null;
+  return {
+    inserted: Number(payload?.inserted || 0),
+    updated: Number(payload?.updated || 0),
+    skipped: Number(payload?.skipped || 0),
+  };
+}
+
+export async function mergePharmacyMedicineCatalog(
+  pharmacyId: string,
+  rows: Array<{
+    name_ar: string;
+    name_en: string;
+    barcode: string;
+    qty: number;
+    price: number;
+    buy_price?: number;
+    expiry: string;
+  }>,
+  fields: MedicineCatalogMergeFields,
+  onProgress?: (progress: CatalogImportProgress) => void,
+): Promise<{ inserted: number; updated: number; skipped: number }> {
+  let inserted = 0;
+  let updated = 0;
+  let skipped = 0;
+  const chunks = chunkCatalogRows(rows, MEDICINE_CATALOG_IMPORT_BATCH_SIZE);
+
+  onProgress?.({ done: 0, total: rows.length, phase: "importing" });
+
+  for (let index = 0; index < chunks.length; index += 1) {
+    const result = await mergeMedicineCatalogBatch(pharmacyId, chunks[index], fields);
+    inserted += result.inserted;
+    updated += result.updated;
+    skipped += result.skipped;
+    onProgress?.({
+      done: Math.min(rows.length, (index + 1) * MEDICINE_CATALOG_IMPORT_BATCH_SIZE),
+      total: rows.length,
+      phase: "importing",
+    });
+  }
+
+  return { inserted, updated, skipped };
+}
+
 export type MedicineCatalogReferenceStats = {
   total: number;
   updatedAt: string | null;

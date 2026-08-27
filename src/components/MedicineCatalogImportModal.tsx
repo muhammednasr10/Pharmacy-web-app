@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import * as pharmacyService from "../services/pharmacyService";
+import type { MedicineCatalogMergeFields } from "../services/pharmacy/medicineCatalogService";
 import {
-  chunkCatalogRows,
   downloadMedicineCatalogCsvTemplate,
-  MEDICINE_CATALOG_IMPORT_BATCH_SIZE,
   parseMedicineCatalogFile,
   type MedicineCatalogImportRow,
 } from "../utils/medicineCatalogImport";
@@ -15,6 +14,14 @@ type MedicineCatalogImportModalProps = {
   currentMedicineCount: number;
   onClose: () => void;
   onComplete: () => void | Promise<void>;
+};
+
+const DEFAULT_MERGE_FIELDS: MedicineCatalogMergeFields = {
+  price: true,
+  buyPrice: true,
+  qty: true,
+  expiry: true,
+  barcode: false,
 };
 
 function formatCatalogImportError(message: string, isArabic: boolean) {
@@ -49,18 +56,25 @@ export default function MedicineCatalogImportModal({
   onClose,
   onComplete,
 }: MedicineCatalogImportModalProps) {
-  const [replaceExisting, setReplaceExisting] = useState(true);
+  const [replaceExisting, setReplaceExisting] = useState(false);
   const [previewRows, setPreviewRows] = useState<MedicineCatalogImportRow[]>([]);
+  const [matchedBarcodeCount, setMatchedBarcodeCount] = useState(0);
+  const [scanningMatches, setScanningMatches] = useState(false);
+  const [mergeFields, setMergeFields] = useState<MedicineCatalogMergeFields>(DEFAULT_MERGE_FIELDS);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [progress, setProgress] = useState<{ done: number; total: number; phase: "clearing" | "importing" } | null>(
-    null,
-  );
+  const [progress, setProgress] = useState<{
+    done: number;
+    total: number;
+    phase: "clearing" | "importing";
+  } | null>(null);
   const [error, setError] = useState("");
   const [catalogTotal, setCatalogTotal] = useState<number | null>(null);
   const [catalogLoading, setCatalogLoading] = useState(false);
 
   const previewSample = useMemo(() => previewRows.slice(0, 5), [previewRows]);
+  const newRowCount = Math.max(0, previewRows.length - matchedBarcodeCount);
+  const selectedMergeFieldCount = Object.values(mergeFields).filter(Boolean).length;
   const catalogLabel =
     catalogTotal != null
       ? catalogTotal.toLocaleString()
@@ -92,12 +106,41 @@ export default function MedicineCatalogImportModal({
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!open) {
+      setPreviewRows([]);
+      setMatchedBarcodeCount(0);
+      setMergeFields(DEFAULT_MERGE_FIELDS);
+      setError("");
+      setProgress(null);
+    }
+  }, [open]);
+
   if (!open) return null;
+
+  async function refreshMatchCount(rows: MedicineCatalogImportRow[]) {
+    const barcodes = rows.map((row) => row.barcode).filter(Boolean);
+    if (barcodes.length === 0 || currentMedicineCount === 0) {
+      setMatchedBarcodeCount(0);
+      return;
+    }
+    setScanningMatches(true);
+    try {
+      const matched = await pharmacyService.countPharmacyMedicinesByBarcodes(pharmacyId, barcodes);
+      setMatchedBarcodeCount(matched);
+    } catch (scanError) {
+      console.warn("Barcode match scan failed:", scanError);
+      setMatchedBarcodeCount(0);
+    } finally {
+      setScanningMatches(false);
+    }
+  }
 
   async function handleFileChange(file: File | null) {
     if (!file) return;
     setLoadingPreview(true);
     setError("");
+    setMatchedBarcodeCount(0);
     try {
       const text = await file.text();
       const rows = parseMedicineCatalogFile(text, file.name);
@@ -105,13 +148,29 @@ export default function MedicineCatalogImportModal({
         throw new Error("empty_file");
       }
       setPreviewRows(rows);
+      await refreshMatchCount(rows);
     } catch (loadError) {
       console.error(loadError);
       setError(isArabic ? "ملف CSV غير صالح" : "Invalid CSV file");
       setPreviewRows([]);
+      setMatchedBarcodeCount(0);
     } finally {
       setLoadingPreview(false);
     }
+  }
+
+  function toggleMergeField(key: keyof MedicineCatalogMergeFields) {
+    setMergeFields((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  function selectAllMergeFields() {
+    setMergeFields({
+      price: true,
+      buyPrice: true,
+      qty: true,
+      expiry: true,
+      barcode: true,
+    });
   }
 
   async function syncFromVictoryCatalog() {
@@ -127,10 +186,7 @@ export default function MedicineCatalogImportModal({
     setProgress({ done: 0, total: catalogTotal || 1, phase: "importing" });
 
     try {
-      const result = await pharmacyService.syncPharmacyFromCatalogReference(
-        pharmacyId,
-        setProgress,
-      );
+      const result = await pharmacyService.syncPharmacyFromCatalogReference(pharmacyId, setProgress);
       setProgress({
         done: result.updated + result.inserted,
         total: Math.max(1, result.updated + result.inserted),
@@ -166,10 +222,7 @@ export default function MedicineCatalogImportModal({
     setProgress({ done: 0, total: catalogTotal || 1, phase: "clearing" });
 
     try {
-      const result = await pharmacyService.seedPharmacyFromCatalogReference(
-        pharmacyId,
-        setProgress,
-      );
+      const result = await pharmacyService.seedPharmacyFromCatalogReference(pharmacyId, setProgress);
       setProgress({ done: result.inserted, total: Math.max(1, result.inserted), phase: "importing" });
       await onComplete();
       onClose();
@@ -194,41 +247,63 @@ export default function MedicineCatalogImportModal({
       return;
     }
 
+    if (!replaceExisting && matchedBarcodeCount > 0 && selectedMergeFieldCount === 0) {
+      setError(
+        isArabic
+          ? "اختر حقل واحد على الأقل للتحديث، أو فعّل حذف الأدوية الحالية"
+          : "Select at least one field to update, or enable deleting current medicines",
+      );
+      return;
+    }
+
     const confirmed = window.confirm(
       replaceExisting
         ? isArabic
           ? `سيتم حذف ${currentMedicineCount.toLocaleString()} دواء حالياً في هذا الفرع واستبدالهم بـ ${previewRows.length.toLocaleString()} دواء من الملف.\n\nمتابعة؟`
           : `This will delete ${currentMedicineCount.toLocaleString()} medicines in this branch and replace them with ${previewRows.length.toLocaleString()} items from the file.\n\nContinue?`
-        : isArabic
-          ? `سيتم إضافة ${previewRows.length.toLocaleString()} دواء إلى الفرع الحالي.\n\nمتابعة؟`
-          : `This will add ${previewRows.length.toLocaleString()} medicines to the current branch.\n\nContinue?`,
+        : matchedBarcodeCount > 0
+          ? isArabic
+            ? `سيتم تحديث ${matchedBarcodeCount.toLocaleString()} دواء موجود بنفس الباركود حسب اختيارك، وإضافة ${newRowCount.toLocaleString()} دواء جديد.\n\nمتابعة؟`
+            : `This will update ${matchedBarcodeCount.toLocaleString()} existing medicines with matching barcodes using your selected fields, and add ${newRowCount.toLocaleString()} new medicines.\n\nContinue?`
+          : isArabic
+            ? `سيتم إضافة ${previewRows.length.toLocaleString()} دواء إلى الفرع الحالي.\n\nمتابعة؟`
+            : `This will add ${previewRows.length.toLocaleString()} medicines to the current branch.\n\nContinue?`,
     );
     if (!confirmed) return;
 
     setImporting(true);
     setError("");
-    setProgress({ done: 0, total: previewRows.length, phase: "clearing" });
+    setProgress({
+      done: 0,
+      total: previewRows.length,
+      phase: replaceExisting ? "clearing" : "importing",
+    });
 
     try {
       if (replaceExisting) {
         await pharmacyService.replacePharmacyMedicineCatalog(pharmacyId, previewRows, setProgress);
+        await onComplete();
+        onClose();
+        alert(
+          isArabic
+            ? `تم استيراد ${previewRows.length.toLocaleString()} دواء بنجاح`
+            : `Successfully imported ${previewRows.length.toLocaleString()} medicines`,
+        );
       } else {
-        const chunks = chunkCatalogRows(previewRows, MEDICINE_CATALOG_IMPORT_BATCH_SIZE);
-        let done = 0;
-        for (const chunk of chunks) {
-          await pharmacyService.importMedicineCatalogBatch(pharmacyId, chunk);
-          done += chunk.length;
-          setProgress({ done, total: previewRows.length, phase: "importing" });
-        }
+        const result = await pharmacyService.mergePharmacyMedicineCatalog(
+          pharmacyId,
+          previewRows,
+          mergeFields,
+          setProgress,
+        );
+        await onComplete();
+        onClose();
+        alert(
+          isArabic
+            ? `تم تحديث ${result.updated.toLocaleString()} دواء وإضافة ${result.inserted.toLocaleString()} جديد`
+            : `Updated ${result.updated.toLocaleString()} medicines and added ${result.inserted.toLocaleString()} new`,
+        );
       }
-
-      await onComplete();
-      onClose();
-      alert(
-        isArabic
-          ? `تم استيراد ${previewRows.length.toLocaleString()} دواء بنجاح`
-          : `Successfully imported ${previewRows.length.toLocaleString()} medicines`,
-      );
     } catch (importError) {
       console.error(importError);
       const message = importError instanceof Error ? importError.message : String(importError);
@@ -240,14 +315,32 @@ export default function MedicineCatalogImportModal({
   }
 
   const progressPercent =
-    progress && progress.total > 0 ? Math.min(100, Math.round((progress.done / progress.total) * 100)) : 0;
+    progress && progress.total > 0
+      ? Math.min(100, Math.round((progress.done / progress.total) * 100))
+      : 0;
+
+  const mergeFieldOptions: Array<{ key: keyof MedicineCatalogMergeFields; ar: string; en: string }> =
+    [
+      { key: "buyPrice", ar: "سعر الشراء", en: "Purchase price" },
+      { key: "price", ar: "سعر البيع", en: "Sell price" },
+      { key: "barcode", ar: "الباركود", en: "Barcode" },
+      { key: "qty", ar: "الكمية", en: "Quantity" },
+      { key: "expiry", ar: "تاريخ انتهاء الصلاحية", en: "Expiry date" },
+    ];
 
   return (
     <div className="modalOverlay">
-      <div className="invoiceModal saasModal saasModalWide medicineCatalogImportModal" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="invoiceModal saasModal saasModalWide medicineCatalogImportModal"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modalHeader">
           <div>
-            <h2>{isArabic ? "استيراد أدوية من قاعدة Victory" : "Import medicines from Victory database"}</h2>
+            <h2>
+              {isArabic
+                ? "استيراد أدوية من قاعدة Victory"
+                : "Import medicines from Victory database"}
+            </h2>
             <p>
               {isArabic
                 ? `حمّل قائمة ${catalogLabel} دواء مصرية (أسماء، مواد فعالة، أسعار) إلى فرعك — الكميات تُسجّل لاحقاً من المشتريات أو الجرد`
@@ -386,12 +479,66 @@ export default function MedicineCatalogImportModal({
                   ? `جاهز للاستيراد من الملف: ${previewRows.length.toLocaleString()} دواء`
                   : `Ready from file: ${previewRows.length.toLocaleString()} medicines`}
               </p>
+
+              {!replaceExisting ? (
+                <div className="medicineCatalogImportMatchBox">
+                  {scanningMatches ? (
+                    <p className="medicineCatalogImportMatchSummary">
+                      {isArabic ? "جاري البحث عن باركودات مطابقة..." : "Scanning matching barcodes..."}
+                    </p>
+                  ) : matchedBarcodeCount > 0 ? (
+                    <>
+                      <p className="medicineCatalogImportMatchSummary">
+                        {isArabic
+                          ? `لقينا ${matchedBarcodeCount.toLocaleString()} دواء في البرنامج بنفس الباركود، و ${newRowCount.toLocaleString()} دواء جديد هيتضاف.`
+                          : `Found ${matchedBarcodeCount.toLocaleString()} medicines already in the app with the same barcode, and ${newRowCount.toLocaleString()} new medicines will be added.`}
+                      </p>
+                      <p className="medicineCatalogImportMatchHint">
+                        {isArabic
+                          ? "اختار إيه اللي عايز تحدّثه من الملف للأدوية الموجودة (تقدر تختار الكل أو واحد بس):"
+                          : "Choose which fields to update from the file for matching medicines (select all or only some):"}
+                      </p>
+                      <div className="medicineCatalogImportMatchActions">
+                        <button
+                          type="button"
+                          className="smallBtn editBtn"
+                          disabled={importing}
+                          onClick={selectAllMergeFields}
+                        >
+                          {isArabic ? "اختيار الكل" : "Select all"}
+                        </button>
+                      </div>
+                      <div className="medicineCatalogImportFieldGrid">
+                        {mergeFieldOptions.map((option) => (
+                          <label key={option.key} className="medicineCatalogImportFieldOption">
+                            <input
+                              type="checkbox"
+                              checked={mergeFields[option.key]}
+                              disabled={importing}
+                              onChange={() => toggleMergeField(option.key)}
+                            />
+                            <span>{isArabic ? option.ar : option.en}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="medicineCatalogImportMatchSummary">
+                      {isArabic
+                        ? "مفيش باركودات مطابقة — كل أدوية الملف هتتضاف كأدوية جديدة."
+                        : "No matching barcodes — all file medicines will be added as new."}
+                    </p>
+                  )}
+                </div>
+              ) : null}
+
               <div className="tableWrap">
                 <table className="dataTable">
                   <thead>
                     <tr>
                       <th>{isArabic ? "الاسم (عربي)" : "Name (AR)"}</th>
                       <th>{isArabic ? "الاسم (EN)" : "Name (EN)"}</th>
+                      <th>{isArabic ? "الكمية" : "Qty"}</th>
                       <th>{isArabic ? "السعر" : "Price"}</th>
                     </tr>
                   </thead>
@@ -400,6 +547,7 @@ export default function MedicineCatalogImportModal({
                       <tr key={`${row.barcode}-${row.name_en}`}>
                         <td>{row.name_ar}</td>
                         <td dir="ltr">{row.name_en}</td>
+                        <td>{row.qty}</td>
                         <td>{row.price}</td>
                       </tr>
                     ))}
@@ -408,11 +556,21 @@ export default function MedicineCatalogImportModal({
               </div>
               <button
                 type="button"
-                className="editBtn"
-                disabled={importing}
+                className="completeBtn"
+                disabled={importing || scanningMatches}
                 onClick={() => void startFileImport()}
               >
-                {isArabic ? "استيراد من الملف" : "Import from file"}
+                {replaceExisting
+                  ? isArabic
+                    ? "استيراد من الملف (استبدال)"
+                    : "Import from file (replace)"
+                  : matchedBarcodeCount > 0
+                    ? isArabic
+                      ? "تحديث وإضافة من الملف"
+                      : "Update & add from file"
+                    : isArabic
+                      ? "استيراد من الملف"
+                      : "Import from file"}
               </button>
             </div>
           ) : null}
