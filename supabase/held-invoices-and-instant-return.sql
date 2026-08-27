@@ -38,44 +38,29 @@ drop policy if exists "held_invoices_delete" on held_invoices;
 create policy "held_invoices_select" on held_invoices for select to authenticated
   using (
     public.is_active_user()
-    and (
-      public.is_super_admin()
-      or pharmacy_id = public.current_user_pharmacy_id()
-    )
+    and public.can_read_pharmacy_row(pharmacy_id)
   );
 
 create policy "held_invoices_insert" on held_invoices for insert to authenticated
   with check (
     public.is_active_user()
-    and (
-      public.is_super_admin()
-      or pharmacy_id = public.current_user_pharmacy_id()
-    )
+    and public.can_access_pharmacy_row(pharmacy_id)
   );
 
 create policy "held_invoices_update" on held_invoices for update to authenticated
   using (
     public.is_active_user()
-    and (
-      public.is_super_admin()
-      or pharmacy_id = public.current_user_pharmacy_id()
-    )
+    and public.can_access_pharmacy_row(pharmacy_id)
   )
   with check (
     public.is_active_user()
-    and (
-      public.is_super_admin()
-      or pharmacy_id = public.current_user_pharmacy_id()
-    )
+    and public.can_access_pharmacy_row(pharmacy_id)
   );
 
 create policy "held_invoices_delete" on held_invoices for delete to authenticated
   using (
     public.is_active_user()
-    and (
-      public.is_super_admin()
-      or pharmacy_id = public.current_user_pharmacy_id()
-    )
+    and public.can_access_pharmacy_row(pharmacy_id)
   );
 
 -- -----------------------------------------------------------------------------

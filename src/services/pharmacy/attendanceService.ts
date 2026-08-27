@@ -148,20 +148,15 @@ export async function setAttendanceStatus(
   notes?: string,
 ) {
   const existing = await getAttendanceForDay(userId, workDate);
+  const clearsTimes = status === "absent" || status === "leave" || status === "sick";
   await upsertAttendanceRecord({
     ...existing,
     userId,
     userName,
     workDate,
     status,
-    notes: notes ?? existing?.notes,
-    checkIn:
-      status === "absent" || status === "leave" || status === "sick"
-        ? undefined
-        : existing?.checkIn,
-    checkOut:
-      status === "absent" || status === "leave" || status === "sick"
-        ? undefined
-        : existing?.checkOut,
+    notes: notes ?? (clearsTimes ? "" : existing?.notes),
+    checkIn: clearsTimes ? null : existing?.checkIn,
+    checkOut: clearsTimes ? null : existing?.checkOut,
   });
 }

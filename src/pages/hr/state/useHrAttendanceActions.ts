@@ -7,6 +7,7 @@ import type {
 } from "../../../types";
 import * as pharmacyService from "../../../services/pharmacyService";
 import {
+  ATTENDANCE_SHIFT_ONLY_PRESET_NOTE,
   isoToTimeInput,
   isShiftOnlyPresetRecord,
   statusClearsTimes,
@@ -168,6 +169,9 @@ export function useHrAttendanceActions({
             workDate,
             shiftId: actualShiftId,
             status: "absent",
+            notes: ATTENDANCE_SHIFT_ONLY_PRESET_NOTE,
+            checkIn: null,
+            checkOut: null,
           });
         } else if (isShiftOnlyPresetRecord(record) && actualShiftId === plannedShiftId) {
           await pharmacyService.deleteAttendanceRecord(record.id);
@@ -181,6 +185,7 @@ export function useHrAttendanceActions({
             checkIn: record.checkIn,
             checkOut: record.checkOut,
             shiftId: actualShiftId,
+            notes: record.notes,
           });
         }
         await invalidateAttendance();
@@ -244,10 +249,10 @@ export function useHrAttendanceActions({
       } else {
         const clearsTimes = statusClearsTimes(status);
         const checkIn = clearsTimes
-          ? undefined
+          ? null
           : pharmacyService.buildAttendanceCheckInIso(workDate, checkInTime);
         const checkOut = clearsTimes
-          ? undefined
+          ? null
           : pharmacyService.buildAttendanceCheckOutIso(workDate, checkInTime, checkOutTime);
         const actualSchedule = resolveScheduleForShiftId(
           actualShiftId,
@@ -271,6 +276,8 @@ export function useHrAttendanceActions({
           checkIn,
           checkOut,
           shiftId: actualSchedule.shiftId,
+          // Distinguish real leave/sick/absent from shift-only presets after reload.
+          notes: "",
         });
       }
       await invalidateAttendance();

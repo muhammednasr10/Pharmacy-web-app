@@ -126,8 +126,17 @@ export function statusLabel(status: AttendanceStatus | string, isArabic: boolean
   return isArabic ? item.ar : item.en;
 }
 
+/** Marker for rows that only store an actual-shift override (not a real attendance day). */
+export const ATTENDANCE_SHIFT_ONLY_PRESET_NOTE = "__shift_only_preset__";
+
 export function isShiftOnlyPresetRecord(record?: AttendanceRecord) {
-  return Boolean(record?.shiftId && !record.checkIn && !record.checkOut);
+  if (!record?.shiftId || record.checkIn || record.checkOut) return false;
+  if (record.notes === ATTENDANCE_SHIFT_ONLY_PRESET_NOTE) return true;
+  // Leave / sick are always real status records.
+  if (record.status === "leave" || record.status === "sick") return false;
+  // Legacy presets used status=absent with no times and no notes.
+  // Real absent saves use notes="" so they stay visible as غائب.
+  return record.status === "absent" && (record.notes == null || record.notes === undefined);
 }
 
 export function isAttendanceWorkDay(record?: AttendanceRecord) {

@@ -679,12 +679,12 @@ export type AttendanceRecord = {
   userId: string;
   userName: string;
   workDate: string;
-  checkIn?: string;
-  checkOut?: string;
+  checkIn?: string | null;
+  checkOut?: string | null;
   status: AttendanceStatus;
   shiftId?: ShiftId;
   earlyLeaveOutcome?: EarlyLeaveOutcome;
-  notes?: string;
+  notes?: string | null;
   createdAt?: string;
   updatedAt?: string;
   checkInLat?: number | null;
