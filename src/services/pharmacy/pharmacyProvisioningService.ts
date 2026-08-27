@@ -109,20 +109,22 @@ export async function createPharmacy(data: CreatePharmacyInput) {
     if (!rpcMissing) {
       throw new Error(rpcError.message);
     }
-  }
 
-  const { error: orgError } = await supabase.from("organizations").upsert(
-    {
-      id: organizationId,
-      name: orgName,
-      max_branches: maxBranches,
-      max_users: maxUsers,
-      subscription_tier: subscriptionTier,
-    },
-    { onConflict: "id" },
-  );
-  if (orgError) {
-    throw new Error(orgError.message);
+    // New tenant fallback only — never upsert organizations when adding a branch
+    // to an existing org (pharmacy_admin cannot INSERT/UPDATE organizations under RLS).
+    const { error: orgError } = await supabase.from("organizations").upsert(
+      {
+        id: organizationId,
+        name: orgName,
+        max_branches: maxBranches,
+        max_users: maxUsers,
+        subscription_tier: subscriptionTier,
+      },
+      { onConflict: "id" },
+    );
+    if (orgError) {
+      throw new Error(orgError.message);
+    }
   }
 
   const payload = toSnakeCase({
