@@ -2025,15 +2025,6 @@ html[data-theme="dark"] .branchScopeBanner {
 }
 
 /* ===== Dark mode — HR attendance ===== */
-html[data-theme="dark"] .attendanceScannerPanel {
-  background: var(--color-bg-surface);
-  border-color: var(--color-border);
-}
-
-html[data-theme="dark"] .attendanceScannerHeader h3 {
-  color: var(--color-text);
-}
-
 html[data-theme="dark"] .hrAttendanceHoursStat strong {
   color: #6ce9a6;
 }
@@ -2098,6 +2089,38 @@ html[data-theme="dark"] .hrAttendanceFlagDeduction {
   background: rgba(240, 68, 56, 0.14);
   color: #fda29b;
   border-color: rgba(253, 162, 155, 0.35);
+}
+
+html[data-theme="dark"] .hrAttendanceEmployeeCard {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, var(--color-bg-surface) 55%);
+  border-color: var(--color-border);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .hrAttendanceEmployeeCard--in {
+  border-color: rgba(108, 233, 166, 0.35);
+  background: linear-gradient(180deg, rgba(2, 122, 72, 0.16) 0%, var(--color-bg-surface) 60%);
+}
+
+html[data-theme="dark"] .hrAttendanceTimeChip {
+  background: var(--color-bg-input);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .hrAttendanceTimeChip strong,
+html[data-theme="dark"] .hrAttendanceEmployeeCardBody strong {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .hrAttendanceCardBtn--out {
+  background: rgba(46, 144, 250, 0.12);
+  color: #84caff;
+  border-color: rgba(132, 202, 255, 0.3);
+}
+
+html[data-theme="dark"] .hrAttendanceEmployeeCardAction:hover {
+  background: rgba(2, 122, 72, 0.16);
+  color: #6ce9a6;
 }
 
 html[data-theme="dark"] .hrAttendanceRowToday td {

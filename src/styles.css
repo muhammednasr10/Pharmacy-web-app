@@ -5173,7 +5173,7 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
   align-items: flex-end;
   justify-content: space-between;
   gap: 12px 16px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .hrAttendanceCardsToolbar h3 {
@@ -5195,25 +5195,37 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
 
 .hrAttendanceCardsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
 }
 
 .hrAttendanceEmployeeCard {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 12px;
+  gap: 14px;
   width: 100%;
-  padding: 14px;
-  border: 1px solid var(--color-border, #d0d5dd);
-  border-radius: 14px;
-  background: var(--color-surface, #fff);
+  padding: 16px;
+  border: 1px solid #e4e7ec;
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
   color: inherit;
   text-align: start;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
 }
 
-.hrAttendanceEmployeeCardTop {
+.hrAttendanceEmployeeCard--in {
+  border-color: #a6f4c5;
+  background: linear-gradient(180deg, #f6fef9 0%, #ffffff 55%);
+}
+
+.hrAttendanceEmployeeCard--done {
+  border-color: #d0d5dd;
+  background: linear-gradient(180deg, #f9fafb 0%, #ffffff 55%);
+}
+
+.hrAttendanceEmployeeCardHead {
   display: flex;
   align-items: flex-start;
   gap: 12px;
@@ -5221,9 +5233,10 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
 
 .hrAttendanceEmployeeCard .employeePhotoThumbForm,
 .hrAttendanceEmployeeCard .employeePhotoPlaceholderForm {
-  width: 64px;
-  height: 64px;
+  width: 72px;
+  height: 72px;
   flex-shrink: 0;
+  border-radius: 16px;
 }
 
 .hrAttendanceEmployeeCardBody {
@@ -5234,31 +5247,86 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
   width: 100%;
 }
 
+.hrAttendanceEmployeeCardTitleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .hrAttendanceEmployeeCardBody strong {
-  font-size: 1rem;
+  font-size: 1.05rem;
+  line-height: 1.3;
+  color: #101828;
+}
+
+.hrAttendanceEmployeeCardRole {
+  font-size: 13px;
+  font-weight: 600;
+  color: #027a48;
 }
 
 .hrAttendanceEmployeeCardMeta {
-  color: var(--color-text-secondary, #667085);
-  font-size: 13px;
-  line-height: 1.35;
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.hrAttendanceEmployeeCardMeta code {
+  font-size: 12px;
+}
+
+.hrAttendanceCardStatus {
+  flex-shrink: 0;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.hrAttendanceCardStatus--idle {
+  background: #f2f4f7;
+  color: #475467;
+}
+
+.hrAttendanceCardStatus--in {
+  background: #d1fadf;
+  color: #027a48;
+}
+
+.hrAttendanceCardStatus--done {
+  background: #e0f2fe;
+  color: #026aa2;
 }
 
 .hrAttendanceEmployeeCardToday {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: #f8fafc;
+}
+
+.hrAttendanceTimeChip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff;
   border: 1px solid #eaecf0;
-  font-size: 12px;
+}
+
+.hrAttendanceTimeChip span {
+  font-size: 11px;
   color: #667085;
 }
 
-.hrAttendanceEmployeeCardToday strong {
-  color: #101828;
+.hrAttendanceTimeChip strong {
+  font-size: 15px;
   font-weight: 700;
+  color: #101828;
+  font-variant-numeric: tabular-nums;
 }
 
 .hrAttendanceEmployeeCardQuick {
@@ -5267,28 +5335,60 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
   gap: 8px;
 }
 
-.hrAttendanceEmployeeCardQuick .smallBtn {
-  width: 100%;
-  min-height: 36px;
+.hrAttendanceCardBtn {
+  min-height: 42px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: none;
+  font-size: 14px;
   font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.hrAttendanceCardBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.hrAttendanceCardBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.hrAttendanceCardBtn--in {
+  background: #027a48;
+  color: #fff;
+}
+
+.hrAttendanceCardBtn--out {
+  background: #eff8ff;
+  color: #175cd3;
+  border: 1px solid #b2ddff;
 }
 
 .hrAttendanceEmployeeCardAction {
-  margin-top: 0;
   width: 100%;
-  padding: 8px 10px;
-  border: 1px dashed #abefc6;
+  padding: 9px 10px;
+  border: none;
   border-radius: 10px;
-  background: #ecfdf3;
+  background: transparent;
   font-size: 13px;
-  font-weight: 700;
-  color: #027a48;
+  font-weight: 600;
+  color: #475467;
   cursor: pointer;
   text-align: center;
 }
 
 .hrAttendanceEmployeeCardAction:hover {
-  background: #d1fadf;
+  color: #027a48;
+  background: #ecfdf3;
+}
+
+@media (max-width: 640px) {
+  .hrAttendanceCardsGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .hrFiltersFields {
@@ -14416,41 +14516,6 @@ button:disabled {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-.attendanceScannerPanel {
-  margin: 0 0 1rem;
-  padding: 1rem;
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  background: var(--color-bg-muted);
-}
-
-.attendanceScannerHeader {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.attendanceScannerHeader h3 {
-  margin: 0 0 4px;
-  font-size: 1rem;
-}
-
-.attendanceScanModeBtns {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.attendanceScanFeedback {
-  margin-top: 10px;
-}
-
-.attendanceBarcodeBlock {
-  margin-bottom: 0;
 }
 
 .employeeAttendanceBadgeModal {

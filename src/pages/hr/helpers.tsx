@@ -8,30 +8,6 @@ export const HR_TABS: { id: HrTab; ar: string; en: string }[] = [
   { id: "payroll", ar: "حساب المرتبات", en: "Payroll" },
 ];
 
-export function mapAttendanceScanError(code: string, isArabic: boolean) {
-  if (code === "employee_not_found") {
-    return isArabic ? "لم يُعثر على موظف بهذا الكود" : "No employee found for this code";
-  }
-  if (code === "forbidden_branch") {
-    return isArabic
-      ? "لا يمكنك تسجيل حضور هذا الفرع"
-      : "You cannot record attendance for this branch";
-  }
-  if (code === "already_checked_in") {
-    return isArabic ? "تم تسجيل الحضور مسبقاً" : "Already checked in";
-  }
-  if (code === "check_in_required") {
-    return isArabic ? "سجّل الحضور أولاً" : "Check in first";
-  }
-  if (code === "already_checked_out") {
-    return isArabic ? "تم تسجيل الانصراف مسبقاً" : "Already checked out";
-  }
-  if (code === "attendance_complete") {
-    return isArabic ? "اكتمل حضور وانصراف اليوم" : "Today's attendance is already complete";
-  }
-  return isArabic ? "تعذر تسجيل الحضور" : "Could not record attendance";
-}
-
 export function requestTypeLabel(type: string, isArabic: boolean) {
   if (type === "leave") return isArabic ? "إجازة" : "Leave";
   if (type === "permission") return isArabic ? "إذن انصراف" : "Permission";
