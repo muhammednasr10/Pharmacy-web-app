@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import * as pharmacyService from "../services/pharmacyService";
 import {
   chunkCatalogRows,
+  downloadMedicineCatalogCsvTemplate,
   MEDICINE_CATALOG_IMPORT_BATCH_SIZE,
   parseMedicineCatalogFile,
   type MedicineCatalogImportRow,
@@ -336,9 +337,22 @@ export default function MedicineCatalogImportModal({
               <strong>{isArabic ? "أو رفع ملف CSV" : "Or upload a CSV file"}</strong>
               <span>
                 {isArabic
-                  ? "بديل — استيراد من ملف على جهازك"
-                  : "Alternative — import from a file on your device"}
+                  ? "بديل — استيراد من ملف على جهازك (مع الكميات)"
+                  : "Alternative — import from a file on your device (with quantities)"}
               </span>
+              <button
+                type="button"
+                className="editBtn medicineCatalogImportTemplateBtn"
+                disabled={importing}
+                onClick={() => downloadMedicineCatalogCsvTemplate()}
+              >
+                {isArabic ? "تحميل قالب CSV جاهز" : "Download CSV template"}
+              </button>
+              <p className="medicineCatalogImportTemplateHint">
+                {isArabic
+                  ? "افتح القالب في Excel، املأ الأدوية والكميات، ثم احفظه CSV UTF-8 وارفعه من الزر التالي."
+                  : "Open the template in Excel, fill medicines and quantities, save as CSV UTF-8, then upload below."}
+              </p>
               <label className="medicineCatalogImportFilePicker">
                 <span>{isArabic ? "اختر ملف CSV" : "Choose CSV file"}</span>
                 <input

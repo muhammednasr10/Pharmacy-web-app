@@ -11407,6 +11407,18 @@ button:disabled {
   font-size: 13px;
 }
 
+.medicineCatalogImportTemplateBtn {
+  width: fit-content;
+  margin-top: 4px;
+}
+
+.medicineCatalogImportTemplateHint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #475467;
+}
+
 .medicineCatalogImportReplace {
   display: flex;
   align-items: center;

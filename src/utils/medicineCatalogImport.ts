@@ -232,3 +232,62 @@ export function chunkCatalogRows<T>(rows: T[], size = MEDICINE_CATALOG_IMPORT_BA
   }
   return chunks;
 }
+
+/** Header row required by parseAppCatalogCsv (English keys). */
+export const MEDICINE_CATALOG_CSV_HEADERS = [
+  "name_ar",
+  "name_en",
+  "active_ingredient",
+  "barcode",
+  "qty",
+  "price",
+  "buy_price",
+  "expiry",
+] as const;
+
+export const MEDICINE_CATALOG_CSV_TEMPLATE_ROWS: string[][] = [
+  [...MEDICINE_CATALOG_CSV_HEADERS],
+  [
+    "بنادول إكسترا",
+    "Panadol Extra",
+    "Paracetamol + Caffeine",
+    "6224000000001",
+    "50",
+    "25.5",
+    "18",
+    "2027-12-31",
+  ],
+  [
+    "أوجمنتين 1 جم",
+    "Augmentin 1g",
+    "Amoxicillin + Clavulanic acid",
+    "6224000000002",
+    "24",
+    "95",
+    "70",
+    "2026-06-30",
+  ],
+];
+
+export function downloadMedicineCatalogCsvTemplate() {
+  const lines = MEDICINE_CATALOG_CSV_TEMPLATE_ROWS.map((row) =>
+    row
+      .map((cell) => {
+        const text = String(cell ?? "");
+        if (/[",\n\r]/.test(text)) {
+          return `"${text.replace(/"/g, '""')}"`;
+        }
+        return text;
+      })
+      .join(","),
+  );
+  const blob = new Blob(["\uFEFF" + lines.join("\n")], {
+    type: "text/csv;charset=utf-8;",
+  });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  link.href = url;
+  link.download = "victory-medicine-import-template.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+}
