@@ -21,6 +21,10 @@ export default function PosWarehouseScopeBar({
   const branchOptions = branches.filter((branch) => Boolean(branch.id));
   if (branchOptions.length <= 1) return null;
 
+  // If scope still holds the current pharmacy id after a warehouse switch, treat as "current".
+  const effectiveScope: PosSearchScope =
+    searchScope === pharmacyId ? "current" : searchScope;
+
   return (
     <div className="posWarehouseScopeBar">
       <span className="posWarehouseScopeLabel">
@@ -29,14 +33,14 @@ export default function PosWarehouseScopeBar({
       <div className="posSearchScopeBar" role="group" aria-label={isArabic ? "نطاق البحث" : "Search scope"}>
         <button
           type="button"
-          className={`posSearchScopeChip${searchScope === "current" ? " is-active" : ""}`}
+          className={`posSearchScopeChip${effectiveScope === "current" ? " is-active" : ""}`}
           onClick={() => onChange("current")}
         >
           {isArabic ? "المخزن الحالي" : "Current warehouse"}
         </button>
         <button
           type="button"
-          className={`posSearchScopeChip${searchScope === "all" ? " is-active" : ""}`}
+          className={`posSearchScopeChip${effectiveScope === "all" ? " is-active" : ""}`}
           onClick={() => onChange("all")}
         >
           {isArabic ? "كل الفروع" : "All branches"}
@@ -47,7 +51,7 @@ export default function PosWarehouseScopeBar({
             <button
               key={branch.id}
               type="button"
-              className={`posSearchScopeChip${searchScope === branch.id ? " is-active" : ""}`}
+              className={`posSearchScopeChip${effectiveScope === branch.id ? " is-active" : ""}`}
               onClick={() => onChange(branch.id)}
             >
               {branch.name || getBranchLabel?.(branch.id) || branch.id}

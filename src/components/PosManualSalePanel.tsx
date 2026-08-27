@@ -70,13 +70,16 @@ export default function PosManualSalePanel({
   );
   const canPickBranches = branchOptions.length > 1;
 
-  const searchPharmacyIds = useMemo(() => {
-    if (searchScope === "current") return [pharmacyId];
-    if (searchScope === "all") return branchOptions.map((branch) => branch.id);
-    return [searchScope];
-  }, [branchOptions, pharmacyId, searchScope]);
+  const effectiveSearchScope: PosSearchScope =
+    searchScope === pharmacyId ? "current" : searchScope;
 
-  const searchingOtherBranches = searchScope !== "current";
+  const searchPharmacyIds = useMemo(() => {
+    if (effectiveSearchScope === "current") return [pharmacyId];
+    if (effectiveSearchScope === "all") return branchOptions.map((branch) => branch.id);
+    return [effectiveSearchScope];
+  }, [branchOptions, effectiveSearchScope, pharmacyId]);
+
+  const searchingOtherBranches = effectiveSearchScope !== "current";
 
   useEffect(() => {
     if (!open) {

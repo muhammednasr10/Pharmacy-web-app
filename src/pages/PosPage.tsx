@@ -163,6 +163,10 @@ export default function PosPage({
   }, []);
 
   useEffect(() => {
+    setSearchScope("current");
+  }, [pharmacyId]);
+
+  useEffect(() => {
     if (!shiftGateEnabled) return;
     if (!activeCashierShift) {
       setQuickSaleCardOpen(false);

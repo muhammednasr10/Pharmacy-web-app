@@ -54,18 +54,20 @@ export function usePosCart({
         return false;
       }
 
-      const found = cart.find((item) => item.id === medicine.id);
+      const found = cart.find((item) => Number(item.id) === Number(medicine.id));
       if (found && found.cartQty >= medicine.qty) {
         alert(isArabic ? "لا توجد كمية كافية في المخزون" : "Not enough stock");
         return false;
       }
 
       setCart((oldCart) => {
-        const existing = oldCart.find((item) => item.id === medicine.id);
+        const existing = oldCart.find((item) => Number(item.id) === Number(medicine.id));
 
         if (existing) {
           return oldCart.map((item) =>
-            item.id === medicine.id ? { ...item, cartQty: item.cartQty + 1 } : item,
+            Number(item.id) === Number(medicine.id)
+              ? { ...item, cartQty: item.cartQty + 1, qty: medicine.qty }
+              : item,
           );
         }
 
@@ -80,9 +82,13 @@ export function usePosCart({
     (id: number, delta: number) => {
       setCart((oldCart) =>
         oldCart.map((item) => {
-          if (item.id !== id) return item;
-          const medicineInStock = medicines.find((medicine) => medicine.id === id);
-          const maxQty = medicineInStock ? medicineInStock.qty : item.cartQty;
+          if (Number(item.id) !== Number(id)) return item;
+          // Large catalogs skip loading full branchMedicines; fall back to the
+          // stock qty captured when the line was added from search/barcode.
+          const medicineInStock = medicines.find(
+            (medicine) => Number(medicine.id) === Number(id),
+          );
+          const maxQty = Math.max(0, medicineInStock?.qty ?? item.qty ?? 0);
           const newQty = Math.max(1, item.cartQty + delta);
 
           if (newQty > maxQty) {

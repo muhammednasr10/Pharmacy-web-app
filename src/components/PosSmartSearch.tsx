@@ -37,14 +37,16 @@ export default function PosSmartSearch({
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const searchingOtherBranches = searchScope !== "current";
+  const effectiveSearchScope: PosSearchScope =
+    searchScope === pharmacyId ? "current" : searchScope;
+  const searchingOtherBranches = effectiveSearchScope !== "current";
 
   const searchPharmacyIds = useMemo(() => {
     const branchOptions = branches.filter((branch) => Boolean(branch.id));
-    if (searchScope === "current") return [pharmacyId];
-    if (searchScope === "all") return branchOptions.map((branch) => branch.id);
-    return [searchScope];
-  }, [branches, pharmacyId, searchScope]);
+    if (effectiveSearchScope === "current") return [pharmacyId];
+    if (effectiveSearchScope === "all") return branchOptions.map((branch) => branch.id);
+    return [effectiveSearchScope];
+  }, [branches, effectiveSearchScope, pharmacyId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 150);
