@@ -18,7 +18,6 @@ export type AppDashboardRouteProps = Pick<
   | "dashboardProfitTotal"
   | "totalInvoicesCount"
   | "totalMedicinesCount"
-  | "medicines"
   | "purchases"
   | "returns"
   | "branches"
@@ -63,7 +62,6 @@ export default function AppDashboardRoute({
   dashboardProfitTotal,
   totalInvoicesCount,
   totalMedicinesCount,
-  medicines,
   purchases,
   returns,
   branches,

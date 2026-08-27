@@ -4,11 +4,11 @@ import { stampPharmacy } from "./scope";
 import { getRows, subscribeTable } from "./dbHelpers";
 
 export async function getPurchases(): Promise<PurchaseRecord[]> {
-  return getRows<PurchaseRecord>("purchases", "id", false, 100, undefined, true);
+  return getRows<PurchaseRecord>("purchases", "id", false, 2000, undefined, true);
 }
 
 export function subscribePurchases(callback: (purchases: PurchaseRecord[]) => void) {
-  return subscribeTable<PurchaseRecord>("purchases", callback, "id", false, 100, undefined, true);
+  return subscribeTable<PurchaseRecord>("purchases", callback, "id", false, 2000, undefined, true);
 }
 
 function preparePurchasePayload(purchase: PurchaseRecord): Record<string, any> {

@@ -50,7 +50,11 @@ export default function DashboardPendingTransfers({
                 </td>
                 <td>{group.items?.length ?? 0}</td>
                 <td>{group.totalQty}</td>
-                <td>{group.createdAt ? new Date(group.createdAt).toLocaleString() : "—"}</td>
+                <td>
+                  {group.createdAt
+                    ? new Date(group.createdAt).toLocaleString(isArabic ? "ar-EG" : "en-GB")
+                    : "—"}
+                </td>
                 <td>
                   <div className="actionButtons">
                     <button

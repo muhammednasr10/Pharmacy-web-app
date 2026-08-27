@@ -236,7 +236,7 @@ export function useBusinessMetrics({
     });
 
     return {
-      todaySalesTotal: todayInvoices.reduce((sum, invoice) => sum + (invoice.total || 0), 0),
+      todaySalesTotal: todayInvoices.reduce((sum, invoice) => sum + safeNumber(invoice.total), 0),
       todayInvoicesCount: todayInvoices.length,
       todayProfitTotal: todayInvoices.reduce(
         (sum, invoice) => sum + safeNumber(invoice.totalProfit),

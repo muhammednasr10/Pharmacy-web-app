@@ -14,6 +14,24 @@ type DashboardInventoryAlertsProps = {
   onOpenReorderSuggestions?: () => void;
 };
 
+function alertMedicineKey(medicine: Medicine) {
+  return `${medicine.pharmacyId || "local"}-${medicine.id}`;
+}
+
+function emptyAlertMessage(
+  isArabic: boolean,
+  count: number,
+  noneAr: string,
+  noneEn: string,
+) {
+  if (count > 0) {
+    return isArabic
+      ? `فيه ${count} صنف — افتح المخزون لعرض التفاصيل`
+      : `${count} items — open inventory to view details`;
+  }
+  return isArabic ? noneAr : noneEn;
+}
+
 export default function DashboardInventoryAlerts({
   isArabic,
   lowStockCount,
@@ -35,12 +53,14 @@ export default function DashboardInventoryAlerts({
           <span className="alertCountTag warn">{lowStockCount}</span>
         </div>
         {lowStockMedicines.length === 0 ? (
-          <p className="empty">{isArabic ? "لا توجد نواقص حالياً" : "No low stock medicines"}</p>
+          <p className="empty">
+            {emptyAlertMessage(isArabic, lowStockCount, "لا توجد نواقص حالياً", "No low stock medicines")}
+          </p>
         ) : (
           <>
             <div className="miniList">
               {lowStockMedicines.slice(0, 5).map((medicine) => (
-                <div className="miniListItem" key={medicine.id}>
+                <div className="miniListItem" key={alertMedicineKey(medicine)}>
                   <span>
                     {showBranchInAlertLists && getBranchLabel && medicine.pharmacyId ? (
                       <>
@@ -79,12 +99,17 @@ export default function DashboardInventoryAlerts({
         </div>
         {expiringSoonMedicines.length === 0 ? (
           <p className="empty">
-            {isArabic ? "لا توجد أدوية قرب الانتهاء" : "No expiring medicines"}
+            {emptyAlertMessage(
+              isArabic,
+              expiringCount,
+              "لا توجد أدوية قرب الانتهاء",
+              "No expiring medicines",
+            )}
           </p>
         ) : (
           <div className="miniList">
             {expiringSoonMedicines.slice(0, 5).map((medicine) => (
-              <div className="miniListItem" key={medicine.id}>
+              <div className="miniListItem" key={alertMedicineKey(medicine)}>
                 <span>
                   {showBranchInAlertLists && getBranchLabel && medicine.pharmacyId ? (
                     <>
@@ -109,11 +134,13 @@ export default function DashboardInventoryAlerts({
           <span className="alertCountTag danger">{expiredCount}</span>
         </div>
         {expiredMedicines.length === 0 ? (
-          <p className="empty">{isArabic ? "لا توجد أدوية منتهية" : "No expired medicines"}</p>
+          <p className="empty">
+            {emptyAlertMessage(isArabic, expiredCount, "لا توجد أدوية منتهية", "No expired medicines")}
+          </p>
         ) : (
           <div className="miniList">
             {expiredMedicines.slice(0, 5).map((medicine) => (
-              <div className="miniListItem dangerText" key={medicine.id}>
+              <div className="miniListItem dangerText" key={alertMedicineKey(medicine)}>
                 <span>
                   {showBranchInAlertLists && getBranchLabel && medicine.pharmacyId ? (
                     <>

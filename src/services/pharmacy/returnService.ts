@@ -184,7 +184,7 @@ function prepareReturnPayload(returnRecord: ReturnRecord): Record<string, any> {
 export async function getReturns(): Promise<ReturnRecord[]> {
   let query = supabase.from("returns").select("*");
   query = applyPharmacyFilter(query);
-  query = query.order("id", { ascending: false }).limit(100);
+  query = query.order("id", { ascending: false }).limit(2000);
 
   const { data, error } = await query;
 

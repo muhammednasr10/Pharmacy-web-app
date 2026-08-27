@@ -6,7 +6,7 @@ import { prepareInvoicePayload, prepareInvoiceItemPayload } from "./payloads";
 import { attachInvoiceItems } from "./medicineService";
 import { createManagedRealtimeChannel, disposeManagedRealtimeChannel } from "./dbHelpers";
 
-export async function getInvoices(limit = 100): Promise<Invoice[]> {
+export async function getInvoices(limit = 2000): Promise<Invoice[]> {
   const tableQuery = supabase.from("invoices").select("*");
   const invoiceQuery = applyPharmacyFilter(tableQuery as never) as typeof tableQuery;
 

@@ -138,15 +138,41 @@ export function useAppMetricsSlice({
     pharmacyId: getPharmacyId(),
     branches,
     pharmacySettings,
-    showOrgStats: showOrgInventoryAlerts,
+    showOrgStats: showOrgInventoryAlerts || isViewingAllBranches,
   });
 
+  const orgAggregatedStats = useMemo(() => {
+    const rows = Object.values(catalogStats.branchStats);
+    if (rows.length === 0) return null;
+    return rows.reduce(
+      (acc, stats) => ({
+        total: acc.total + stats.total,
+        lowStock: acc.lowStock + stats.lowStock,
+        outOfStock: acc.outOfStock + stats.outOfStock,
+        expiring: acc.expiring + stats.expiring,
+        expired: acc.expired + stats.expired,
+        inStock: acc.inStock + stats.inStock,
+      }),
+      {
+        total: 0,
+        lowStock: 0,
+        outOfStock: 0,
+        expiring: 0,
+        expired: 0,
+        inStock: 0,
+      },
+    );
+  }, [catalogStats.branchStats]);
+
+  const effectiveCatalogStats =
+    isViewingAllBranches && orgAggregatedStats ? orgAggregatedStats : catalogStats.scopedStats;
+
   const useCatalogStats =
-    catalogStats.scopedStats.total > medicines.length ||
-    catalogStats.scopedStats.total > LARGE_MEDICINE_CATALOG;
+    effectiveCatalogStats.total > medicines.length ||
+    effectiveCatalogStats.total > LARGE_MEDICINE_CATALOG;
 
   const branchInventoryAlertRows = useMemo(() => {
-    if (!showOrgInventoryAlerts) return derivedBranchInventoryAlertRows;
+    if (!showOrgInventoryAlerts && !isViewingAllBranches) return derivedBranchInventoryAlertRows;
     if (Object.keys(catalogStats.branchStats).length > 0) {
       return buildBranchInventoryAlertRowsFromStats({
         branchStats: catalogStats.branchStats,
@@ -157,6 +183,7 @@ export function useAppMetricsSlice({
     return derivedBranchInventoryAlertRows;
   }, [
     showOrgInventoryAlerts,
+    isViewingAllBranches,
     catalogStats.branchStats,
     derivedBranchInventoryAlertRows,
     branches,
@@ -164,26 +191,27 @@ export function useAppMetricsSlice({
   ]);
 
   const totalMedicinesCount = useCatalogStats
-    ? catalogStats.scopedStats.total
+    ? effectiveCatalogStats.total
     : medicines.length;
 
   const lowStockCount = useCatalogStats
-    ? catalogStats.scopedStats.lowStock
+    ? effectiveCatalogStats.lowStock
     : derivedLowStockCount;
 
   const expiringCount = useCatalogStats
-    ? catalogStats.scopedStats.expiring
+    ? effectiveCatalogStats.expiring
     : derivedExpiringCount;
 
   const expiredCount = useCatalogStats
-    ? catalogStats.scopedStats.expired
+    ? effectiveCatalogStats.expired
     : derivedExpiredCount;
 
   const alertTotal = lowStockCount + expiringCount + expiredCount;
 
   const useBranchAwareInventoryAlerts =
     derivedUseBranchAwareInventoryAlerts ||
-    (showOrgInventoryAlerts && Object.keys(catalogStats.branchStats).length > 0);
+    ((showOrgInventoryAlerts || isViewingAllBranches) &&
+      Object.keys(catalogStats.branchStats).length > 0);
 
   const {
     filteredInvoicesList,

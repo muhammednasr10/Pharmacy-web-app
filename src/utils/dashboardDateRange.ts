@@ -31,6 +31,14 @@ export function getDashboardDateRange(
   if (period === "custom") {
     from = new Date(`${customFrom}T00:00:00`);
     to = new Date(`${customTo}T23:59:59`);
+    if (!Number.isFinite(from.getTime()) || !Number.isFinite(to.getTime())) {
+      from = new Date(`${formatDateInput(now)}T00:00:00`);
+      to = new Date(`${formatDateInput(now)}T23:59:59`);
+    } else if (from > to) {
+      const swap = from;
+      from = to;
+      to = swap;
+    }
   }
 
   return { from, to };
