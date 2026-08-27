@@ -32,6 +32,11 @@ function formatCatalogImportError(message: string, isArabic: boolean) {
       ? "ميزة استيراد الأدوية غير مفعّلة — تواصل مع الدعم الفني"
       : "Medicine import is not enabled — contact support";
   }
+  if (/statement timeout|canceling statement/i.test(message)) {
+    return isArabic
+      ? "الاستيراد استغرق وقتاً أطول من المتوقع — أعد المحاولة (الاستيراد يعمل على دفعات الآن)"
+      : "Import took too long — try again (import now runs in smaller batches)";
+  }
   return message || (isArabic ? "تعذر الاستيراد" : "Import failed");
 }
 
@@ -118,13 +123,16 @@ export default function MedicineCatalogImportModal({
 
     setImporting(true);
     setError("");
-    setProgress({ done: 0, total: 1, phase: "importing" });
+    setProgress({ done: 0, total: catalogTotal || 1, phase: "importing" });
 
     try {
-      const result = await pharmacyService.syncPharmacyFromCatalogReference(pharmacyId);
+      const result = await pharmacyService.syncPharmacyFromCatalogReference(
+        pharmacyId,
+        setProgress,
+      );
       setProgress({
         done: result.updated + result.inserted,
-        total: result.updated + result.inserted,
+        total: Math.max(1, result.updated + result.inserted),
         phase: "importing",
       });
       await onComplete();
@@ -154,11 +162,14 @@ export default function MedicineCatalogImportModal({
 
     setImporting(true);
     setError("");
-    setProgress({ done: 0, total: 1, phase: "clearing" });
+    setProgress({ done: 0, total: catalogTotal || 1, phase: "clearing" });
 
     try {
-      const result = await pharmacyService.seedPharmacyFromCatalogReference(pharmacyId);
-      setProgress({ done: result.inserted, total: result.inserted, phase: "importing" });
+      const result = await pharmacyService.seedPharmacyFromCatalogReference(
+        pharmacyId,
+        setProgress,
+      );
+      setProgress({ done: result.inserted, total: Math.max(1, result.inserted), phase: "importing" });
       await onComplete();
       onClose();
       alert(

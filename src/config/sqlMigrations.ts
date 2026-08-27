@@ -179,6 +179,16 @@ export const SQL_MIGRATIONS: SqlMigrationDefinition[] = [
     probe: { type: "rpc", name: "get_medicine_catalog_reference_stats", args: {} },
   },
   {
+    id: "medicine-catalog-reference-batched",
+    file: "medicine-catalog-reference-batched.sql",
+    group: "core",
+    titleAr: "استيراد الكتالوج على دفعات",
+    titleEn: "Batched catalog import",
+    noteAr: "بعد medicine-catalog-reference.sql — يمنع timeout عند استيراد ~25 ألف دواء",
+    noteEn: "After medicine-catalog-reference.sql — avoids timeout importing ~25k medicines",
+    probe: { type: "rpc", name: "seed_pharmacy_from_catalog_reference_page", args: {} },
+  },
+  {
     id: "complete-sale-rpc",
     file: "complete-sale-rpc.sql",
     group: "pos",
