@@ -4844,6 +4844,40 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
   box-sizing: border-box;
 }
 
+.loginEmailWithDomain {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  border: 1px solid #d0d5dd;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.loginEmailWithDomain:focus-within {
+  border-color: #027a48;
+}
+
+.loginEmailWithDomain input {
+  border: none !important;
+  border-radius: 0 !important;
+  flex: 1;
+  min-width: 0;
+}
+
+.loginEmailDomainSuffix {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  background: #f2f4f7;
+  color: #475467;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  border-inline-start: 1px solid #d0d5dd;
+}
+
 .loginPasswordField {
   position: relative;
   width: 100%;

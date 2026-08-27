@@ -1,8 +1,12 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { VICTORY_BRAND_LOGO, VICTORY_BRAND_TITLE } from "../config/brand";
+import { VICTORY_BRAND_LOGO, VICTORY_BRAND_TITLE, PUBLIC_SIGNUP_EMAIL_DOMAIN } from "../config/brand";
 import { TRIAL_SUBSCRIPTION_DAYS } from "../config/subscription";
 import * as pharmacyService from "../services/pharmacyService";
 import type { PharmacySignupStatusLookup } from "../services/pharmacy/pharmacySignupRequestService";
+import {
+  normalizePublicSignupEmail,
+  signupEmailLocalPart,
+} from "../utils/publicSignupEmail";
 import type { FontScale, ThemeMode } from "../utils/displayPreferences";
 import AuthLoadingScreen from "./AuthLoadingScreen";
 import DeveloperCredit from "./DeveloperCredit";
@@ -220,6 +224,8 @@ export default function LoginPage({
               placeholder={isArabic ? "رقم التليفون" : "Phone number"}
               autoComplete="tel"
               inputMode="tel"
+              dir={registerPhone.trim() ? "ltr" : isArabic ? "rtl" : "ltr"}
+              style={{ textAlign: registerPhone.trim() ? "left" : undefined }}
             />
             <input
               type="text"
@@ -231,14 +237,38 @@ export default function LoginPage({
           </>
         )}
 
-        <input
-          type="text"
-          data-testid="login-email"
-          value={loginEmail}
-          onChange={(e) => onEmailChange(e.target.value)}
-          placeholder={isArabic ? "البريد الإلكتروني" : "Email"}
-          autoComplete="username"
-        />
+        {isRegister ? (
+          <div className="loginEmailWithDomain" dir="ltr">
+            <input
+              type="text"
+              data-testid="login-email"
+              value={signupEmailLocalPart(loginEmail)}
+              onChange={(e) => onEmailChange(normalizePublicSignupEmail(e.target.value))}
+              placeholder={isArabic ? "اسم المستخدم" : "Username"}
+              autoComplete="username"
+              spellCheck={false}
+            />
+            <span className="loginEmailDomainSuffix" aria-hidden="true">
+              @{PUBLIC_SIGNUP_EMAIL_DOMAIN}
+            </span>
+          </div>
+        ) : (
+          <input
+            type="text"
+            data-testid="login-email"
+            value={loginEmail}
+            onChange={(e) => onEmailChange(e.target.value)}
+            placeholder={isArabic ? "البريد الإلكتروني" : "Email"}
+            autoComplete="username"
+          />
+        )}
+        {isRegister && (
+          <p className="loginHint">
+            {isArabic
+              ? `البريد سيكون: ${normalizePublicSignupEmail(loginEmail) || `name@${PUBLIC_SIGNUP_EMAIL_DOMAIN}`}`
+              : `Email will be: ${normalizePublicSignupEmail(loginEmail) || `name@${PUBLIC_SIGNUP_EMAIL_DOMAIN}`}`}
+          </p>
+        )}
         <div className="loginPasswordField">
           <input
             type={showPassword ? "text" : "password"}

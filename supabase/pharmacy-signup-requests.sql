@@ -88,6 +88,10 @@ begin
     raise exception 'email_address_invalid_format';
   end if;
 
+  if right(v_email, length('@victory.com')) <> '@victory.com' then
+    raise exception 'email_domain_rejected';
+  end if;
+
   if length(coalesce(p_password, '')) < 6 then
     raise exception 'password_too_short';
   end if;

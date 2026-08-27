@@ -38,7 +38,12 @@ export function formatUserCreationError(message: string, isArabic: boolean): str
   if (message === "email_address_invalid_format") {
     return isArabic ? "صيغة الإيميل غير صحيحة" : "Invalid email format";
   }
-  if (message === "email_domain_rejected" || message === "email_address_invalid") {
+  if (message === "domain_rejected" || message === "email_domain_rejected") {
+    return isArabic
+      ? "البريد يجب أن ينتهي بـ @victory.com"
+      : "Email must end with @victory.com";
+  }
+  if (message === "email_address_invalid") {
     return isArabic
       ? "البريد الإلكتروني غير مقبول. تأكد من صحة العنوان أو جرّب بريداً آخر."
       : "This email address was rejected. Check the format or try another address.";

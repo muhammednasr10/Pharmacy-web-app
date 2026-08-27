@@ -7,6 +7,10 @@ import { getRows, subscribeTable } from "./dbHelpers";
 import { assertOrganizationUserCapacity } from "./organizationAdminService";
 import { syncLoginAccountStoredPassword } from "./loginAccountCatalogService";
 import { deletePharmacyEmployeeCascade, linkUserToEmployee } from "./hrService";
+import {
+  isPublicSignupEmail,
+  normalizePublicSignupEmail,
+} from "../../utils/publicSignupEmail";
 
 export async function getAllSystemUsers(): Promise<SystemUser[]> {
   if (!isSuperAdmin(getCurrentAppUser())) {
@@ -113,6 +117,15 @@ export function validateNewUserEmail(email: string): string | null {
   return null;
 }
 
+export function validatePublicSignupEmail(email: string): string | null {
+  const formatIssue = validateNewUserEmail(email);
+  if (formatIssue) return formatIssue;
+  if (!isPublicSignupEmail(email)) {
+    return "domain_rejected";
+  }
+  return null;
+}
+
 export async function createSystemUser(params: {
   email: string;
   password: string;
@@ -181,16 +194,19 @@ export async function registerPublicUser(params: {
   phone: string;
   address: string;
 }): Promise<{ pendingApproval: boolean; requestNumber?: string }> {
-  const email = params.email.trim().toLowerCase();
+  const email = normalizePublicSignupEmail(params.email);
   const name = params.name.trim();
   const pharmacyName = params.pharmacyName.trim();
   const phone = params.phone.trim();
   const address = params.address.trim();
   const password = params.password;
 
-  const emailIssue = validateNewUserEmail(email);
+  const emailIssue = validatePublicSignupEmail(email);
   if (emailIssue === "invalid_format") {
     throw new Error("email_address_invalid_format");
+  }
+  if (emailIssue === "domain_rejected") {
+    throw new Error("email_domain_rejected");
   }
 
   if (!name) {
@@ -225,6 +241,9 @@ export async function registerPublicUser(params: {
   if (error) {
     if (error.message.includes("email_address_invalid_format")) {
       throw new Error("email_address_invalid_format");
+    }
+    if (error.message.includes("email_domain_rejected")) {
+      throw new Error("email_domain_rejected");
     }
     if (error.message.includes("password_too_short")) {
       throw new Error("password_too_short");
