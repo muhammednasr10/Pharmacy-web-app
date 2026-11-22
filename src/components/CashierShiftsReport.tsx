@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { AppUser, CashierShift, PharmacySettings } from "../types";
 import * as pharmacyService from "../services/pharmacyService";
+import { formatAppDateTime, formatDateInput, localDayBoundsToIso } from "../utils/date";
 import { isPharmacyManager } from "../utils/roles";
 
 type CashierShiftsReportProps = {
@@ -16,11 +17,6 @@ function formatMoney(value: number, currency: string) {
   return `${Number(value || 0).toFixed(2)} ${currency}`;
 }
 
-function formatDateTime(value: string | undefined, isArabic: boolean) {
-  if (!value) return "—";
-  return new Date(value).toLocaleString(isArabic ? "ar-EG" : "en-GB");
-}
-
 export default function CashierShiftsReport({
   isArabic,
   currency,
@@ -34,16 +30,16 @@ export default function CashierShiftsReport({
   const [fromDate, setFromDate] = useState(() => {
     const date = new Date();
     date.setDate(date.getDate() - 7);
-    return date.toISOString().slice(0, 10);
+    return formatDateInput(date);
   });
-  const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [toDate, setToDate] = useState(() => formatDateInput(new Date()));
 
   const loadRows = useCallback(async () => {
     if (!pharmacyId) return;
     setLoading(true);
     try {
-      const from = `${fromDate}T00:00:00.000Z`;
-      const to = `${toDate}T23:59:59.999Z`;
+      const { fromIso: from } = localDayBoundsToIso(fromDate);
+      const { toIso: to } = localDayBoundsToIso(toDate);
       const cashierId =
         appUser?.role === "cashier" && !isPharmacyManager(appUser) ? appUser.uid : undefined;
       const data = await pharmacyService.listCashierShifts(pharmacyId, {
@@ -151,8 +147,8 @@ export default function CashierShiftsReport({
                 <tr key={shift.id}>
                   <td>{shift.shiftNumber}</td>
                   <td>{shift.cashierName || shift.cashierId}</td>
-                  <td>{formatDateTime(shift.openedAt, isArabic)}</td>
-                  <td>{formatDateTime(shift.closedAt, isArabic)}</td>
+                  <td>{formatAppDateTime(shift.openedAt, isArabic)}</td>
+                  <td>{formatAppDateTime(shift.closedAt, isArabic)}</td>
                   <td>{formatMoney(shift.totalSales, currency)}</td>
                   <td>{formatMoney(shift.expectedCash ?? 0, currency)}</td>
                   <td>{formatMoney(shift.actualCash ?? 0, currency)}</td>

@@ -116,6 +116,7 @@ export function useAppOperationsSlice({
   const [currentWorkShiftId, setCurrentWorkShiftId] = useState<string>("");
   const [currentWorkShiftLabel, setCurrentWorkShiftLabel] = useState<string>("");
   const [activeCashierShift, setActiveCashierShift] = useState<CashierShift | null>(null);
+  const [cashierShiftSalesTick, setCashierShiftSalesTick] = useState(0);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
   const {
@@ -155,6 +156,10 @@ export function useAppOperationsSlice({
     setActiveCashierShift(shift);
     return shift;
   }, [appUser?.uid, getPharmacyId]);
+
+  const bumpCashierShiftSalesTick = useCallback(() => {
+    setCashierShiftSalesTick((current) => current + 1);
+  }, []);
 
   const branchTransferGroups = useMemo(() => {
     const grouped = new Map<string, BranchStockTransfer[]>();
@@ -275,6 +280,8 @@ export function useAppOperationsSlice({
 
   const {
     isSelling,
+    saleFeedback,
+    setSaleFeedback,
     heldInvoices,
     setHeldInvoices,
     showHeldInvoicesModal,
@@ -318,6 +325,7 @@ export function useAppOperationsSlice({
     addActivityLog,
     refreshMedicinesFromDb,
     refreshActiveCashierShift,
+    bumpCashierShiftSalesTick,
     setOfflineMedicinesCacheAt,
     setPendingOfflineSalesCount,
   });
@@ -408,6 +416,8 @@ export function useAppOperationsSlice({
     currentWorkShiftLabel,
     activeCashierShift,
     setActiveCashierShift,
+    cashierShiftSalesTick,
+    bumpCashierShiftSalesTick,
     selectedInvoice,
     setSelectedInvoice,
     cart,
@@ -438,6 +448,8 @@ export function useAppOperationsSlice({
     offlineMedicinesCacheAt,
     isSyncingOfflineSales,
     isSelling,
+    saleFeedback,
+    setSaleFeedback,
     heldInvoices,
     showHeldInvoicesModal,
     setShowHeldInvoicesModal,

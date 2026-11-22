@@ -4,6 +4,7 @@ import * as pharmacyService from "../services/pharmacyService";
 import CashierShiftCloseModal from "./CashierShiftCloseModal";
 import { isPharmacyManager } from "../utils/roles";
 import { getReportQuickRange } from "../utils/reportDateRange";
+import { formatAppDateTime, localDayBoundsToIso } from "../utils/date";
 
 type PosShiftsTableProps = {
   isArabic: boolean;
@@ -18,16 +19,13 @@ type PosShiftsTableProps = {
   onShiftClosed?: (shift: CashierShift) => void;
 };
 
+type LiveOpenTotals = {
+  totalSales: number;
+  invoiceCount: number;
+};
+
 function formatMoney(value: number, currency: string) {
   return `${Number(value || 0).toFixed(2)} ${currency}`;
-}
-
-function formatDateTime(value: string | undefined, isArabic: boolean) {
-  if (!value) return "—";
-  return new Date(value).toLocaleString(isArabic ? "ar-EG" : "en-GB", {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
 }
 
 export default function PosShiftsTable({
@@ -43,6 +41,7 @@ export default function PosShiftsTable({
   onShiftClosed,
 }: PosShiftsTableProps) {
   const [rows, setRows] = useState<CashierShift[]>([]);
+  const [liveOpenTotals, setLiveOpenTotals] = useState<Record<number, LiveOpenTotals>>({});
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [closingShift, setClosingShift] = useState<CashierShift | null>(null);
@@ -68,13 +67,13 @@ export default function PosShiftsTable({
     if (!pharmacyId || !canViewShifts) return;
     setLoading(true);
     try {
-      const from = `${fromDate}T00:00:00.000Z`;
-      const to = `${toDate}T23:59:59.999Z`;
+      const { fromIso: from, toIso: to } = localDayBoundsToIso(fromDate);
+      const toBounds = localDayBoundsToIso(toDate);
       const cashierId =
         appUser?.role === "cashier" && !isPharmacyManager(appUser) ? appUser.uid : undefined;
       const data = await pharmacyService.listCashierShifts(pharmacyId, {
         from,
-        to,
+        to: toBounds.toIso,
         cashierId,
         status: statusFilter === "all" ? undefined : statusFilter,
         limit: 50,
@@ -88,6 +87,42 @@ export default function PosShiftsTable({
   useEffect(() => {
     void loadRows();
   }, [loadRows, refreshKey]);
+
+  useEffect(() => {
+    const openShifts = rows.filter((shift) => shift.status === "open");
+    if (openShifts.length === 0) {
+      setLiveOpenTotals({});
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const entries = await Promise.all(
+        openShifts.map(async (shift) => {
+          try {
+            const summary = await pharmacyService.computeCashierShiftSummary(shift);
+            return [
+              shift.id,
+              { totalSales: summary.totalSales, invoiceCount: summary.invoiceCount },
+            ] as const;
+          } catch {
+            return [
+              shift.id,
+              {
+                totalSales: Number(shift.totalSales ?? 0),
+                invoiceCount: Number(shift.invoiceCount ?? 0),
+              },
+            ] as const;
+          }
+        }),
+      );
+      if (!cancelled) {
+        setLiveOpenTotals(Object.fromEntries(entries));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [rows, refreshKey]);
 
   async function handleShiftClosedFromTable(closed: CashierShift) {
     setClosingShift(null);
@@ -248,10 +283,13 @@ export default function PosShiftsTable({
                 rows.map((shift) => {
                   const isActive = shift.id === activeShiftId;
                   const variance = Number(shift.cashVariance ?? 0);
+                  const live = shift.status === "open" ? liveOpenTotals[shift.id] : undefined;
+                  const salesTotal = live?.totalSales ?? Number(shift.totalSales ?? 0);
+                  const invoices = live?.invoiceCount ?? Number(shift.invoiceCount ?? 0);
                   const canDelete =
                     shift.status === "closed" &&
                     (canManageAllShifts || shift.cashierId === appUser?.uid) &&
-                    (shift.invoiceCount ?? 0) === 0;
+                    invoices === 0;
 
                   const canClose =
                     shift.status === "open" &&
@@ -283,10 +321,10 @@ export default function PosShiftsTable({
                               : "Closed"}
                         </span>
                       </td>
-                      <td>{formatDateTime(shift.openedAt, isArabic)}</td>
-                      <td>{formatDateTime(shift.closedAt, isArabic)}</td>
-                      <td>{formatMoney(shift.totalSales, currency)}</td>
-                      <td>{shift.invoiceCount ?? 0}</td>
+                      <td>{formatAppDateTime(shift.openedAt, isArabic)}</td>
+                      <td>{formatAppDateTime(shift.closedAt, isArabic)}</td>
+                      <td>{formatMoney(salesTotal, currency)}</td>
+                      <td>{invoices}</td>
                       <td
                         className={
                           shift.status === "closed"

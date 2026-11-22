@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { Invoice, PaymentMethod, ReturnRecord } from "../types";
+import { formatAppDateTime } from "../utils/date";
 import { getReturnedInvoiceNumbers } from "../utils/returnHelpers";
 
 type InvoiceTableProps = {
@@ -162,7 +163,7 @@ export default function InvoiceTable({
                       )}
                     </div>
                   </td>
-                  <td>{invoice.date}</td>
+                  <td>{formatAppDateTime(invoice.createdAt || invoice.date, isArabic)}</td>
                   <td>{getPaymentLabel(invoice.paymentMethod || "cash")}</td>
                   <td>{invoice.customerName || "-"}</td>
                   <td>

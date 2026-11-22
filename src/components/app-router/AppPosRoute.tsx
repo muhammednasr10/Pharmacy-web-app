@@ -46,6 +46,9 @@ export type AppPosRouteProps = Pick<
   | "branches"
   | "appUser"
   | "activeCashierShift"
+  | "cashierShiftSalesTick"
+  | "saleFeedback"
+  | "setSaleFeedback"
   | "pharmacySettings"
   | "currentWorkShiftId"
   | "setActiveCashierShift"
@@ -100,6 +103,9 @@ export default function AppPosRoute({
   branches,
   appUser,
   activeCashierShift,
+  cashierShiftSalesTick = 0,
+  saleFeedback = null,
+  setSaleFeedback,
   pharmacySettings,
   currentWorkShiftId,
   setActiveCashierShift,
@@ -159,6 +165,9 @@ export default function AppPosRoute({
       inventoryRefreshKey={`${getPharmacyId()}-${medicines.length}-${activeBranchId || ""}`}
       appUser={appUser}
       activeCashierShift={activeCashierShift}
+      cashierShiftSalesTick={cashierShiftSalesTick}
+      saleFeedback={saleFeedback}
+      onClearSaleFeedback={() => setSaleFeedback?.(null)}
       pharmacySettings={pharmacySettings}
       workShiftId={currentWorkShiftId}
       onCashierShiftChange={setActiveCashierShift}

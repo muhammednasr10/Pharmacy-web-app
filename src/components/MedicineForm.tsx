@@ -50,6 +50,7 @@ export default function MedicineForm({
         excludeMedicineId={editingMedicineId}
         resetKey={lookupResetKey ?? editingMedicineId ?? "new"}
         showBuyPrice={showBuyPrice}
+        fieldErrors={feedback?.fieldErrors}
       />
       {feedback ? (
         <p

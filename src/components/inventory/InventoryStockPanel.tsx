@@ -305,6 +305,15 @@ export default function InventoryStockPanel({
                     debouncedSearch,
                     !isOnline,
                     offlineSourceCount > 0,
+                    {
+                      stockFilter,
+                      branchHasStock: !isOnline
+                        ? offlineSourceCount > 0
+                        : total > 0 ||
+                          Boolean(debouncedSearch.trim()) ||
+                          stockFilter !== "all" ||
+                          branchMedicines.length > 0,
+                    },
                   )
           }
         />

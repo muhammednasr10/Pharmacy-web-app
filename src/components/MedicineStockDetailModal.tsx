@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Medicine, StockMovement } from "../types";
 import * as pharmacyService from "../services/pharmacyService";
+import { formatAppDateTime } from "../utils/date";
 import {
   buildMedicineStockSummary,
   getMovementReference,
@@ -173,7 +174,7 @@ export default function MedicineStockDetailModal({
                     <td>{getMovementReference(movement, isArabic)}</td>
                     <td>{movement.userName || "-"}</td>
                     <td>
-                      {movement.createdAt ? new Date(movement.createdAt).toLocaleString() : "-"}
+                      {formatAppDateTime(movement.createdAt, isArabic)}
                     </td>
                   </tr>
                 ))}

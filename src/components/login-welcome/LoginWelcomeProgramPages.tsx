@@ -80,6 +80,11 @@ export default function LoginWelcomeProgramPages({
             <p className="loginWelcomePageCardBody">
               {isArabic ? selectedPage.descAr : selectedPage.descEn}
             </p>
+            <ul className="loginWelcomePageCardPoints">
+              {(isArabic ? selectedPage.pointsAr : selectedPage.pointsEn).map((point) => (
+                <li key={point}>{point}</li>
+              ))}
+            </ul>
             {selectedPage.hasCheckbox ? (
               <p className="loginWelcomePageCardHint">
                 {isArabic

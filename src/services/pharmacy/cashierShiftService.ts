@@ -88,7 +88,9 @@ export async function openCashierShift(params: {
     cashier_name: params.cashierName,
     work_shift_id: params.workShiftId || null,
     status: "open",
-    opening_cash: Number(params.openingCash) || 0,
+    opening_cash: Number.isFinite(Number(params.openingCash))
+      ? Math.max(0, Number(params.openingCash))
+      : 0,
     opened_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };

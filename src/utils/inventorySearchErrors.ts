@@ -38,12 +38,19 @@ export function inventoryEmptySearchMessage(
   search: string,
   isOffline: boolean,
   hasOfflineCache: boolean,
+  options?: { stockFilter?: string; branchHasStock?: boolean },
 ): string {
   const term = search.trim();
   if (isOffline && !hasOfflineCache) {
     return isArabic
       ? "لا يوجد اتصال — لا توجد نسخة محفوظة كافية للبحث في المخزون"
       : "Offline — no saved inventory snapshot available for search";
+  }
+  const hasFilter = Boolean(options?.stockFilter && options.stockFilter !== "all");
+  if (!term && !hasFilter && options?.branchHasStock === false) {
+    return isArabic
+      ? "المخزون فارغ — أضف أو استورد أول صنف"
+      : "Inventory is empty — add or import the first item";
   }
   if (term) {
     return isArabic

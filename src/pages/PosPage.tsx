@@ -57,7 +57,7 @@ type PosPageProps = {
   onDiscountChange: (value: number) => void;
   onPaymentMethodChange: (method: PaymentMethod) => void;
   onCustomerNameChange: (value: string) => void;
-  onCompleteSale: () => void;
+  onCompleteSale: () => void | boolean | Promise<void | boolean>;
   getPaymentLabel: (method: string) => string;
   heldInvoicesCount: number;
   isHolding: boolean;
@@ -74,6 +74,9 @@ type PosPageProps = {
   inventoryRefreshKey?: string | number;
   appUser: AppUser | null;
   activeCashierShift: CashierShift | null;
+  cashierShiftSalesTick?: number;
+  saleFeedback?: { type: "error" | "success"; text: string } | null;
+  onClearSaleFeedback?: () => void;
   pharmacySettings?: PharmacySettings | null;
   workShiftId?: string;
   onCashierShiftChange: (shift: CashierShift | null) => void;
@@ -130,6 +133,9 @@ export default function PosPage({
   inventoryRefreshKey = 0,
   appUser,
   activeCashierShift,
+  cashierShiftSalesTick = 0,
+  saleFeedback = null,
+  onClearSaleFeedback,
   pharmacySettings,
   workShiftId,
   onCashierShiftChange,
@@ -214,6 +220,25 @@ export default function PosPage({
     };
   }, []);
 
+  useEffect(() => {
+    if (!saleFeedback?.text) return;
+    showPosActionFeedback({
+      text: saleFeedback.text,
+      error: saleFeedback.type === "error",
+    });
+    if (saleFeedback.type === "success") {
+      requestAnimationFrame(() => focusBarcode());
+    }
+    onClearSaleFeedback?.();
+  }, [saleFeedback, showPosActionFeedback, focusBarcode, onClearSaleFeedback]);
+
+  const handleCompleteSale = useCallback(async () => {
+    const result = await onCompleteSale();
+    if (result === true) {
+      requestAnimationFrame(() => focusBarcode());
+    }
+  }, [onCompleteSale, focusBarcode]);
+
   usePosKeyboardShortcuts({
     enabled: shortcutsEnabled,
     isArabic,
@@ -226,7 +251,9 @@ export default function PosPage({
     onPaymentMethodChange,
     onHoldInvoice: handleHoldInvoice,
     onOpenHeldInvoices,
-    onCompleteSale,
+    onCompleteSale: () => {
+      void handleCompleteSale();
+    },
     onClearCart,
   });
 
@@ -302,7 +329,7 @@ export default function PosPage({
           onDiscountChange={onDiscountChange}
           onPaymentMethodChange={onPaymentMethodChange}
           onCustomerNameChange={onCustomerNameChange}
-          onCompleteSale={onCompleteSale}
+          onCompleteSale={() => void handleCompleteSale()}
           getPaymentLabel={getPaymentLabel}
           heldInvoicesCount={heldInvoicesCount}
           isHolding={isHolding}
@@ -315,6 +342,11 @@ export default function PosPage({
     </div>
   ) : (
     <div className="posLayoutStack">
+      {posActionFeedback ? (
+        <div className={`posMessage posActionFeedback${posActionFeedback.error ? " error" : ""}`}>
+          {posActionFeedback.text}
+        </div>
+      ) : null}
       <PosBarcodeInput
         ref={barcodeInputRef}
         medicines={inventoryMedicines}
@@ -372,7 +404,7 @@ export default function PosPage({
           onDiscountChange={onDiscountChange}
           onPaymentMethodChange={onPaymentMethodChange}
           onCustomerNameChange={onCustomerNameChange}
-          onCompleteSale={onCompleteSale}
+          onCompleteSale={() => void handleCompleteSale()}
           getPaymentLabel={getPaymentLabel}
           heldInvoicesCount={heldInvoicesCount}
           isHolding={isHolding}
@@ -444,7 +476,7 @@ export default function PosPage({
       pharmacySettings={pharmacySettings}
       getPaymentLabel={getPaymentLabel}
       activeShiftId={activeCashierShift?.id}
-      refreshKey={`${activeCashierShift?.id ?? "none"}-${activeCashierShift?.status ?? "none"}`}
+      refreshKey={`${activeCashierShift?.id ?? "none"}-${activeCashierShift?.status ?? "none"}-${cashierShiftSalesTick}`}
       onSelectShift={handleSelectCashierShift}
       onShiftClosed={handleShiftClosedFromTable}
     />
@@ -507,6 +539,7 @@ export default function PosPage({
                 setQuickSaleCardOpen(true);
                 focusBarcode();
               }}
+              summaryRefreshKey={cashierShiftSalesTick}
             />
             {shiftsTable}
             {saleWorkspaceShift}
@@ -527,6 +560,7 @@ export default function PosPage({
                 setQuickSaleCardOpen(true);
                 focusBarcode();
               }}
+              summaryRefreshKey={cashierShiftSalesTick}
             />
             {shiftsTable}
           </div>

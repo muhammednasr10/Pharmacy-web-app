@@ -1,5 +1,6 @@
 import { createPortal } from "react-dom";
 import type { HeldInvoice } from "../types";
+import { formatAppDateTime } from "../utils/date";
 
 type HeldInvoicesModalProps = {
   heldInvoices: HeldInvoice[];
@@ -17,12 +18,7 @@ function getPortalRoot(): HTMLElement | null {
 }
 
 function formatHeldTime(value?: string, isArabic?: boolean) {
-  if (!value) return "-";
-  try {
-    return new Date(value).toLocaleString(isArabic ? "ar-EG" : "en-US");
-  } catch {
-    return value;
-  }
+  return formatAppDateTime(value, Boolean(isArabic));
 }
 
 export default function HeldInvoicesModal({

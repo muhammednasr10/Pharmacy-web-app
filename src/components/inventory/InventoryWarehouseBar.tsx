@@ -112,18 +112,23 @@ export default function InventoryWarehouseBar({
                 🏬
               </span>
               <div>
+                <span className="mutedText">
+                  {isArabic ? "مخزن الفرع الحالي" : "Current branch warehouse"}
+                </span>
                 <strong>{activeDisplay.combinedLabel}</strong>
-                <p className="mutedText">
-                  {isArabic
-                    ? `باقتك تسمح بمخزن واحد (${usage.used}/${usage.max})`
-                    : `Your plan allows one warehouse (${usage.used}/${usage.max})`}
-                </p>
+                {usage.max <= 1 ? (
+                  <p className="mutedText">
+                    {isArabic
+                      ? "باقتك تسمح بفرع واحد — حد الفروع من صفحة الفروع"
+                      : "Your plan allows one branch — branch limits are on the Branches page"}
+                  </p>
+                ) : null}
               </div>
             </div>
           ) : (
             <div className="invMgmtWarehouseSwitch">
               <label className="invMgmtWarehouseLabel" htmlFor="inv-warehouse-select">
-                {isArabic ? "اختر المخزن" : "Select warehouse"}
+                {isArabic ? "مخزن الفرع الحالي" : "Current branch warehouse"}
               </label>
               <BranchScopeSelect
                 id="inv-warehouse-select"
@@ -131,13 +136,13 @@ export default function InventoryWarehouseBar({
                 value={activeScopeId}
                 isArabic={isArabic}
                 className="invMgmtWarehouseSelect"
-                aria-label={isArabic ? "التبديل بين المخازن" : "Switch warehouse"}
+                aria-label={isArabic ? "التبديل بين مخازن الفروع" : "Switch branch warehouse"}
                 onChange={(branchId) => onSwitchBranch(branchId)}
               />
               <p className="mutedText invMgmtWarehouseUsage">
                 {isArabic
-                  ? `${usage.used} من ${usage.max} مخازن مستخدمة`
-                  : `${usage.used} of ${usage.max} warehouses used`}
+                  ? `الفروع المستخدمة: ${usage.used} من ${usage.max}`
+                  : `Branches in use: ${usage.used} of ${usage.max}`}
               </p>
             </div>
           )}

@@ -19,6 +19,7 @@ import {
   queueOfflineSale,
 } from "../utils/offlinePosStorage";
 import { getHeldInvoiceErrorMessage } from "../utils/heldInvoiceErrors";
+import { formatAppNowForStorage } from "../utils/date";
 import { formatPosSaleError } from "../utils/posSaleErrors";
 import { isPharmacyManager, isSuperAdmin } from "../utils/roles";
 
@@ -71,6 +72,7 @@ type UsePosSalesOptions = {
   addActivityLog: (data: ActivityLogInput) => Promise<void>;
   refreshMedicinesFromDb: () => Promise<void>;
   refreshActiveCashierShift: () => Promise<CashierShift | null | undefined>;
+  bumpCashierShiftSalesTick?: () => void;
   setOfflineMedicinesCacheAt: Dispatch<SetStateAction<string | null>>;
   setPendingOfflineSalesCount: Dispatch<SetStateAction<number>>;
 };
@@ -105,10 +107,14 @@ export function usePosSales({
   addActivityLog,
   refreshMedicinesFromDb,
   refreshActiveCashierShift,
+  bumpCashierShiftSalesTick,
   setOfflineMedicinesCacheAt,
   setPendingOfflineSalesCount,
 }: UsePosSalesOptions) {
   const [isSelling, setIsSelling] = useState(false);
+  const [saleFeedback, setSaleFeedback] = useState<{ type: "error" | "success"; text: string } | null>(
+    null,
+  );
   const [heldInvoices, setHeldInvoices] = useState<HeldInvoice[]>([]);
   const [showHeldInvoicesModal, setShowHeldInvoicesModal] = useState(false);
   const [isHolding, setIsHolding] = useState(false);
@@ -139,49 +145,56 @@ export function usePosSales({
     }
   }, [getPharmacyId]);
 
-  const completeSale = useCallback(async () => {
+  const completeSale = useCallback(async (): Promise<boolean> => {
+    setSaleFeedback(null);
     if (!canUseSystemActions()) {
       showSubscriptionExpiredAlert();
-      return;
+      return false;
     }
     if (!canUsePOS()) {
-      alert(isArabic ? "ليس لديك صلاحية للبيع" : "You do not have permission to sell");
-      return;
+      setSaleFeedback({
+        type: "error",
+        text: isArabic ? "ليس لديك صلاحية للبيع" : "You do not have permission to sell",
+      });
+      return false;
     }
 
     if (cart.length === 0) {
-      alert(t.emptyCart);
-      return;
+      setSaleFeedback({ type: "error", text: t.emptyCart });
+      return false;
     }
 
     if (discount > subtotal) {
-      alert(
-        isArabic
+      setSaleFeedback({
+        type: "error",
+        text: isArabic
           ? "الخصم لا يمكن أن يكون أكبر من إجمالي السلة"
           : "Discount cannot be greater than subtotal",
-      );
-      return;
+      });
+      return false;
     }
 
     if (paymentMethod === "credit" && !customerName.trim()) {
-      alert(
-        isArabic
+      setSaleFeedback({
+        type: "error",
+        text: isArabic
           ? "من فضلك أدخل اسم العميل في حالة البيع الآجل"
           : "Please enter customer name for credit sale",
-      );
-      return;
+      });
+      return false;
     }
 
     if (!navigator.onLine && paymentMethod === "credit") {
-      alert(
-        isArabic
+      setSaleFeedback({
+        type: "error",
+        text: isArabic
           ? "البيع الآجل غير متاح بدون اتصال بالإنترنت"
           : "Credit sales are not available while offline",
-      );
-      return;
+      });
+      return false;
     }
 
-    if (isSelling) return;
+    if (isSelling) return false;
 
     const shiftRequired = requiresOpenCashierShift(appUser);
     let shiftForSale = activeCashierShift;
@@ -189,12 +202,13 @@ export function usePosSales({
     if (shiftRequired) {
       shiftForSale = (await refreshActiveCashierShift()) ?? null;
       if (!shiftForSale) {
-        alert(
-          isArabic
+        setSaleFeedback({
+          type: "error",
+          text: isArabic
             ? "يجب فتح وردية كاشير قبل إتمام البيع."
             : "Open a cashier shift before completing the sale.",
-        );
-        return;
+        });
+        return false;
       }
     } else if (
       appUser?.role === "cashier" &&
@@ -205,7 +219,7 @@ export function usePosSales({
           : "No cashier shift is open. Complete sale without a shift?",
       )
     ) {
-      return;
+      return false;
     }
 
     try {
@@ -247,7 +261,7 @@ export function usePosSales({
         shiftId: currentWorkShiftId || undefined,
         cashierShiftId: shiftForSale?.id,
         customerName: customerName.trim(),
-        date: new Date().toLocaleString(),
+        date: formatAppNowForStorage(isArabic),
         createdAt: new Date().toISOString(),
         items: invoiceItems,
         subtotal,
@@ -278,12 +292,13 @@ export function usePosSales({
       if (!navigator.onLine) {
         const shortItem = cart.find((item) => item.cartQty > item.qty);
         if (shortItem) {
-          alert(
-            isArabic
+          setSaleFeedback({
+            type: "error",
+            text: isArabic
               ? `الكمية غير كافية في النسخة المحلية: ${shortItem.name_ar || shortItem.name_en}`
               : `Insufficient cached stock: ${shortItem.name_en || shortItem.name_ar}`,
-          );
-          return;
+          });
+          return false;
         }
 
         const pharmacyId = getPharmacyId();
@@ -301,13 +316,13 @@ export function usePosSales({
 
         printSavedInvoice(invoice as Invoice);
         resetCart();
-
-        alert(
-          isArabic
+        setSaleFeedback({
+          type: "success",
+          text: isArabic
             ? `تم حفظ البيع محلياً (${invoiceNumber}). سيتم رفعه تلقائياً عند عودة الاتصال.`
             : `Sale saved locally (${invoiceNumber}). It will upload automatically when you are back online.`,
-        );
-        return;
+        });
+        return true;
       }
 
       await pharmacyService.completeSaleWithStockDeduction(
@@ -318,6 +333,7 @@ export function usePosSales({
       await refreshMedicinesFromDb();
       if (shiftForSale) {
         await refreshActiveCashierShift();
+        bumpCashierShiftSalesTick?.();
       }
       if (cashierId) {
         void pharmacyService
@@ -333,7 +349,10 @@ export function usePosSales({
 
       const savedInvoice = invoice as Invoice;
       resetCart();
-      alert(isArabic ? `تم تسجيل البيع برقم ${invoiceNumber}` : `Sale ${invoiceNumber} completed`);
+      setSaleFeedback({
+        type: "success",
+        text: isArabic ? `تم تسجيل البيع برقم ${invoiceNumber}` : `Sale ${invoiceNumber} completed`,
+      });
 
       try {
         await addActivityLog({
@@ -354,10 +373,11 @@ export function usePosSales({
       } catch (printError) {
         console.warn("Sale invoice PDF skipped:", printError);
       }
+      return true;
     } catch (error) {
       console.error("Complete sale error:", error);
-
-      alert(formatPosSaleError(error, isArabic));
+      setSaleFeedback({ type: "error", text: formatPosSaleError(error, isArabic) });
+      return false;
     } finally {
       setIsSelling(false);
     }
@@ -378,6 +398,7 @@ export function usePosSales({
     paymentMethod,
     printSavedInvoice,
     refreshActiveCashierShift,
+    bumpCashierShiftSalesTick,
     refreshMedicinesFromDb,
     resetCart,
     safeDiscount,
@@ -607,6 +628,8 @@ export function usePosSales({
 
   return {
     isSelling,
+    saleFeedback,
+    setSaleFeedback,
     heldInvoices,
     setHeldInvoices,
     showHeldInvoicesModal,

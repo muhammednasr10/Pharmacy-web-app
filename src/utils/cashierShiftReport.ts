@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import type { CashierShift, CashierShiftSummary, PharmacySettings } from "../types";
+import { formatAppDateTime } from "./date";
 
 function pdfLabel(ar: string, en: string, isArabic: boolean) {
   return isArabic ? ar : en;
@@ -10,8 +11,7 @@ function formatMoney(value: number, currency: string) {
 }
 
 function formatDateTime(value: string | undefined, isArabic: boolean) {
-  if (!value) return "—";
-  return new Date(value).toLocaleString(isArabic ? "ar-EG" : "en-GB");
+  return formatAppDateTime(value, isArabic);
 }
 
 export function downloadCashierShiftPdf(options: {

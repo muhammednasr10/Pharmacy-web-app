@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { StockMovement } from "../../types";
-import { formatDateInput } from "../../utils/date";
+import { formatAppDateTime, formatDateInput } from "../../utils/date";
 import { barcodeCSV, downloadCSV } from "../../utils/csvExport";
 import { getMovementTypeLabel } from "../../utils/stockMovementLabels";
 import { usePaginatedStockMovements } from "../../hooks/usePaginatedStockMovements";
@@ -80,7 +80,7 @@ export default function InventoryMovementsPanel({
       movement.purchaseNumber || "-",
       movement.supplierName || "-",
       movement.userName || "-",
-      movement.createdAt ? new Date(movement.createdAt).toLocaleString() : "-",
+      movement.createdAt ? formatAppDateTime(movement.createdAt, isArabic) : "-",
     ]);
 
     downloadCSV(`stock-movements-${formatDateInput(new Date())}.csv`, [header, ...body]);
@@ -196,7 +196,7 @@ export default function InventoryMovementsPanel({
                   <td>{movement.invoiceNumber || "-"}</td>
                   <td>{movement.userName || "-"}</td>
                   <td>
-                    {movement.createdAt ? new Date(movement.createdAt).toLocaleString() : "-"}
+                    {formatAppDateTime(movement.createdAt, isArabic)}
                   </td>
                 </tr>
               ))}

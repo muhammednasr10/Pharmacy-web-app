@@ -14,9 +14,20 @@ export const emptyMedicineForm: NewMedicineForm = {
   expiry: "",
 };
 
+export type MedicineFormFieldErrors = {
+  name_ar?: string;
+  name_en?: string;
+  barcode?: string;
+  expiry?: string;
+  qty?: string;
+  buyPrice?: string;
+  price?: string;
+};
+
 export type MedicineFormFeedback = {
   type: "error" | "success";
   text: string;
+  fieldErrors?: MedicineFormFieldErrors;
 };
 
 type ActivityLogInput = {
@@ -84,27 +95,49 @@ export function useMedicineManagement({
       });
       return false;
     }
-    if (
-      !newMedicine.name_ar ||
-      !newMedicine.name_en ||
-      !newMedicine.barcode ||
-      !newMedicine.expiry
-    ) {
+    const fieldErrors: MedicineFormFieldErrors = {};
+    if (!String(newMedicine.name_ar || "").trim()) {
+      fieldErrors.name_ar = isArabic ? "أدخل الاسم العربي" : "Enter Arabic name";
+    }
+    if (!String(newMedicine.name_en || "").trim()) {
+      fieldErrors.name_en = isArabic ? "أدخل الاسم الإنجليزي" : "Enter English name";
+    }
+    if (!String(newMedicine.barcode || "").trim()) {
+      fieldErrors.barcode = isArabic ? "أدخل الباركود" : "Enter barcode";
+    }
+    if (!String(newMedicine.expiry || "").trim()) {
+      fieldErrors.expiry = isArabic ? "أدخل تاريخ الصلاحية" : "Enter expiry date";
+    }
+    if (Object.keys(fieldErrors).length > 0) {
       setMedicineFormFeedback({
         type: "error",
-        text: isArabic
-          ? "من فضلك أكمل الاسم العربي والإنجليزي والباركود وتاريخ الصلاحية"
-          : "Please complete Arabic name, English name, barcode, and expiry date",
+        text: isArabic ? "أكمل الحقول المطلوبة" : "Complete the required fields",
+        fieldErrors,
       });
       return false;
     }
 
     if (newMedicine.qty < 0 || (newMedicine.buyPrice ?? -1) < 0 || newMedicine.price <= 0) {
+      const priceErrors: MedicineFormFieldErrors = {};
+      if (newMedicine.qty < 0) {
+        priceErrors.qty = isArabic ? "الكمية لا يمكن أن تكون سالبة" : "Quantity cannot be negative";
+      }
+      if ((newMedicine.buyPrice ?? -1) < 0) {
+        priceErrors.buyPrice = isArabic
+          ? "سعر الشراء لا يمكن أن يكون سالبًا"
+          : "Buy price cannot be negative";
+      }
+      if (newMedicine.price <= 0) {
+        priceErrors.price = isArabic
+          ? "سعر البيع يجب أن يكون أكبر من صفر"
+          : "Sell price must be greater than zero";
+      }
       setMedicineFormFeedback({
         type: "error",
         text: isArabic
           ? "تأكد من الكمية وسعر الشراء وسعر البيع (سعر البيع يجب أن يكون أكبر من صفر)"
           : "Check quantity, buy price, and sell price (sell price must be greater than zero)",
+        fieldErrors: priceErrors,
       });
       return false;
     }

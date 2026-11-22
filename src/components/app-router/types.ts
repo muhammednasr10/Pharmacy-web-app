@@ -195,6 +195,9 @@ export type AppPageRouterProps = {
   currentWorkShiftLabel: string;
   currentWorkShiftId: string;
   activeCashierShift: CashierShift | null;
+  cashierShiftSalesTick?: number;
+  saleFeedback?: { type: "error" | "success"; text: string } | null;
+  setSaleFeedback?: (value: { type: "error" | "success"; text: string } | null) => void;
   setActiveCashierShift: Dispatch<SetStateAction<CashierShift | null>>;
   isOnline: boolean;
   pendingOfflineSalesCount: number;
@@ -237,7 +240,7 @@ export type AppPageRouterProps = {
   setDiscount: (value: number) => void;
   setPaymentMethod: (value: PaymentMethod) => void;
   setCustomerName: (value: string) => void;
-  completeSale: () => void | Promise<void>;
+  completeSale: () => boolean | Promise<boolean>;
   handleHoldInvoice: () => void | Promise<void | import("../../hooks/usePosSales").PosActionFeedback>;
   openHeldInvoicesModal: () => void | Promise<void>;
   setShowInstantReturnModal: (open: boolean) => void;

@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AppUser, CashierShift, CashierShiftSummary, PharmacySettings } from "../types";
 import * as pharmacyService from "../services/pharmacyService";
+import { cashAmountErrorMessage, parseCashAmountInput } from "../utils/cashierShiftCash";
 
 type CashierShiftCloseModalProps = {
   isArabic: boolean;
@@ -31,37 +32,49 @@ export default function CashierShiftCloseModal({
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [busy, setBusy] = useState(false);
   const [actualCash, setActualCash] = useState("");
+  const [actualCashError, setActualCashError] = useState("");
   const [closeNotes, setCloseNotes] = useState("");
+  const [feedback, setFeedback] = useState<{ type: "error" | "success"; text: string } | null>(null);
+
+  const parsedActual = useMemo(() => parseCashAmountInput(actualCash), [actualCash]);
+  const canConfirmClose = Boolean(summary) && parsedActual.ok && !busy;
 
   const refreshSummary = useCallback(async () => {
     setLoadingSummary(true);
     try {
       const next = await pharmacyService.computeCashierShiftSummary(shift);
       setSummary(next);
-      setActualCash(next.expectedCash.toFixed(2));
+      setActualCash("");
+      setActualCashError("");
     } catch (error) {
       console.error("Cashier shift summary:", error);
+      setFeedback({
+        type: "error",
+        text: isArabic ? "تعذّر تحميل ملخص الوردية" : "Could not load shift summary",
+      });
     } finally {
       setLoadingSummary(false);
     }
-  }, [shift]);
+  }, [isArabic, shift]);
 
   useEffect(() => {
     void refreshSummary();
   }, [refreshSummary]);
 
   async function handleCloseShift() {
-    const counted = Number(actualCash);
-    if (!Number.isFinite(counted) || counted < 0) {
-      alert(isArabic ? "أدخل النقد الفعلي في الصندوق" : "Enter the actual cash in drawer");
+    if (!summary) return;
+    const parsed = parseCashAmountInput(actualCash);
+    if (!parsed.ok) {
+      setActualCashError(cashAmountErrorMessage(parsed.reason, isArabic, "actual"));
       return;
     }
-
+    setActualCashError("");
+    setFeedback(null);
     setBusy(true);
     try {
       const closed = await pharmacyService.closeCashierShift({
         shiftId: shift.id,
-        actualCash: counted,
+        actualCash: parsed.value,
         notes: closeNotes.trim(),
         closedById: appUser.uid,
         closedByName: appUser.name,
@@ -77,10 +90,9 @@ export default function CashierShiftCloseModal({
         getPaymentLabel,
       });
       onClosed(closed);
-      alert(isArabic ? "تم إغلاق الوردية وحفظ التقرير" : "Shift closed and report saved");
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      alert(message);
+      setFeedback({ type: "error", text: message });
     } finally {
       setBusy(false);
     }
@@ -147,7 +159,7 @@ export default function CashierShiftCloseModal({
                 <strong>{formatMoney(summary.totalSales, currency)}</strong>
               </div>
               <div className="cashierShiftCloseHighlight">
-                <span>{isArabic ? "النقد المتوقع" : "Expected cash"}</span>
+                <span>{isArabic ? "النقد المتوقع (للقراءة فقط)" : "Expected cash (read-only)"}</span>
                 <strong>{formatMoney(summary.expectedCash, currency)}</strong>
               </div>
             </div>
@@ -158,18 +170,31 @@ export default function CashierShiftCloseModal({
                 type="number"
                 min="0"
                 step="0.01"
-                className="tableInput"
+                className={`tableInput${actualCashError ? " is-invalid" : ""}`}
                 value={actualCash}
-                onChange={(event) => setActualCash(event.target.value)}
+                placeholder={isArabic ? "أدخل بعد العد" : "Enter after counting"}
+                onChange={(event) => {
+                  setActualCash(event.target.value);
+                  setActualCashError("");
+                }}
               />
+              {actualCashError ? (
+                <span className="fieldErrorText" role="alert">
+                  {actualCashError}
+                </span>
+              ) : (
+                <span className="mutedText">
+                  {isArabic ? "اتركه فارغًا حتى تعدّ النقد — الصفر مسموح" : "Leave empty until counted — zero is allowed"}
+                </span>
+              )}
             </label>
 
-            {actualCash && (
+            {parsedActual.ok ? (
               <p className="returnsSectionHint">
                 {isArabic ? "الفرق:" : "Variance:"}{" "}
-                {formatMoney(Number(actualCash) - summary.expectedCash, currency)}
+                {formatMoney(parsedActual.value - summary.expectedCash, currency)}
               </p>
-            )}
+            ) : null}
 
             <label className="formField">
               {isArabic ? "ملاحظات" : "Notes"}
@@ -181,12 +206,18 @@ export default function CashierShiftCloseModal({
               />
             </label>
 
+            {feedback ? (
+              <div className={feedback.type === "error" ? "loginError" : "loginSuccess"} role="status">
+                {feedback.text}
+              </div>
+            ) : null}
+
             <div className="modalActions">
               <button
                 type="button"
                 className="dangerBtn"
                 onClick={() => void handleCloseShift()}
-                disabled={busy}
+                disabled={!canConfirmClose}
               >
                 {busy
                   ? isArabic

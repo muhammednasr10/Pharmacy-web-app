@@ -27,6 +27,15 @@ type MedicineEntryGridProps = {
   enableHardwareScanner?: boolean;
   showBuyPrice?: boolean;
   lookupBarcode?: (barcode: string) => Promise<Medicine | null | undefined>;
+  fieldErrors?: {
+    name_ar?: string;
+    name_en?: string;
+    barcode?: string;
+    expiry?: string;
+    qty?: string;
+    buyPrice?: string;
+    price?: string;
+  };
 };
 
 type ActiveField = "barcode" | "name_ar" | "name_en" | null;
@@ -45,6 +54,7 @@ export default function MedicineEntryGrid({
   enableHardwareScanner = true,
   showBuyPrice = true,
   lookupBarcode,
+  fieldErrors,
 }: MedicineEntryGridProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
@@ -308,6 +318,7 @@ export default function MedicineEntryGrid({
           <div className="medicineBarcodeInputRow">
             <input
               ref={barcodeInputRef}
+              className={fieldErrors?.barcode ? "is-invalid" : undefined}
               value={value.barcode}
               onChange={(e) => updateField("barcode", e.target.value)}
               onFocus={() => setActiveField("barcode")}
@@ -324,6 +335,7 @@ export default function MedicineEntryGrid({
               placeholder={t.barcode}
               disabled={disabled}
               autoComplete="off"
+              aria-invalid={Boolean(fieldErrors?.barcode)}
             />
             {showBarcodeCamera && cameraSupported && (
               <button
@@ -338,6 +350,11 @@ export default function MedicineEntryGrid({
               </button>
             )}
           </div>
+          {fieldErrors?.barcode ? (
+            <span className="fieldErrorText" role="alert">
+              {fieldErrors.barcode}
+            </span>
+          ) : null}
           {activeField === "barcode" && suggestions.length > 0 && (
             <div className="medicineLookupSuggestions" role="listbox">
               {suggestions.map((medicine) => (
@@ -363,13 +380,20 @@ export default function MedicineEntryGrid({
         <div className="medicineEntryField medicineLookupField">
           <label>{isArabic ? "اسم الدواء بالعربي" : "Arabic medicine name"}</label>
           <input
+            className={fieldErrors?.name_ar ? "is-invalid" : undefined}
             value={value.name_ar}
             onChange={(e) => updateField("name_ar", e.target.value)}
             onFocus={() => setActiveField("name_ar")}
             placeholder={isArabic ? "اسم الدواء بالعربي" : "Arabic medicine name"}
             disabled={disabled}
             autoComplete="off"
+            aria-invalid={Boolean(fieldErrors?.name_ar)}
           />
+          {fieldErrors?.name_ar ? (
+            <span className="fieldErrorText" role="alert">
+              {fieldErrors.name_ar}
+            </span>
+          ) : null}
           {activeField === "name_ar" && suggestions.length > 0 && (
             <div className="medicineLookupSuggestions" role="listbox">
               {suggestions.map((medicine) => (
@@ -395,13 +419,20 @@ export default function MedicineEntryGrid({
         <div className="medicineEntryField medicineLookupField">
           <label>{isArabic ? "اسم الدواء بالإنجليزي" : "English medicine name"}</label>
           <input
+            className={fieldErrors?.name_en ? "is-invalid" : undefined}
             value={value.name_en}
             onChange={(e) => updateField("name_en", e.target.value)}
             onFocus={() => setActiveField("name_en")}
             placeholder={isArabic ? "اسم الدواء بالإنجليزي" : "English medicine name"}
             disabled={disabled}
             autoComplete="off"
+            aria-invalid={Boolean(fieldErrors?.name_en)}
           />
+          {fieldErrors?.name_en ? (
+            <span className="fieldErrorText" role="alert">
+              {fieldErrors.name_en}
+            </span>
+          ) : null}
           {activeField === "name_en" && suggestions.length > 0 && (
             <div className="medicineLookupSuggestions" role="listbox">
               {suggestions.map((medicine) => (
@@ -428,46 +459,74 @@ export default function MedicineEntryGrid({
           <label>{qtyPlaceholder || t.qty}</label>
           <input
             type="number"
+            className={fieldErrors?.qty ? "is-invalid" : undefined}
             value={value.qty || ""}
             onChange={(e) => updateField("qty", e.target.value === "" ? 0 : Number(e.target.value))}
             placeholder={qtyPlaceholder || t.qty}
             disabled={disabled}
+            aria-invalid={Boolean(fieldErrors?.qty)}
           />
+          {fieldErrors?.qty ? (
+            <span className="fieldErrorText" role="alert">
+              {fieldErrors.qty}
+            </span>
+          ) : null}
         </div>
         {showBuyPrice ? (
           <div className="medicineEntryField">
             <label>{isArabic ? "سعر الشراء" : "Buy price"}</label>
             <input
               type="number"
+              className={fieldErrors?.buyPrice ? "is-invalid" : undefined}
               value={value.buyPrice || ""}
               onChange={(e) =>
                 updateField("buyPrice", e.target.value === "" ? 0 : Number(e.target.value))
               }
               placeholder={isArabic ? "سعر الشراء" : "Buy price"}
               disabled={disabled}
+              aria-invalid={Boolean(fieldErrors?.buyPrice)}
             />
+            {fieldErrors?.buyPrice ? (
+              <span className="fieldErrorText" role="alert">
+                {fieldErrors.buyPrice}
+              </span>
+            ) : null}
           </div>
         ) : null}
         <div className="medicineEntryField">
           <label>{isArabic ? "سعر البيع" : "Sell price"}</label>
           <input
             type="number"
+            className={fieldErrors?.price ? "is-invalid" : undefined}
             value={value.price || ""}
             onChange={(e) =>
               updateField("price", e.target.value === "" ? 0 : Number(e.target.value))
             }
             placeholder={isArabic ? "سعر البيع" : "Sell price"}
             disabled={disabled}
+            aria-invalid={Boolean(fieldErrors?.price)}
           />
+          {fieldErrors?.price ? (
+            <span className="fieldErrorText" role="alert">
+              {fieldErrors.price}
+            </span>
+          ) : null}
         </div>
         <div className="medicineEntryField">
           <label>{t.expiry}</label>
           <input
             type="date"
+            className={fieldErrors?.expiry ? "is-invalid" : undefined}
             value={value.expiry}
             onChange={(e) => updateField("expiry", e.target.value)}
             disabled={disabled}
+            aria-invalid={Boolean(fieldErrors?.expiry)}
           />
+          {fieldErrors?.expiry ? (
+            <span className="fieldErrorText" role="alert">
+              {fieldErrors.expiry}
+            </span>
+          ) : null}
         </div>
       </div>
 
