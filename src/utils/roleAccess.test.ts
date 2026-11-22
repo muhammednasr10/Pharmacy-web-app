@@ -9,18 +9,12 @@ describe("isCustomRoleKey", () => {
 });
 
 describe("finalizeAllowedPagesForRole", () => {
-  it("adds sql migrations page only for super_admin", () => {
-    const pages = finalizeAllowedPagesForRole("super_admin", ["dashboard", "pos"]);
-    expect(pages).toContain("sqlMigrations");
-  });
-
-  it("removes sql migrations page from non-super roles", () => {
-    const pages = finalizeAllowedPagesForRole("pharmacy_admin", [
-      "dashboard",
-      "pos",
-      "sqlMigrations",
-    ]);
-    expect(pages).not.toContain("sqlMigrations");
-    expect(pages).toEqual(["dashboard", "pos"]);
+  it("removes sql migrations page for every role including super_admin", () => {
+    expect(
+      finalizeAllowedPagesForRole("super_admin", ["dashboard", "pos", "sqlMigrations"]),
+    ).toEqual(["dashboard", "pos"]);
+    expect(
+      finalizeAllowedPagesForRole("pharmacy_admin", ["dashboard", "pos", "sqlMigrations"]),
+    ).toEqual(["dashboard", "pos"]);
   });
 });

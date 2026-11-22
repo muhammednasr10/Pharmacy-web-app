@@ -20,10 +20,10 @@ export type TierFeatureDefinition = {
 export const TIER_CONFIGURABLE_FEATURES: TierFeatureDefinition[] = [
   {
     key: "branchesPage",
-    labelAr: "صفحة الفروع",
-    labelEn: "Branches page",
-    descriptionAr: "إدارة فروع الصيدلية من صفحة الفروع",
-    descriptionEn: "Manage pharmacy branches from the branches page",
+    labelAr: "بيانات الفروع (المخزن)",
+    labelEn: "Branch data (inventory)",
+    descriptionAr: "إدارة بيانات الفروع من تبويب إدارة المخزن",
+    descriptionEn: "Manage branch data from Inventory Management",
   },
   {
     key: "multiBranchSwitch",

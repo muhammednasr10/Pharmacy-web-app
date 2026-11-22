@@ -4725,7 +4725,6 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
 }
 
 .loginWelcomePageItem {
-  position: relative;
   display: inline-flex;
   align-items: center;
   min-height: 2.4rem;
@@ -4734,8 +4733,9 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
   border: 1px solid #d7e4dc;
   background: rgba(255, 255, 255, 0.88);
   color: #001f3f;
-  cursor: default;
-  transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  cursor: pointer;
+  font: inherit;
+  transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.15s ease;
 }
 
 .loginWelcomePageItem strong {
@@ -4743,28 +4743,105 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
   font-weight: 700;
 }
 
-.loginWelcomePageDesc {
-  display: none;
-  margin-inline-start: 0.55rem;
-  max-width: 16rem;
-  font-size: 0.82rem;
-  line-height: 1.35;
-  color: #475467;
-  font-weight: 500;
+.loginWelcomePageItem.is-addon {
+  background: rgba(185, 78, 78, 0.12);
+  border-color: #c97878;
+  color: #8f3d3d;
+}
+
+.loginWelcomePageItem.is-addon strong {
+  color: #8f3d3d;
+}
+
+.loginWelcomePageItem.is-addon.is-addon-on {
+  background: rgba(5, 105, 59, 0.14);
+  border-color: #05693b;
+  color: #05693b;
+}
+
+.loginWelcomePageItem.is-addon.is-addon-on strong {
+  color: #05693b;
 }
 
 .loginWelcomePageItem:hover,
-.loginWelcomePageItem:focus-within {
+.loginWelcomePageItem:focus-visible,
+.loginWelcomePageItem.is-open {
   background: #fff;
   border-color: #05693b;
   box-shadow: 0 8px 20px rgba(5, 105, 59, 0.12);
-  border-radius: 14px;
-  z-index: 2;
+  transform: translateY(-1px);
 }
 
-.loginWelcomePageItem:hover .loginWelcomePageDesc,
-.loginWelcomePageItem:focus-within .loginWelcomePageDesc {
-  display: inline;
+.loginWelcomePageItem.is-addon:hover,
+.loginWelcomePageItem.is-addon:focus-visible,
+.loginWelcomePageItem.is-addon.is-open {
+  background: rgba(185, 78, 78, 0.18);
+  border-color: #b94e4e;
+  box-shadow: 0 8px 20px rgba(185, 78, 78, 0.18);
+}
+
+.loginWelcomePageItem.is-addon.is-addon-on:hover,
+.loginWelcomePageItem.is-addon.is-addon-on:focus-visible,
+.loginWelcomePageItem.is-addon.is-addon-on.is-open {
+  background: rgba(5, 105, 59, 0.18);
+  border-color: #045a32;
+  box-shadow: 0 8px 20px rgba(5, 105, 59, 0.16);
+}
+
+.loginWelcomePageCard {
+  width: min(92vw, 420px);
+  display: grid;
+  gap: 0.85rem;
+  padding: 1.15rem 1.2rem 1.25rem;
+  border-radius: 18px;
+  border: 1px solid #d7e4dc;
+  background: #fff;
+  box-shadow: 0 18px 40px rgba(16, 24, 40, 0.16);
+}
+
+.loginWelcomePageCard.is-addon {
+  border-color: #c97878;
+  background: linear-gradient(180deg, rgba(185, 78, 78, 0.1), #fff 42%);
+}
+
+.loginWelcomePageCard.is-addon.is-addon-on {
+  border-color: #05693b;
+  background: linear-gradient(180deg, rgba(5, 105, 59, 0.1), #fff 42%);
+}
+
+.loginWelcomePageCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.loginWelcomePageCardHeader h3 {
+  margin: 0;
+  color: #001f3f;
+  font-size: 1.15rem;
+}
+
+.loginWelcomePageCardBody {
+  margin: 0;
+  color: #475467;
+  line-height: 1.6;
+  font-size: 0.98rem;
+}
+
+.loginWelcomePageCardHint {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 12px;
+  background: rgba(185, 78, 78, 0.12);
+  color: #8f3d3d;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.loginWelcomePageCard.is-addon-on .loginWelcomePageCardHint {
+  background: rgba(5, 105, 59, 0.12);
+  color: #05693b;
 }
 
 .loginWelcomeActions {
@@ -4835,23 +4912,31 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
 
 .loginWelcomeCalculator {
   display: grid;
-  gap: 1rem;
-  padding: 1.2rem;
+  gap: 0.7rem;
+  padding: 1rem 1.1rem;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid #d7e4dc;
   box-shadow: 0 12px 30px rgba(16, 24, 40, 0.06);
 }
 
+.loginWelcomeCalculator .loginWelcomePlansHeader {
+  margin-bottom: 0.15rem;
+  gap: 0.2rem;
+}
+
 .loginWelcomeCalcGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.65rem 1.1rem;
 }
 
 .loginWelcomeCalcField {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.28rem;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .loginWelcomeCalcField span {
@@ -4859,36 +4944,63 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
   color: #001f3f;
 }
 
+.loginWelcomeCalcFieldControl {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
 .loginWelcomeCalcField input {
+  width: 5.25rem;
+  flex: 0 0 auto;
   border: 1px solid #d0d5dd;
-  border-radius: 12px;
-  padding: 0.8rem 0.9rem;
-  font-size: 1rem;
+  border-radius: 10px;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: center;
+  direction: ltr;
 }
 
 .loginWelcomeCalcField small {
   color: #667085;
+  font-size: 0.84rem;
+  white-space: nowrap;
 }
 
 .loginWelcomeCalcAddon {
-  grid-column: 1 / -1;
+  flex: 1 1 100%;
   display: flex;
-  gap: 0.75rem;
-  align-items: flex-start;
-  padding: 0.9rem 1rem;
-  border-radius: 14px;
-  border: 1px solid #d7e4dc;
-  background: #f7fbf8;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.55rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid #c97878;
+  background: rgba(185, 78, 78, 0.1);
   cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.loginWelcomeCalcAddon.is-on {
+  border-color: #05693b;
+  background: rgba(5, 105, 59, 0.12);
+}
+
+.loginWelcomeCalcAddon.is-on strong,
+.loginWelcomeCalcAddon.is-on b {
+  color: #05693b;
 }
 
 .loginWelcomeCalcAddon input {
-  margin-top: 0.2rem;
+  margin-top: 0;
+  flex: 0 0 auto;
 }
 
 .loginWelcomeCalcAddon span {
   display: grid;
-  gap: 0.25rem;
+  gap: 0.12rem;
+  min-width: 0;
 }
 
 .loginWelcomeCalcAddon strong {
@@ -4908,8 +5020,8 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
 
 .loginWelcomeCalcTotal {
   display: grid;
-  gap: 0.55rem;
-  padding-top: 0.4rem;
+  gap: 0.3rem;
+  padding-top: 0.35rem;
   border-top: 1px solid #e4ebe6;
 }
 
@@ -4930,16 +5042,140 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
   color: #667085;
 }
 
-@media (max-width: 700px) {
-  .loginWelcomeCalcGrid {
+.loginWelcomeSignup {
+  display: grid;
+  gap: 1.15rem;
+  padding: 1.35rem 1.3rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #d7e4dc;
+  box-shadow: 0 12px 30px rgba(16, 24, 40, 0.06);
+}
+
+.loginWelcomeActionsCard {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1.2rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #d7e4dc;
+  box-shadow: 0 12px 30px rgba(16, 24, 40, 0.06);
+}
+
+.loginWelcomeActionsCardButtons {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.loginWelcomeActionsCard .loginWelcomePrimary,
+.loginWelcomeActionsCard .loginWelcomeSecondary {
+  width: 100%;
+}
+
+.loginWelcomeSignupForm {
+  display: grid;
+  gap: 1.15rem;
+}
+
+.loginWelcomeSignupRow {
+  display: grid;
+  gap: 1rem;
+}
+
+.loginWelcomeSignupRow--pharmacy {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.loginWelcomeSignupRow--manager {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
+  column-gap: 1rem;
+  row-gap: 1.05rem;
+}
+
+.loginWelcomeSignupFieldStack {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.loginWelcomeFieldHint {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.loginWelcomeSignupForm input,
+.loginWelcomeSignupForm .loginEmailWithDomain,
+.loginWelcomeSignupForm .loginPasswordField,
+.loginWelcomeSignupForm .loginWelcomeSignupFieldStack {
+  width: 100%;
+  min-width: 0;
+}
+
+.loginWelcomeSignupForm input {
+  padding: 0.85rem 0.95rem;
+  border-radius: 12px;
+  border: 1px solid #c8d5cc;
+  background: #fff;
+  color: #001f3f;
+  font: inherit;
+}
+
+.loginWelcomeSignupForm .loginEmailWithDomain,
+.loginWelcomeSignupForm .loginPasswordField {
+  border-radius: 12px;
+}
+
+.loginWelcomeSignupForm input:focus {
+  outline: 2px solid rgba(5, 105, 59, 0.35);
+  border-color: #05693b;
+}
+
+.loginWelcomeSignupForm .loginWelcomePrimary,
+.loginWelcomeSignupForm .loginWelcomeSecondary {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .loginWelcomeSignupRow--pharmacy,
+  .loginWelcomeSignupRow--manager {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .loginWelcomeSignupRow--pharmacy,
+  .loginWelcomeSignupRow--manager {
     grid-template-columns: 1fr;
   }
 }
 
+@media (max-width: 700px) {
+  .loginWelcomeCalcGrid {
+    gap: 0.7rem;
+  }
+
+  .loginWelcomeCalcField {
+    flex: 1 1 100%;
+  }
+}
+
 html[data-theme="dark"] .loginWelcomeCalculator,
-[data-theme="dark"] .loginWelcomeCalculator {
+html[data-theme="dark"] .loginWelcomeSignup,
+html[data-theme="dark"] .loginWelcomeActionsCard,
+[data-theme="dark"] .loginWelcomeCalculator,
+[data-theme="dark"] .loginWelcomeSignup,
+[data-theme="dark"] .loginWelcomeActionsCard {
   background: rgba(22, 30, 40, 0.92);
   border-color: #2a3644;
+}
+
+html[data-theme="dark"] .loginWelcomeSignupForm input,
+[data-theme="dark"] .loginWelcomeSignupForm input {
+  background: #121a22;
+  color: #f5f7fa;
+  border-color: #334155;
 }
 
 html[data-theme="dark"] .loginWelcomeCalcField span,
@@ -4953,8 +5189,38 @@ html[data-theme="dark"] .loginWelcomeCalcTotal strong,
 
 html[data-theme="dark"] .loginWelcomeCalcAddon,
 [data-theme="dark"] .loginWelcomeCalcAddon {
-  background: #1a2330;
-  border-color: #334155;
+  background: rgba(185, 78, 78, 0.16);
+  border-color: #c97878;
+}
+
+html[data-theme="dark"] .loginWelcomeCalcAddon.is-on,
+[data-theme="dark"] .loginWelcomeCalcAddon.is-on {
+  background: rgba(5, 105, 59, 0.18);
+  border-color: #05693b;
+}
+
+html[data-theme="dark"] .loginWelcomePageItem.is-addon,
+[data-theme="dark"] .loginWelcomePageItem.is-addon {
+  background: rgba(185, 78, 78, 0.18);
+  border-color: #c97878;
+  color: #e8b4b4;
+}
+
+html[data-theme="dark"] .loginWelcomePageItem.is-addon strong,
+[data-theme="dark"] .loginWelcomePageItem.is-addon strong {
+  color: #e8b4b4;
+}
+
+html[data-theme="dark"] .loginWelcomePageItem.is-addon.is-addon-on,
+[data-theme="dark"] .loginWelcomePageItem.is-addon.is-addon-on {
+  background: rgba(5, 105, 59, 0.2);
+  border-color: #05693b;
+  color: #8fd6b0;
+}
+
+html[data-theme="dark"] .loginWelcomePageItem.is-addon.is-addon-on strong,
+[data-theme="dark"] .loginWelcomePageItem.is-addon.is-addon-on strong {
+  color: #8fd6b0;
 }
 
 html[data-theme="dark"] .loginWelcomeCalcField input,
@@ -5091,11 +5357,41 @@ html[data-theme="dark"] .loginWelcomePageDesc,
 }
 
 html[data-theme="dark"] .loginWelcomePageItem:hover,
-html[data-theme="dark"] .loginWelcomePageItem:focus-within,
+html[data-theme="dark"] .loginWelcomePageItem:focus-visible,
+html[data-theme="dark"] .loginWelcomePageItem.is-open,
 [data-theme="dark"] .loginWelcomePageItem:hover,
-[data-theme="dark"] .loginWelcomePageItem:focus-within {
+[data-theme="dark"] .loginWelcomePageItem:focus-visible,
+[data-theme="dark"] .loginWelcomePageItem.is-open {
   background: #1a2330;
   border-color: #05693b;
+}
+
+html[data-theme="dark"] .loginWelcomePageCard,
+[data-theme="dark"] .loginWelcomePageCard {
+  background: #162028;
+  border-color: #2a3644;
+}
+
+html[data-theme="dark"] .loginWelcomePageCard.is-addon,
+[data-theme="dark"] .loginWelcomePageCard.is-addon {
+  background: linear-gradient(180deg, rgba(185, 78, 78, 0.16), #162028 48%);
+  border-color: #c97878;
+}
+
+html[data-theme="dark"] .loginWelcomePageCard.is-addon.is-addon-on,
+[data-theme="dark"] .loginWelcomePageCard.is-addon.is-addon-on {
+  background: linear-gradient(180deg, rgba(5, 105, 59, 0.16), #162028 48%);
+  border-color: #05693b;
+}
+
+html[data-theme="dark"] .loginWelcomePageCardHeader h3,
+[data-theme="dark"] .loginWelcomePageCardHeader h3 {
+  color: #f5f7fa;
+}
+
+html[data-theme="dark"] .loginWelcomePageCardBody,
+[data-theme="dark"] .loginWelcomePageCardBody {
+  color: #b0b8c4;
 }
 
 html[data-theme="dark"] .loginWelcomeLead,
@@ -16000,6 +16296,19 @@ html[data-theme="dark"] .invMgmtStockChip.is-active {
 
 .invMgmtAddWarehouseModal {
   width: min(92vw, 520px);
+}
+
+.inventoryBranchDataModal {
+  width: min(96vw, 980px);
+  max-height: min(90vh, 860px);
+  overflow: auto;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.invMgmtTransfersPanel {
+  display: grid;
+  gap: 0.75rem;
 }
 
 html[data-theme="dark"] .invMgmtWarehouseBar {

@@ -31,10 +31,9 @@ const builtinDefaultPages: Record<BuiltinUserRole, Page[]> = {
     "stockMovements",
     "users",
     "settings",
-    "branches",
     "tenants",
   ],
-  pharmacy_admin: [...branchManagerPages, "branches"],
+  pharmacy_admin: branchManagerPages,
   branch_manager: branchManagerPages,
   cashier: ["dashboard", "employeePortal", "pos", "invoices", "returns", "customers"],
   inventory: ["dashboard", "employeePortal", "inventory", "purchases", "stockMovements"],
@@ -88,8 +87,6 @@ export const ROLE_PAGE_OPTIONS: RolePageOption[] = [
   { page: "stockMovements", labelAr: "حركات المخزون", labelEn: "Stock movements" },
   { page: "users", labelAr: "الموظفين", labelEn: "Staff" },
   { page: "settings", labelAr: "الإعدادات", labelEn: "Settings" },
-  { page: "branches", labelAr: "الفروع", labelEn: "Branches" },
-  { page: "sqlMigrations", labelAr: "ترحيل SQL", labelEn: "SQL migrations" },
 ];
 
 export const ROLE_PERMISSION_OPTIONS: {

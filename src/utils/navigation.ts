@@ -125,8 +125,10 @@ export function buildNavigationTree(
       page !== "stockMovements" &&
       page !== "costs" &&
       page !== "activityLogs" &&
-      page !== "sqlMigrations",
+      page !== "sqlMigrations" &&
+      page !== "branches",
   );
+  /** إدارة (tenants) دايمًا آخر تبويب في القائمة */
   const orderedPages = mergedPages.includes("tenants")
     ? [...mergedPages.filter((page) => page !== "tenants"), "tenants" as Page]
     : mergedPages;

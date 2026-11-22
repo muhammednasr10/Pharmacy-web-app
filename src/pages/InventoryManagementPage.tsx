@@ -9,6 +9,15 @@ import InventoryWarehouseBar from "../components/inventory/InventoryWarehouseBar
 import InventoryStockPanel from "../components/inventory/InventoryStockPanel";
 import InventoryMovementsPanel from "../components/inventory/InventoryMovementsPanel";
 import InventoryStockCountLogPanel from "../components/inventory/InventoryStockCountLogPanel";
+import InventoryBranchDataModal from "../components/inventory/InventoryBranchDataModal";
+import BranchTransfersPanel from "./branches/BranchTransfersPanel";
+import { useBranchesPageState } from "./branches/useBranchesPageState";
+import type { BranchesPageProps } from "./branches/types";
+import {
+  canManageOrgBranchesWithTier,
+  canReviewBranchTransfersWithTier,
+  canTransferStockWithTier,
+} from "../utils/subscriptionFeatures";
 
 export type InventoryManagementPageProps = {
   initialTab?: InventoryManagementTab;
@@ -58,6 +67,7 @@ export type InventoryManagementPageProps = {
   stockMovementsCount?: number;
   stockCountLogCount?: number;
   dataRefreshKey?: number;
+  branchWorkspace: BranchesPageProps;
 };
 
 export default function InventoryManagementPage({
@@ -70,14 +80,31 @@ export default function InventoryManagementPage({
   orgSubscriptionTier,
   onSwitchBranch,
   onBranchesUpdated,
+  branchWorkspace,
   ...stockProps
 }: InventoryManagementPageProps) {
   const [activeTab, setActiveTab] = useState<InventoryManagementTab>(initialTab);
   const [stockCountLaunchKey, setStockCountLaunchKey] = useState(0);
+  const [showBranchData, setShowBranchData] = useState(false);
+
+  const branchState = useBranchesPageState(branchWorkspace);
+
+  const showTransfersTab =
+    stockProps.branches.length > 1 &&
+    (canTransferStockWithTier(appUser, orgSubscriptionTier, stockProps.branches.length) ||
+      canReviewBranchTransfersWithTier(appUser, orgSubscriptionTier, stockProps.branches.length));
+
+  const canOpenBranchData = canManageOrgBranchesWithTier(appUser, orgSubscriptionTier);
 
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
+
+  useEffect(() => {
+    if (activeTab === "transfers" && !showTransfersTab) {
+      setActiveTab("stock");
+    }
+  }, [activeTab, showTransfersTab]);
 
   function startStockCountFromLog() {
     setActiveTab("stock");
@@ -91,8 +118,8 @@ export default function InventoryManagementPage({
           <h2>{stockProps.isArabic ? "إدارة المخزن" : "Inventory Management"}</h2>
           <p className="mutedText">
             {stockProps.isArabic
-              ? "المخزون الحالي، حركة الأصناف، وسجل الجرد — في مكان واحد"
-              : "Current stock, movements, and count history in one place"}
+              ? "المخزون الحالي، حركة الأصناف، الجرد، ونقل المخزون بين الفروع"
+              : "Current stock, movements, counts, and inter-branch transfers"}
           </p>
         </div>
       </div>
@@ -106,6 +133,7 @@ export default function InventoryManagementPage({
         orgSubscriptionTier={orgSubscriptionTier}
         onSwitchBranch={onSwitchBranch}
         onBranchesUpdated={onBranchesUpdated}
+        onOpenBranchData={canOpenBranchData ? () => setShowBranchData(true) : undefined}
       />
 
       <InventoryManagementTabs
@@ -114,6 +142,8 @@ export default function InventoryManagementPage({
         stockCount={undefined}
         movementsCount={stockMovementsCount}
         stockCountLogCount={stockCountLogCount}
+        transfersCount={branchWorkspace.branchTransfers.length}
+        showTransfersTab={showTransfersTab}
         onChange={setActiveTab}
       />
 
@@ -153,7 +183,27 @@ export default function InventoryManagementPage({
             onStartStockCount={stockProps.onApplyStockCount ? startStockCountFromLog : undefined}
           />
         </div>
+
+        {showTransfersTab ? (
+          <div
+            className={activeTab === "transfers" ? "" : "invMgmtTabHidden"}
+            aria-hidden={activeTab !== "transfers"}
+          >
+            <div className="invMgmtTransfersPanel">
+              <p className="hintText">
+                {stockProps.isArabic
+                  ? "إنشاء نقل جديد من زر «نقل بين الفروع» داخل المخزون الحالي. هنا تعتمد الطلبات وتشوف السجل."
+                  : "Create a new transfer from the “Transfer between branches” button on Current stock. Approve requests and review history here."}
+              </p>
+              <BranchTransfersPanel state={branchState} />
+            </div>
+          </div>
+        ) : null}
       </div>
+
+      {showBranchData ? (
+        <InventoryBranchDataModal state={branchState} onClose={() => setShowBranchData(false)} />
+      ) : null}
     </section>
   );
 }

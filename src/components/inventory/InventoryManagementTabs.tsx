@@ -1,4 +1,4 @@
-export type InventoryManagementTab = "stock" | "movements" | "stockCountLog";
+export type InventoryManagementTab = "stock" | "movements" | "stockCountLog" | "transfers";
 
 type InventoryManagementTabsProps = {
   isArabic: boolean;
@@ -6,6 +6,8 @@ type InventoryManagementTabsProps = {
   stockCount?: number;
   movementsCount?: number;
   stockCountLogCount?: number;
+  transfersCount?: number;
+  showTransfersTab?: boolean;
   onChange: (tab: InventoryManagementTab) => void;
 };
 
@@ -15,6 +17,8 @@ export default function InventoryManagementTabs({
   stockCount,
   movementsCount,
   stockCountLogCount,
+  transfersCount,
+  showTransfersTab = false,
   onChange,
 }: InventoryManagementTabsProps) {
   const tabs: {
@@ -42,6 +46,15 @@ export default function InventoryManagementTabs({
       count: stockCountLogCount,
     },
   ];
+
+  if (showTransfersTab) {
+    tabs.push({
+      id: "transfers",
+      label: isArabic ? "نقل بين الفروع" : "Branch transfers",
+      hint: isArabic ? "الطلبات والسجل" : "Approvals & history",
+      count: transfersCount,
+    });
+  }
 
   return (
     <div className="invMgmtTabs" role="tablist" aria-label={isArabic ? "تبويبات المخزن" : "Inventory tabs"}>

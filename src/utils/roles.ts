@@ -59,9 +59,9 @@ export function isOrgPharmacyAdmin(appUser: AppUser | null | undefined): boolean
   return appUser?.role === "pharmacy_admin" || isSuperAdmin(appUser);
 }
 
-/** صفحة حالة SQL — مالك النظام فقط */
-export function canAccessSqlMigrationsPage(appUser: AppUser | null | undefined): boolean {
-  return isSuperAdmin(appUser);
+/** @deprecated تبويب حالة SQL اتشال من الواجهة */
+export function canAccessSqlMigrationsPage(_appUser: AppUser | null | undefined): boolean {
+  return false;
 }
 
 /** Single-branch manager. */
@@ -278,10 +278,9 @@ export const allowedPagesByRole: Record<BuiltinUserRole, Page[]> = {
     "stockMovements",
     "users",
     "settings",
-    "branches",
     "tenants",
   ],
-  pharmacy_admin: [...branchManagerPages, "branches"],
+  pharmacy_admin: branchManagerPages,
   branch_manager: branchManagerPages,
   cashier: ["dashboard", "employeePortal", "pos", "invoices", "returns", "customers"],
   inventory: ["dashboard", "employeePortal", "inventory", "purchases", "stockMovements"],
@@ -300,11 +299,17 @@ export const allowedPagesByRole: Record<BuiltinUserRole, Page[]> = {
 
 export function getAllowedPages(appUser: AppUser | null): Page[] {
   if (!appUser) return [];
-  const pages = getEffectiveRoleAccess(
+  let pages = getEffectiveRoleAccess(
     normalizeRole(appUser.role),
     appUser.pharmacyId,
-  ).allowedPages.filter((page) => page !== "activityLogs");
-  return pages.includes("userGuide") ? pages : [...pages, "userGuide"];
+  ).allowedPages.filter((page) => page !== "activityLogs" && page !== "sqlMigrations");
+  if (!pages.includes("userGuide")) {
+    pages = [...pages, "userGuide"];
+  }
+  if (pages.includes("tenants")) {
+    pages = [...pages.filter((page) => page !== "tenants"), "tenants"];
+  }
+  return pages;
 }
 
 export const pharmacyAdminRoleOptions: UserRole[] = [

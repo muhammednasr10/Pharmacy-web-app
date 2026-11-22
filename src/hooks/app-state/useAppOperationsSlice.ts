@@ -224,7 +224,7 @@ export function useAppOperationsSlice({
 
   useEffect(() => {
     const shouldLoadOrgHistory =
-      activePage === "branches" &&
+      activePage === "inventory" &&
       branches.length > 1 &&
       canManageOrgBranchesWithTier(appUser, orgSubscriptionTier);
     const shouldLoadPendingReview = canReviewBranchTransfersWithTier(

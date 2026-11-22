@@ -2,7 +2,6 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { isSubscriptionWriteBlocked } from "../utils/subscriptionAccess";
 import { pageToPath } from "../routes/pageRoutes";
 import type { AppPageRouterProps } from "./app-router/types";
-import AppBranchesRoute from "./app-router/AppBranchesRoute";
 import AppCustomersRoute from "./app-router/AppCustomersRoute";
 import AppDashboardRoute from "./app-router/AppDashboardRoute";
 import AppEmployeePortalRoute from "./app-router/AppEmployeePortalRoute";
@@ -14,7 +13,6 @@ import AppPurchasesRoute from "./app-router/AppPurchasesRoute";
 import AppReportsRoute from "./app-router/AppReportsRoute";
 import AppReturnsRoute from "./app-router/AppReturnsRoute";
 import AppSettingsRoute from "./app-router/AppSettingsRoute";
-import AppSqlMigrationsRoute from "./app-router/AppSqlMigrationsRoute";
 import AppSuperAdminRoute from "./app-router/AppSuperAdminRoute";
 import AppUserGuideRoute from "./app-router/AppUserGuideRoute";
 
@@ -44,8 +42,8 @@ export default function AppPageRouter(props: AppPageRouterProps) {
       <Route path="/staff" element={<AppEmployeesRoute {...routeProps} />} />
       <Route path="/employee-portal" element={<AppEmployeePortalRoute {...props} />} />
       <Route path="/admin/tenants" element={<AppSuperAdminRoute {...props} />} />
-      <Route path="/admin/sql" element={<AppSqlMigrationsRoute {...props} />} />
-      <Route path="/branches" element={<AppBranchesRoute {...routeProps} />} />
+      <Route path="/admin/sql" element={<Navigate to={pageToPath("tenants")} replace />} />
+      <Route path="/branches" element={<Navigate to={pageToPath("inventory")} replace />} />
       <Route path="/guide" element={<AppUserGuideRoute {...props} />} />
       <Route path="/settings" element={<AppSettingsRoute {...props} />} />
       <Route

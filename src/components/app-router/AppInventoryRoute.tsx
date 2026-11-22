@@ -48,6 +48,10 @@ export type AppInventoryRouteProps = Pick<
   | "pharmacySettings"
   | "stockMovements"
   | "activityLogs"
+  | "appLogo"
+  | "branchTransfers"
+  | "refreshBranchTransfers"
+  | "addActivityLog"
 > & {
   subscriptionBlocksWrite: boolean;
 };
@@ -95,6 +99,10 @@ export default function AppInventoryRoute({
   pharmacySettings,
   stockMovements,
   activityLogs,
+  appLogo,
+  branchTransfers,
+  refreshBranchTransfers,
+  addActivityLog,
   subscriptionBlocksWrite,
 }: AppInventoryRouteProps) {
   const location = useLocation();
@@ -158,6 +166,26 @@ export default function AppInventoryRoute({
       stockMovementsCount={stockMovements.length}
       stockCountLogCount={activityLogs.filter((log) => log.type === "stock_count").length}
       dataRefreshKey={stockMovements.length + medicines.length + activityLogs.length}
+      branchWorkspace={{
+        isArabic,
+        t,
+        appUser,
+        user,
+        branches,
+        setBranches,
+        activeBranchId,
+        pharmacySettings,
+        appLogo,
+        orgSubscriptionTier,
+        branchTransfers,
+        onRefreshBranchTransfers: refreshBranchTransfers,
+        onTransferComplete: () => Promise.resolve(handleBranchTransferComplete()),
+        onSwitchBranch: switchBranch,
+        getPharmacyId,
+        resolveBranchLabel,
+        onActivityLog: addActivityLog,
+        subscriptionBlocksWrite,
+      }}
     />
   );
 }

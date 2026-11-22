@@ -1,18 +1,12 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { VICTORY_BRAND_LOGO, VICTORY_BRAND_TITLE, PUBLIC_SIGNUP_EMAIL_DOMAIN } from "../config/brand";
+import { VICTORY_BRAND_LOGO, VICTORY_BRAND_TITLE } from "../config/brand";
 import { TRIAL_SUBSCRIPTION_DAYS } from "../config/subscription";
 import * as pharmacyService from "../services/pharmacyService";
 import type { PharmacySignupStatusLookup } from "../services/pharmacy/pharmacySignupRequestService";
-import {
-  normalizePublicSignupEmail,
-  signupEmailLocalPart,
-} from "../utils/publicSignupEmail";
 import type { FontScale, ThemeMode } from "../utils/displayPreferences";
 import AuthLoadingScreen from "./AuthLoadingScreen";
 import DeveloperCredit from "./DeveloperCredit";
-import DisplayPreferencesPanel from "./DisplayPreferencesPanel";
 import LoginWelcomeLanding from "./LoginWelcomeLanding";
-import { loadPricingQuote } from "../config/pricingCalculator";
 
 type LoginPageProps = {
   status: "loading" | "login" | "denied";
@@ -71,11 +65,7 @@ export default function LoginPage({
   onSubmit,
   onRegisterSubmit,
   onToggleLang,
-  themeMode,
-  fontScale,
   resolvedTheme,
-  onThemeModeChange,
-  onFontScaleChange,
   onToggleTheme,
   onLogout,
 }: LoginPageProps) {
@@ -84,10 +74,16 @@ export default function LoginPage({
   const [signupStatusLoading, setSignupStatusLoading] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
 
-  const isRegister = authMode === "register";
+  const showSignupLanding = showWelcome || authMode === "register";
 
   useEffect(() => {
-    if (status !== "login" || isRegister) {
+    if (authMode === "login" && registerSuccess) {
+      setShowWelcome(false);
+    }
+  }, [authMode, registerSuccess]);
+
+  useEffect(() => {
+    if (status !== "login" || showSignupLanding) {
       setSignupStatus(null);
       setSignupStatusLoading(false);
       return;
@@ -114,7 +110,7 @@ export default function LoginPage({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [isRegister, loginEmail, status]);
+  }, [loginEmail, showSignupLanding, status]);
 
   if (status === "loading") {
     return <AuthLoadingScreen isArabic={isArabic} />;
@@ -142,32 +138,40 @@ export default function LoginPage({
     );
   }
 
-  if (showWelcome) {
+  if (showSignupLanding) {
     return (
       <LoginWelcomeLanding
         isArabic={isArabic}
         t={t}
-        themeMode={themeMode}
-        fontScale={fontScale}
         resolvedTheme={resolvedTheme}
-        onThemeModeChange={onThemeModeChange}
-        onFontScaleChange={onFontScaleChange}
         onToggleTheme={onToggleTheme}
         onToggleLang={onToggleLang}
-        onStartTrial={() => {
-          onAuthModeChange("register");
-          setShowWelcome(false);
-        }}
         onSignIn={() => {
           onAuthModeChange("login");
           setShowWelcome(false);
         }}
+        loginEmail={loginEmail}
+        loginPassword={loginPassword}
+        registerName={registerName}
+        registerPharmacyName={registerPharmacyName}
+        registerPhone={registerPhone}
+        registerAddress={registerAddress}
+        loginError={loginError}
+        registerSuccess={registerSuccess}
+        registering={registering}
+        onEmailChange={onEmailChange}
+        onPasswordChange={onPasswordChange}
+        onRegisterNameChange={onRegisterNameChange}
+        onRegisterPharmacyNameChange={onRegisterPharmacyNameChange}
+        onRegisterPhoneChange={onRegisterPhoneChange}
+        onRegisterAddressChange={onRegisterAddressChange}
+        onRegisterSubmit={onRegisterSubmit}
       />
     );
   }
 
   const signupStatusMessage = (() => {
-    if (isRegister || !signupStatus) return null;
+    if (!signupStatus) return null;
     const note = signupStatus.reviewNote?.trim();
     const req = signupStatus.requestNumber ? ` (${signupStatus.requestNumber})` : "";
     if (signupStatus.status === "pending") {
@@ -196,121 +200,23 @@ export default function LoginPage({
 
   return (
     <div className="loginPage" dir={isArabic ? "rtl" : "ltr"}>
-      <form className="loginCard" onSubmit={isRegister ? onRegisterSubmit : onSubmit}>
-        <button
-          type="button"
-          className="loginBackToWelcome"
-          onClick={() => setShowWelcome(true)}
-        >
-          {isArabic ? "← العودة للباقات" : "← Back to plans"}
-        </button>
+      <form className="loginCard" onSubmit={onSubmit}>
         <img
           src={VICTORY_BRAND_LOGO}
           alt={VICTORY_BRAND_TITLE}
           className="loginBrandLogo"
         />
-        <h1>
-          {isRegister
-            ? isArabic
-              ? "صيدلية جديدة"
-              : "New pharmacy"
-            : isArabic
-              ? "تسجيل الدخول"
-              : "Sign in"}
-        </h1>
-        <p>
-          {isRegister
-            ? isArabic
-              ? `سجّل وابدأ تجربة مجانية لمدة ${TRIAL_SUBSCRIPTION_DAYS} يوم فورًا — الحساب يفتح مباشرة، وفريق Victory بيراجع الطلب خلال مدة التجربة`
-              : `Sign up and start a free ${TRIAL_SUBSCRIPTION_DAYS}-day trial immediately — you get access now, and Victory reviews your request during the trial`
-            : isArabic
-              ? "ادخل بالإيميل وكلمة المرور"
-              : "Sign in with email and password"}
-        </p>
-        {isRegister && (
-          <p className="loginTrialBadge" role="status">
-            {(() => {
-              const quote = loadPricingQuote();
-              if (quote) {
-                return isArabic
-                  ? `عرضك: ${quote.branches} فروع · ${quote.users} مستخدم${quote.staffAddon ? " · موظفين" : ""} · ${quote.monthlyPrice.toLocaleString("ar-EG")} ج.م/شهر — تجربة ${TRIAL_SUBSCRIPTION_DAYS} يوم بعد التسجيل`
-                  : `Your quote: ${quote.branches} branches · ${quote.users} users${quote.staffAddon ? " · staff" : ""} · ${quote.monthlyPrice.toLocaleString("en-EG")} EGP/mo — ${TRIAL_SUBSCRIPTION_DAYS}-day trial after signup`;
-              }
-              return isArabic
-                ? `تجربة ${TRIAL_SUBSCRIPTION_DAYS} يوم فور التسجيل — لو ما تمّش الاعتماد خلال المدة الاشتراك بيتوقف`
-                : `${TRIAL_SUBSCRIPTION_DAYS}-day trial starts on signup — if not approved within that period, access stops`;
-            })()}
-          </p>
-        )}
+        <h1>{isArabic ? "تسجيل الدخول" : "Sign in"}</h1>
+        <p>{isArabic ? "ادخل بالإيميل وكلمة المرور" : "Sign in with email and password"}</p>
 
-        {isRegister && (
-          <>
-            <input
-              type="text"
-              value={registerPharmacyName}
-              onChange={(e) => onRegisterPharmacyNameChange(e.target.value)}
-              placeholder={isArabic ? "اسم الصيدلية" : "Pharmacy name"}
-              autoComplete="organization"
-            />
-            <input
-              type="text"
-              value={registerName}
-              onChange={(e) => onRegisterNameChange(e.target.value)}
-              placeholder={isArabic ? "اسم المدير" : "Your full name"}
-              autoComplete="name"
-            />
-            <input
-              type="tel"
-              value={registerPhone}
-              onChange={(e) => onRegisterPhoneChange(e.target.value)}
-              placeholder={isArabic ? "رقم التليفون" : "Phone number"}
-              autoComplete="tel"
-              inputMode="tel"
-              dir={registerPhone.trim() ? "ltr" : isArabic ? "rtl" : "ltr"}
-              style={{ textAlign: registerPhone.trim() ? "left" : undefined }}
-            />
-            <input
-              type="text"
-              value={registerAddress}
-              onChange={(e) => onRegisterAddressChange(e.target.value)}
-              placeholder={isArabic ? "عنوان الصيدلية" : "Pharmacy address"}
-              autoComplete="street-address"
-            />
-          </>
-        )}
-
-        {isRegister ? (
-          <div className="loginEmailWithDomain" dir="ltr">
-            <input
-              type="text"
-              data-testid="login-email"
-              value={signupEmailLocalPart(loginEmail)}
-              onChange={(e) => onEmailChange(normalizePublicSignupEmail(e.target.value))}
-              placeholder={isArabic ? "اسم المستخدم" : "Username"}
-              autoComplete="username"
-              spellCheck={false}
-            />
-            <span className="loginEmailDomainSuffix" aria-hidden="true">
-              @{PUBLIC_SIGNUP_EMAIL_DOMAIN}
-            </span>
-          </div>
-        ) : (
-          <input
-            type="text"
-            data-testid="login-email"
-            value={loginEmail}
-            onChange={(e) => onEmailChange(e.target.value)}
-            placeholder={isArabic ? "البريد الإلكتروني" : "Email"}
-            autoComplete="username"
-          />
-        )}
-        {isRegister && (
-          <p className="loginHint">
-            {isArabic
-              ? `البريد سيكون: ${normalizePublicSignupEmail(loginEmail) || `name@${PUBLIC_SIGNUP_EMAIL_DOMAIN}`}`
-              : `Email will be: ${normalizePublicSignupEmail(loginEmail) || `name@${PUBLIC_SIGNUP_EMAIL_DOMAIN}`}`}
-          </p>
-        )}
+        <input
+          type="text"
+          data-testid="login-email"
+          value={loginEmail}
+          onChange={(e) => onEmailChange(e.target.value)}
+          placeholder={isArabic ? "البريد الإلكتروني" : "Email"}
+          autoComplete="username"
+        />
         <div className="loginPasswordField">
           <input
             type={showPassword ? "text" : "password"}
@@ -318,7 +224,7 @@ export default function LoginPage({
             value={loginPassword}
             onChange={(e) => onPasswordChange(e.target.value)}
             placeholder={isArabic ? "كلمة المرور" : "Password"}
-            autoComplete={isRegister ? "new-password" : "current-password"}
+            autoComplete="current-password"
           />
           <button
             type="button"
@@ -368,19 +274,11 @@ export default function LoginPage({
           </button>
         </div>
 
-        {isRegister && (
-          <p className="loginHint">
-            {isArabic
-              ? `كلمة المرور 6 أحرف على الأقل — بعد التسجيل تدخل مباشرة وتبدأ تجربة ${TRIAL_SUBSCRIPTION_DAYS} يوم`
-              : `Password must be at least 6 characters — after signup you enter immediately and your ${TRIAL_SUBSCRIPTION_DAYS}-day trial starts`}
-          </p>
-        )}
-
-        {!isRegister && signupStatusLoading && loginEmail.includes("@") && (
+        {signupStatusLoading && loginEmail.includes("@") && (
           <p className="loginHint">{isArabic ? "جاري التحقق من حالة الطلب..." : "Checking request status..."}</p>
         )}
 
-        {!isRegister && signupStatusMessage && (
+        {signupStatusMessage && (
           <div
             className={
               signupStatusMessage.kind === "approved"
@@ -398,18 +296,8 @@ export default function LoginPage({
         {loginError && <div className="loginError">{loginError}</div>}
         {registerSuccess && <div className="loginSuccess">{registerSuccess}</div>}
 
-        <button type="submit" data-testid="login-submit" disabled={registering}>
-          {registering
-            ? isArabic
-              ? "جاري إرسال الطلب..."
-              : "Sending request..."
-            : isRegister
-              ? isArabic
-                ? "إنشاء الحساب وبدء التجربة"
-                : "Create account & start trial"
-              : isArabic
-                ? "تسجيل الدخول"
-                : "Sign in"}
+        <button type="submit" data-testid="login-submit">
+          {isArabic ? "تسجيل الدخول" : "Sign in"}
         </button>
 
         <button
@@ -417,20 +305,13 @@ export default function LoginPage({
           className="loginLangBtn"
           data-testid="auth-mode-toggle"
           onClick={() => {
-            if (isRegister) {
-              onAuthModeChange("login");
-              return;
-            }
+            onAuthModeChange("login");
             setShowWelcome(true);
           }}
         >
-          {isRegister
-            ? isArabic
-              ? "لديك حساب؟ تسجيل الدخول"
-              : "Already have an account? Sign in"
-            : isArabic
-              ? `صيدلية جديدة؟ احسب الباقة وابدأ تجربة ${TRIAL_SUBSCRIPTION_DAYS} يوم`
-              : `New pharmacy? Calculate your plan & start a ${TRIAL_SUBSCRIPTION_DAYS}-day trial`}
+          {isArabic
+            ? `صيدلية جديدة؟ احسب الباقة وابدأ تجربة ${TRIAL_SUBSCRIPTION_DAYS} يوم`
+            : `New pharmacy? Calculate your plan & start a ${TRIAL_SUBSCRIPTION_DAYS}-day trial`}
         </button>
 
         <div className="loginUtilityIcons">
@@ -487,18 +368,6 @@ export default function LoginPage({
           </button>
         </div>
       </form>
-
-      <div className="loginDisplayPrefs">
-        <DisplayPreferencesPanel
-          isArabic={isArabic}
-          themeMode={themeMode}
-          fontScale={fontScale}
-          resolvedTheme={resolvedTheme}
-          onThemeModeChange={onThemeModeChange}
-          onFontScaleChange={onFontScaleChange}
-          compact
-        />
-      </div>
 
       <DeveloperCredit isArabic={isArabic} variant="login" />
     </div>

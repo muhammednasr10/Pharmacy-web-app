@@ -42,7 +42,7 @@ export type GlobalSearchResult =
 
 const PAGE_KEYWORDS: Partial<Record<Page, string[]>> = {
   dashboard: ["لوحة", "home", "رئيسية"],
-  inventory: ["مخزون", "stock", "أدوية", "medicines"],
+  inventory: ["مخزون", "stock", "أدوية", "medicines", "فرع", "فروع", "branch", "نقل"],
   pos: ["بيع", "كاشير", "cashier", "نقطة"],
   invoices: ["فواتير", "فاتورة", "مبيعات", "sales"],
   returns: ["مرتجع", "return"],
@@ -52,9 +52,7 @@ const PAGE_KEYWORDS: Partial<Record<Page, string[]>> = {
   reports: ["تقارير", "report"],
   stockMovements: ["حركة", "movement"],
   users: ["موظف", "مستخدم", "staff", "hr"],
-  branches: ["فرع", "فروع", "branch"],
   tenants: ["saas", "صيدليات", "tenant", "إدارة", "management"],
-  sqlMigrations: ["sql", "migration", "قاعدة"],
   settings: ["إعدادات", "settings", "اشتراك"],
   userGuide: ["دليل", "مساعدة", "help", "guide", "اختصارات", "shortcuts"],
   hr: ["موارد", "حضور", "hr"],

@@ -135,14 +135,14 @@ export function useDashboardModules({
       });
     }
 
-    if (canAccess("branches") && branchesCount > 1) {
+    if (canAccess("inventory") && branchesCount > 1) {
       cards.push({
         key: "branches",
         icon: "🏢",
-        label: isArabic ? "الفروع" : "Branches",
+        label: isArabic ? "الفروع / المخازن" : "Branches / warehouses",
         value: String(branchesCount),
         tone: "indigo",
-        onClick: () => onNavigate("branches"),
+        onClick: () => onNavigate("inventory"),
       });
     }
 

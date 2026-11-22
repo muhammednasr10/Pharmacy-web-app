@@ -27,18 +27,8 @@ function isBuiltinRoleKey(role: string): role is BuiltinUserRole {
 
 const SQL_MIGRATIONS_PAGE: Page = "sqlMigrations";
 
-/** حالة SQL — مالك النظام فقط */
-function rolesThatMayAccessSqlMigrations(role: string): boolean {
-  return role === "super_admin";
-}
-
-export function finalizeAllowedPagesForRole(roleKey: string, pages: Page[]): Page[] {
-  const role = roleKey.trim().toLowerCase();
-
-  if (rolesThatMayAccessSqlMigrations(role)) {
-    return pages.includes(SQL_MIGRATIONS_PAGE) ? pages : [...pages, SQL_MIGRATIONS_PAGE];
-  }
-
+/** تبويب حالة SQL اتشال من الواجهة — يُستبعد من كل الأدوار */
+export function finalizeAllowedPagesForRole(_roleKey: string, pages: Page[]): Page[] {
   return pages.filter((page) => page !== SQL_MIGRATIONS_PAGE);
 }
 

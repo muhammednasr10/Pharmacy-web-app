@@ -24,6 +24,7 @@ type InventoryWarehouseBarProps = {
   orgSubscriptionTier: SubscriptionTier;
   onSwitchBranch: (branchId: string) => void;
   onBranchesUpdated?: () => void | Promise<void>;
+  onOpenBranchData?: () => void;
 };
 
 export default function InventoryWarehouseBar({
@@ -35,6 +36,7 @@ export default function InventoryWarehouseBar({
   orgSubscriptionTier,
   onSwitchBranch,
   onBranchesUpdated,
+  onOpenBranchData,
 }: InventoryWarehouseBarProps) {
   const subscription = useSubscriptionOptional();
   const [showAddModal, setShowAddModal] = useState(false);
@@ -142,6 +144,23 @@ export default function InventoryWarehouseBar({
         </div>
 
         <div className="invMgmtWarehouseActions">
+          {canManageBranches ? (
+            <button type="button" className="editBtn" onClick={onOpenBranchData}>
+              {isArabic ? "بيانات الفروع" : "Branch data"}
+            </button>
+          ) : usage.max > 1 ? (
+            <button
+              type="button"
+              className="invMgmtWarehouseLockedBtn"
+              onClick={() =>
+                subscription?.openUpgradeModal({ type: "feature", key: "branchesPage" })
+              }
+            >
+              <span aria-hidden="true">🔒</span>
+              {isArabic ? "بيانات الفروع (ترقية)" : "Branch data (upgrade)"}
+            </button>
+          ) : null}
+
           {showBranchSwitcher && canManageBranches && usage.canAdd ? (
             <button type="button" className="addMedicineBtn" onClick={handleAddClick}>
               {isArabic ? "+ إضافة مخزن جديد" : "+ Add warehouse"}
@@ -159,17 +178,6 @@ export default function InventoryWarehouseBar({
             >
               <span aria-hidden="true">🔒</span>
               {isArabic ? "إضافة مخزن (ترقية)" : "Add warehouse (upgrade)"}
-            </button>
-          ) : !canManageBranches && usage.max > 1 ? (
-            <button
-              type="button"
-              className="invMgmtWarehouseLockedBtn"
-              onClick={() =>
-                subscription?.openUpgradeModal({ type: "feature", key: "branchesPage" })
-              }
-            >
-              <span aria-hidden="true">🔒</span>
-              {isArabic ? "مخازن متعددة (ترقية)" : "Multi-warehouse (upgrade)"}
             </button>
           ) : null}
         </div>

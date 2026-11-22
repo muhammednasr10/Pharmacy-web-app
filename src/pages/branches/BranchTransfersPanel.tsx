@@ -41,7 +41,7 @@ export default function BranchTransfersPanel({ state }: Props) {
         />
       )}
 
-      {canTransfer && pendingBranchTransferGroups.length > 0 && (
+      {pendingBranchTransferGroups.length > 0 && (
         <>
           <h3 className="branchTransfersTitle branchPendingTransfersTitle">
             {isArabic ? "طلبات نقل بانتظار الاعتماد" : "Pending transfer approvals"}
