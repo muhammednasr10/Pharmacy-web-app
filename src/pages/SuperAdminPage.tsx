@@ -24,7 +24,7 @@ export default function SuperAdminPage(props: SuperAdminPageProps) {
     <section className="card saasPage">
       <div className="saasPageHeader">
         <div>
-          <h2>{isArabic ? "إدارة الصيدليات (SaaS)" : "Pharmacy Tenants (SaaS)"}</h2>
+          <h2>{isArabic ? "إدارة" : "Management"}</h2>
           <p className="pageHint">
             {isArabic
               ? "كل صيدلية = عميل منفصل. البيانات معزولة عبر pharmacy_id و RLS."

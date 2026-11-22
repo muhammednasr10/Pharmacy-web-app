@@ -68,7 +68,7 @@ export function getPageLabel(page: Page, isArabic: boolean, t: Record<string, st
     case "branches":
       return isArabic ? "الفروع" : "Branches";
     case "tenants":
-      return isArabic ? "الصيدليات (SaaS)" : "Pharmacies (SaaS)";
+      return isArabic ? "إدارة" : "Management";
     case "sqlMigrations":
       return isArabic ? "حالة SQL" : "SQL status";
     case "settings":
@@ -121,16 +121,23 @@ export function buildNavigationTree(
   lockedPages?: Set<Page>,
 ): NavEntry[] {
   const mergedPages = pages.filter(
-    (page) => page !== "stockMovements" && page !== "costs" && page !== "activityLogs",
+    (page) =>
+      page !== "stockMovements" &&
+      page !== "costs" &&
+      page !== "activityLogs" &&
+      page !== "sqlMigrations",
   );
+  const orderedPages = mergedPages.includes("tenants")
+    ? [...mergedPages.filter((page) => page !== "tenants"), "tenants" as Page]
+    : mergedPages;
   const billingChildren = (BILLING_NAV_PAGES as Page[])
-    .filter((page) => (mergedPages as Page[]).includes(page))
+    .filter((page) => (orderedPages as Page[]).includes(page))
     .map((page) => buildPageEntry(page, isArabic, t, lockedPages));
 
   const entries: NavEntry[] = [];
   let billingGroupInserted = false;
 
-  for (const page of mergedPages) {
+  for (const page of orderedPages) {
     if (isBillingNavPage(page)) {
       if (!billingGroupInserted && billingChildren.length > 0) {
         entries.push({

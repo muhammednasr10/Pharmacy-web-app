@@ -53,7 +53,7 @@ const PAGE_KEYWORDS: Partial<Record<Page, string[]>> = {
   stockMovements: ["حركة", "movement"],
   users: ["موظف", "مستخدم", "staff", "hr"],
   branches: ["فرع", "فروع", "branch"],
-  tenants: ["saas", "صيدليات", "tenant"],
+  tenants: ["saas", "صيدليات", "tenant", "إدارة", "management"],
   sqlMigrations: ["sql", "migration", "قاعدة"],
   settings: ["إعدادات", "settings", "اشتراك"],
   userGuide: ["دليل", "مساعدة", "help", "guide", "اختصارات", "shortcuts"],

@@ -37,7 +37,7 @@ const TIER_PAGE_LABELS: Record<Page, { ar: string; en: string }> = {
   employeePortal: { ar: "بروفايلى", en: "My profile" },
   settings: { ar: "الإعدادات", en: "Settings" },
   userGuide: { ar: "دليل الاستخدام", en: "User guide" },
-  tenants: { ar: "الصيدليات", en: "Pharmacies" },
+  tenants: { ar: "إدارة", en: "Management" },
   sqlMigrations: { ar: "SQL", en: "SQL" },
   hr: { ar: "الموارد البشرية", en: "HR" },
 };
