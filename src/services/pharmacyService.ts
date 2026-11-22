@@ -9,6 +9,7 @@ export * from "./pharmacy/hrService";
 export * from "./pharmacy/customRoleService";
 export * from "./pharmacy/roleConfigService";
 export * from "./pharmacy/subscriptionTierService";
+export * from "./pharmacy/pricingCalculatorService";
 export * from "./pharmacy/inventoryPaginationService";
 export * from "./pharmacy/medicineStatsService";
 export * from "./pharmacy/customerCrmService";

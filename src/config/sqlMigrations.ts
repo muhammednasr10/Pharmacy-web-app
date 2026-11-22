@@ -199,6 +199,16 @@ export const SQL_MIGRATIONS: SqlMigrationDefinition[] = [
     probe: { type: "rpc", name: "max_numeric_text_id", args: {} },
   },
   {
+    id: "pricing-calculator-config",
+    file: "pricing-calculator-config.sql",
+    group: "saas",
+    titleAr: "حاسبة تسعير الباقة",
+    titleEn: "Plan pricing calculator",
+    noteAr: "أسعار الفرع/المستخدم/إضافة الموظفين + حفظ العرض مع طلب التسجيل",
+    noteEn: "Branch/user/staff add-on prices + save quote with signup request",
+    probe: { type: "table", name: "pricing_calculator_config" },
+  },
+  {
     id: "medicine-catalog-merge-by-barcode",
     file: "medicine-catalog-merge-by-barcode.sql",
     group: "core",

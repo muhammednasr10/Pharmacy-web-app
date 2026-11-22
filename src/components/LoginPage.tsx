@@ -12,6 +12,7 @@ import AuthLoadingScreen from "./AuthLoadingScreen";
 import DeveloperCredit from "./DeveloperCredit";
 import DisplayPreferencesPanel from "./DisplayPreferencesPanel";
 import LoginWelcomeLanding from "./LoginWelcomeLanding";
+import { loadPricingQuote } from "../config/pricingCalculator";
 
 type LoginPageProps = {
   status: "loading" | "login" | "denied";
@@ -228,9 +229,17 @@ export default function LoginPage({
         </p>
         {isRegister && (
           <p className="loginTrialBadge" role="status">
-            {isArabic
-              ? `تجربة ${TRIAL_SUBSCRIPTION_DAYS} يوم على باقة احترافي فور التسجيل — لو ما تمّش الاعتماد خلال المدة الاشتراك بيتوقف`
-              : `${TRIAL_SUBSCRIPTION_DAYS}-day Professional trial starts on signup — if not approved within that period, access stops`}
+            {(() => {
+              const quote = loadPricingQuote();
+              if (quote) {
+                return isArabic
+                  ? `عرضك: ${quote.branches} فروع · ${quote.users} مستخدم${quote.staffAddon ? " · موظفين" : ""} · ${quote.monthlyPrice.toLocaleString("ar-EG")} ج.م/شهر — تجربة ${TRIAL_SUBSCRIPTION_DAYS} يوم بعد التسجيل`
+                  : `Your quote: ${quote.branches} branches · ${quote.users} users${quote.staffAddon ? " · staff" : ""} · ${quote.monthlyPrice.toLocaleString("en-EG")} EGP/mo — ${TRIAL_SUBSCRIPTION_DAYS}-day trial after signup`;
+              }
+              return isArabic
+                ? `تجربة ${TRIAL_SUBSCRIPTION_DAYS} يوم فور التسجيل — لو ما تمّش الاعتماد خلال المدة الاشتراك بيتوقف`
+                : `${TRIAL_SUBSCRIPTION_DAYS}-day trial starts on signup — if not approved within that period, access stops`;
+            })()}
           </p>
         )}
 

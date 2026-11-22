@@ -1,0 +1,86 @@
+import { supabase } from "../supabaseClient";
+import {
+  DEFAULT_PRICING_CALCULATOR_CONFIG,
+  type PricingCalculatorConfig,
+} from "../../config/pricingCalculator";
+
+type PricingCalculatorRow = {
+  id?: string;
+  price_per_branch?: number | string | null;
+  price_per_user?: number | string | null;
+  staff_addon_enabled?: boolean | null;
+  staff_addon_price?: number | string | null;
+  staff_addon_title_ar?: string | null;
+  staff_addon_title_en?: string | null;
+  staff_addon_desc_ar?: string | null;
+  staff_addon_desc_en?: string | null;
+};
+
+function toNumber(value: unknown, fallback: number): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+export function mapPricingCalculatorRow(row?: PricingCalculatorRow | null): PricingCalculatorConfig {
+  if (!row) return { ...DEFAULT_PRICING_CALCULATOR_CONFIG };
+  return {
+    pricePerBranch: Math.max(0, toNumber(row.price_per_branch, DEFAULT_PRICING_CALCULATOR_CONFIG.pricePerBranch)),
+    pricePerUser: Math.max(0, toNumber(row.price_per_user, DEFAULT_PRICING_CALCULATOR_CONFIG.pricePerUser)),
+    staffAddonEnabled: row.staff_addon_enabled !== false,
+    staffAddonPrice: Math.max(0, toNumber(row.staff_addon_price, DEFAULT_PRICING_CALCULATOR_CONFIG.staffAddonPrice)),
+    staffAddonTitleAr:
+      String(row.staff_addon_title_ar || "").trim() || DEFAULT_PRICING_CALCULATOR_CONFIG.staffAddonTitleAr,
+    staffAddonTitleEn:
+      String(row.staff_addon_title_en || "").trim() || DEFAULT_PRICING_CALCULATOR_CONFIG.staffAddonTitleEn,
+    staffAddonDescAr:
+      String(row.staff_addon_desc_ar || "").trim() || DEFAULT_PRICING_CALCULATOR_CONFIG.staffAddonDescAr,
+    staffAddonDescEn:
+      String(row.staff_addon_desc_en || "").trim() || DEFAULT_PRICING_CALCULATOR_CONFIG.staffAddonDescEn,
+  };
+}
+
+export async function loadPricingCalculatorConfig(): Promise<PricingCalculatorConfig> {
+  const { data, error } = await supabase
+    .from("pricing_calculator_config")
+    .select("*")
+    .eq("id", "default")
+    .maybeSingle();
+
+  if (error) {
+    console.error("loadPricingCalculatorConfig error:", error.message);
+    return { ...DEFAULT_PRICING_CALCULATOR_CONFIG };
+  }
+
+  return mapPricingCalculatorRow(data as PricingCalculatorRow | null);
+}
+
+export async function savePricingCalculatorConfig(
+  input: PricingCalculatorConfig,
+  operatorUid?: string,
+): Promise<PricingCalculatorConfig> {
+  const payload = {
+    id: "default",
+    price_per_branch: Math.max(0, Number(input.pricePerBranch) || 0),
+    price_per_user: Math.max(0, Number(input.pricePerUser) || 0),
+    staff_addon_enabled: Boolean(input.staffAddonEnabled),
+    staff_addon_price: Math.max(0, Number(input.staffAddonPrice) || 0),
+    staff_addon_title_ar: input.staffAddonTitleAr.trim() || DEFAULT_PRICING_CALCULATOR_CONFIG.staffAddonTitleAr,
+    staff_addon_title_en: input.staffAddonTitleEn.trim() || DEFAULT_PRICING_CALCULATOR_CONFIG.staffAddonTitleEn,
+    staff_addon_desc_ar: input.staffAddonDescAr.trim() || DEFAULT_PRICING_CALCULATOR_CONFIG.staffAddonDescAr,
+    staff_addon_desc_en: input.staffAddonDescEn.trim() || DEFAULT_PRICING_CALCULATOR_CONFIG.staffAddonDescEn,
+    updated_at: new Date().toISOString(),
+    updated_by: operatorUid || null,
+  };
+
+  const { data, error } = await supabase
+    .from("pricing_calculator_config")
+    .upsert([payload], { onConflict: "id" })
+    .select("*")
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return mapPricingCalculatorRow(data as PricingCalculatorRow);
+}

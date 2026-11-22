@@ -4748,6 +4748,147 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
   gap: 1rem;
 }
 
+.saasPricingCalculator {
+  margin-bottom: 1.25rem;
+}
+
+.saasPricingAddonBlock {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 0.75rem;
+}
+
+.loginWelcomeCalculator {
+  display: grid;
+  gap: 1rem;
+  padding: 1.2rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #d7e4dc;
+  box-shadow: 0 12px 30px rgba(16, 24, 40, 0.06);
+}
+
+.loginWelcomeCalcGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.loginWelcomeCalcField {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.loginWelcomeCalcField span {
+  font-weight: 700;
+  color: #001f3f;
+}
+
+.loginWelcomeCalcField input {
+  border: 1px solid #d0d5dd;
+  border-radius: 12px;
+  padding: 0.8rem 0.9rem;
+  font-size: 1rem;
+}
+
+.loginWelcomeCalcField small {
+  color: #667085;
+}
+
+.loginWelcomeCalcAddon {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  border: 1px solid #d7e4dc;
+  background: #f7fbf8;
+  cursor: pointer;
+}
+
+.loginWelcomeCalcAddon input {
+  margin-top: 0.2rem;
+}
+
+.loginWelcomeCalcAddon span {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.loginWelcomeCalcAddon strong {
+  color: #001f3f;
+}
+
+.loginWelcomeCalcAddon em {
+  font-style: normal;
+  color: #667085;
+  font-size: 0.92rem;
+}
+
+.loginWelcomeCalcAddon b {
+  color: #05693b;
+  font-size: 0.92rem;
+}
+
+.loginWelcomeCalcTotal {
+  display: grid;
+  gap: 0.55rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid #e4ebe6;
+}
+
+.loginWelcomeCalcTotal > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.loginWelcomeCalcTotal strong {
+  font-size: 1.35rem;
+  color: #001f3f;
+}
+
+.loginWelcomeCalcTotal p {
+  margin: 0;
+  color: #667085;
+}
+
+@media (max-width: 700px) {
+  .loginWelcomeCalcGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+html[data-theme="dark"] .loginWelcomeCalculator,
+[data-theme="dark"] .loginWelcomeCalculator {
+  background: rgba(22, 30, 40, 0.92);
+  border-color: #2a3644;
+}
+
+html[data-theme="dark"] .loginWelcomeCalcField span,
+html[data-theme="dark"] .loginWelcomeCalcAddon strong,
+html[data-theme="dark"] .loginWelcomeCalcTotal strong,
+[data-theme="dark"] .loginWelcomeCalcField span,
+[data-theme="dark"] .loginWelcomeCalcAddon strong,
+[data-theme="dark"] .loginWelcomeCalcTotal strong {
+  color: #f5f7fa;
+}
+
+html[data-theme="dark"] .loginWelcomeCalcAddon,
+[data-theme="dark"] .loginWelcomeCalcAddon {
+  background: #1a2330;
+  border-color: #334155;
+}
+
+html[data-theme="dark"] .loginWelcomeCalcField input,
+[data-theme="dark"] .loginWelcomeCalcField input {
+  background: #121a22;
+  color: #f5f7fa;
+  border-color: #334155;
+}
+
 .loginWelcomePlan {
   display: grid;
   gap: 0.7rem;

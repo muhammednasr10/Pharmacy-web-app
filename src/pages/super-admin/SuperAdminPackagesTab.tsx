@@ -4,6 +4,7 @@ import {
   subscriptionTiers,
 } from "../../config/subscriptionTiers";
 import { getTierBadgeClass } from "./helpers";
+import SuperAdminPricingCalculatorPanel from "./SuperAdminPricingCalculatorPanel";
 import type { SuperAdminPageState } from "./useSuperAdminPageState";
 
 type Props = { state: SuperAdminPageState };
@@ -13,17 +14,32 @@ export default function SuperAdminPackagesTab({ state }: Props) {
     isArabic,
     tierConfigVersion,
     openTierEditModal,
+    pricingCalculatorForm,
+    setPricingCalculatorForm,
+    savingPricingCalculator,
+    savePricingCalculatorConfig,
   } = state;
 
   return (
+    <>
+          {pricingCalculatorForm ? (
+            <SuperAdminPricingCalculatorPanel
+              isArabic={isArabic}
+              form={pricingCalculatorForm}
+              saving={savingPricingCalculator}
+              onChange={setPricingCalculatorForm}
+              onSave={() => void savePricingCalculatorConfig()}
+            />
+          ) : null}
+
           <section className="saasTierPackages settingsTabPanel">
             <div className="saasPageHeader">
               <div>
-                <h3>{isArabic ? "باقات الاشتراك" : "Subscription packages"}</h3>
+                <h3>{isArabic ? "باقات الاشتراك (مرجع داخلي)" : "Subscription packages (internal)"}</h3>
                 <p className="pageHint">
                   {isArabic
-                    ? "تحكم في عدد المخازن والمستخدمين والمميزات وسعر الباقة — التعديلات تُطبَّق فوراً على كل العملاء على هذه الباقة"
-                    : "Control warehouse count, users, features, and price — changes apply immediately to all customers on this tier"}
+                    ? "الصفحة العامة بقت حاسبة. الباقات دي مرجع داخلي لحدود التعيين اليدوي"
+                    : "Public landing uses the calculator. These tiers remain for manual assignment"}
                 </p>
               </div>
             </div>
@@ -75,5 +91,6 @@ export default function SuperAdminPackagesTab({ state }: Props) {
               })}
             </div>
           </section>
+    </>
   );
 }

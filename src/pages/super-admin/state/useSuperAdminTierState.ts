@@ -21,6 +21,10 @@ import { getOrganizationBranchUsage } from "../../../utils/branchLimits";
 import { getOrganizationUserUsage, countOrganizationUsers } from "../../../utils/userLimits";
 import { formatBranchLimitError } from "../../../utils/orgAdminErrors";
 import { mergeTierEditAutoCopy, buildTierPackageCopy } from "../../../utils/tierPackageCopy";
+import {
+  DEFAULT_PRICING_CALCULATOR_CONFIG,
+  type PricingCalculatorConfig,
+} from "../../../config/pricingCalculator";
 import type { PharmacySettings } from "../../../types";
 import type { SaasTab } from "../types";
 import type { SuperAdminSharedContext } from "./shared";
@@ -97,6 +101,10 @@ export function useSuperAdminTierState(params: TierParams) {
     endDate: computeTrialEndDate(),
   });
   const [freeTrialSavingId, setFreeTrialSavingId] = useState<string | null>(null);
+  const [pricingCalculatorForm, setPricingCalculatorForm] = useState<PricingCalculatorConfig>(
+    DEFAULT_PRICING_CALCULATOR_CONFIG,
+  );
+  const [savingPricingCalculator, setSavingPricingCalculator] = useState(false);
 
   useEffect(() => {
     if (!manageModalOpen || !selected) return;
@@ -121,7 +129,27 @@ export function useSuperAdminTierState(params: TierParams) {
     void pharmacyService.loadSubscriptionTierConfigs().then(() => {
       setTierConfigVersion((value) => value + 1);
     });
+    void pharmacyService.loadPricingCalculatorConfig().then((config) => {
+      setPricingCalculatorForm(config);
+    });
   }, [activeTab]);
+
+  async function savePricingCalculatorConfig() {
+    if (savingPricingCalculator) return;
+    setSavingPricingCalculator(true);
+    try {
+      const saved = await pharmacyService.savePricingCalculatorConfig(
+        pricingCalculatorForm,
+        operatorUid,
+      );
+      setPricingCalculatorForm(saved);
+      alert(isArabic ? "تم حفظ أسعار الحاسبة" : "Calculator prices saved");
+    } catch (error) {
+      alert(error instanceof Error ? error.message : isArabic ? "تعذر الحفظ" : "Save failed");
+    } finally {
+      setSavingPricingCalculator(false);
+    }
+  }
 
   function openTierEditModal(tierId: SubscriptionTier) {
     const tier = subscriptionTiers[tierId];
@@ -407,6 +435,10 @@ export function useSuperAdminTierState(params: TierParams) {
     setTierEditForm,
     tierConfigVersion,
     savingTierConfig,
+    pricingCalculatorForm,
+    setPricingCalculatorForm,
+    savingPricingCalculator,
+    savePricingCalculatorConfig,
     freeTrialDraft,
     setFreeTrialDraft,
     freeTrialSavingId,

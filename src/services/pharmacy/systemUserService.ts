@@ -193,6 +193,9 @@ export async function registerPublicUser(params: {
   pharmacyName: string;
   phone: string;
   address: string;
+  branches?: number;
+  users?: number;
+  staffAddon?: boolean;
 }): Promise<{
   pendingApproval: boolean;
   canSignIn: boolean;
@@ -240,6 +243,9 @@ export async function registerPublicUser(params: {
     p_pharmacy_name: pharmacyName,
     p_phone: phone,
     p_address: address,
+    p_branches: Math.max(1, Math.min(50, Math.floor(Number(params.branches) || 1))),
+    p_users: Math.max(1, Math.min(200, Math.floor(Number(params.users) || 1))),
+    p_staff_addon: Boolean(params.staffAddon),
   };
 
   let data: unknown = null;

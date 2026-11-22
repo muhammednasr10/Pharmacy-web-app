@@ -347,6 +347,8 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
       setRegistering(true);
 
       try {
+        const { loadPricingQuote, clearPricingQuote } = await import("../config/pricingCalculator");
+        const quote = loadPricingQuote();
         const result = await pharmacyService.registerPublicUser({
           name: registerName,
           pharmacyName: registerPharmacyName,
@@ -354,7 +356,11 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
           address: registerAddress,
           email: loginEmail,
           password: loginPassword,
+          branches: quote?.branches,
+          users: quote?.users,
+          staffAddon: quote?.staffAddon,
         });
+        clearPricingQuote();
 
         if (result.canSignIn) {
           const { error: signInError } = await pharmacyService.signInWithUsernameOrEmail(
