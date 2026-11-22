@@ -4612,6 +4612,282 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
   object-fit: contain;
 }
 
+.loginBackToWelcome {
+  justify-self: start;
+  border: none;
+  background: transparent;
+  color: #05693b;
+  font-weight: 600;
+  padding: 0;
+  cursor: pointer;
+  font-size: 0.92rem;
+}
+
+.loginWelcomePage {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.25rem 1.25rem 2rem;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(197, 160, 89, 0.16), transparent 40%),
+    radial-gradient(circle at 88% 8%, rgba(5, 105, 59, 0.1), transparent 36%),
+    linear-gradient(180deg, #f7faf8 0%, #eef3f0 55%, #e7eee9 100%);
+}
+
+.loginWelcomeTopbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: min(1100px, 100%);
+  margin: 0 auto;
+}
+
+.loginWelcomeLogo {
+  height: 56px;
+  width: auto;
+  max-width: min(240px, 70vw);
+  object-fit: contain;
+}
+
+.loginWelcomeTopActions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.loginWelcomeMain {
+  width: min(1100px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 2rem;
+}
+
+.loginWelcomeHero {
+  display: grid;
+  gap: 0.85rem;
+  max-width: 40rem;
+}
+
+.loginWelcomeBrand {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #001f3f;
+}
+
+.loginWelcomeHero h1 {
+  margin: 0;
+  font-size: clamp(1.7rem, 3.4vw, 2.55rem);
+  line-height: 1.25;
+  color: #001f3f;
+}
+
+.loginWelcomeLead {
+  margin: 0;
+  color: #475467;
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.loginWelcomeActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.35rem;
+}
+
+.loginWelcomePrimary,
+.loginWelcomeSecondary {
+  border-radius: 12px;
+  padding: 0.85rem 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.loginWelcomePrimary {
+  background: linear-gradient(135deg, #001f3f, #05693b);
+  color: #fff;
+  border-color: #001f3f;
+}
+
+.loginWelcomeSecondary {
+  background: #fff;
+  color: #001f3f;
+  border-color: #c8d5cc;
+}
+
+.loginWelcomePrimary:hover,
+.loginWelcomeSecondary:hover {
+  transform: translateY(-1px);
+}
+
+.loginWelcomePlansHeader {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.loginWelcomePlansHeader h2 {
+  margin: 0;
+  color: #001f3f;
+  font-size: 1.35rem;
+}
+
+.loginWelcomePlansHeader p {
+  margin: 0;
+  color: #667085;
+}
+
+.loginWelcomePlanGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.loginWelcomePlan {
+  display: grid;
+  gap: 0.7rem;
+  align-content: start;
+  padding: 1.15rem 1.1rem 1.2rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #d7e4dc;
+  box-shadow: 0 12px 30px rgba(16, 24, 40, 0.06);
+}
+
+.loginWelcomePlan.is-featured {
+  border-color: #05693b;
+  box-shadow: 0 16px 36px rgba(5, 105, 59, 0.14);
+}
+
+.loginWelcomePlanBadge {
+  justify-self: start;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #05693b;
+  background: rgba(5, 105, 59, 0.1);
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+}
+
+.loginWelcomePlan h3 {
+  margin: 0;
+  color: #001f3f;
+  font-size: 1.2rem;
+}
+
+.loginWelcomePlanPrice {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #001f3f;
+}
+
+.loginWelcomePlanSummary {
+  margin: 0;
+  color: #667085;
+  font-size: 0.95rem;
+}
+
+.loginWelcomePlan ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.loginWelcomePlan li {
+  position: relative;
+  padding-inline-start: 1rem;
+  color: #344054;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.loginWelcomePlan li::before {
+  content: "•";
+  position: absolute;
+  inset-inline-start: 0;
+  color: #05693b;
+  font-weight: 700;
+}
+
+.loginWelcomePlan .loginWelcomePrimary,
+.loginWelcomePlan .loginWelcomeSecondary {
+  margin-top: 0.35rem;
+  width: 100%;
+}
+
+.loginWelcomeFooter {
+  width: min(1100px, 100%);
+  margin: auto auto 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (max-width: 900px) {
+  .loginWelcomePlanGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .loginWelcomeHero {
+    max-width: none;
+  }
+}
+
+html[data-theme="dark"] .loginWelcomePage,
+[data-theme="dark"] .loginWelcomePage {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(197, 160, 89, 0.12), transparent 40%),
+    radial-gradient(circle at 88% 8%, rgba(5, 105, 59, 0.14), transparent 36%),
+    linear-gradient(180deg, #0f1720 0%, #121a22 100%);
+}
+
+html[data-theme="dark"] .loginWelcomeBrand,
+html[data-theme="dark"] .loginWelcomeHero h1,
+html[data-theme="dark"] .loginWelcomePlansHeader h2,
+html[data-theme="dark"] .loginWelcomePlan h3,
+html[data-theme="dark"] .loginWelcomePlanPrice,
+[data-theme="dark"] .loginWelcomeBrand,
+[data-theme="dark"] .loginWelcomeHero h1,
+[data-theme="dark"] .loginWelcomePlansHeader h2,
+[data-theme="dark"] .loginWelcomePlan h3,
+[data-theme="dark"] .loginWelcomePlanPrice {
+  color: #f5f7fa;
+}
+
+html[data-theme="dark"] .loginWelcomeLead,
+html[data-theme="dark"] .loginWelcomePlansHeader p,
+html[data-theme="dark"] .loginWelcomePlanSummary,
+[data-theme="dark"] .loginWelcomeLead,
+[data-theme="dark"] .loginWelcomePlansHeader p,
+[data-theme="dark"] .loginWelcomePlanSummary {
+  color: #b0b8c4;
+}
+
+html[data-theme="dark"] .loginWelcomePlan,
+[data-theme="dark"] .loginWelcomePlan {
+  background: rgba(22, 30, 40, 0.92);
+  border-color: #2a3644;
+}
+
+html[data-theme="dark"] .loginWelcomePlan li,
+[data-theme="dark"] .loginWelcomePlan li {
+  color: #d5dbe5;
+}
+
+html[data-theme="dark"] .loginWelcomeSecondary,
+[data-theme="dark"] .loginWelcomeSecondary {
+  background: #1a2330;
+  color: #f5f7fa;
+  border-color: #334155;
+}
+
 .authLoadingPage {
   min-height: 100vh;
   display: grid;

@@ -11,6 +11,7 @@ import type { FontScale, ThemeMode } from "../utils/displayPreferences";
 import AuthLoadingScreen from "./AuthLoadingScreen";
 import DeveloperCredit from "./DeveloperCredit";
 import DisplayPreferencesPanel from "./DisplayPreferencesPanel";
+import LoginWelcomeLanding from "./LoginWelcomeLanding";
 
 type LoginPageProps = {
   status: "loading" | "login" | "denied";
@@ -80,6 +81,7 @@ export default function LoginPage({
   const [showPassword, setShowPassword] = useState(false);
   const [signupStatus, setSignupStatus] = useState<PharmacySignupStatusLookup | null>(null);
   const [signupStatusLoading, setSignupStatusLoading] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(true);
 
   const isRegister = authMode === "register";
 
@@ -139,6 +141,30 @@ export default function LoginPage({
     );
   }
 
+  if (showWelcome) {
+    return (
+      <LoginWelcomeLanding
+        isArabic={isArabic}
+        t={t}
+        themeMode={themeMode}
+        fontScale={fontScale}
+        resolvedTheme={resolvedTheme}
+        onThemeModeChange={onThemeModeChange}
+        onFontScaleChange={onFontScaleChange}
+        onToggleTheme={onToggleTheme}
+        onToggleLang={onToggleLang}
+        onStartTrial={() => {
+          onAuthModeChange("register");
+          setShowWelcome(false);
+        }}
+        onSignIn={() => {
+          onAuthModeChange("login");
+          setShowWelcome(false);
+        }}
+      />
+    );
+  }
+
   const signupStatusMessage = (() => {
     if (isRegister || !signupStatus) return null;
     const note = signupStatus.reviewNote?.trim();
@@ -170,6 +196,13 @@ export default function LoginPage({
   return (
     <div className="loginPage" dir={isArabic ? "rtl" : "ltr"}>
       <form className="loginCard" onSubmit={isRegister ? onRegisterSubmit : onSubmit}>
+        <button
+          type="button"
+          className="loginBackToWelcome"
+          onClick={() => setShowWelcome(true)}
+        >
+          {isArabic ? "← العودة للباقات" : "← Back to plans"}
+        </button>
         <img
           src={VICTORY_BRAND_LOGO}
           alt={VICTORY_BRAND_TITLE}

@@ -72,7 +72,7 @@ export const defaultSubscriptionTiers: Record<SubscriptionTier, SubscriptionTier
       "Transfer approvals",
     ],
     upgradeAmount: 0,
-    packagePrice: 1000,
+    packagePrice: 1200,
     enabledPages: [...defaultTierEnabledPages.professional],
     allowedFeatures: [...defaultTierAllowedFeatures.professional],
   },
