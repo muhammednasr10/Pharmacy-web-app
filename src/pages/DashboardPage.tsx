@@ -4,6 +4,7 @@ import DashboardInventoryAlerts from "./dashboard/DashboardInventoryAlerts";
 import DashboardModuleGrid from "./dashboard/DashboardModuleGrid";
 import DashboardOrgInventoryAlerts from "./dashboard/DashboardOrgInventoryAlerts";
 import DashboardPendingTransfers from "./dashboard/DashboardPendingTransfers";
+import DashboardGettingStarted from "./dashboard/DashboardGettingStarted";
 import DashboardQuickActions from "./dashboard/DashboardQuickActions";
 import DashboardSubscriptionAlert from "./dashboard/DashboardSubscriptionAlert";
 import { useDashboardModules } from "./dashboard/useDashboardModules";
@@ -28,6 +29,8 @@ export default function DashboardPage({
   totalPurchasesCount,
   totalReturnsCount,
   branchesCount,
+  hasOpenShift = false,
+  hasCompletedSale = false,
   lowStockMedicines,
   expiringSoonMedicines,
   expiredMedicines,
@@ -83,6 +86,19 @@ export default function DashboardPage({
       <DashboardIntroSection isArabic={isArabic} />
 
       <DashboardModuleGrid isArabic={isArabic} modules={modules} />
+
+      {(totalMedicinesCount === 0 || !hasCompletedSale) && (
+        <DashboardGettingStarted
+          isArabic={isArabic}
+          totalMedicinesCount={totalMedicinesCount}
+          hasOpenShift={hasOpenShift}
+          hasCompletedSale={hasCompletedSale}
+          canAccessInventory={canAccess("inventory")}
+          canAccessPos={canAccess("pos")}
+          onOpenInventory={() => onOpenInventory("all")}
+          onOpenPOS={onOpenPOS}
+        />
+      )}
 
       {showOrgInventoryAlerts && (
         <DashboardOrgInventoryAlerts

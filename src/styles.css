@@ -4270,6 +4270,94 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
   padding: 0;
 }
 
+.dashboardGettingStartedIntro {
+  margin: 0 0 0.85rem;
+}
+
+.dashboardGettingStartedList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.dashboardGettingStartedStep {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-bg-muted);
+}
+
+.dashboardGettingStartedStep.is-done {
+  opacity: 0.85;
+}
+
+.dashboardGettingStartedStepMain {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.dashboardGettingStartedStepMain strong {
+  display: block;
+  margin-bottom: 0.15rem;
+}
+
+.dashboardGettingStartedStepMain p {
+  margin: 0;
+}
+
+.dashboardGettingStartedIndex {
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  background: rgba(0, 31, 63, 0.1);
+  color: var(--color-text);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.dashboardGettingStartedStep.is-done .dashboardGettingStartedIndex {
+  background: rgba(21, 128, 61, 0.16);
+  color: #166534;
+}
+
+.dashboardGettingStartedDone {
+  color: #166534;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.medicineFormFeedback {
+  margin: 0.65rem 0 0;
+  padding: 0.65rem 0.8rem;
+  border-radius: 10px;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.medicineFormFeedback.is-error {
+  background: rgba(185, 28, 28, 0.12);
+  color: #991b1b;
+  border: 1px solid rgba(185, 28, 28, 0.28);
+}
+
+.medicineFormFeedback.is-success {
+  background: rgba(21, 128, 61, 0.12);
+  color: #166534;
+  border: 1px solid rgba(21, 128, 61, 0.28);
+}
+
 .medicineForm {
   background: var(--color-bg-muted);
   border: 1px solid var(--color-border);

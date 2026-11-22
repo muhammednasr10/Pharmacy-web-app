@@ -187,8 +187,8 @@ export default function LoginPage({
         <p>
           {isRegister
             ? isArabic
-              ? "سجّل بيانات صيدليتك وابدأ نسخة تجريبية مجانية فوراً"
-              : "Enter your pharmacy details and start a free trial right away"
+              ? `سجّل وابدأ تجربة مجانية لمدة ${TRIAL_SUBSCRIPTION_DAYS} يوم فورًا — الحساب يفتح مباشرة، وفريق Victory بيراجع الطلب خلال مدة التجربة`
+              : `Sign up and start a free ${TRIAL_SUBSCRIPTION_DAYS}-day trial immediately — you get access now, and Victory reviews your request during the trial`
             : isArabic
               ? "ادخل بالإيميل وكلمة المرور"
               : "Sign in with email and password"}
@@ -196,8 +196,8 @@ export default function LoginPage({
         {isRegister && (
           <p className="loginTrialBadge" role="status">
             {isArabic
-              ? `نسخة تجربة ${TRIAL_SUBSCRIPTION_DAYS} يوم على باقة احترافي — بدون التزام`
-              : `${TRIAL_SUBSCRIPTION_DAYS}-day Professional trial — no commitment`}
+              ? `تجربة ${TRIAL_SUBSCRIPTION_DAYS} يوم على باقة احترافي فور التسجيل — لو ما تمّش الاعتماد خلال المدة الاشتراك بيتوقف`
+              : `${TRIAL_SUBSCRIPTION_DAYS}-day Professional trial starts on signup — if not approved within that period, access stops`}
           </p>
         )}
 
@@ -329,8 +329,8 @@ export default function LoginPage({
         {isRegister && (
           <p className="loginHint">
             {isArabic
-              ? "كلمة المرور 6 أحرف على الأقل — سيتم الاعتماد ثم يمكنك استخدام البرنامج"
-              : "Password must be at least 6 characters — after approval you can use the app"}
+              ? `كلمة المرور 6 أحرف على الأقل — بعد التسجيل تدخل مباشرة وتبدأ تجربة ${TRIAL_SUBSCRIPTION_DAYS} يوم`
+              : `Password must be at least 6 characters — after signup you enter immediately and your ${TRIAL_SUBSCRIPTION_DAYS}-day trial starts`}
           </p>
         )}
 
@@ -363,8 +363,8 @@ export default function LoginPage({
               : "Sending request..."
             : isRegister
               ? isArabic
-                ? "إرسال طلب التسجيل"
-                : "Submit signup request"
+                ? "إنشاء الحساب وبدء التجربة"
+                : "Create account & start trial"
               : isArabic
                 ? "تسجيل الدخول"
                 : "Sign in"}
@@ -383,8 +383,8 @@ export default function LoginPage({
               ? "لديك حساب؟ تسجيل الدخول"
               : "Already have an account? Sign in"
             : isArabic
-              ? "صيدلية جديدة؟ ابدأ التجربة المجانية"
-              : "New pharmacy? Start free trial"}
+              ? `صيدلية جديدة؟ ابدأ تجربة مجانية لمدة ${TRIAL_SUBSCRIPTION_DAYS} يوم`
+              : `New pharmacy? Start a free ${TRIAL_SUBSCRIPTION_DAYS}-day trial`}
         </button>
 
         <div className="loginUtilityIcons">

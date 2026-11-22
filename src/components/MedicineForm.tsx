@@ -1,4 +1,5 @@
 import type { Medicine, NewMedicineForm } from "../types";
+import type { MedicineFormFeedback } from "../hooks/useMedicineManagement";
 import MedicineEntryGrid from "./MedicineEntryGrid";
 
 type MedicineFormProps = {
@@ -16,6 +17,7 @@ type MedicineFormProps = {
   hideTitle?: boolean;
   showBuyPrice?: boolean;
   lookupResetKey?: string | number;
+  feedback?: MedicineFormFeedback | null;
 };
 
 export default function MedicineForm({
@@ -33,6 +35,7 @@ export default function MedicineForm({
   showBuyPrice = true,
   isSaving = false,
   lookupResetKey,
+  feedback = null,
 }: MedicineFormProps) {
   return (
     <div className="medicineForm">
@@ -48,6 +51,16 @@ export default function MedicineForm({
         resetKey={lookupResetKey ?? editingMedicineId ?? "new"}
         showBuyPrice={showBuyPrice}
       />
+      {feedback ? (
+        <p
+          className={
+            feedback.type === "error" ? "medicineFormFeedback is-error" : "medicineFormFeedback is-success"
+          }
+          role={feedback.type === "error" ? "alert" : "status"}
+        >
+          {feedback.text}
+        </p>
+      ) : null}
       <div className="medicineFormActions">
         <button
           type="button"

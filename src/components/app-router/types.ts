@@ -125,6 +125,7 @@ export type AppPageRouterProps = {
   dashboardInvoicesCount: number;
   dashboardProfitTotal: number;
   totalInvoicesCount: number;
+  todayInvoicesCount: number;
   totalMedicinesCount: number;
   totalCustomerRemainingDebt: number;
   totalCustomerPayments: number;
@@ -132,6 +133,7 @@ export type AppPageRouterProps = {
   pendingBranchTransferGroups: PendingBranchTransferGroup[];
   newMedicine: NewMedicineForm;
   setNewMedicine: Dispatch<SetStateAction<NewMedicineForm>>;
+  medicineFormFeedback?: { type: "error" | "success"; text: string } | null;
   editingMedicineId: number | null;
   filteredMedicines: Medicine[];
   filteredInvoicesList: Invoice[];

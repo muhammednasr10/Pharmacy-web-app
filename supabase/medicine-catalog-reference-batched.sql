@@ -51,9 +51,7 @@ begin
 
   v_last_id := v_ids[array_upper(v_ids, 1)];
 
-  select coalesce(max(id::bigint), 0::bigint) + 1
-    into v_next_id
-  from public.medicines;
+  v_next_id := public.max_numeric_text_id('public.medicines'::regclass) + 1;
 
   insert into public.medicines (
     id,
@@ -207,9 +205,7 @@ begin
 
   get diagnostics v_updated = row_count;
 
-  select coalesce(max(id::bigint), 0::bigint) + 1
-    into v_next_id
-  from public.medicines;
+  v_next_id := public.max_numeric_text_id('public.medicines'::regclass) + 1;
 
   insert into public.medicines (
     id,

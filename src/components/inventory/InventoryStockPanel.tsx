@@ -41,6 +41,7 @@ type InventoryStockPanelProps = {
   onSave: () => boolean | Promise<boolean>;
   onCancel: () => void;
   onOpenAdd: () => void;
+  medicineFormFeedback?: { type: "error" | "success"; text: string } | null;
   disabled: boolean;
   exportInventoryCSV: () => void;
   isSubscriptionExpired: boolean;
@@ -85,6 +86,7 @@ export default function InventoryStockPanel({
   onSave,
   onCancel,
   onOpenAdd,
+  medicineFormFeedback = null,
   disabled,
   exportInventoryCSV,
   canManageInventory,
@@ -200,13 +202,7 @@ export default function InventoryStockPanel({
       }
     } catch (saveError) {
       console.error("Save medicine error:", saveError);
-      alert(
-        saveError instanceof Error
-          ? saveError.message
-          : isArabic
-            ? "حدث خطأ أثناء حفظ الدواء"
-            : "Failed to save medicine",
-      );
+      // Inline feedback is owned by useMedicineManagement / MedicineForm.
     } finally {
       setIsSaving(false);
     }
@@ -418,6 +414,7 @@ export default function InventoryStockPanel({
               hideTitle
               showBuyPrice={canViewInventoryCostProfit}
               lookupResetKey={editingMedicineId ?? "new"}
+              feedback={medicineFormFeedback}
             />
           </div>
         </div>

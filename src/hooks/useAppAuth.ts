@@ -356,14 +356,31 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
           password: loginPassword,
         });
 
+        if (result.canSignIn) {
+          const { error: signInError } = await pharmacyService.signInWithUsernameOrEmail(
+            loginEmail,
+            loginPassword,
+          );
+          if (signInError) {
+            setAuthMode("login");
+            setRegisterSuccess(
+              isArabic
+                ? `تم إنشاء حسابك وتجربة 14 يوم. سجّل الدخول بنفس البيانات.${result.requestNumber ? ` رقم الطلب: ${result.requestNumber}` : ""}`
+                : `Your account and 14-day trial are ready. Sign in with the same credentials.${result.requestNumber ? ` Request: ${result.requestNumber}` : ""}`,
+            );
+            return;
+          }
+          return;
+        }
+
         setRegisterSuccess(
           isArabic
             ? result.requestNumber
-              ? `تم إرسال طلب التسجيل (${result.requestNumber}). سيظهر لمالك النظام في «طلبات العملاء» للاعتماد قبل فتح الحساب.`
-              : "تم إرسال طلب التسجيل. سيظهر لمالك النظام في «طلبات العملاء» للاعتماد قبل فتح الحساب."
+              ? `تم إرسال طلب التجربة (${result.requestNumber}). انتظر الاعتماد ثم سجّل الدخول.`
+              : "تم إرسال طلب التجربة. انتظر الاعتماد ثم سجّل الدخول."
             : result.requestNumber
-              ? `Signup request sent (${result.requestNumber}). The system owner must approve it in Customer requests before you can sign in.`
-              : "Signup request sent. The system owner must approve it in Customer requests before you can sign in.",
+              ? `Trial request sent (${result.requestNumber}). Wait for approval, then sign in.`
+              : "Trial request sent. Wait for approval, then sign in.",
         );
         setAuthMode("login");
         setLoginPassword("");

@@ -39,6 +39,7 @@ export type InventoryManagementPageProps = {
   onSave: () => boolean | Promise<boolean>;
   onCancel: () => void;
   onOpenAdd: () => void;
+  medicineFormFeedback?: { type: "error" | "success"; text: string } | null;
   disabled: boolean;
   exportInventoryCSV: () => void;
   isSubscriptionExpired: boolean;

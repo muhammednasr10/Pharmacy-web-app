@@ -193,7 +193,11 @@ export async function registerPublicUser(params: {
   pharmacyName: string;
   phone: string;
   address: string;
-}): Promise<{ pendingApproval: boolean; requestNumber?: string }> {
+}): Promise<{
+  pendingApproval: boolean;
+  canSignIn: boolean;
+  requestNumber?: string;
+}> {
   const email = normalizePublicSignupEmail(params.email);
   const name = params.name.trim();
   const pharmacyName = params.pharmacyName.trim();
@@ -229,14 +233,27 @@ export async function registerPublicUser(params: {
     throw new Error("password_too_short");
   }
 
-  const { data, error } = await supabase.rpc("register_trial_app_user", {
+  const rpcPayload = {
     p_email: email,
     p_password: password,
     p_name: name,
     p_pharmacy_name: pharmacyName,
     p_phone: phone,
     p_address: address,
-  });
+  };
+
+  let data: unknown = null;
+  let error: { message: string } | null = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const result = await supabase.rpc("register_trial_app_user", rpcPayload);
+    data = result.data;
+    error = result.error;
+    const networkFailure =
+      Boolean(error?.message) &&
+      /failed to fetch|networkerror|load failed|network request failed/i.test(error.message);
+    if (!networkFailure || attempt === 1) break;
+    await new Promise((resolve) => window.setTimeout(resolve, 700));
+  }
 
   if (error) {
     if (error.message.includes("email_address_invalid_format")) {
@@ -276,9 +293,14 @@ export async function registerPublicUser(params: {
     throw new Error("register_failed");
   }
 
-  const payload = data as { pending_approval?: boolean; request_number?: string };
+  const payload = data as {
+    pending_approval?: boolean;
+    can_sign_in?: boolean;
+    request_number?: string;
+  };
   return {
-    pendingApproval: Boolean(payload.pending_approval ?? true),
+    pendingApproval: Boolean(payload.pending_approval),
+    canSignIn: payload.can_sign_in !== false && !payload.pending_approval,
     requestNumber: payload.request_number,
   };
 }

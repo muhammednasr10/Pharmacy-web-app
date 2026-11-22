@@ -161,36 +161,41 @@ export function stampPharmacy(payload: Record<string, any>): Record<string, any>
   return { ...payload, pharmacy_id: resolveStampPharmacyId() };
 }
 
-export function prepareMedicinePayloadForPharmacy(
-  medicine: Partial<Medicine>,
-  pharmacyId: string,
-): Record<string, any> {
+function buildMedicineWritePayload(medicine: Partial<Medicine>): Record<string, any> {
+  const qty = medicine.qty;
+  const price = medicine.price;
+  const buyPrice = medicine.buyPrice;
+  const expiry = medicine.expiry;
   return {
     ...toSnakeCase({
       id: medicine.id,
       name_ar: medicine.name_ar,
       name_en: medicine.name_en,
       barcode: medicine.barcode,
-      qty: medicine.qty,
-      price: medicine.price,
-      buyPrice: medicine.buyPrice,
-      expiry: medicine.expiry,
+      qty,
+      price,
+      buyPrice,
+      expiry,
     } as Partial<Medicine>),
+    // Dual-write legacy + catalog columns so inserts never leave quantity/sale_price at 0 defaults.
+    ...(qty !== undefined ? { quantity: qty } : {}),
+    ...(price !== undefined ? { sale_price: price } : {}),
+    ...(buyPrice !== undefined ? { purchase_price: buyPrice } : {}),
+    ...(expiry !== undefined ? { expiry_date: expiry } : {}),
+    is_active: true,
+  };
+}
+
+export function prepareMedicinePayloadForPharmacy(
+  medicine: Partial<Medicine>,
+  pharmacyId: string,
+): Record<string, any> {
+  return {
+    ...buildMedicineWritePayload(medicine),
     pharmacy_id: pharmacyId,
   };
 }
 
 export function prepareMedicinePayload(medicine: Partial<Medicine>): Record<string, any> {
-  return stampPharmacy(
-    toSnakeCase({
-      id: medicine.id,
-      name_ar: medicine.name_ar,
-      name_en: medicine.name_en,
-      barcode: medicine.barcode,
-      qty: medicine.qty,
-      price: medicine.price,
-      buyPrice: medicine.buyPrice,
-      expiry: medicine.expiry,
-    } as Partial<Medicine>),
-  );
+  return stampPharmacy(buildMedicineWritePayload(medicine));
 }

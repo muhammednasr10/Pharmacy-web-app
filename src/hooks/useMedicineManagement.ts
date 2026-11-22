@@ -14,6 +14,11 @@ export const emptyMedicineForm: NewMedicineForm = {
   expiry: "",
 };
 
+export type MedicineFormFeedback = {
+  type: "error" | "success";
+  text: string;
+};
+
 type ActivityLogInput = {
   type: string;
   title: string;
@@ -56,6 +61,14 @@ export function useMedicineManagement({
 }: UseMedicineManagementOptions) {
   const [newMedicine, setNewMedicine] = useState<NewMedicineForm>(emptyMedicineForm);
   const [editingMedicineId, setEditingMedicineId] = useState<number | null>(null);
+  const [medicineFormFeedback, setMedicineFormFeedback] = useState<MedicineFormFeedback | null>(
+    null,
+  );
+
+  const updateNewMedicine = useCallback((form: NewMedicineForm) => {
+    setNewMedicine(form);
+    setMedicineFormFeedback(null);
+  }, []);
 
   const saveMedicine = useCallback(async (): Promise<boolean> => {
     if (!canUseSystemActions()) {
@@ -63,11 +76,12 @@ export function useMedicineManagement({
       return false;
     }
     if (!canManageInventory()) {
-      alert(
-        isArabic
+      setMedicineFormFeedback({
+        type: "error",
+        text: isArabic
           ? "ليس لديك صلاحية لإدارة المخزون"
           : "You do not have permission to manage inventory",
-      );
+      });
       return false;
     }
     if (
@@ -76,16 +90,22 @@ export function useMedicineManagement({
       !newMedicine.barcode ||
       !newMedicine.expiry
     ) {
-      alert(isArabic ? "من فضلك أكمل بيانات الدواء" : "Please complete medicine data");
+      setMedicineFormFeedback({
+        type: "error",
+        text: isArabic
+          ? "من فضلك أكمل الاسم العربي والإنجليزي والباركود وتاريخ الصلاحية"
+          : "Please complete Arabic name, English name, barcode, and expiry date",
+      });
       return false;
     }
 
     if (newMedicine.qty < 0 || (newMedicine.buyPrice ?? -1) < 0 || newMedicine.price <= 0) {
-      alert(
-        isArabic
-          ? "تأكد من الكمية وسعر الشراء وسعر البيع"
-          : "Check quantity, buy price and sell price",
-      );
+      setMedicineFormFeedback({
+        type: "error",
+        text: isArabic
+          ? "تأكد من الكمية وسعر الشراء وسعر البيع (سعر البيع يجب أن يكون أكبر من صفر)"
+          : "Check quantity, buy price, and sell price (sell price must be greater than zero)",
+      });
       return false;
     }
 
@@ -94,7 +114,10 @@ export function useMedicineManagement({
     );
 
     if (barcodeExists) {
-      alert(isArabic ? "الباركود موجود بالفعل" : "Barcode already exists");
+      setMedicineFormFeedback({
+        type: "error",
+        text: isArabic ? "الباركود موجود بالفعل" : "Barcode already exists",
+      });
       return false;
     }
 
@@ -109,6 +132,7 @@ export function useMedicineManagement({
       buyPrice: Number(newMedicine.buyPrice),
       price: Number(newMedicine.price),
       expiry: newMedicine.expiry,
+      pharmacyId: getPharmacyId(),
     };
 
     try {
@@ -159,28 +183,33 @@ export function useMedicineManagement({
         referenceId: String(medicineId),
       });
 
-      setMedicines(await pharmacyService.getMedicines());
+      // Optimistic local update (bulk getMedicines may return [] for large catalogs).
+      setMedicines((prev) => {
+        const exists = prev.some((item) => item.id === medicineId);
+        if (exists) {
+          return prev.map((item) => (item.id === medicineId ? { ...item, ...medicine } : item));
+        }
+        return [medicine, ...prev];
+      });
+      void pharmacyService.getMedicines().then((rows) => {
+        if (rows.length > 0) setMedicines(rows);
+      });
+
       setNewMedicine(emptyMedicineForm);
       setEditingMedicineId(null);
-      alert(
-        wasEditing
-          ? isArabic
-            ? "تم تعديل الدواء بنجاح"
-            : "Medicine updated successfully"
-          : isArabic
-            ? "تمت إضافة الدواء بنجاح"
-            : "Medicine added successfully",
-      );
+      setMedicineFormFeedback(null);
       return true;
     } catch (error) {
       console.error("saveMedicine error:", error);
-      alert(
-        error instanceof Error
-          ? error.message
-          : isArabic
-            ? "حدث خطأ أثناء حفظ الدواء"
-            : "Failed to save medicine",
-      );
+      setMedicineFormFeedback({
+        type: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : isArabic
+              ? "حدث خطأ أثناء حفظ الدواء"
+              : "Failed to save medicine",
+      });
       return false;
     }
   }, [
@@ -228,11 +257,12 @@ export function useMedicineManagement({
 
       setMedicines(await pharmacyService.getMedicines());
       setStockMovements(await pharmacyService.getStockMovements());
-      alert(
-        isArabic
+      setMedicineFormFeedback({
+        type: "success",
+        text: isArabic
           ? `تمت تسوية الجرد بنجاح (${result.adjustedCount} صنف)`
           : `Stock count applied (${result.adjustedCount} items)`,
-      );
+      });
     },
     [
       addActivityLog,
@@ -257,6 +287,7 @@ export function useMedicineManagement({
         price: medicine.price,
         expiry: medicine.expiry,
       });
+      setMedicineFormFeedback(null);
       onNavigateToInventory();
     },
     [onNavigateToInventory],
@@ -265,11 +296,13 @@ export function useMedicineManagement({
   const cancelEditMedicine = useCallback(() => {
     setEditingMedicineId(null);
     setNewMedicine(emptyMedicineForm);
+    setMedicineFormFeedback(null);
   }, []);
 
   const openAddMedicineForm = useCallback(() => {
     setEditingMedicineId(null);
     setNewMedicine(emptyMedicineForm);
+    setMedicineFormFeedback(null);
   }, []);
 
   const deleteMedicine = useCallback(
@@ -279,11 +312,12 @@ export function useMedicineManagement({
         return;
       }
       if (!canDeleteMedicine()) {
-        alert(
-          isArabic
+        setMedicineFormFeedback({
+          type: "error",
+          text: isArabic
             ? "ليس لديك صلاحية لحذف الأدوية"
             : "You do not have permission to delete medicines",
-        );
+        });
         return;
       }
 
@@ -321,7 +355,7 @@ export function useMedicineManagement({
         referenceId: String(medicine.id),
       });
 
-      alert(isArabic ? "تم حذف الدواء" : "Medicine deleted");
+      setMedicines((prev) => prev.filter((item) => item.id !== medicine.id));
     },
     [
       addActivityLog,
@@ -330,6 +364,7 @@ export function useMedicineManagement({
       canUseSystemActions,
       getPharmacyId,
       isArabic,
+      setMedicines,
       showSubscriptionExpiredAlert,
       user?.uid,
     ],
@@ -337,8 +372,10 @@ export function useMedicineManagement({
 
   return {
     newMedicine,
-    setNewMedicine,
+    setNewMedicine: updateNewMedicine,
     editingMedicineId,
+    medicineFormFeedback,
+    setMedicineFormFeedback,
     saveMedicine,
     handleApplyStockCount,
     startEditMedicine,

@@ -16,6 +16,7 @@ export type AppInventoryRouteProps = Pick<
   | "medicines"
   | "branches"
   | "newMedicine"
+  | "medicineFormFeedback"
   | "editingMedicineId"
   | "isArabic"
   | "t"
@@ -62,6 +63,7 @@ export default function AppInventoryRoute({
   medicines,
   branches,
   newMedicine,
+  medicineFormFeedback = null,
   editingMedicineId,
   isArabic,
   t,
@@ -137,6 +139,7 @@ export default function AppInventoryRoute({
       onSave={saveMedicine}
       onCancel={cancelEditMedicine}
       onOpenAdd={openAddMedicineForm}
+      medicineFormFeedback={medicineFormFeedback}
       disabled={subscriptionBlocksWrite}
       exportInventoryCSV={exportInventoryCSV}
       isSubscriptionExpired={isSubscriptionExpired}

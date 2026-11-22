@@ -45,6 +45,11 @@ function formatCatalogImportError(message: string, isArabic: boolean) {
       ? "الاستيراد استغرق وقتاً أطول من المتوقع — أعد المحاولة (الاستيراد يعمل على دفعات الآن)"
       : "Import took too long — try again (import now runs in smaller batches)";
   }
+  if (/invalid input syntax for type bigint/i.test(message)) {
+    return isArabic
+      ? "يوجد صنف بمعرّف غير رقمي في المخزن. احذفه أو تواصل مع الدعم ثم أعد الاستيراد"
+      : "A medicine with a non-numeric ID is blocking import. Remove it or contact support, then retry";
+  }
   if (message === "empty_or_unrecognized_csv" || message === "empty_file") {
     return isArabic
       ? "الملف فاضي أو الأعمدة مش متعرّفة. حمّل قالب Excel، املأه، وارفع ملف .xlsx مباشرة بدون تحويله لـ CSV"

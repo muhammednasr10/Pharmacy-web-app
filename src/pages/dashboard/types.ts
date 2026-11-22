@@ -29,6 +29,8 @@ export type DashboardPageProps = {
   totalPurchasesCount: number;
   totalReturnsCount: number;
   branchesCount: number;
+  hasOpenShift?: boolean;
+  hasCompletedSale?: boolean;
   lowStockMedicines: Medicine[];
   expiringSoonMedicines: Medicine[];
   expiredMedicines: Medicine[];

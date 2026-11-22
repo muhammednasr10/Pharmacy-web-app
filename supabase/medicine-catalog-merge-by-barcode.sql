@@ -32,7 +32,7 @@ declare
   v_buy_price numeric;
   v_expiry date;
   v_qty integer;
-  v_existing_id bigint;
+  v_existing_id text;
 begin
   if not (public.is_super_admin() or public.is_pharmacy_manager()) then
     raise exception 'forbidden';
@@ -46,9 +46,7 @@ begin
     raise exception 'invalid_rows';
   end if;
 
-  select coalesce(max(id::bigint), 0::bigint) + 1
-    into v_next_id
-  from public.medicines;
+  v_next_id := public.max_numeric_text_id('public.medicines'::regclass) + 1;
 
   for v_row in select value from jsonb_array_elements(p_rows)
   loop
@@ -140,7 +138,7 @@ begin
 
     v_existing_id := null;
     if v_barcode <> '' then
-      select m.id::bigint
+      select m.id
         into v_existing_id
       from public.medicines m
       where m.pharmacy_id = p_pharmacy_id

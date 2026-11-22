@@ -79,5 +79,16 @@ export function formatUserCreationError(message: string, isArabic: boolean): str
       ? "تم إنشاء الحساب. قد يحتاج المستخدم لتأكيد البريد قبل أول تسجيل دخول."
       : "Account created. The user may need to confirm their email before signing in.";
   }
+  if (
+    /failed to fetch/i.test(message) ||
+    /networkerror/i.test(message) ||
+    /load failed/i.test(message) ||
+    /network request failed/i.test(message) ||
+    /fetch.*supabase\.co/i.test(message)
+  ) {
+    return isArabic
+      ? "مفيش اتصال بخادم Victory دلوقتي (Failed to fetch). تأكد من الإنترنت، عطّل VPN/مانع الإعلانات مؤقتًا، وجرب شبكة تانية أو حدّث الصفحة (Ctrl+F5) ثم أعد المحاولة."
+      : "Cannot reach Victory servers right now (Failed to fetch). Check your internet, temporarily disable VPN/ad blockers, try another network, or hard-refresh (Ctrl+F5) and retry.";
+  }
   return message;
 }
