@@ -26,7 +26,7 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
-  const [authMode, setAuthMode] = useState<"login" | "register">("register");
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [registerName, setRegisterName] = useState("");
   const [registerPharmacyName, setRegisterPharmacyName] = useState("");
   const [registerPhone, setRegisterPhone] = useState("");

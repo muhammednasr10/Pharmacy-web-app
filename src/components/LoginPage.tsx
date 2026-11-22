@@ -82,7 +82,7 @@ export default function LoginPage({
   const [showPassword, setShowPassword] = useState(false);
   const [signupStatus, setSignupStatus] = useState<PharmacySignupStatusLookup | null>(null);
   const [signupStatusLoading, setSignupStatusLoading] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(true);
+  const [showWelcome, setShowWelcome] = useState(false);
 
   const isRegister = authMode === "register";
 
@@ -417,7 +417,11 @@ export default function LoginPage({
           className="loginLangBtn"
           data-testid="auth-mode-toggle"
           onClick={() => {
-            onAuthModeChange(isRegister ? "login" : "register");
+            if (isRegister) {
+              onAuthModeChange("login");
+              return;
+            }
+            setShowWelcome(true);
           }}
         >
           {isRegister
@@ -425,8 +429,8 @@ export default function LoginPage({
               ? "لديك حساب؟ تسجيل الدخول"
               : "Already have an account? Sign in"
             : isArabic
-              ? `صيدلية جديدة؟ ابدأ تجربة مجانية لمدة ${TRIAL_SUBSCRIPTION_DAYS} يوم`
-              : `New pharmacy? Start a free ${TRIAL_SUBSCRIPTION_DAYS}-day trial`}
+              ? `صيدلية جديدة؟ احسب الباقة وابدأ تجربة ${TRIAL_SUBSCRIPTION_DAYS} يوم`
+              : `New pharmacy? Calculate your plan & start a ${TRIAL_SUBSCRIPTION_DAYS}-day trial`}
         </button>
 
         <div className="loginUtilityIcons">

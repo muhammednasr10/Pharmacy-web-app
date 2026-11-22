@@ -26,6 +26,79 @@ type LoginWelcomeLandingProps = {
   onSignIn: () => void;
 };
 
+const PROGRAM_PAGES = [
+  {
+    key: "dashboard",
+    ar: "لوحة التحكم",
+    en: "Dashboard",
+    descAr: "ملخص اليوم: مبيعات، تنبيهات مخزون، وخطوات البداية.",
+    descEn: "Today's overview: sales, stock alerts, and getting-started steps.",
+  },
+  {
+    key: "inventory",
+    ar: "إدارة المخزن",
+    en: "Inventory",
+    descAr: "إضافة الأدوية، الجرد، الاستيراد، ومتابعة الصلاحية والرصيد.",
+    descEn: "Add medicines, stock counts, import, expiry and quantity tracking.",
+  },
+  {
+    key: "pos",
+    ar: "نقطة البيع",
+    en: "POS",
+    descAr: "بيع سريع بالباركود أو الاسم، مع الورديات والدفع النقدي/الفيزا.",
+    descEn: "Fast sales by barcode or name, with shifts and cash/card payment.",
+  },
+  {
+    key: "invoices",
+    ar: "المبيعات",
+    en: "Sales",
+    descAr: "سجل الفواتير والبحث والطباعة ومتابعة طرق الدفع.",
+    descEn: "Invoice history, search, printing, and payment methods.",
+  },
+  {
+    key: "purchases",
+    ar: "المشتريات",
+    en: "Purchases",
+    descAr: "تسجيل توريد الأدوية للمخزن وتحديث الأسعار والكميات.",
+    descEn: "Record stock purchases and update prices and quantities.",
+  },
+  {
+    key: "customers",
+    ar: "العملاء",
+    en: "Customers",
+    descAr: "CRM بسيط: بيانات العملاء والمديونيات والتحصيل.",
+    descEn: "Simple CRM: customer data, debts, and collections.",
+  },
+  {
+    key: "reports",
+    ar: "التقارير",
+    en: "Reports",
+    descAr: "مبيعات وأرباح وتكاليف حسب الفترة والطريقة والفرع.",
+    descEn: "Sales, profit, and costs by period, method, and branch.",
+  },
+  {
+    key: "users",
+    ar: "الموظفين",
+    en: "Staff",
+    descAr: "حسابات الموظفين والصلاحيات — تُفعَّل كإضافة في الحاسبة.",
+    descEn: "Staff accounts and permissions — enabled as a calculator add-on.",
+  },
+  {
+    key: "branches",
+    ar: "الفروع",
+    en: "Branches",
+    descAr: "إدارة أكثر من فرع وتبديل الفرع النشط ونقل المخزون.",
+    descEn: "Manage multiple branches, switch active branch, and transfer stock.",
+  },
+  {
+    key: "settings",
+    ar: "الإعدادات",
+    en: "Settings",
+    descAr: "بيانات الصيدلية والاشتراك وتفضيلات النظام.",
+    descEn: "Pharmacy profile, subscription, and system preferences.",
+  },
+] as const;
+
 function formatPrice(amount: number, isArabic: boolean) {
   const value = Math.max(0, Math.round(amount));
   return isArabic
@@ -79,7 +152,6 @@ export default function LoginWelcomeLanding({
   return (
     <div className="loginWelcomePage" dir={isArabic ? "rtl" : "ltr"}>
       <header className="loginWelcomeTopbar">
-        <img src={VICTORY_BRAND_LOGO} alt={VICTORY_BRAND_TITLE} className="loginWelcomeLogo" />
         <div className="loginWelcomeTopActions">
           <button
             type="button"
@@ -117,27 +189,49 @@ export default function LoginWelcomeLanding({
           >
             <span aria-hidden="true">{isArabic ? "EN" : "ع"}</span>
           </button>
+          <button type="button" className="loginWelcomeSecondary loginWelcomeTopSignIn" onClick={onSignIn}>
+            {isArabic ? "تسجيل الدخول" : "Sign in"}
+          </button>
         </div>
       </header>
 
       <main className="loginWelcomeMain">
         <section className="loginWelcomeHero">
-          <p className="loginWelcomeBrand">{VICTORY_BRAND_TITLE}</p>
-          <h1>
-            {isArabic
-              ? "احسب باقتك… ثم ابدأ تجربة 14 يوم فورًا"
-              : "Build your plan — then start a 14-day trial"}
-          </h1>
+          <div className="loginWelcomeHeroBrandRow">
+            <img src={VICTORY_BRAND_LOGO} alt={VICTORY_BRAND_TITLE} className="loginWelcomeHeroLogo" />
+            <div className="loginWelcomeHeroCopy">
+              <p className="loginWelcomeBrand">{VICTORY_BRAND_TITLE}</p>
+              <h1>
+                {isArabic
+                  ? "احسب باقتك… ثم ابدأ تجربة 14 يوم فورًا"
+                  : "Build your plan — then start a 14-day trial"}
+              </h1>
+            </div>
+          </div>
           <p className="loginWelcomeLead">
             {isArabic
               ? "حدد عدد الفروع والمستخدمين والإضافات، وشوف السعر الشهري. بعد الموافقة تدخل مباشرة وتجربة 14 يوم، ومالك النظام بيعتمد الطلب خلال المدة."
               : "Choose branches, users, and add-ons to see the monthly price. After you agree you enter immediately for a 14-day trial while the owner reviews approval."}
           </p>
-          <div className="loginWelcomeActions">
-            <button type="button" className="loginWelcomeSecondary" onClick={onSignIn}>
-              {isArabic ? "تسجيل الدخول" : "Sign in"}
-            </button>
+        </section>
+
+        <section className="loginWelcomePages" aria-label={isArabic ? "صفحات البرنامج" : "App pages"}>
+          <div className="loginWelcomePlansHeader">
+            <h2>{isArabic ? "صفحات البرنامج" : "What’s inside"}</h2>
+            <p>
+              {isArabic
+                ? "مرّر على أي صفحة عشان يظهر شرحها — مقفولة افتراضيًا عشان الشاشة تفضل بسيطة."
+                : "Hover any page to reveal its short description — collapsed by default to keep the screen clean."}
+            </p>
           </div>
+          <ul className="loginWelcomePageList">
+            {PROGRAM_PAGES.map((page) => (
+              <li key={page.key} className="loginWelcomePageItem" tabIndex={0}>
+                <strong>{isArabic ? page.ar : page.en}</strong>
+                <span className="loginWelcomePageDesc">{isArabic ? page.descAr : page.descEn}</span>
+              </li>
+            ))}
+          </ul>
         </section>
 
         <section className="loginWelcomeCalculator" aria-label={isArabic ? "حاسبة الباقة" : "Plan calculator"}>
@@ -192,9 +286,7 @@ export default function LoginWelcomeLanding({
                 />
                 <span>
                   <strong>{isArabic ? config.staffAddonTitleAr : config.staffAddonTitleEn}</strong>
-                  <em>
-                    {isArabic ? config.staffAddonDescAr : config.staffAddonDescEn}
-                  </em>
+                  <em>{isArabic ? config.staffAddonDescAr : config.staffAddonDescEn}</em>
                   <b>
                     {isArabic
                       ? `+ ${config.staffAddonPrice.toLocaleString("ar-EG")} ج.م / شهر`
