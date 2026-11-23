@@ -11,8 +11,12 @@ export type SubscriptionSettingsPanelProps = {
   isSubscriptionExpiringSoon: boolean;
   isTrialSubscription?: boolean;
   getSubscriptionPlanLabel: (plan: string) => string;
+  /** @deprecated Packages removed — limits summary used instead */
   subscriptionTierLabel?: string;
   subscriptionTier?: SubscriptionTier;
+  maxBranches?: number;
+  maxUsers?: number;
+  staffAddonEnabled?: boolean;
   submitSubscriptionRequest: (input: {
     plan: string;
     days: number;

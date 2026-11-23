@@ -1,4 +1,5 @@
 import type { StockMovement } from "../types";
+export { getMovementTypeLabel } from "./stockMovementLabels";
 
 export type MedicineStockSummary = {
   purchased: number;
@@ -8,30 +9,6 @@ export type MedicineStockSummary = {
   wastage: number;
   adjustmentsOut: number;
 };
-
-export function getMovementTypeLabel(type: string, isArabic: boolean): string {
-  const labels: Record<string, { ar: string; en: string }> = {
-    sale: { ar: "بيع", en: "Sale" },
-    return: { ar: "مرتجع", en: "Return" },
-    sale_return: { ar: "مرتجع فوري", en: "Instant Return" },
-    purchase: { ar: "توريد", en: "Purchase" },
-    purchase_delete: { ar: "حذف توريد", en: "Purchase Deleted" },
-    medicine_create: { ar: "إضافة يدوية", en: "Manual Add" },
-    medicine_update: { ar: "تعديل كمية", en: "Qty Update" },
-    medicine_delete: { ar: "حذف دواء", en: "Medicine Deleted" },
-    return_delete: { ar: "حذف مرتجع", en: "Return Deleted" },
-    wastage: { ar: "هالك", en: "Wastage" },
-    shrinkage: { ar: "هالك", en: "Wastage" },
-    adjustment: { ar: "تسوية", en: "Adjustment" },
-  };
-
-  const entry = labels[type];
-  if (entry) {
-    return isArabic ? entry.ar : entry.en;
-  }
-
-  return type;
-}
 
 export function buildMedicineStockSummary(movements: StockMovement[]): MedicineStockSummary {
   const summary: MedicineStockSummary = {
@@ -61,6 +38,7 @@ export function buildMedicineStockSummary(movements: StockMovement[]): MedicineS
         break;
       case "return":
       case "sale_return":
+      case "instant_sale_return":
         if (change > 0) summary.returns += change;
         else summary.adjustmentsOut += Math.abs(change);
         break;

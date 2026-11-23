@@ -14,6 +14,12 @@ type PricingCalculatorRow = {
   staff_addon_title_en?: string | null;
   staff_addon_desc_ar?: string | null;
   staff_addon_desc_en?: string | null;
+  customers_addon_enabled?: boolean | null;
+  customers_addon_price?: number | string | null;
+  customers_addon_title_ar?: string | null;
+  customers_addon_title_en?: string | null;
+  customers_addon_desc_ar?: string | null;
+  customers_addon_desc_en?: string | null;
 };
 
 function toNumber(value: unknown, fallback: number): number {
@@ -36,6 +42,23 @@ export function mapPricingCalculatorRow(row?: PricingCalculatorRow | null): Pric
       String(row.staff_addon_desc_ar || "").trim() || DEFAULT_PRICING_CALCULATOR_CONFIG.staffAddonDescAr,
     staffAddonDescEn:
       String(row.staff_addon_desc_en || "").trim() || DEFAULT_PRICING_CALCULATOR_CONFIG.staffAddonDescEn,
+    customersAddonEnabled: row.customers_addon_enabled !== false,
+    customersAddonPrice: Math.max(
+      0,
+      toNumber(row.customers_addon_price, DEFAULT_PRICING_CALCULATOR_CONFIG.customersAddonPrice),
+    ),
+    customersAddonTitleAr:
+      String(row.customers_addon_title_ar || "").trim() ||
+      DEFAULT_PRICING_CALCULATOR_CONFIG.customersAddonTitleAr,
+    customersAddonTitleEn:
+      String(row.customers_addon_title_en || "").trim() ||
+      DEFAULT_PRICING_CALCULATOR_CONFIG.customersAddonTitleEn,
+    customersAddonDescAr:
+      String(row.customers_addon_desc_ar || "").trim() ||
+      DEFAULT_PRICING_CALCULATOR_CONFIG.customersAddonDescAr,
+    customersAddonDescEn:
+      String(row.customers_addon_desc_en || "").trim() ||
+      DEFAULT_PRICING_CALCULATOR_CONFIG.customersAddonDescEn,
   };
 }
 
@@ -68,6 +91,16 @@ export async function savePricingCalculatorConfig(
     staff_addon_title_en: input.staffAddonTitleEn.trim() || DEFAULT_PRICING_CALCULATOR_CONFIG.staffAddonTitleEn,
     staff_addon_desc_ar: input.staffAddonDescAr.trim() || DEFAULT_PRICING_CALCULATOR_CONFIG.staffAddonDescAr,
     staff_addon_desc_en: input.staffAddonDescEn.trim() || DEFAULT_PRICING_CALCULATOR_CONFIG.staffAddonDescEn,
+    customers_addon_enabled: Boolean(input.customersAddonEnabled),
+    customers_addon_price: Math.max(0, Number(input.customersAddonPrice) || 0),
+    customers_addon_title_ar:
+      input.customersAddonTitleAr.trim() || DEFAULT_PRICING_CALCULATOR_CONFIG.customersAddonTitleAr,
+    customers_addon_title_en:
+      input.customersAddonTitleEn.trim() || DEFAULT_PRICING_CALCULATOR_CONFIG.customersAddonTitleEn,
+    customers_addon_desc_ar:
+      input.customersAddonDescAr.trim() || DEFAULT_PRICING_CALCULATOR_CONFIG.customersAddonDescAr,
+    customers_addon_desc_en:
+      input.customersAddonDescEn.trim() || DEFAULT_PRICING_CALCULATOR_CONFIG.customersAddonDescEn,
     updated_at: new Date().toISOString(),
     updated_by: operatorUid || null,
   };

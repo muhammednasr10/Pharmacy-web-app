@@ -56,7 +56,11 @@ export default function LoginWelcomeLanding({
       <main className="loginWelcomeMain">
         <LoginWelcomeHero isArabic={isArabic} />
 
-        <LoginWelcomeProgramPages isArabic={isArabic} staffAddonEnabled={pricing.staffAddon} />
+        <LoginWelcomeProgramPages
+          isArabic={isArabic}
+          staffAddonEnabled={pricing.staffAddon}
+          customersAddonEnabled={pricing.customersAddon}
+        />
 
         <LoginWelcomeSignupCard
           isArabic={isArabic}
@@ -81,10 +85,14 @@ export default function LoginWelcomeLanding({
           branches={pricing.branches}
           users={pricing.users}
           staffAddon={pricing.staffAddon}
+          customersAddon={pricing.customersAddon}
+          billingCycle={pricing.billingCycle}
           quote={pricing.quote}
           onBranchesChange={pricing.setBranches}
           onUsersChange={pricing.setUsers}
           onStaffAddonChange={pricing.setStaffAddon}
+          onCustomersAddonChange={pricing.setCustomersAddon}
+          onBillingCycleChange={pricing.setBillingCycle}
         />
 
         <LoginWelcomeActionsCard

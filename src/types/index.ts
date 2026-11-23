@@ -351,6 +351,8 @@ export type CashierShift = {
 
 export type CashierShiftSummary = {
   totalSales: number;
+  /** Invoice sales minus returns in the shift window. */
+  netSales: number;
   cashSales: number;
   visaSales: number;
   walletSales: number;

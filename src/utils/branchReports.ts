@@ -49,17 +49,33 @@ export function buildBranchReportRows(params: {
     );
 
     const salesTotal = branchInvoices.reduce((sum, invoice) => sum + Number(invoice.total || 0), 0);
-    const profitTotal = branchInvoices.reduce(
+    const grossProfitTotal = branchInvoices.reduce(
       (sum, invoice) => sum + Number(invoice.totalProfit || 0),
       0,
     );
-    const returnsTotal = params.returns
-      .filter(
-        (record) =>
-          resolveBranchId(record.pharmacyId, fallback) === branchId &&
-          inReportRange(record.createdAt || record.date, params.reportFrom, params.reportTo),
-      )
-      .reduce((sum, record) => sum + Number(record.total || 0), 0);
+    const branchReturns = params.returns.filter(
+      (record) =>
+        resolveBranchId(record.pharmacyId, fallback) === branchId &&
+        inReportRange(record.createdAt || record.date, params.reportFrom, params.reportTo),
+    );
+    const returnsTotal = branchReturns.reduce((sum, record) => sum + Number(record.total || 0), 0);
+    const returnsProfitTotal = branchReturns.reduce((sum, record) => {
+      const itemsProfit = (record.items || []).reduce(
+        (itemSum, item) => itemSum + Number(item.profit || 0),
+        0,
+      );
+      if (itemsProfit !== 0) return sum + itemsProfit;
+      const cost = (record.items || []).reduce(
+        (itemSum, item) =>
+          itemSum +
+          Number(
+            item.costTotal ?? Number(item.buyPrice || 0) * Number(item.quantity || 0),
+          ),
+        0,
+      );
+      return sum + (Number(record.total || 0) - cost);
+    }, 0);
+    const profitTotal = grossProfitTotal - returnsProfitTotal;
     const costsTotal = params.costs
       .filter(
         (cost) =>

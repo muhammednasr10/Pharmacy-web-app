@@ -26,8 +26,8 @@ export function cashAmountErrorMessage(
   if (reason === "empty") {
     return kind === "opening"
       ? isArabic
-        ? "أدخل رصيد الافتتاح (الصفر مسموح)"
-        : "Enter opening cash (zero is allowed)"
+        ? "أدخل رصيد الصندوق. يمكنك إدخال 0"
+        : "Enter drawer cash. You can enter 0"
       : isArabic
         ? "أدخل النقد الفعلي بعد العد (الصفر مسموح)"
         : "Enter actual cash after counting (zero is allowed)";

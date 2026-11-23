@@ -10,7 +10,7 @@ export default function PosShortcutsModal({ isArabic, isOnline, onClose }: PosSh
   const rows = POS_SHORTCUTS.filter((row) => !row.requiresOnline || isOnline);
 
   return (
-    <div className="modalOverlay">
+    <div className="modalOverlay modalOverlay--abovePos">
       <div
         className="invoiceModal posShortcutsModal"
         onClick={(event) => event.stopPropagation()}

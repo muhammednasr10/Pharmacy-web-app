@@ -1,9 +1,73 @@
 import type { PharmacySettings } from "../../types";
 import type { SubscriptionTier } from "../../config/subscriptionTiers";
 
-export function isPharmacyActive(pharmacy: PharmacySettings) {
+export function getPharmacySubscriptionEndDateValue(pharmacy: PharmacySettings): Date | null {
+  const raw = pharmacy.subscriptionEndDate || pharmacy.subscriptionEndsAt;
+  if (!raw) return null;
+  const normalized = raw.includes("T") ? raw : `${raw}T23:59:59`;
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function resolveNow(now?: Date | number | string | null) {
+  if (now instanceof Date && !Number.isNaN(now.getTime())) return now;
+  // Guard against Array.filter/some passing the index as the 2nd argument.
+  if (typeof now === "number") return new Date();
+  if (typeof now === "string") {
+    const parsed = new Date(now);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  return new Date();
+}
+
+/** Subscription date passed without renewal. */
+export function isPharmacySubscriptionExpired(pharmacy: PharmacySettings, now?: Date) {
+  const end = getPharmacySubscriptionEndDateValue(pharmacy);
+  if (!end) return false;
+  return end.getTime() < resolveNow(now).getTime();
+}
+
+/**
+ * Pharmacy can work only when status is active/trial, not manually suspended,
+ * and the subscription end date has not passed.
+ */
+export function isPharmacyActive(pharmacy: PharmacySettings, now?: Date) {
+  if (pharmacy.isActive === false) return false;
+  if (isPharmacySubscriptionExpired(pharmacy, now)) return false;
   const status = pharmacy.subscriptionStatus || "active";
-  return (status === "active" || status === "trial") && pharmacy.isActive !== false;
+  return status === "active" || status === "trial";
+}
+
+export type PharmacySubscriptionDisplayStatus = "active" | "suspended" | "expired";
+
+export function getPharmacySubscriptionDisplayStatus(
+  pharmacy: PharmacySettings,
+  now?: Date,
+): PharmacySubscriptionDisplayStatus {
+  const current = resolveNow(now);
+  if (isPharmacySubscriptionExpired(pharmacy, current)) return "expired";
+  if (pharmacy.isActive === false) return "suspended";
+  const status = pharmacy.subscriptionStatus || "active";
+  if (status === "suspended" || status === "expired" || status === "cancelled") {
+    return status === "expired" ? "expired" : "suspended";
+  }
+  if (status === "active" || status === "trial") return "active";
+  return "suspended";
+}
+
+export function getPharmacySubscriptionStatusLabel(
+  pharmacy: PharmacySettings,
+  isArabic: boolean,
+  now?: Date,
+) {
+  const display = getPharmacySubscriptionDisplayStatus(pharmacy, now);
+  if (display === "expired") {
+    return isArabic ? "غير مفعّل" : "Inactive";
+  }
+  if (display === "suspended") {
+    return isArabic ? "موقوف" : "Suspended";
+  }
+  return isArabic ? "مفعّل" : "Active";
 }
 
 export function getTierBadgeClass(tier: SubscriptionTier) {

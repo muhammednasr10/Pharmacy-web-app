@@ -48,6 +48,8 @@ export type AppDashboardRouteProps = Pick<
   | "pendingBranchTransferGroups"
   | "handleApproveBranchTransfer"
   | "handleRejectBranchTransfer"
+  | "getPharmacyId"
+  | "refreshMedicinesFromDb"
 >;
 
 export default function AppDashboardRoute({
@@ -94,6 +96,8 @@ export default function AppDashboardRoute({
   pendingBranchTransferGroups,
   handleApproveBranchTransfer,
   handleRejectBranchTransfer,
+  getPharmacyId,
+  refreshMedicinesFromDb,
 }: AppDashboardRouteProps) {
   return (
     <DashboardPage
@@ -115,6 +119,8 @@ export default function AppDashboardRoute({
       branchesCount={branches.length}
       hasOpenShift={Boolean(activeCashierShift)}
       hasCompletedSale={todayInvoicesCount > 0 || totalInvoicesCount > 0}
+      pharmacyId={getPharmacyId()}
+      onQaStockReady={() => void refreshMedicinesFromDb()}
       lowStockMedicines={lowStockMedicines}
       expiringSoonMedicines={expiringSoonMedicines}
       expiredMedicines={expiredMedicines}

@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AppUser, CashierShift, CashierShiftSummary, PharmacySettings } from "../types";
 import * as pharmacyService from "../services/pharmacyService";
 import CashierShiftCloseModal from "./CashierShiftCloseModal";
 import { isPharmacyManager } from "../utils/roles";
 import { cashAmountErrorMessage, parseCashAmountInput } from "../utils/cashierShiftCash";
+import { formatCashierShiftOpenError } from "../utils/cashierShiftErrors";
 
 type CashierShiftPanelProps = {
   isArabic: boolean;
@@ -19,6 +20,7 @@ type CashierShiftPanelProps = {
   showQuickSaleButton?: boolean;
   quickSaleOpen?: boolean;
   onOpenQuickSale?: () => void;
+  onCloseQuickSale?: () => void;
   /** Bump after each sale so open-shift summary reloads immediately. */
   summaryRefreshKey?: string | number;
 };
@@ -41,6 +43,7 @@ export default function CashierShiftPanel({
   showQuickSaleButton = false,
   quickSaleOpen = false,
   onOpenQuickSale,
+  onCloseQuickSale,
   summaryRefreshKey = 0,
 }: CashierShiftPanelProps) {
   const [summary, setSummary] = useState<CashierShiftSummary | null>(null);
@@ -53,16 +56,85 @@ export default function CashierShiftPanel({
   const [panelFeedback, setPanelFeedback] = useState<{ type: "error" | "success"; text: string } | null>(
     null,
   );
+  const [offlinePendingCount, setOfflinePendingCount] = useState(0);
+  const [isOfflineSummary, setIsOfflineSummary] = useState(false);
+
+  const openingCashParsed = useMemo(() => parseCashAmountInput(openingCash), [openingCash]);
+  const canSubmitOpen =
+    openingCashParsed.ok && busy !== "open" && Boolean(appUser) && Boolean(pharmacyId);
 
   const refreshSummary = useCallback(async () => {
     if (!activeShift) {
       setSummary(null);
+      setOfflinePendingCount(0);
+      setIsOfflineSummary(false);
       return;
     }
     setLoadingSummary(true);
     try {
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        const { listPendingOfflineSales } = await import("../utils/offlinePosStorage");
+        const pending = (await listPendingOfflineSales(activeShift.pharmacyId)).filter(
+          (sale) =>
+            (sale.status === "pending" || sale.status === "failed") &&
+            sale.invoice.cashierShiftId === activeShift.id,
+        );
+        setOfflinePendingCount(pending.length);
+        setIsOfflineSummary(true);
+        const totalSales = pending.reduce((sum, sale) => sum + Number(sale.invoice.total || 0), 0);
+        const cashSales = pending.reduce((sum, sale) => {
+          const method = String(sale.invoice.paymentMethod || "cash").toLowerCase();
+          return method === "cash" ? sum + Number(sale.invoice.total || 0) : sum;
+        }, 0);
+        const visaSales = pending.reduce((sum, sale) => {
+          const method = String(sale.invoice.paymentMethod || "").toLowerCase();
+          return method === "visa" ? sum + Number(sale.invoice.total || 0) : sum;
+        }, 0);
+        const walletSales = pending.reduce((sum, sale) => {
+          const method = String(sale.invoice.paymentMethod || "").toLowerCase();
+          return method === "wallet" ? sum + Number(sale.invoice.total || 0) : sum;
+        }, 0);
+        setSummary({
+          totalSales,
+          netSales: totalSales,
+          cashSales,
+          visaSales,
+          walletSales,
+          creditSales: 0,
+          returnsTotal: 0,
+          customerPaymentsCash: 0,
+          customerPaymentsOther: 0,
+          invoiceCount: pending.length,
+          expectedCash: Number(activeShift.openingCash || 0) + cashSales,
+        });
+        return;
+      }
+      setIsOfflineSummary(false);
+      const { listPendingOfflineSales } = await import("../utils/offlinePosStorage");
+      const pending = (await listPendingOfflineSales(activeShift.pharmacyId)).filter(
+        (sale) =>
+          (sale.status === "pending" || sale.status === "failed") &&
+          sale.invoice.cashierShiftId === activeShift.id,
+      );
+      setOfflinePendingCount(pending.length);
       const next = await pharmacyService.computeCashierShiftSummary(activeShift);
-      setSummary(next);
+      if (pending.length > 0) {
+        const pendingTotal = pending.reduce((sum, sale) => sum + Number(sale.invoice.total || 0), 0);
+        const pendingCash = pending.reduce((sum, sale) => {
+          const method = String(sale.invoice.paymentMethod || "cash").toLowerCase();
+          return method === "cash" ? sum + Number(sale.invoice.total || 0) : sum;
+        }, 0);
+        setSummary({
+          ...next,
+          totalSales: next.totalSales + pendingTotal,
+          netSales: next.netSales + pendingTotal,
+          cashSales: next.cashSales + pendingCash,
+          invoiceCount: next.invoiceCount + pending.length,
+          expectedCash: next.expectedCash + pendingCash,
+        });
+      } else {
+        setSummary(next);
+      }
     } catch (error) {
       console.error("Cashier shift summary:", error);
     } finally {
@@ -74,8 +146,45 @@ export default function CashierShiftPanel({
     void refreshSummary();
   }, [refreshSummary, summaryRefreshKey]);
 
+  async function openStartModal() {
+    setOpeningCash("0");
+    setOpeningCashError("");
+    setPanelFeedback(null);
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      setPanelFeedback({
+        type: "error",
+        text: isArabic
+          ? "فتح وردية جديدة غير متاح بدون اتصال. أكمل البيع على الوردية المفتوحة إن وُجدت."
+          : "Opening a new shift requires an internet connection. Continue selling on the open shift if available.",
+      });
+      return;
+    }
+
+    const readiness = await pharmacyService.probeCashierShiftsReady(pharmacyId);
+    if (!readiness.ok) {
+      console.error("Cashier shifts not ready:", readiness.reason, readiness.detail);
+      let text =
+        readiness.reason === "missing_table"
+          ? isArabic
+            ? "خدمة ورديات الكاشير غير جاهزة على هذا الفرع."
+            : "Cashier shifts service is not ready on this branch."
+          : readiness.reason === "forbidden"
+            ? isArabic
+              ? "ليس لديك صلاحية الوصول لورديات هذا الفرع."
+              : "You do not have permission to access shifts for this branch."
+            : isArabic
+              ? "تعذر التحقق من خدمة الورديات. راجع سجل المطوّر."
+              : "Could not verify shifts service. See developer console.";
+      setPanelFeedback({ type: "error", text });
+      return;
+    }
+
+    setShowOpenModal(true);
+  }
+
   async function handleOpenShift() {
-    if (!appUser) return;
+    if (!appUser || busy === "open") return;
     const parsed = parseCashAmountInput(openingCash);
     if (!parsed.ok) {
       setOpeningCashError(cashAmountErrorMessage(parsed.reason, isArabic, "opening"));
@@ -103,15 +212,11 @@ export default function CashierShiftPanel({
       onShiftOpened?.();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      let text = message;
-      if (message.includes("shift_already_open")) {
-        text = isArabic ? "لديك وردية مفتوحة بالفعل" : "You already have an open shift";
-      } else if (message.includes("cashier_shifts")) {
-        text = isArabic
-          ? "جدول ورديات الكاشير غير مفعّل. شغّل supabase/cashier-shifts.sql"
-          : "Cashier shifts table missing. Run supabase/cashier-shifts.sql";
-      }
-      setPanelFeedback({ type: "error", text });
+      console.error("Open cashier shift failed:", message, error);
+      setPanelFeedback({
+        type: "error",
+        text: formatCashierShiftOpenError(message, isArabic),
+      });
     } finally {
       setBusy("");
     }
@@ -150,12 +255,7 @@ export default function CashierShiftPanel({
           <button
             type="button"
             className="completeBtn cashierShiftOpenTrigger"
-            onClick={() => {
-              setOpeningCash("0");
-              setOpeningCashError("");
-              setPanelFeedback(null);
-              setShowOpenModal(true);
-            }}
+            onClick={() => void openStartModal()}
             disabled={Boolean(busy)}
           >
             {isArabic ? "بدء وردية جديدة" : "Start new shift"}
@@ -163,7 +263,7 @@ export default function CashierShiftPanel({
         </div>
 
         {showOpenModal ? (
-          <div className="modalOverlay">
+          <div className="modalOverlay modalOverlay--abovePos">
             <div
               className="invoiceModal userModal cashierShiftModal"
               onClick={(event) => event.stopPropagation()}
@@ -175,6 +275,7 @@ export default function CashierShiftPanel({
                   type="button"
                   className="deleteSmallBtn"
                   onClick={() => setShowOpenModal(false)}
+                  disabled={busy === "open"}
                 >
                   {isArabic ? "إغلاق" : "Close"}
                 </button>
@@ -185,12 +286,17 @@ export default function CashierShiftPanel({
                   type="number"
                   min="0"
                   step="0.01"
-                  className={`tableInput${openingCashError ? " is-invalid" : ""}`}
+                  className={`tableInput${openingCashError || !openingCashParsed.ok ? " is-invalid" : ""}`}
                   value={openingCash}
                   onChange={(event) => {
-                    setOpeningCash(event.target.value);
-                    setOpeningCashError("");
+                    const next = event.target.value;
+                    setOpeningCash(next);
+                    const parsed = parseCashAmountInput(next);
+                    setOpeningCashError(
+                      parsed.ok ? "" : cashAmountErrorMessage(parsed.reason, isArabic, "opening"),
+                    );
                   }}
+                  disabled={busy === "open"}
                 />
                 {openingCashError ? (
                   <span className="fieldErrorText" role="alert">
@@ -198,7 +304,7 @@ export default function CashierShiftPanel({
                   </span>
                 ) : (
                   <span className="mutedText">
-                    {isArabic ? "الصفر مسموح — اترك الحقل فارغًا غير مقبول" : "Zero is allowed — empty is not"}
+                    {isArabic ? "أدخل رصيد الصندوق. يمكنك إدخال 0" : "Enter drawer cash. You can enter 0"}
                   </span>
                 )}
               </label>
@@ -212,7 +318,7 @@ export default function CashierShiftPanel({
                   type="button"
                   className="completeBtn cashierShiftStartBtn"
                   onClick={() => void handleOpenShift()}
-                  disabled={busy === "open"}
+                  disabled={!canSubmitOpen}
                 >
                   {busy === "open"
                     ? isArabic
@@ -253,13 +359,34 @@ export default function CashierShiftPanel({
             {summary && (
               <>
                 <span>
-                  {isArabic ? "مبيعات:" : "Sales:"} {formatMoney(summary.totalSales, currency)} (
+                  {isArabic ? "مبيعات:" : "Sales:"} {formatMoney(summary.netSales, currency)} (
                   {summary.invoiceCount})
+                  {summary.returnsTotal > 0
+                    ? isArabic
+                      ? ` · مرتجع ${formatMoney(summary.returnsTotal, currency)}`
+                      : ` · returns ${formatMoney(summary.returnsTotal, currency)}`
+                    : ""}
                 </span>
                 <span>
                   {isArabic ? "نقد متوقع:" : "Expected cash:"}{" "}
                   {formatMoney(summary.expectedCash, currency)}
                 </span>
+                {offlinePendingCount > 0 ? (
+                  <span className="cashierShiftOfflineTag" title={isArabic ? "مبيعات محفوظة محلياً بانتظار المزامنة" : "Local sales waiting to sync"}>
+                    {isArabic
+                      ? `محلي بانتظار المزامنة: ${offlinePendingCount}`
+                      : `Local pending sync: ${offlinePendingCount}`}
+                  </span>
+                ) : null}
+                {isOfflineSummary ? (
+                  <span className="cashierShiftOfflineTag cashierShiftOfflineTag--mode">
+                    {isArabic ? "ملخص أوفلاين (غير مزامن بالكامل)" : "Offline summary (not fully synced)"}
+                  </span>
+                ) : offlinePendingCount === 0 ? (
+                  <span className="cashierShiftSyncedTag">
+                    {isArabic ? "متزامن مع السيرفر" : "Synced with server"}
+                  </span>
+                ) : null}
               </>
             )}
             {loadingSummary && (
@@ -293,7 +420,10 @@ export default function CashierShiftPanel({
             <button
               type="button"
               className="dangerBtn"
-              onClick={() => setShowCloseModal(true)}
+              onClick={() => {
+                onCloseQuickSale?.();
+                setShowCloseModal(true);
+              }}
               disabled={Boolean(busy)}
             >
               {isArabic ? "إغلاق الوردية" : "Close shift"}

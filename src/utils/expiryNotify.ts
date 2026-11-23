@@ -1,4 +1,4 @@
-import { whatsappLink } from "../branding";
+import { brandPharmacyName, whatsappLink } from "../branding";
 import { autoOpenExpiryWhatsAppOnAlert, expiryNotifyWebhookUrl } from "../config/expiryNotify";
 import { formatDateInput } from "./date";
 import { getBranchLabel } from "./branchLabel";
@@ -141,8 +141,8 @@ export function formatExpiryAlertMessage(
   });
 
   const footer = isArabic
-    ? "\nافتح نظام Focus Pharmacy → المخزون للتفاصيل."
-    : "\nOpen Focus Pharmacy → Inventory for details.";
+    ? `\nافتح نظام ${brandPharmacyName.ar} → المخزون للتفاصيل.`
+    : `\nOpen ${brandPharmacyName.en} → Inventory for details.`;
 
   return [header, ...lines, footer].join("\n");
 }
@@ -168,8 +168,8 @@ export function getExpiryMailtoUrl(
 ) {
   if (!params.email) return "";
   const subject = params.isArabic
-    ? `[Focus Pharmacy] تنبيه صلاحية — ${params.pharmacyName}`
-    : `[Focus Pharmacy] Expiry alert — ${params.pharmacyName}`;
+    ? `[${brandPharmacyName.en}] تنبيه صلاحية — ${params.pharmacyName}`
+    : `[${brandPharmacyName.en}] Expiry alert — ${params.pharmacyName}`;
   const body = formatExpiryAlertMessage(summary, params);
   return `mailto:${params.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }

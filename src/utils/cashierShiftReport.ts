@@ -58,10 +58,14 @@ export function downloadCashierShiftPdf(options: {
     ],
     [pdfLabel("مبيعات آجل", "Credit sales", isArabic), formatMoney(summary.creditSales, currency)],
     [
-      pdfLabel("إجمالي المبيعات", "Total sales", isArabic),
+      pdfLabel("إجمالي الفواتير", "Invoice total", isArabic),
       formatMoney(summary.totalSales, currency),
     ],
     [pdfLabel("مرتجعات", "Returns", isArabic), formatMoney(summary.returnsTotal, currency)],
+    [
+      pdfLabel("صافي المبيعات", "Net sales", isArabic),
+      formatMoney(summary.netSales, currency),
+    ],
     [
       pdfLabel("تحصيلات نقدية", "Cash collections", isArabic),
       formatMoney(summary.customerPaymentsCash, currency),

@@ -28,8 +28,8 @@ export default function SuperAdminConfirmModals({ state }: Props) {
                       <h2>
                         {deleteTarget.kind === "organization"
                           ? isArabic
-                            ? "حذف الصيدلية؟"
-                            : "Delete pharmacy?"
+                            ? "حذف الصيدلية بالكامل؟"
+                            : "Delete pharmacy completely?"
                           : isArabic
                             ? "حذف الفرع؟"
                             : "Delete branch?"}
@@ -63,11 +63,11 @@ export default function SuperAdminConfirmModals({ state }: Props) {
                     {deleteTarget.kind === "organization"
                       ? isArabic
                         ? deleteTarget.branchCount > 1
-                          ? `سيتم حذف الصيدلية وجميع فروعها (${deleteTarget.branchCount}). تأكد أنها لا تحتوي بيانات مهمة (مستخدمين/أدوية/فواتير).`
-                          : "سيتم حذف الصيدلية نهائياً. تأكد أنها لا تحتوي بيانات مهمة (مستخدمين/أدوية/فواتير)."
+                          ? `حذف نهائي للصيدلية وكل فروعها (${deleteTarget.branchCount}): المستخدمين والأدوية والفواتير والورديات. لا يمكن التراجع.`
+                          : "حذف نهائي للصيدلية بالكامل: المستخدمين والأدوية والفواتير والورديات. لا يمكن التراجع."
                         : deleteTarget.branchCount > 1
-                          ? `This will permanently delete the pharmacy and all ${deleteTarget.branchCount} branches. Make sure there is no important data (users/medicines/invoices).`
-                          : "This will permanently delete the pharmacy. Make sure there is no important data (users/medicines/invoices)."
+                          ? `Permanent delete of this pharmacy and all ${deleteTarget.branchCount} branches: users, medicines, invoices, and shifts. This cannot be undone.`
+                          : "Permanent delete of the entire pharmacy: users, medicines, invoices, and shifts. This cannot be undone."
                       : isArabic
                         ? "سيتم حذف الفرع نهائياً. تأكد أنه لا يحتوي بيانات (أدوية/فواتير/مستخدمين)."
                         : "This will permanently delete the branch. Make sure it has no medicines, invoices, or users."}
@@ -92,9 +92,13 @@ export default function SuperAdminConfirmModals({ state }: Props) {
                         ? isArabic
                           ? "جاري الحذف..."
                           : "Deleting..."
-                        : isArabic
-                          ? "حذف"
-                          : "Delete"}
+                        : deleteTarget.kind === "organization"
+                          ? isArabic
+                            ? "تأكيد الحذف الكامل"
+                            : "Confirm full delete"
+                          : isArabic
+                            ? "حذف"
+                            : "Delete"}
                     </button>
                   </div>
                 </div>

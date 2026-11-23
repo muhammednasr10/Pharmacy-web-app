@@ -18,6 +18,8 @@ import {
   countPendingOfflineSales,
   queueOfflineSale,
 } from "../utils/offlinePosStorage";
+import { rememberRecentBarcodes } from "../utils/offlineRecentMedicines";
+import { flashPosSuccess, playPosSuccessFanfare } from "../utils/posSuccessFeedback";
 import { getHeldInvoiceErrorMessage } from "../utils/heldInvoiceErrors";
 import { formatAppNowForStorage } from "../utils/date";
 import { formatPosSaleError } from "../utils/posSaleErrors";
@@ -196,11 +198,38 @@ export function usePosSales({
 
     if (isSelling) return false;
 
+    const multiQtyLines = cart.filter((item) => item.cartQty > 1);
+    if (multiQtyLines.length > 0) {
+      const preview = multiQtyLines
+        .slice(0, 4)
+        .map((item) => {
+          const label = isArabic ? item.name_ar || item.name_en : item.name_en || item.name_ar;
+          return `• ${label} × ${item.cartQty}`;
+        })
+        .join("\n");
+      const extra =
+        multiQtyLines.length > 4
+          ? isArabic
+            ? `\n… و${multiQtyLines.length - 4} أصناف أخرى`
+            : `\n… and ${multiQtyLines.length - 4} more`
+          : "";
+      const confirmed = window.confirm(
+        isArabic
+          ? `تأكيد كميات أكبر من 1:\n${preview}${extra}\n\nمتابعة البيع؟`
+          : `Confirm quantities greater than 1:\n${preview}${extra}\n\nComplete sale?`,
+      );
+      if (!confirmed) return false;
+    }
+
     const shiftRequired = requiresOpenCashierShift(appUser);
     let shiftForSale = activeCashierShift;
 
     if (shiftRequired) {
-      shiftForSale = (await refreshActiveCashierShift()) ?? null;
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        shiftForSale = activeCashierShift;
+      } else {
+        shiftForSale = (await refreshActiveCashierShift()) ?? null;
+      }
       if (!shiftForSale) {
         setSaleFeedback({
           type: "error",
@@ -314,8 +343,15 @@ export function usePosSales({
         setOfflineMedicinesCacheAt(new Date().toISOString());
         setPendingOfflineSalesCount(await countPendingOfflineSales(pharmacyId));
 
+        rememberRecentBarcodes(
+          pharmacyId,
+          cart.map((item) => item.barcode),
+        );
         printSavedInvoice(invoice as Invoice);
         resetCart();
+        bumpCashierShiftSalesTick?.();
+        playPosSuccessFanfare();
+        flashPosSuccess();
         setSaleFeedback({
           type: "success",
           text: isArabic
@@ -329,6 +365,10 @@ export function usePosSales({
         cart,
         invoice as Invoice,
         stockMovements,
+      );
+      rememberRecentBarcodes(
+        getPharmacyId(),
+        cart.map((item) => item.barcode),
       );
       await refreshMedicinesFromDb();
       if (shiftForSale) {
@@ -349,6 +389,8 @@ export function usePosSales({
 
       const savedInvoice = invoice as Invoice;
       resetCart();
+      playPosSuccessFanfare();
+      flashPosSuccess();
       setSaleFeedback({
         type: "success",
         text: isArabic ? `تم تسجيل البيع برقم ${invoiceNumber}` : `Sale ${invoiceNumber} completed`,

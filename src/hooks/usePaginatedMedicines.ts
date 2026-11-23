@@ -9,7 +9,10 @@ import {
 import { pharmacyQueryKeys } from "../queries/queryKeys";
 import { filterMedicinesForInventoryView } from "../utils/offlineMedicineFilters";
 import { formatInventoryLoadError } from "../utils/inventorySearchErrors";
-import { loadCachedMedicines, cacheMedicinesSnapshot } from "../utils/offlinePosStorage";
+import {
+  loadCachedMedicines,
+  mergeMedicinesIntoOfflineCache,
+} from "../utils/offlinePosStorage";
 
 type UsePaginatedMedicinesOptions = {
   enabled?: boolean;
@@ -127,14 +130,9 @@ export function usePaginatedMedicines({
   const mergeOfflineCache = useCallback(
     async (incoming: Medicine[]) => {
       if (!pharmacyId || incoming.length === 0) return;
-      const { medicines: cached } = await loadCachedMedicines(pharmacyId);
-      const merged = new Map<number, Medicine>();
-      for (const medicine of cached) merged.set(medicine.id, medicine);
-      for (const medicine of incoming) merged.set(medicine.id, medicine);
-      const next = Array.from(merged.values()).slice(0, 2000);
+      const { medicines: next } = await mergeMedicinesIntoOfflineCache(pharmacyId, incoming);
       offlineSourceRef.current = next;
       setOfflineSourceCount(next.length);
-      void cacheMedicinesSnapshot(pharmacyId, next);
     },
     [pharmacyId],
   );

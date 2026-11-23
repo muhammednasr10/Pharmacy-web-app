@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getSubscriptionTierLabel } from "../config/subscriptionTiers";
-import type { SubscriptionTier } from "../config/subscriptionTiers";
 import type { AppUser, CustomerDebt, Invoice, Medicine, Page, PharmacySettings } from "../types";
 import { canSwitchOrganizationBranches, getRoleLabel, isSuperAdmin } from "../utils/roles";
-import type { TierUpgradePrompt } from "../utils/subscriptionFeatures";
 import type { GlobalSearchResult } from "../utils/globalSearch";
 import { ALL_BRANCHES_ID } from "../constants/branches";
 import BranchScopeSelect from "./BranchScopeSelect";
@@ -31,8 +28,6 @@ type TopbarProps = {
   pharmacyLogo?: string;
   pharmacyPhone?: string;
   pharmacyAddress?: string;
-  subscriptionTier?: SubscriptionTier;
-  tierUpgradePrompt?: TierUpgradePrompt | null;
   onOpenSubscriptionSettings?: () => void;
   appUser: AppUser | null;
   isArabic: boolean;
@@ -105,8 +100,6 @@ export default function Topbar({
   pharmacyLogo = "",
   pharmacyPhone = "",
   pharmacyAddress = "",
-  subscriptionTier = "basic",
-  tierUpgradePrompt = null,
   onOpenSubscriptionSettings,
   appUser,
   isArabic,
@@ -238,12 +231,15 @@ export default function Topbar({
 
   const hasSystemAlerts = systemAlerts.length > 0;
 
+  // Each inventory category with items counts as 1 notification on the bell badge
+  // (list rows still show the full medicine counts).
+  const inventoryNotificationCount = inventorySummaryRows.filter((row) => row.count > 0).length;
+  const notificationBadgeCount = inventoryNotificationCount + systemAlerts.length;
+
   const canSwitchBranches =
     allowBranchSwitch ?? canSwitchOrganizationBranches(appUser, branches.length);
   const showBranchSwitch = (isSuperAdmin(appUser) || canSwitchBranches) && branches.length > 0;
   const branchSelectValue = activeBranchId || appUser?.pharmacyId || branches[0]?.id || "";
-  const showSubscriptionTier = !isSuperAdmin(appUser);
-  const tierBadgeClass = `saasTierBadge ${subscriptionTier}`;
   const hasUserPhoto = Boolean(userPhotoBase64?.trim());
 
   const alertBellNode = (
@@ -269,8 +265,10 @@ export default function Topbar({
             strokeLinecap="round"
           />
         </svg>
-        {alertTotal > 0 && (
-          <span className="alertBadge">{alertTotal > 99 ? "99+" : alertTotal}</span>
+        {notificationBadgeCount > 0 && (
+          <span className="alertBadge">
+            {notificationBadgeCount > 99 ? "99+" : notificationBadgeCount}
+          </span>
         )}
       </button>
 
@@ -279,7 +277,14 @@ export default function Topbar({
           <div className="alertDropdownHeader">
             <strong>{isArabic ? "التنبيهات" : "Notifications"}</strong>
             <span>
-              {alertTotal} {isArabic ? "تنبيه مخزون" : "inventory alerts"}
+              {notificationBadgeCount}{" "}
+              {isArabic
+                ? notificationBadgeCount === 1
+                  ? "إشعار"
+                  : "إشعارات"
+                : notificationBadgeCount === 1
+                  ? "notification"
+                  : "notifications"}
             </span>
           </div>
 
@@ -372,22 +377,6 @@ export default function Topbar({
             </span>
             <div className="topbarPharmacyTitleRow">
               <h1 className="topbarPharmacyName">{title}</h1>
-              {showSubscriptionTier && (
-                <div className="topbarPharmacyTier">
-                  <span className={tierBadgeClass}>
-                    {getSubscriptionTierLabel(subscriptionTier, isArabic)}
-                  </span>
-                  {tierUpgradePrompt && onOpenSubscriptionSettings ? (
-                    <button
-                      type="button"
-                      className="topbarTierUpgradeBtn"
-                      onClick={onOpenSubscriptionSettings}
-                    >
-                      {isArabic ? "ترقية" : "Upgrade"}
-                    </button>
-                  ) : null}
-                </div>
-              )}
             </div>
             {subtitle ? <p className="topbarPharmacySubtitle">{subtitle}</p> : null}
             {(pharmacyPhone || pharmacyAddress) && (

@@ -31,6 +31,22 @@ function parseStatsPayload(data: unknown): PharmacyMedicineStats {
   };
 }
 
+async function fetchPharmacyMedicineCountFallback(pharmacyId: string): Promise<number> {
+  const { data, error } = await supabase.rpc("count_pharmacy_medicines", {
+    p_pharmacy_id: pharmacyId,
+    p_search: null,
+    p_stock_filter: "all",
+    p_low_stock_threshold: 10,
+    p_expiring_soon_days: 90,
+    p_in_stock_only: false,
+  });
+  if (error) {
+    console.error("count_pharmacy_medicines fallback error:", error.message);
+    return 0;
+  }
+  return Number(data ?? 0);
+}
+
 export async function fetchPharmacyMedicineStats(
   pharmacyId: string,
   lowStockThreshold: number,
@@ -44,10 +60,22 @@ export async function fetchPharmacyMedicineStats(
 
   if (error) {
     console.error("fetchPharmacyMedicineStats error:", error.message);
+    const total = await fetchPharmacyMedicineCountFallback(pharmacyId);
+    if (total > 0) {
+      return { ...EMPTY_STATS, total };
+    }
     return EMPTY_STATS;
   }
 
-  return parseStatsPayload(data);
+  const parsed = parseStatsPayload(data);
+  if (parsed.total > 0) return parsed;
+
+  // Stats RPC can return zeros while the catalog exists (auth/scope race). Prefer count.
+  const total = await fetchPharmacyMedicineCountFallback(pharmacyId);
+  if (total > 0) {
+    return { ...parsed, total };
+  }
+  return parsed;
 }
 
 export async function fetchOrgMedicineStats(

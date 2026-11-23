@@ -12,6 +12,7 @@ type DashboardInventoryAlertsProps = {
   getBranchLabel?: (branchId: string | undefined) => string;
   onOpenInventory: (filter: "all" | "low" | "expiring" | "expired") => void;
   onOpenReorderSuggestions?: () => void;
+  onOpenPurchases?: () => void;
 };
 
 function alertMedicineKey(medicine: Medicine) {
@@ -44,6 +45,7 @@ export default function DashboardInventoryAlerts({
   getBranchLabel,
   onOpenInventory,
   onOpenReorderSuggestions,
+  onOpenPurchases,
 }: DashboardInventoryAlertsProps) {
   return (
     <section className="alertsGrid">
@@ -57,39 +59,54 @@ export default function DashboardInventoryAlerts({
             {emptyAlertMessage(isArabic, lowStockCount, "لا توجد نواقص حالياً", "No low stock medicines")}
           </p>
         ) : (
-          <>
-            <div className="miniList">
-              {lowStockMedicines.slice(0, 5).map((medicine) => (
-                <div className="miniListItem" key={alertMedicineKey(medicine)}>
-                  <span>
-                    {showBranchInAlertLists && getBranchLabel && medicine.pharmacyId ? (
-                      <>
-                        <span className="miniListBranchTag">
-                          {getBranchLabel(medicine.pharmacyId)}
-                        </span>
-                        {" · "}
-                      </>
-                    ) : null}
-                    {isArabic ? medicine.name_ar : medicine.name_en}
-                  </span>
-                  <strong>{medicine.qty}</strong>
-                </div>
-              ))}
-            </div>
-            {onOpenReorderSuggestions && (
+          <div className="miniList">
+            {lowStockMedicines.slice(0, 5).map((medicine) => (
+              <div className="miniListItem" key={alertMedicineKey(medicine)}>
+                <span>
+                  {showBranchInAlertLists && getBranchLabel && medicine.pharmacyId ? (
+                    <>
+                      <span className="miniListBranchTag">
+                        {getBranchLabel(medicine.pharmacyId)}
+                      </span>
+                      {" · "}
+                    </>
+                  ) : null}
+                  {isArabic ? medicine.name_ar : medicine.name_en}
+                </span>
+                <strong>{medicine.qty}</strong>
+              </div>
+            ))}
+          </div>
+        )}
+        {lowStockCount > 0 ? (
+          <div className="dashboardAlertActions" onClick={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              className="alertFooterBtn"
+              onClick={() => onOpenInventory("low")}
+            >
+              {isArabic ? "فتح المخزون (نواقص)" : "Open inventory (low)"}
+            </button>
+            {onOpenReorderSuggestions ? (
               <button
                 type="button"
                 className="alertFooterBtn dashboardReorderBtn"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onOpenReorderSuggestions();
-                }}
+                onClick={() => onOpenReorderSuggestions()}
               >
-                {isArabic ? "اقتراح توريد من النواقص" : "Reorder from low stock"}
+                {isArabic ? "اقتراح توريد" : "Reorder suggestions"}
               </button>
-            )}
-          </>
-        )}
+            ) : null}
+            {onOpenPurchases ? (
+              <button
+                type="button"
+                className="alertFooterBtn"
+                onClick={() => onOpenPurchases()}
+              >
+                {isArabic ? "إنشاء شراء" : "Create purchase"}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <div className="card alertCard clickableCard" onClick={() => onOpenInventory("expiring")}>

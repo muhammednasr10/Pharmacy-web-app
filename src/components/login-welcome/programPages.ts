@@ -103,21 +103,21 @@ export const PROGRAM_PAGES = [
     key: "customers",
     ar: "العملاء",
     en: "Customers",
-    descAr: "دفتر عملاء بسيط: بيانات، مديونية، وتحصيل بدون تعقيد.",
-    descEn: "A simple customer book: details, balances, and collections.",
+    descAr: "دفتر عملاء بسيط: بيانات، مديونية، وتحصيل — كإضافة اختيارية.",
+    descEn: "A simple customer book: details, balances, and collections — as an optional add-on.",
     pointsAr: [
       "حفظ بيانات العميل ورقم التليفون",
       "متابعة المديونية من البيع الآجل",
       "تسجيل تحصيل نقدي أو جزئي",
-      "بحث سريع عن أي عميل وقت البيع",
+      "تُفعَّل من تشيك بوكس «العملاء» في حاسبة الاشتراك",
     ],
     pointsEn: [
       "Save customer name and phone",
       "Track credit balances from credit sales",
       "Record full or partial collections",
-      "Find a customer quickly during a sale",
+      "Enable from the Customers checkbox in the subscription calculator",
     ],
-    hasCheckbox: false,
+    hasCheckbox: true,
   },
   {
     key: "reports",
@@ -149,13 +149,13 @@ export const PROGRAM_PAGES = [
       "إنشاء حسابات للكاشير والمدير وموظفين آخرين",
       "تحديد صلاحيات كل دور (بيع، مخزون، تقارير…)",
       "متابعة الحضور والانصراف",
-      "تُفعَّل من تشيك بوكس «الموظفين» في حاسبة الباقة",
+      "تُفعَّل من تشيك بوكس «الموظفين» في حاسبة الاشتراك",
     ],
     pointsEn: [
       "Create accounts for cashiers, managers, and staff",
       "Set role permissions (sales, inventory, reports…)",
       "Track check-in and check-out",
-      "Enable from the Staff checkbox in the plan calculator",
+      "Enable from the Staff checkbox in the subscription calculator",
     ],
     hasCheckbox: true,
   },
@@ -209,4 +209,18 @@ export function formatMonthlyPrice(amount: number, isArabic: boolean) {
   return isArabic
     ? `${value.toLocaleString("ar-EG")} ج.م / شهر`
     : `${value.toLocaleString("en-EG")} EGP / month`;
+}
+
+export function formatBillingPrice(
+  amount: number,
+  billingCycle: "monthly" | "yearly",
+  isArabic: boolean,
+) {
+  const value = Math.max(0, Math.round(amount));
+  if (billingCycle === "yearly") {
+    return isArabic
+      ? `${value.toLocaleString("ar-EG")} ج.م / سنة`
+      : `${value.toLocaleString("en-EG")} EGP / year`;
+  }
+  return formatMonthlyPrice(value, isArabic);
 }

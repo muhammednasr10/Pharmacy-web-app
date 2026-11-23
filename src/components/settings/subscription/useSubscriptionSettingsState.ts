@@ -1,12 +1,8 @@
 import { useMemo, useState } from "react";
 import type { SubscriptionRequest } from "../../../types";
-import { getPlanAmountForTier, getPlanDays } from "../../../config/subscription";
-import type { SubscriptionTier } from "../../../config/subscriptionTiers";
+import { getPlanDays } from "../../../config/subscription";
 import { isTierUpgradePlan } from "../../../utils/subscriptionFeatures";
-import {
-  getSubscriptionDisplayValues,
-  getTierDerivedValues,
-} from "./subscriptionSettingsHelpers";
+import { getSubscriptionDisplayValues } from "./subscriptionSettingsHelpers";
 import type { BillingView, SubscriptionSettingsPanelProps } from "./types";
 
 export type { BillingView } from "./types";
@@ -17,20 +13,12 @@ export function useSubscriptionSettingsState({
   isSubscriptionExpired,
   isSubscriptionExpiringSoon,
   isTrialSubscription = false,
-  subscriptionTier = "basic",
   submitSubscriptionRequest,
-  submitTierUpgradeRequest,
   pharmacySubscriptionRequests,
   subscriptionDaysLeft,
 }: SubscriptionSettingsPanelProps) {
   const [submittingRequest, setSubmittingRequest] = useState(false);
-  const [submittingTierUpgrade, setSubmittingTierUpgrade] = useState(false);
   const [paymentRequest, setPaymentRequest] = useState<SubscriptionRequest | null>(null);
-
-  const tierDerived = useMemo(
-    () => getTierDerivedValues(subscriptionTier, isArabic),
-    [subscriptionTier, isArabic],
-  );
 
   const displayValues = useMemo(
     () =>
@@ -55,40 +43,11 @@ export function useSubscriptionSettingsState({
   );
 
   const pendingRequest = pharmacySubscriptionRequests.find((r) => r.status === "pending");
-  const pendingTierUpgrade = pharmacySubscriptionRequests.find(
-    (r) => r.status === "pending" && isTierUpgradePlan(r.plan),
-  );
   const pendingRenewal = pharmacySubscriptionRequests.find(
     (r) => r.status === "pending" && !isTierUpgradePlan(r.plan),
   );
 
-  async function handleSubmitTierUpgradeRequest(targetTier?: SubscriptionTier) {
-    const upgradeTarget = targetTier ?? tierDerived.tierUpgradeTarget;
-    if (!upgradeTarget || !submitTierUpgradeRequest) return;
-    if (pendingRequest) {
-      alert(
-        isArabic
-          ? "لديك طلب اشتراك قيد المراجعة. انتظر الاعتماد قبل إرسال طلب جديد."
-          : "You already have a pending subscription request.",
-      );
-      return;
-    }
-
-    setSubmittingTierUpgrade(true);
-    try {
-      const created = await submitTierUpgradeRequest(upgradeTarget);
-      if (created) {
-        setPaymentRequest(created);
-      }
-    } catch (error) {
-      console.error(error);
-      alert(isArabic ? "تعذر إرسال طلب الترقية" : "Could not submit upgrade request");
-    } finally {
-      setSubmittingTierUpgrade(false);
-    }
-  }
-
-  async function handleSubmitRenewalRequest(billingView: BillingView) {
+  async function handleSubmitRenewalRequest(billingView: BillingView, amount: number) {
     if (pendingRequest) {
       alert(
         isArabic
@@ -103,7 +62,7 @@ export function useSubscriptionSettingsState({
 
     const plan = billingView === "yearly" ? "yearly" : "monthly";
     const requestDays = getPlanDays(plan);
-    const requestAmount = getPlanAmountForTier(plan, subscriptionTier);
+    const requestAmount = Math.max(0, Math.round(amount));
 
     setSubmittingRequest(true);
     try {
@@ -125,14 +84,11 @@ export function useSubscriptionSettingsState({
 
   return {
     submittingRequest,
-    submittingTierUpgrade,
     paymentRequest,
     setPaymentRequest,
     displayValues,
     pendingRequest,
-    pendingTierUpgrade,
     pendingRenewal,
-    handleSubmitTierUpgradeRequest,
     handleSubmitRenewalRequest,
   };
 }

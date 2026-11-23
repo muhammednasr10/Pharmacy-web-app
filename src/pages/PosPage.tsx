@@ -16,6 +16,7 @@ import PosWarehouseScopeBar from "../components/PosWarehouseScopeBar";
 import CashierShiftPanel from "../components/CashierShiftPanel";
 import PosShiftsTable from "../components/PosShiftsTable";
 import OfflinePosBanner from "../components/OfflinePosBanner";
+import PosCashierJourneyTips from "../components/PosCashierJourneyTips";
 import PosShortcutsModal from "../components/PosShortcutsModal";
 import { usePosKeyboardShortcuts } from "../hooks/usePosKeyboardShortcuts";
 import { usePosInventorySource } from "../hooks/usePosInventorySource";
@@ -158,7 +159,8 @@ export default function PosPage({
 
   const { lookupBarcode, branchSnapshot } = usePosInventorySource({
     pharmacyId,
-    enabled: isOnline && shiftReady,
+    enabled: shiftReady,
+    isOnline,
     refreshKey: inventoryRefreshKey,
     lowStockThreshold,
     expiringSoonDays,
@@ -171,6 +173,16 @@ export default function PosPage({
   useEffect(() => {
     setSearchScope("current");
   }, [pharmacyId]);
+
+  // Keep shell menu reachable: collapse quick-sale when the sidebar opens.
+  useEffect(() => {
+    const onMenuOpened = () => {
+      setQuickSaleCardOpen(false);
+      setQuickSaleFullscreen(false);
+    };
+    window.addEventListener("app-menu-opened", onMenuOpened);
+    return () => window.removeEventListener("app-menu-opened", onMenuOpened);
+  }, []);
 
   useEffect(() => {
     if (!shiftGateEnabled) return;
@@ -479,6 +491,7 @@ export default function PosPage({
       refreshKey={`${activeCashierShift?.id ?? "none"}-${activeCashierShift?.status ?? "none"}-${cashierShiftSalesTick}`}
       onSelectShift={handleSelectCashierShift}
       onShiftClosed={handleShiftClosedFromTable}
+      onBeforeCloseShift={() => setQuickSaleCardOpen(false)}
     />
   ) : null;
 
@@ -490,6 +503,15 @@ export default function PosPage({
         pendingCount={pendingOfflineSalesCount}
         cacheUpdatedAt={offlineMedicinesCacheAt}
         isSyncing={isSyncingOfflineSales}
+      />
+
+      <PosCashierJourneyTips
+        isArabic={isArabic}
+        appUser={appUser}
+        activeShift={activeCashierShift}
+        cartItemsCount={cartItemsCount}
+        isOnline={isOnline}
+        pendingOfflineSalesCount={pendingOfflineSalesCount}
       />
 
       <div className="cardHeader posPageHeader">
@@ -518,7 +540,9 @@ export default function PosPage({
 
       {shiftGateEnabled ? (
         shiftReady ? (
-          <div className="posShiftWorkspace">
+          <div
+            className={`posShiftWorkspace${quickSaleCardOpen ? " posShiftWorkspace--quickSaleOpen" : ""}`}
+          >
             <CashierShiftPanel
               isArabic={isArabic}
               currency={currency}
@@ -535,6 +559,7 @@ export default function PosPage({
                 setQuickSaleCardOpen(true);
                 focusBarcode();
               }}
+              onCloseQuickSale={() => setQuickSaleCardOpen(false)}
               onShiftOpened={() => {
                 setQuickSaleCardOpen(true);
                 focusBarcode();

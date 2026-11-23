@@ -14,6 +14,7 @@ import type {
   PharmacySettings,
   ReturnRecord,
 } from "../types";
+import { brandPharmacyName } from "../branding";
 import { resolveBranchDisplay } from "../utils/branchDisplay";
 
 type AvailabilityModalState = {
@@ -86,8 +87,8 @@ function computeTopbarPharmacyTitle(
   branches: PharmacySettings[],
 ): string {
   const baseName = isArabic
-    ? pharmacySettings?.name || "صيدلية Focus"
-    : pharmacySettings?.name_en || pharmacySettings?.name || "Focus Pharmacy";
+    ? pharmacySettings?.name || brandPharmacyName.ar
+    : pharmacySettings?.name_en || pharmacySettings?.name || brandPharmacyName.en;
   if (isViewingAllBranches) {
     return isArabic ? `${baseName} — كل الفروع` : `${baseName} — All branches`;
   }
@@ -218,6 +219,7 @@ export function useAppBindings(input: UseAppBindingsInput): AppBindingsResult {
     onCloseInstantReturn: () => setShowInstantReturnModal(false),
     handleInstantReturnSuccess,
     getAvailableReturnQtyForInstant: getAvailableReturnQty,
+    preferredCashierShiftId: input.activeCashierShift?.id ?? null,
   };
 
   const appShellProps: AppShellBindings = {

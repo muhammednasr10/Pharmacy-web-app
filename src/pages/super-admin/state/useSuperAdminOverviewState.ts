@@ -31,7 +31,7 @@ export function useSuperAdminOverviewState(params: OverviewParams) {
     pendingCustomRoles,
   } = params;
 
-  const [activeTab, setActiveTab] = useState<SaasTab>("pharmacies");
+  const [activeTab, setActiveTab] = useState<SaasTab>("overview");
   const [customerRequestFilter, setCustomerRequestFilter] = useState<CustomerRequestFilter>("all");
   const [expandedOrgIds, setExpandedOrgIds] = useState<Record<string, boolean>>({});
 
@@ -64,16 +64,16 @@ export function useSuperAdminOverviewState(params: OverviewParams) {
 
   const saasTabs = useMemo(
     () => [
+      { id: "overview" as const, ar: "ملخص", en: "Summary" },
       { id: "pharmacies" as const, ar: "الصيدليات", en: "Pharmacies" },
       { id: "roles" as const, ar: "أدوار", en: "Roles" },
-      { id: "overview" as const, ar: "ملخص", en: "Overview" },
       {
         id: "customerRequests" as const,
         ar: "طلبات العملاء",
         en: "Customer requests",
         badge: pendingCustomerRequestsCount,
       },
-      { id: "packages" as const, ar: "الباقات", en: "Packages" },
+      { id: "pricing" as const, ar: "التسعير", en: "Pricing" },
     ],
     [pendingCustomerRequestsCount],
   );

@@ -134,11 +134,24 @@ export function useAppMetricsSlice({
     resolveBranchLabel,
   });
 
+  const pharmacyId = getPharmacyId();
+  const catalogStatsRefreshKey = useMemo(
+    () =>
+      [
+        pharmacyId,
+        purchases.length,
+        activityLogs.length,
+        medicines.length === 0 ? "bulk-skipped" : medicines.length,
+      ].join(":"),
+    [pharmacyId, purchases.length, activityLogs.length, medicines.length],
+  );
+
   const catalogStats = useMedicineCatalogStats({
-    pharmacyId: getPharmacyId(),
+    pharmacyId,
     branches,
     pharmacySettings,
     showOrgStats: showOrgInventoryAlerts || isViewingAllBranches,
+    refreshKey: catalogStatsRefreshKey,
   });
 
   const orgAggregatedStats = useMemo(() => {
@@ -167,7 +180,9 @@ export function useAppMetricsSlice({
   const effectiveCatalogStats =
     isViewingAllBranches && orgAggregatedStats ? orgAggregatedStats : catalogStats.scopedStats;
 
+  // Large catalogs skip the in-memory medicines array (length 0) — always trust DB stats then.
   const useCatalogStats =
+    medicines.length === 0 ||
     effectiveCatalogStats.total > medicines.length ||
     effectiveCatalogStats.total > LARGE_MEDICINE_CATALOG;
 

@@ -196,6 +196,7 @@ export async function registerPublicUser(params: {
   branches?: number;
   users?: number;
   staffAddon?: boolean;
+  customersAddon?: boolean;
 }): Promise<{
   pendingApproval: boolean;
   canSignIn: boolean;
@@ -246,6 +247,7 @@ export async function registerPublicUser(params: {
     p_branches: Math.max(1, Math.min(50, Math.floor(Number(params.branches) || 1))),
     p_users: Math.max(1, Math.min(200, Math.floor(Number(params.users) || 1))),
     p_staff_addon: Boolean(params.staffAddon),
+    p_customers_addon: Boolean(params.customersAddon),
   };
 
   let data: unknown = null;

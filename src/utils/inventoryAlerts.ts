@@ -54,7 +54,9 @@ export function isLowStockMedicine(
   branches: PharmacySettings[],
   fallback?: PharmacySettings | null,
 ) {
-  return medicine.qty <= getLowStockThresholdForBranch(medicine.pharmacyId, branches, fallback);
+  const qty = Number(medicine.qty ?? 0);
+  if (qty <= 0) return false;
+  return qty <= getLowStockThresholdForBranch(medicine.pharmacyId, branches, fallback);
 }
 
 export function isExpiringSoonMedicine(

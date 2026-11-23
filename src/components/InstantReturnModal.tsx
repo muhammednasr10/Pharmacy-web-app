@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import * as pharmacyService from "../services/pharmacyService";
 import type { Invoice, InvoiceItem } from "../types";
 import { playBarcodeBeep } from "../utils/barcodeBeep";
+import { pickPreferredReturnInvoiceMatch } from "../utils/instantReturnInvoiceRank";
 import { normalizeMedicineIdKey, sameMedicineId } from "../utils/returnHelpers";
 import InstantReturnBarcodeInput from "./InstantReturnBarcodeInput";
 
@@ -11,6 +12,7 @@ type InstantReturnModalProps = {
   hasOpenCart: boolean;
   userId?: string;
   userName?: string;
+  preferredCashierShiftId?: number | null;
   getAvailableReturnQty: (invoice: Invoice, item: InvoiceItem) => number;
   onClose: () => void;
   onSuccess: (result: {
@@ -27,6 +29,7 @@ export default function InstantReturnModal({
   hasOpenCart,
   userId,
   userName,
+  preferredCashierShiftId = null,
   getAvailableReturnQty,
   onClose,
   onSuccess,
@@ -41,6 +44,7 @@ export default function InstantReturnModal({
   const [isSearching, setIsSearching] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchError, setSearchError] = useState("");
+  const [formError, setFormError] = useState("");
   const [barcodeHint, setBarcodeHint] = useState("");
 
   const applyBarcodeSelection = useCallback(
@@ -101,11 +105,24 @@ export default function InstantReturnModal({
           }))
           .filter((entry) => entry.items.length > 0);
 
-        if (invoiceMatches.length === 1) {
-          const { invoice, items } = invoiceMatches[0];
+        const preferred = pickPreferredReturnInvoiceMatch(invoiceMatches, {
+          preferredCashierShiftId,
+          getAvailableReturnQty,
+        });
+
+        if (preferred) {
           const returnableItem =
-            items.find((item) => getAvailableReturnQty(invoice, item) > 0) || items[0];
-          if (applyBarcodeSelection(invoice, returnableItem)) {
+            preferred.items.find((item) => getAvailableReturnQty(preferred.invoice, item) > 0) ||
+            preferred.items[0];
+          if (applyBarcodeSelection(preferred.invoice, returnableItem)) {
+            if (invoiceMatches.length > 1) {
+              setSearchResults(results);
+              setBarcodeHint(
+                isArabic
+                  ? `تم اختيار أحدث فاتورة قابلة للمرتجع (${preferred.invoice.invoiceNumber}) — غيّر إن لزم`
+                  : `Selected the latest returnable invoice (${preferred.invoice.invoiceNumber}) — change if needed`,
+              );
+            }
             return;
           }
         }
@@ -127,7 +144,7 @@ export default function InstantReturnModal({
         setIsSearching(false);
       }
     },
-    [applyBarcodeSelection, getAvailableReturnQty, isArabic],
+    [applyBarcodeSelection, getAvailableReturnQty, isArabic, preferredCashierShiftId],
   );
 
   useEffect(() => {
@@ -195,12 +212,12 @@ export default function InstantReturnModal({
 
   async function handleSubmit() {
     if (!selectedInvoice || !selectedItem) {
-      alert(isArabic ? "اختر الفاتورة والصنف أولاً" : "Select invoice and item first");
+      setFormError(isArabic ? "اختر الفاتورة والصنف أولاً" : "Select invoice and item first");
       return;
     }
 
     if (returnQty <= 0) {
-      alert(
+      setFormError(
         isArabic
           ? "كمية المرتجع يجب أن تكون أكبر من صفر"
           : "Return quantity must be greater than zero",
@@ -209,7 +226,7 @@ export default function InstantReturnModal({
     }
 
     if (returnQty > availableQty) {
-      alert(
+      setFormError(
         isArabic
           ? `الكمية المتاحة للمرتجع: ${availableQty}`
           : `Available return quantity: ${availableQty}`,
@@ -218,18 +235,20 @@ export default function InstantReturnModal({
     }
 
     if (!reason.trim()) {
-      alert(isArabic ? "من فضلك أدخل سبب المرتجع" : "Please enter return reason");
+      setFormError(isArabic ? "من فضلك أدخل سبب المرتجع" : "Please enter return reason");
       return;
     }
 
     if (refundMethod === "deduct_from_cart" && !hasOpenCart) {
-      alert(
+      setFormError(
         isArabic
           ? "لا توجد سلة مفتوحة لخصم قيمة المرتجع منها"
           : "No open cart to deduct return amount from",
       );
       return;
     }
+
+    setFormError("");
 
     try {
       setIsSubmitting(true);
@@ -252,6 +271,9 @@ export default function InstantReturnModal({
         userName,
       });
 
+      const { playPosSuccessFanfare, flashPosSuccess } = await import("../utils/posSuccessFeedback");
+      playPosSuccessFanfare();
+      flashPosSuccess();
       onSuccess({
         returnTotal,
         refundMethod,
@@ -263,19 +285,19 @@ export default function InstantReturnModal({
       if (message.startsWith("qty_exceeds_available")) {
         const parts = message.split(":");
         const available = parts[2] || "0";
-        alert(
+        setFormError(
           isArabic
             ? `كمية المرتجع أكبر من المتاح. المتاح: ${available}`
             : `Return quantity exceeds available: ${available}`,
         );
       } else if (message === "item_not_in_invoice") {
-        alert(isArabic ? "الصنف غير موجود في الفاتورة" : "Item not found in invoice");
+        setFormError(isArabic ? "الصنف غير موجود في الفاتورة" : "Item not found in invoice");
       } else if (message === "no_return_items") {
-        alert(isArabic ? "اختر كمية مرتجعة أولاً" : "Choose return quantity first");
+        setFormError(isArabic ? "اختر كمية مرتجعة أولاً" : "Choose return quantity first");
       } else if (message === "medicine_not_found") {
-        alert(isArabic ? "الدواء غير موجود في المخزون" : "Medicine not found in inventory");
+        setFormError(isArabic ? "الدواء غير موجود في المخزون" : "Medicine not found in inventory");
       } else {
-        alert(
+        setFormError(
           message ||
             (isArabic ? "حدث خطأ أثناء تنفيذ المرتجع" : "Failed to process instant return"),
         );
@@ -286,7 +308,7 @@ export default function InstantReturnModal({
   }
 
   return (
-    <div className="modalOverlay">
+    <div className="modalOverlay modalOverlay--abovePos">
       <div className="invoiceModal posModalWide" onClick={(e) => e.stopPropagation()}>
         <div className="modalHeader">
           <div>
@@ -412,7 +434,10 @@ export default function InstantReturnModal({
                     min={1}
                     max={availableQty}
                     value={returnQty}
-                    onChange={(e) => setReturnQty(Number(e.target.value))}
+                    onChange={(e) => {
+                      setReturnQty(Number(e.target.value));
+                      setFormError("");
+                    }}
                   />
                   <p className="instantReturnHint">
                     {isArabic ? "الكمية المتاحة:" : "Available:"} {availableQty}
@@ -421,14 +446,22 @@ export default function InstantReturnModal({
                   <label>{isArabic ? "سبب المرتجع" : "Return reason"}</label>
                   <input
                     value={reason}
-                    onChange={(e) => setReason(e.target.value)}
+                    className={formError && !reason.trim() ? "is-invalid" : undefined}
+                    onChange={(e) => {
+                      setReason(e.target.value);
+                      setFormError("");
+                    }}
                     placeholder={isArabic ? "مثال: خطأ في الصنف" : "e.g. wrong item"}
+                    aria-invalid={Boolean(formError && !reason.trim())}
                   />
 
                   <label>{isArabic ? "طريقة الرد" : "Refund method"}</label>
                   <select
                     value={refundMethod}
-                    onChange={(e) => setRefundMethod(e.target.value as "cash" | "deduct_from_cart")}
+                    onChange={(e) => {
+                      setRefundMethod(e.target.value as "cash" | "deduct_from_cart");
+                      setFormError("");
+                    }}
                   >
                     <option value="cash">
                       {isArabic ? "رد نقدي للعميل" : "Cash refund to customer"}
@@ -448,6 +481,12 @@ export default function InstantReturnModal({
               )}
             </>
           )}
+
+          {formError ? (
+            <p className="instantReturnError" role="alert">
+              {formError}
+            </p>
+          ) : null}
         </div>
 
         <div className="modalActions">

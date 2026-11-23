@@ -52,6 +52,9 @@ export function useAppSharedState() {
 
   useEffect(() => {
     document.body.style.overflow = isMenuOpen ? "hidden" : "";
+    if (isMenuOpen && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("app-menu-opened"));
+    }
     return () => {
       document.body.style.overflow = "";
     };

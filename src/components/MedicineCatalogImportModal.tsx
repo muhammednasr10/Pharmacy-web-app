@@ -6,6 +6,10 @@ import {
   parseMedicineCatalogUpload,
   type MedicineCatalogImportRow,
 } from "../utils/medicineCatalogImport";
+import {
+  catalogReplaceGuardMessage,
+  isProtectedProductionBranch,
+} from "../utils/testBranchGuard";
 
 type MedicineCatalogImportModalProps = {
   isArabic: boolean;
@@ -78,6 +82,7 @@ export default function MedicineCatalogImportModal({
     total: number;
     phase: "clearing" | "importing";
   } | null>(null);
+  const [importResult, setImportResult] = useState<string>("");
   const [error, setError] = useState("");
   const [catalogTotal, setCatalogTotal] = useState<number | null>(null);
   const [catalogLoading, setCatalogLoading] = useState(false);
@@ -220,6 +225,10 @@ export default function MedicineCatalogImportModal({
   }
 
   async function importFromVictoryCatalog() {
+    if (isProtectedProductionBranch(pharmacyId)) {
+      setError(catalogReplaceGuardMessage(isArabic, pharmacyId));
+      return;
+    }
     const confirmed = window.confirm(
       isArabic
         ? `سيتم حذف ${currentMedicineCount.toLocaleString()} دواء في هذا الفرع واستبدالهم بـ ${catalogLabel} دواء من قاعدة بيانات Victory.\n\nمتابعة؟`
@@ -229,18 +238,26 @@ export default function MedicineCatalogImportModal({
 
     setImporting(true);
     setError("");
+    setImportResult("");
+    // Victory seed always replaces — clearing is the real first phase.
     setProgress({ done: 0, total: catalogTotal || 1, phase: "clearing" });
 
     try {
       const result = await pharmacyService.seedPharmacyFromCatalogReference(pharmacyId, setProgress);
-      setProgress({ done: result.inserted, total: Math.max(1, result.inserted), phase: "importing" });
+      setProgress({
+        done: result.inserted,
+        total: Math.max(1, result.inserted || catalogTotal || 1),
+        phase: "importing",
+      });
+      const summary = isArabic
+        ? `اكتمل الاستيراد: ${result.inserted.toLocaleString()} صنف من Victory` +
+          (result.deleted > 0 ? ` (حُذف ${result.deleted.toLocaleString()} سابقًا)` : "")
+        : `Import finished: ${result.inserted.toLocaleString()} Victory medicines` +
+          (result.deleted > 0 ? ` (removed ${result.deleted.toLocaleString()} existing)` : "");
+      setImportResult(summary);
       await onComplete();
       onClose();
-      alert(
-        isArabic
-          ? `تم استيراد ${result.inserted.toLocaleString()} دواء من قاعدة Victory`
-          : `Imported ${result.inserted.toLocaleString()} medicines from Victory database`,
-      );
+      alert(summary);
     } catch (importError) {
       console.error(importError);
       const message = importError instanceof Error ? importError.message : String(importError);
@@ -266,6 +283,11 @@ export default function MedicineCatalogImportModal({
       return;
     }
 
+    if (replaceExisting && isProtectedProductionBranch(pharmacyId)) {
+      setError(catalogReplaceGuardMessage(isArabic, pharmacyId));
+      return;
+    }
+
     const confirmed = window.confirm(
       replaceExisting
         ? isArabic
@@ -283,22 +305,30 @@ export default function MedicineCatalogImportModal({
 
     setImporting(true);
     setError("");
+    setImportResult("");
     setProgress({
       done: 0,
       total: previewRows.length,
+      // Only show clearing when the user opted to replace/delete current medicines.
       phase: replaceExisting ? "clearing" : "importing",
     });
 
     try {
       if (replaceExisting) {
-        await pharmacyService.replacePharmacyMedicineCatalog(pharmacyId, previewRows, setProgress);
+        const result = await pharmacyService.replacePharmacyMedicineCatalog(
+          pharmacyId,
+          previewRows,
+          setProgress,
+        );
+        const summary = isArabic
+          ? `اكتمل الاستيراد: ${result.inserted.toLocaleString()} صنف` +
+            (result.deleted > 0 ? ` بعد حذف ${result.deleted.toLocaleString()}` : "")
+          : `Import finished: ${result.inserted.toLocaleString()} medicines` +
+            (result.deleted > 0 ? ` after deleting ${result.deleted.toLocaleString()}` : "");
+        setImportResult(summary);
         await onComplete();
         onClose();
-        alert(
-          isArabic
-            ? `تم استيراد ${previewRows.length.toLocaleString()} دواء بنجاح`
-            : `Successfully imported ${previewRows.length.toLocaleString()} medicines`,
-        );
+        alert(summary);
       } else {
         const result = await pharmacyService.mergePharmacyMedicineCatalog(
           pharmacyId,
@@ -306,13 +336,13 @@ export default function MedicineCatalogImportModal({
           mergeFields,
           setProgress,
         );
+        const summary = isArabic
+          ? `اكتمل الدمج: تحديث ${result.updated.toLocaleString()} وإضافة ${result.inserted.toLocaleString()}`
+          : `Merge finished: updated ${result.updated.toLocaleString()}, added ${result.inserted.toLocaleString()}`;
+        setImportResult(summary);
         await onComplete();
         onClose();
-        alert(
-          isArabic
-            ? `تم تحديث ${result.updated.toLocaleString()} دواء وإضافة ${result.inserted.toLocaleString()} جديد`
-            : `Updated ${result.updated.toLocaleString()} medicines and added ${result.inserted.toLocaleString()} new`,
-        );
+        alert(summary);
       }
     } catch (importError) {
       console.error(importError);
@@ -472,7 +502,7 @@ export default function MedicineCatalogImportModal({
             <input
               type="checkbox"
               checked={replaceExisting}
-              disabled={importing}
+              disabled={importing || isProtectedProductionBranch(pharmacyId)}
               onChange={(event) => setReplaceExisting(event.target.checked)}
             />
             <span>
@@ -481,6 +511,11 @@ export default function MedicineCatalogImportModal({
                 : `Delete current branch medicines (${currentMedicineCount.toLocaleString()}) before file import`}
             </span>
           </label>
+          {isProtectedProductionBranch(pharmacyId) ? (
+            <p className="fieldErrorText" role="status">
+              {catalogReplaceGuardMessage(isArabic, pharmacyId)}
+            </p>
+          ) : null}
 
           {previewRows.length > 0 ? (
             <div className="medicineCatalogImportPreview">
@@ -593,8 +628,8 @@ export default function MedicineCatalogImportModal({
               <small>
                 {progress.phase === "clearing"
                   ? isArabic
-                    ? "جاري حذف الأدوية الحالية..."
-                    : "Clearing current medicines..."
+                    ? `جاري حذف الأدوية الحالية… ${progress.done.toLocaleString()} / ${progress.total.toLocaleString()}`
+                    : `Clearing current medicines… ${progress.done.toLocaleString()} / ${progress.total.toLocaleString()}`
                   : isArabic
                     ? `جاري الاستيراد ${progress.done.toLocaleString()} / ${progress.total.toLocaleString()}`
                     : `Importing ${progress.done.toLocaleString()} / ${progress.total.toLocaleString()}`}
@@ -602,6 +637,7 @@ export default function MedicineCatalogImportModal({
             </div>
           ) : null}
 
+          {importResult ? <p className="loginSuccess">{importResult}</p> : null}
           {error ? <p className="medicineCatalogImportError">{error}</p> : null}
         </div>
 

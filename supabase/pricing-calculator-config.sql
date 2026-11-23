@@ -11,6 +11,12 @@ create table if not exists public.pricing_calculator_config (
   staff_addon_title_en text not null default 'Staff',
   staff_addon_desc_ar text not null default 'إدارة الموظفين والحسابات والصلاحيات داخل الصيدلية',
   staff_addon_desc_en text not null default 'Manage staff accounts and permissions inside the pharmacy',
+  customers_addon_enabled boolean not null default true,
+  customers_addon_price numeric not null default 100,
+  customers_addon_title_ar text not null default 'العملاء',
+  customers_addon_title_en text not null default 'Customers',
+  customers_addon_desc_ar text not null default 'دفتر العملاء والمديونية والتحصيل داخل الصيدلية',
+  customers_addon_desc_en text not null default 'Customer book, credit balances, and collections inside the pharmacy',
   updated_at timestamptz not null default now(),
   updated_by text
 );
@@ -45,6 +51,8 @@ alter table public.pharmacy_signup_requests
   add column if not exists quoted_users integer;
 alter table public.pharmacy_signup_requests
   add column if not exists quoted_staff_addon boolean not null default false;
+alter table public.pharmacy_signup_requests
+  add column if not exists quoted_customers_addon boolean not null default false;
 alter table public.pharmacy_signup_requests
   add column if not exists quoted_monthly_price numeric;
 alter table public.pharmacy_signup_requests

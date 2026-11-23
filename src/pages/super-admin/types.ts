@@ -85,7 +85,7 @@ export type ManageRoleAccountDisplayRow = {
   user: AppUser;
 };
 
-export type SaasTab = "overview" | "pharmacies" | "roles" | "customerRequests" | "packages";
+export type SaasTab = "overview" | "pharmacies" | "roles" | "customerRequests" | "pricing";
 
 export const emptySystemUserForm = {
   pharmacyId: "",

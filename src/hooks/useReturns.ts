@@ -51,6 +51,7 @@ type UseReturnsOptions = {
   refreshMedicinesFromDb: () => Promise<void>;
   setStockMovements: Dispatch<SetStateAction<StockMovement[]>>;
   onViewInvoice: (invoice: Invoice) => void;
+  bumpCashierShiftSalesTick?: () => void;
 };
 
 export function useReturns({
@@ -72,6 +73,7 @@ export function useReturns({
   refreshMedicinesFromDb,
   setStockMovements,
   onViewInvoice,
+  bumpCashierShiftSalesTick,
 }: UseReturnsOptions) {
   const [selectedReturn, setSelectedReturn] = useState<ReturnRecord | null>(null);
   const [returnInvoice, setReturnInvoice] = useState<Invoice | null>(null);
@@ -283,6 +285,9 @@ export function useReturns({
         referenceId: returnNumber,
       });
 
+      const { playPosSuccessFanfare, flashPosSuccess } = await import("../utils/posSuccessFeedback");
+      playPosSuccessFanfare();
+      flashPosSuccess();
       alert(isArabic ? `تم تسجيل المرتجع رقم ${returnNumber}` : `Return ${returnNumber} completed`);
 
       setReturnInvoice(null);
@@ -426,6 +431,7 @@ export function useReturns({
       await refreshMedicinesFromDb();
       setReturns(await pharmacyService.getReturns());
       setStockMovements(await pharmacyService.getStockMovements());
+      bumpCashierShiftSalesTick?.();
 
       await addActivityLog({
         type: "instant_sale_return",
@@ -455,6 +461,7 @@ export function useReturns({
     },
     [
       addActivityLog,
+      bumpCashierShiftSalesTick,
       discount,
       isArabic,
       refreshMedicinesFromDb,

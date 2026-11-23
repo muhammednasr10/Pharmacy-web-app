@@ -1,20 +1,7 @@
-import {
-  getPlanAmountForTier,
-  getPlanDays,
-  getQuarterlyPlanAmount,
-  getSubscriptionAmountForDays,
-  getTierUpgradeAmount,
-  getYearlyPlanAmount,
-  subscriptionPlanPricing,
-  TRIAL_SUBSCRIPTION_DAYS,
-  YEARLY_SUBSCRIPTION_DISCOUNT,
-} from "../../../config/subscription";
-import { getSubscriptionTier, type SubscriptionTier } from "../../../config/subscriptionTiers";
-import {
-  getNextSubscriptionTier,
-  parseTierUpgradePlan,
-} from "../../../utils/subscriptionFeatures";
-import type { RequestPlan, SubscriptionTone } from "./types";
+import { TRIAL_SUBSCRIPTION_DAYS } from "../../../config/subscription";
+import { getSubscriptionTier } from "../../../config/subscriptionTiers";
+import { parseTierUpgradePlan } from "../../../utils/subscriptionFeatures";
+import type { SubscriptionTone } from "./types";
 
 export function getRequestStatusLabel(isArabic: boolean, status: string) {
   if (status === "approved") return isArabic ? "معتمد" : "Approved";
@@ -29,80 +16,6 @@ export function getRequestTypeLabel(isArabic: boolean, plan: string) {
     return isArabic ? `ترقية إلى ${target.labelAr}` : `Upgrade to ${target.labelEn}`;
   }
   return isArabic ? "تجديد اشتراك" : "Renewal";
-}
-
-export function getTierDerivedValues(subscriptionTier: SubscriptionTier, isArabic: boolean) {
-  const tierConfig = getSubscriptionTier(subscriptionTier);
-  const tierFeatures = isArabic ? tierConfig.featuresAr : tierConfig.featuresEn;
-  const tierUpgradeTarget = getNextSubscriptionTier(subscriptionTier);
-  const tierUpgradeConfig = tierUpgradeTarget ? getSubscriptionTier(tierUpgradeTarget) : null;
-  const tierUpgradeAmount = tierUpgradeTarget ? getTierUpgradeAmount(tierUpgradeTarget) : 0;
-
-  return {
-    tierConfig,
-    tierFeatures,
-    tierUpgradeTarget,
-    tierUpgradeConfig,
-    tierUpgradeAmount,
-  };
-}
-
-export function buildRequestPlanOptions(isArabic: boolean, packagePrice: number) {
-  const monthly = packagePrice || subscriptionPlanPricing.monthly.amount;
-  const quarterly = getQuarterlyPlanAmount(monthly);
-  const yearly = getYearlyPlanAmount(monthly);
-  const yearlyDiscountPct = Math.round(YEARLY_SUBSCRIPTION_DISCOUNT * 100);
-
-  return [
-    {
-      value: "monthly" as const,
-      label: isArabic
-        ? subscriptionPlanPricing.monthly.labelAr
-        : subscriptionPlanPricing.monthly.labelEn,
-      hint: isArabic
-        ? `${subscriptionPlanPricing.monthly.days} يوم — ${monthly} ج.م`
-        : `${subscriptionPlanPricing.monthly.days} days — ${monthly} EGP`,
-    },
-    {
-      value: "quarterly" as const,
-      label: isArabic
-        ? subscriptionPlanPricing.quarterly.labelAr
-        : subscriptionPlanPricing.quarterly.labelEn,
-      hint: isArabic
-        ? `${subscriptionPlanPricing.quarterly.days} يوم — ${quarterly} ج.م`
-        : `${subscriptionPlanPricing.quarterly.days} days — ${quarterly} EGP`,
-    },
-    {
-      value: "yearly" as const,
-      label: isArabic
-        ? subscriptionPlanPricing.yearly.labelAr
-        : subscriptionPlanPricing.yearly.labelEn,
-      hint: isArabic
-        ? `${subscriptionPlanPricing.yearly.days} يوم — ${yearly} ج.م (خصم ${yearlyDiscountPct}%)`
-        : `${subscriptionPlanPricing.yearly.days} days — ${yearly} EGP (${yearlyDiscountPct}% off)`,
-    },
-    {
-      value: "custom" as const,
-      label: isArabic ? "مدة مخصصة" : "Custom period",
-      hint: isArabic ? "حدد عدد الأيام بنفسك" : "Choose your own number of days",
-    },
-  ];
-}
-
-export function getRequestPricing(
-  requestPlan: RequestPlan,
-  customDays: number,
-  subscriptionTier: SubscriptionTier,
-  packagePrice: number,
-) {
-  const requestDays =
-    requestPlan === "custom" ? Math.max(7, Math.floor(customDays) || 7) : getPlanDays(requestPlan);
-  const requestAmount =
-    requestPlan === "custom"
-      ? getSubscriptionAmountForDays(requestDays, packagePrice)
-      : getPlanAmountForTier(requestPlan, subscriptionTier);
-
-  return { requestDays, requestAmount };
 }
 
 type SubscriptionDisplayInput = {
@@ -171,7 +84,7 @@ export function getSubscriptionDisplayValues({
         : "Subscription expired. Renew to continue using the system."
     : isTrialSubscription
       ? isArabic
-        ? `أنت على باقة تجريبية مجانية ${TRIAL_SUBSCRIPTION_DAYS} يوماً. متبقي ${subscriptionDaysLeft ?? "?"} يوم.`
+        ? `أنت على فترة تجريبية مجانية ${TRIAL_SUBSCRIPTION_DAYS} يوماً. متبقي ${subscriptionDaysLeft ?? "?"} يوم.`
         : `You are on a free ${TRIAL_SUBSCRIPTION_DAYS}-day trial. ${subscriptionDaysLeft ?? "?"} days left.`
       : isSubscriptionExpiringSoon
         ? isArabic

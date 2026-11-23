@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import { ARABIC_FONT_BASE64 } from "../arabicFont";
+import { brandPharmacyName } from "../branding";
 import { tryAddPdfLogoImage } from "./pdfLogo";
 import { getBranchLabel } from "./branchLabel";
 import type { BranchStockTransfer, PharmacySettings } from "../types";
@@ -77,8 +78,8 @@ async function addHeader(
   docPdf.setFontSize(18);
   docPdf.text(
     params.isArabic
-      ? settings?.name || "صيدلية Focus"
-      : settings?.name_en || settings?.name || "Focus Pharmacy",
+      ? settings?.name || brandPharmacyName.ar
+      : settings?.name_en || settings?.name || brandPharmacyName.en,
     pageWidth / 2,
     y,
     { align: "center" },

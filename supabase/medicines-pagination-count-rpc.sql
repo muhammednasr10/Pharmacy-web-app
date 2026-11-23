@@ -96,7 +96,10 @@ begin
 
   select
     count(*),
-    count(*) filter (where coalesce(m.qty, 0) <= greatest(0, coalesce(p_low_stock_threshold, 20))),
+    count(*) filter (
+      where coalesce(m.qty, 0) > 0
+        and coalesce(m.qty, 0) <= greatest(0, coalesce(p_low_stock_threshold, 20))
+    ),
     count(*) filter (where coalesce(m.qty, 0) <= 0),
     count(*) filter (
       where m.expiry is not null

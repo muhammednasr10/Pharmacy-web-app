@@ -19,11 +19,11 @@ export default function SuperAdminPricingCalculatorPanel({
     <section className="saasPricingCalculator settingsTabPanel">
       <div className="saasPageHeader">
         <div>
-          <h3>{isArabic ? "تسعير حاسبة الباقة" : "Plan calculator pricing"}</h3>
+          <h3>{isArabic ? "تسعير حاسبة الاشتراك" : "Subscription calculator pricing"}</h3>
           <p className="pageHint">
             {isArabic
-              ? "هنا بتحدد سعر الفرع والمستخدم وإضافة الموظفين — الأرقام تظهر فورًا في صفحة الترحيب"
-              : "Set branch, user, and staff add-on prices — values appear immediately on the landing calculator"}
+              ? "سعر الفرع والمستخدم وإضافات الموظفين والعملاء — يظهر فورًا في صفحة الترحيب. الاشتراك السنوي أوفر 20% تلقائيًا."
+              : "Branch, user, staff, and customers add-on prices — live on the landing page. Yearly billing automatically saves 20%."}
           </p>
         </div>
         <button type="button" className="editBtn" disabled={saving} onClick={onSave}>
@@ -111,6 +111,68 @@ export default function SuperAdminPricingCalculatorPanel({
               disabled={!form.staffAddonEnabled}
               value={form.staffAddonDescEn}
               onChange={(e) => onChange({ ...form, staffAddonDescEn: e.target.value })}
+            />
+          </label>
+        </div>
+      </div>
+
+      <div className="saasPricingAddonBlock">
+        <label className="saasTierPageToggle">
+          <input
+            type="checkbox"
+            checked={form.customersAddonEnabled}
+            onChange={(e) => onChange({ ...form, customersAddonEnabled: e.target.checked })}
+          />
+          <span>
+            {isArabic ? "تفعيل إضافة العملاء في الحاسبة" : "Enable customers add-on in calculator"}
+          </span>
+        </label>
+
+        <div className="formGrid saasFormGrid">
+          <label className="saasField">
+            <span>{isArabic ? "سعر إضافة العملاء" : "Customers add-on price"}</span>
+            <input
+              type="number"
+              min={0}
+              disabled={!form.customersAddonEnabled}
+              value={form.customersAddonPrice}
+              onChange={(e) =>
+                onChange({ ...form, customersAddonPrice: Number(e.target.value) || 0 })
+              }
+            />
+          </label>
+          <label className="saasField">
+            <span>{isArabic ? "عنوان الإضافة (عربي)" : "Add-on title (Arabic)"}</span>
+            <input
+              disabled={!form.customersAddonEnabled}
+              value={form.customersAddonTitleAr}
+              onChange={(e) => onChange({ ...form, customersAddonTitleAr: e.target.value })}
+            />
+          </label>
+          <label className="saasField">
+            <span>{isArabic ? "عنوان الإضافة (إنجليزي)" : "Add-on title (English)"}</span>
+            <input
+              disabled={!form.customersAddonEnabled}
+              value={form.customersAddonTitleEn}
+              onChange={(e) => onChange({ ...form, customersAddonTitleEn: e.target.value })}
+            />
+          </label>
+          <label className="saasField saasFieldFull">
+            <span>{isArabic ? "شرح مبسّط (عربي)" : "Simple description (Arabic)"}</span>
+            <textarea
+              rows={2}
+              disabled={!form.customersAddonEnabled}
+              value={form.customersAddonDescAr}
+              onChange={(e) => onChange({ ...form, customersAddonDescAr: e.target.value })}
+            />
+          </label>
+          <label className="saasField saasFieldFull">
+            <span>{isArabic ? "شرح مبسّط (إنجليزي)" : "Simple description (English)"}</span>
+            <textarea
+              rows={2}
+              disabled={!form.customersAddonEnabled}
+              value={form.customersAddonDescEn}
+              onChange={(e) => onChange({ ...form, customersAddonDescEn: e.target.value })}
             />
           </label>
         </div>

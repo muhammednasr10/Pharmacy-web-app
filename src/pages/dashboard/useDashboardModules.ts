@@ -56,9 +56,15 @@ export function useDashboardModules({
       cards.push({
         key: "inventory",
         icon: "🧬",
-        label: isArabic ? "الأدوية بالمخزون" : "Medicines in Stock",
+        label: isArabic ? "الأصناف المسجّلة" : "Registered medicines",
         value: String(totalMedicinesCount),
-        sub: isArabic ? `${lowStockCount} صنف ناقص` : `${lowStockCount} low stock`,
+        sub: isArabic
+          ? lowStockCount > 0
+            ? `${lowStockCount} برصيد منخفض`
+            : "كل الأصناف المسجّلة في الفرع"
+          : lowStockCount > 0
+            ? `${lowStockCount} low (in stock)`
+            : "All registered branch SKUs",
         tone: "green",
         onClick: () => onOpenInventory("all"),
       });

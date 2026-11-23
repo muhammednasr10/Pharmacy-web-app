@@ -4,11 +4,23 @@ import { PROGRAM_PAGES, type ProgramPageKey } from "./programPages";
 type LoginWelcomeProgramPagesProps = {
   isArabic: boolean;
   staffAddonEnabled: boolean;
+  customersAddonEnabled: boolean;
 };
+
+function isAddonOn(
+  pageKey: ProgramPageKey,
+  staffAddonEnabled: boolean,
+  customersAddonEnabled: boolean,
+) {
+  if (pageKey === "users") return staffAddonEnabled;
+  if (pageKey === "customers") return customersAddonEnabled;
+  return false;
+}
 
 export default function LoginWelcomeProgramPages({
   isArabic,
   staffAddonEnabled,
+  customersAddonEnabled,
 }: LoginWelcomeProgramPagesProps) {
   const [selectedPageKey, setSelectedPageKey] = useState<ProgramPageKey | null>(null);
 
@@ -24,7 +36,8 @@ export default function LoginWelcomeProgramPages({
       </div>
       <ul className="loginWelcomePageList">
         {PROGRAM_PAGES.map((page) => {
-          const addonEnabled = page.hasCheckbox && page.key === "users" && staffAddonEnabled;
+          const addonEnabled =
+            page.hasCheckbox && isAddonOn(page.key, staffAddonEnabled, customersAddonEnabled);
           return (
             <li key={page.key}>
               <button
@@ -58,7 +71,8 @@ export default function LoginWelcomeProgramPages({
             className={[
               "modalContent loginWelcomePageCard",
               selectedPage.hasCheckbox ? "is-addon" : "",
-              selectedPage.hasCheckbox && selectedPage.key === "users" && staffAddonEnabled
+              selectedPage.hasCheckbox &&
+              isAddonOn(selectedPage.key, staffAddonEnabled, customersAddonEnabled)
                 ? "is-addon-on"
                 : "",
             ]
@@ -88,8 +102,8 @@ export default function LoginWelcomeProgramPages({
             {selectedPage.hasCheckbox ? (
               <p className="loginWelcomePageCardHint">
                 {isArabic
-                  ? "إضافة اختيارية — تفعّلها من تشيك بوكس حاسبة الباقة."
-                  : "Optional add-on — enable it from the plan calculator checkbox."}
+                  ? "إضافة اختيارية — تفعّلها من تشيك بوكس حاسبة الاشتراك."
+                  : "Optional add-on — enable it from the subscription calculator checkbox."}
               </p>
             ) : null}
           </div>

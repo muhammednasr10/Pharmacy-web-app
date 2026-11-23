@@ -1,3 +1,7 @@
+import { getYearlyPlanAmount, YEARLY_SUBSCRIPTION_DISCOUNT } from "./subscription";
+
+export type PricingBillingCycle = "monthly" | "yearly";
+
 export type PricingCalculatorConfig = {
   pricePerBranch: number;
   pricePerUser: number;
@@ -7,13 +11,21 @@ export type PricingCalculatorConfig = {
   staffAddonTitleEn: string;
   staffAddonDescAr: string;
   staffAddonDescEn: string;
+  customersAddonEnabled: boolean;
+  customersAddonPrice: number;
+  customersAddonTitleAr: string;
+  customersAddonTitleEn: string;
+  customersAddonDescAr: string;
+  customersAddonDescEn: string;
 };
 
 export type PricingCalculatorQuote = {
   branches: number;
   users: number;
   staffAddon: boolean;
+  customersAddon: boolean;
   monthlyPrice: number;
+  billingCycle: PricingBillingCycle;
 };
 
 export const DEFAULT_PRICING_CALCULATOR_CONFIG: PricingCalculatorConfig = {
@@ -25,6 +37,12 @@ export const DEFAULT_PRICING_CALCULATOR_CONFIG: PricingCalculatorConfig = {
   staffAddonTitleEn: "Staff",
   staffAddonDescAr: "إدارة الموظفين والحسابات والصلاحيات داخل الصيدلية",
   staffAddonDescEn: "Manage staff accounts and permissions inside the pharmacy",
+  customersAddonEnabled: true,
+  customersAddonPrice: 100,
+  customersAddonTitleAr: "العملاء",
+  customersAddonTitleEn: "Customers",
+  customersAddonDescAr: "دفتر العملاء والمديونية والتحصيل داخل الصيدلية",
+  customersAddonDescEn: "Customer book, credit balances, and collections inside the pharmacy",
 };
 
 export const PRICING_QUOTE_STORAGE_KEY = "victory_pricing_quote_v1";
@@ -34,23 +52,51 @@ export function clampPricingCount(value: number, min: number, max: number): numb
   return Math.max(min, Math.min(max, Math.floor(value)));
 }
 
+export function normalizePricingBillingCycle(value: unknown): PricingBillingCycle {
+  return value === "yearly" ? "yearly" : "monthly";
+}
+
+export function getYearlyDiscountPercent() {
+  return Math.round(YEARLY_SUBSCRIPTION_DISCOUNT * 100);
+}
+
+/** Total charged for the selected billing cycle (yearly = 12 months with discount). */
+export function getQuoteBillingAmount(
+  monthlyPrice: number,
+  billingCycle: PricingBillingCycle = "monthly",
+): number {
+  const monthly = Math.max(0, Math.round(monthlyPrice));
+  if (billingCycle === "yearly") return getYearlyPlanAmount(monthly);
+  return monthly;
+}
+
 export function computePricingQuote(
   config: PricingCalculatorConfig,
-  input: { branches: number; users: number; staffAddon: boolean },
+  input: {
+    branches: number;
+    users: number;
+    staffAddon: boolean;
+    customersAddon?: boolean;
+    billingCycle?: PricingBillingCycle;
+  },
 ): PricingCalculatorQuote {
   const branches = clampPricingCount(input.branches, 1, 50);
   const users = clampPricingCount(input.users, 1, 200);
   const staffAddon = Boolean(config.staffAddonEnabled && input.staffAddon);
+  const customersAddon = Boolean(config.customersAddonEnabled && input.customersAddon);
   const monthlyPrice =
     branches * Math.max(0, config.pricePerBranch) +
     users * Math.max(0, config.pricePerUser) +
-    (staffAddon ? Math.max(0, config.staffAddonPrice) : 0);
+    (staffAddon ? Math.max(0, config.staffAddonPrice) : 0) +
+    (customersAddon ? Math.max(0, config.customersAddonPrice) : 0);
 
   return {
     branches,
     users,
     staffAddon,
+    customersAddon,
     monthlyPrice: Math.round(monthlyPrice),
+    billingCycle: normalizePricingBillingCycle(input.billingCycle),
   };
 }
 
@@ -72,7 +118,9 @@ export function loadPricingQuote(): PricingCalculatorQuote | null {
       branches: clampPricingCount(Number(parsed.branches) || 1, 1, 50),
       users: clampPricingCount(Number(parsed.users) || 1, 1, 200),
       staffAddon: Boolean(parsed.staffAddon),
+      customersAddon: Boolean(parsed.customersAddon),
       monthlyPrice: Math.max(0, Math.round(Number(parsed.monthlyPrice) || 0)),
+      billingCycle: normalizePricingBillingCycle(parsed.billingCycle),
     };
   } catch {
     return null;

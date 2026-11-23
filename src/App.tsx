@@ -59,7 +59,8 @@ function App() {
       <AppShell
         {...appShellProps}
         children={
-          <Suspense fallback={<PageLoadingCard isArabic={isArabic} />}>
+          <Suspense fallback={<PageLoadingCard isArabic={isArabic} compact />}>
+            {/* Inner Suspense in AppPageRouter catches per-page lazy loads so the shell stays up. */}
             <LazyAppPageRouter {...pageRouterProps} />
           </Suspense>
         }

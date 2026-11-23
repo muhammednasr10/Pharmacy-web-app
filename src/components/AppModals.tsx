@@ -76,6 +76,7 @@ export type AppModalsProps = {
     invoiceNumber: string;
   }) => void | Promise<void>;
   getAvailableReturnQtyForInstant: (invoice: Invoice, item: InvoiceItem) => number;
+  preferredCashierShiftId?: number | null;
 };
 
 export default function AppModals({
@@ -125,6 +126,7 @@ export default function AppModals({
   onCloseInstantReturn,
   handleInstantReturnSuccess,
   getAvailableReturnQtyForInstant,
+  preferredCashierShiftId = null,
 }: AppModalsProps) {
   return (
     <>
@@ -362,6 +364,7 @@ export default function AppModals({
           hasOpenCart={cart.length > 0}
           userId={user?.uid}
           userName={appUser?.name}
+          preferredCashierShiftId={preferredCashierShiftId}
           getAvailableReturnQty={getAvailableReturnQtyForInstant}
           onClose={onCloseInstantReturn}
           onSuccess={(result) => void handleInstantReturnSuccess(result)}

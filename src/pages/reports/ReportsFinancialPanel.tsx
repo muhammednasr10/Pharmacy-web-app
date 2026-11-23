@@ -91,10 +91,10 @@ export default function ReportsFinancialPanel({
   pharmacySettings,
   medicines,
 }: ReportsFinancialPanelProps) {
-  const profitMargin = filteredReportTotal
-    ? (filteredReportProfitTotal / filteredReportTotal) * 100
-    : 0;
   const netSales = filteredReportTotal - reportReturnsTotal;
+  const profitMargin = netSales
+    ? (filteredReportProfitTotal / netSales) * 100
+    : 0;
 
   function buildExportSnapshot() {
     return buildReportExportSnapshot({
@@ -138,9 +138,9 @@ export default function ReportsFinancialPanel({
     },
     {
       key: "profit",
-      label: isArabic ? "مجمل الربح" : "Gross Profit",
+      label: isArabic ? "صافي مجمل الربح" : "Net Gross Profit",
       value: `${formatMoney(filteredReportProfitTotal)} ${currency}`,
-      sub: `${profitMargin.toFixed(1)}% ${isArabic ? "هامش" : "margin"}`,
+      sub: `${profitMargin.toFixed(1)}% ${isArabic ? "هامش على صافي المبيعات" : "margin on net sales"}`,
       tone: "profit",
     },
     {

@@ -8,6 +8,7 @@ import EmployeeSettingsPanel from "../components/EmployeeSettingsPanel";
 import SubscriptionSettingsPanel from "../components/settings/SubscriptionSettingsPanel";
 import { type SubscriptionTier } from "../config/subscriptionTiers";
 import DisplayPreferencesPanel from "../components/DisplayPreferencesPanel";
+import SystemHealthPanel from "../components/SystemHealthPanel";
 import type { FontScale, ThemeMode } from "../utils/displayPreferences";
 
 export type SettingsTab =
@@ -18,7 +19,8 @@ export type SettingsTab =
   | "payroll"
   | "subscription"
   | "display"
-  | "support";
+  | "support"
+  | "health";
 
 export type SettingsForm = {
   name: string;
@@ -54,6 +56,9 @@ type SettingsPageProps = {
   getSubscriptionPlanLabel: (plan: string) => string;
   subscriptionTierLabel?: string;
   subscriptionTier?: SubscriptionTier;
+  maxBranches?: number;
+  maxUsers?: number;
+  staffAddonEnabled?: boolean;
   submitSubscriptionRequest: (input: {
     plan: string;
     days: number;
@@ -92,6 +97,9 @@ export default function SettingsPage({
   getSubscriptionPlanLabel,
   subscriptionTierLabel,
   subscriptionTier = "basic",
+  maxBranches = 1,
+  maxUsers = 1,
+  staffAddonEnabled = false,
   submitSubscriptionRequest,
   submitTierUpgradeRequest,
   pharmacySubscriptionRequests,
@@ -128,6 +136,7 @@ export default function SettingsPage({
     { id: "payroll", ar: "إعدادات المرتبات", en: "Payroll" },
     { id: "subscription", ar: "الاشتراك والترخيص", en: "Subscription" },
     { id: "display", ar: "المظهر والخط", en: "Display" },
+    { id: "health", ar: "صحة النظام", en: "System Health" },
     { id: "support", ar: "خدمة العملاء", en: "Customer Support" },
   ];
 
@@ -138,6 +147,7 @@ export default function SettingsPage({
           tab.id === "pharmacy" ||
           tab.id === "invoice" ||
           tab.id === "display" ||
+          tab.id === "health" ||
           tab.id === "support",
       );
 
@@ -527,6 +537,9 @@ export default function SettingsPage({
           getSubscriptionPlanLabel={getSubscriptionPlanLabel}
           subscriptionTierLabel={subscriptionTierLabel}
           subscriptionTier={subscriptionTier}
+          maxBranches={maxBranches}
+          maxUsers={maxUsers}
+          staffAddonEnabled={staffAddonEnabled}
           submitSubscriptionRequest={submitSubscriptionRequest}
           submitTierUpgradeRequest={submitTierUpgradeRequest}
           pharmacySubscriptionRequests={pharmacySubscriptionRequests}
@@ -553,6 +566,12 @@ export default function SettingsPage({
             onThemeModeChange={onThemeModeChange}
             onFontScaleChange={onFontScaleChange}
           />
+        </div>
+      )}
+
+      {activeTab === "health" && (
+        <div className="settingsTabPanel">
+          <SystemHealthPanel isArabic={isArabic} pharmacyId={pharmacyId} />
         </div>
       )}
 

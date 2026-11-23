@@ -44,7 +44,7 @@ export default function SubscriptionHeroSection({
       <div className="subscriptionStatsGrid">
         {subscriptionTierLabel && (
           <div className={`subscriptionStatCard ${subscriptionTone}`}>
-            <span>{isArabic ? "باقة الاشتراك" : "Package"}</span>
+            <span>{isArabic ? "حدود الاشتراك" : "Subscription limits"}</span>
             <strong>{subscriptionTierLabel}</strong>
           </div>
         )}

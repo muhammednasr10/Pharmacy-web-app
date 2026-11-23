@@ -1,4 +1,4 @@
-import { whatsappLink } from "../branding";
+import { brandPharmacyName, whatsappLink } from "../branding";
 import {
   autoOpenAdminWhatsAppOnRequest,
   subscriptionNotifyWebhookUrl,
@@ -55,7 +55,7 @@ export function formatSuperAdminSubscriptionMessage(
 }
 
 export function formatSuperAdminSubscriptionEmailSubject(request: SubscriptionRequest) {
-  return `[Focus Pharmacy] New request ${request.requestNumber} — ${request.pharmacyName || request.pharmacyId}`;
+  return `[${brandPharmacyName.en}] New request ${request.requestNumber} — ${request.pharmacyName || request.pharmacyId}`;
 }
 
 export function getSuperAdminSubscriptionMailtoUrl(request: SubscriptionRequest) {

@@ -1,7 +1,8 @@
 import type { SuperAdminPageProps } from "./types";
 import { useSuperAdminSharedContext } from "./state/shared";
 import { useSuperAdminOverviewState } from "./state/useSuperAdminOverviewState";
-import { useSuperAdminTierState } from "./state/useSuperAdminTierState";
+import { useSuperAdminPricingCalculatorState } from "./state/useSuperAdminPricingCalculatorState";
+import { useSuperAdminTenantLimitsState } from "./state/useSuperAdminTenantLimitsState";
 import { useSuperAdminRequestsState } from "./state/useSuperAdminRequestsState";
 import { useSuperAdminManageTenantState } from "./state/useSuperAdminManageTenantState";
 import { useSuperAdminRolesState } from "./state/useSuperAdminRolesState";
@@ -32,7 +33,6 @@ export function useSuperAdminPageState(props: SuperAdminPageProps) {
     onUpdateMaxBranches,
     onUpdateMaxUsers,
     onUpdateOrganizationFreeTrial,
-    onUpdateSubscriptionTier,
     onRefreshPharmacies,
   } = props;
 
@@ -69,22 +69,21 @@ export function useSuperAdminPageState(props: SuperAdminPageProps) {
     onUpdateTenantStatus,
   });
 
-  const tier = useSuperAdminTierState({
+  const pricing = useSuperAdminPricingCalculatorState({
     isArabic: shared.isArabic,
     operatorUid: shared.operatorUid,
-    pharmacies: shared.pharmacies,
-    systemUsers: shared.systemUsers,
-    selected: shared.selected,
-    selectedTierCap: shared.selectedTierCap,
     activeTab: overview.activeTab,
+  });
+
+  const limits = useSuperAdminTenantLimitsState({
+    isArabic: shared.isArabic,
+    selected: shared.selected ?? null,
     manageModalOpen: manage.manageModalOpen,
     setActiveTab: overview.setActiveTab,
     setManageModalOpen: manage.setManageModalOpen,
-    onUpdateSubscriptionTier,
     onUpdateMaxBranches,
     onUpdateMaxUsers,
     onUpdateOrganizationFreeTrial,
-    onRefreshPharmacies,
   });
 
   const requests = useSuperAdminRequestsState({
@@ -176,16 +175,10 @@ export function useSuperAdminPageState(props: SuperAdminPageProps) {
     deleteTarget: manage.deleteTarget,
     setDeleteTarget: manage.setDeleteTarget,
     deleteUpdating: manage.deleteUpdating,
-    tierEditModalOpen: tier.tierEditModalOpen,
-    editingTierId: tier.editingTierId,
-    tierEditForm: tier.tierEditForm,
-    setTierEditForm: tier.setTierEditForm,
-    tierConfigVersion: tier.tierConfigVersion,
-    savingTierConfig: tier.savingTierConfig,
-    pricingCalculatorForm: tier.pricingCalculatorForm,
-    setPricingCalculatorForm: tier.setPricingCalculatorForm,
-    savingPricingCalculator: tier.savingPricingCalculator,
-    savePricingCalculatorConfig: tier.savePricingCalculatorConfig,
+    pricingCalculatorForm: pricing.pricingCalculatorForm,
+    setPricingCalculatorForm: pricing.setPricingCalculatorForm,
+    savingPricingCalculator: pricing.savingPricingCalculator,
+    savePricingCalculatorConfig: pricing.savePricingCalculatorConfig,
     selected: shared.selected,
     selectedBranchUsage: shared.selectedBranchUsage,
     selectedUserUsage: shared.selectedUserUsage,
@@ -193,9 +186,9 @@ export function useSuperAdminPageState(props: SuperAdminPageProps) {
     selectedTier: shared.selectedTier,
     selectedTierCap: shared.selectedTierCap,
     selectedTrialStatus: shared.selectedTrialStatus,
-    freeTrialDraft: tier.freeTrialDraft,
-    setFreeTrialDraft: tier.setFreeTrialDraft,
-    freeTrialSavingId: tier.freeTrialSavingId,
+    freeTrialDraft: limits.freeTrialDraft,
+    setFreeTrialDraft: limits.setFreeTrialDraft,
+    freeTrialSavingId: limits.freeTrialSavingId,
     activeTab: overview.activeTab,
     setActiveTab: overview.setActiveTab,
     customerRequestFilter: overview.customerRequestFilter,
@@ -212,13 +205,12 @@ export function useSuperAdminPageState(props: SuperAdminPageProps) {
     setSignupApproveTier: requests.setSignupApproveTier,
     closeSignupApproveModal: requests.closeSignupApproveModal,
     confirmSignupApprove: requests.confirmSignupApprove,
-    maxBranchSavingId: tier.maxBranchSavingId,
-    maxUserSavingId: tier.maxUserSavingId,
-    tierSavingId: tier.tierSavingId,
-    maxBranchDrafts: tier.maxBranchDrafts,
-    setMaxBranchDrafts: tier.setMaxBranchDrafts,
-    maxUserDrafts: tier.maxUserDrafts,
-    setMaxUserDrafts: tier.setMaxUserDrafts,
+    maxBranchSavingId: limits.maxBranchSavingId,
+    maxUserSavingId: limits.maxUserSavingId,
+    maxBranchDrafts: limits.maxBranchDrafts,
+    setMaxBranchDrafts: limits.setMaxBranchDrafts,
+    maxUserDrafts: limits.maxUserDrafts,
+    setMaxUserDrafts: limits.setMaxUserDrafts,
     saasTabs: overview.saasTabs,
     customerRequestRows: overview.customerRequestRows,
     pharmacyOrgGroups: overview.pharmacyOrgGroups,
@@ -233,16 +225,11 @@ export function useSuperAdminPageState(props: SuperAdminPageProps) {
     operatorAppUser: systemUsersState.operatorAppUser,
     reloadRolesReference: roles.reloadRolesReference,
     reloadManageRoles: manage.reloadManageRoles,
-    openTierEditModal: tier.openTierEditModal,
-    closeTierEditModal: tier.closeTierEditModal,
-    submitTierEdit: tier.submitTierEdit,
-    handleTierChange: tier.handleTierChange,
-    getMaxBranchDraft: tier.getMaxBranchDraft,
-    getMaxUserDraft: tier.getMaxUserDraft,
-    saveFreeTrial: tier.saveFreeTrial,
-    saveMaxUsers: tier.saveMaxUsers,
-    applyTierWarehouseLimit: tier.applyTierWarehouseLimit,
-    saveMaxBranches: tier.saveMaxBranches,
+    getMaxBranchDraft: limits.getMaxBranchDraft,
+    getMaxUserDraft: limits.getMaxUserDraft,
+    saveFreeTrial: limits.saveFreeTrial,
+    saveMaxUsers: limits.saveMaxUsers,
+    saveMaxBranches: limits.saveMaxBranches,
     handleApproveRequest: requests.handleApproveRequest,
     handleRejectRequest: requests.handleRejectRequest,
     handleApproveLoginRequest: requests.handleApproveLoginRequest,
@@ -280,7 +267,7 @@ export function useSuperAdminPageState(props: SuperAdminPageProps) {
     getCustomerRequestResult: requests.getCustomerRequestResult,
     isCustomerRequestBusy: requests.isCustomerRequestBusy,
     toggleOrgExpanded: overview.toggleOrgExpanded,
-    openPackagesTabFromManage: tier.openPackagesTabFromManage,
+    openPricingTabFromManage: limits.openPricingTabFromManage,
   };
 }
 

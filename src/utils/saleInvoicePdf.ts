@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import { ARABIC_FONT_BASE64 } from "../arabicFont";
+import { brandPharmacyName } from "../branding";
 import { tryAddPdfLogoImage } from "./pdfLogo";
 import type { Invoice, PharmacySettings } from "../types";
 
@@ -64,8 +65,8 @@ async function addPdfHeader(
   docPdf.setFontSize(18);
   docPdf.text(
     isArabic
-      ? pharmacySettings?.name || "صيدلية Focus"
-      : pharmacySettings?.name_en || "Focus Pharmacy",
+      ? pharmacySettings?.name || brandPharmacyName.ar
+      : pharmacySettings?.name_en || brandPharmacyName.en,
     pageWidth / 2,
     y,
     { align: "center" },
@@ -119,8 +120,8 @@ function addPdfFooter(
   }
 
   const pharmacyName = isArabic
-    ? pharmacySettings?.name || "صيدلية Focus"
-    : pharmacySettings?.name_en || "Focus Pharmacy";
+    ? pharmacySettings?.name || brandPharmacyName.ar
+    : pharmacySettings?.name_en || brandPharmacyName.en;
 
   docPdf.setFontSize(9);
   docPdf.text(pharmacySettings?.invoiceFooter || pharmacyName, pageWidth / 2, y, {

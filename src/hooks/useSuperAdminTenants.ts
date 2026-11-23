@@ -87,8 +87,8 @@ export function useSuperAdminTenants({
       name_en: "",
       phone: "",
       address: "",
-      packageChoice: "basic",
-      subscriptionTier: "basic",
+      packageChoice: "custom",
+      subscriptionTier: "professional",
       maxBranches: 1,
       maxUsers: 5,
     });

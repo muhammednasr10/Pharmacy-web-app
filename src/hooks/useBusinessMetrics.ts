@@ -30,6 +30,23 @@ type TopCashier = {
   invoicesCount: number;
 };
 
+function sumReturnProfit(records: ReturnRecord[]) {
+  return records.reduce((sum, record) => {
+    const itemsProfit = (record.items || []).reduce(
+      (itemSum, item) => itemSum + safeNumber(item.profit),
+      0,
+    );
+    if (itemsProfit !== 0) return sum + itemsProfit;
+    const cost = (record.items || []).reduce(
+      (itemSum, item) =>
+        itemSum +
+        safeNumber(item.costTotal ?? safeNumber(item.buyPrice) * safeNumber(item.quantity)),
+      0,
+    );
+    return sum + (safeNumber(record.total) - cost);
+  }, 0);
+}
+
 function aggregateTopSellingMedicines(invoices: Invoice[]): TopSellingMedicine[] {
   return Object.values(
     invoices
@@ -180,10 +197,17 @@ export function useBusinessMetrics({
     [dashboardInvoices],
   );
 
-  const dashboardProfitTotal = useMemo(
-    () => dashboardInvoices.reduce((sum, invoice) => sum + safeNumber(invoice.totalProfit), 0),
-    [dashboardInvoices],
-  );
+  const dashboardProfitTotal = useMemo(() => {
+    const gross = dashboardInvoices.reduce(
+      (sum, invoice) => sum + safeNumber(invoice.totalProfit),
+      0,
+    );
+    const periodReturns = returns.filter((record) => {
+      const date = new Date(record.createdAt || record.date || 0);
+      return date >= dashboardDateRange.from && date <= dashboardDateRange.to;
+    });
+    return gross - sumReturnProfit(periodReturns);
+  }, [dashboardInvoices, returns, dashboardDateRange.from, dashboardDateRange.to]);
 
   const dashboardInvoicesCount = dashboardInvoices.length;
 
@@ -234,16 +258,21 @@ export function useBusinessMetrics({
       const invoiceDate = new Date(invoice.createdAt || invoice.date).toDateString();
       return invoiceDate === today;
     });
+    const todayReturns = returns.filter((record) => {
+      const returnDate = new Date(record.createdAt || record.date || 0).toDateString();
+      return returnDate === today;
+    });
+    const grossProfit = todayInvoices.reduce(
+      (sum, invoice) => sum + safeNumber(invoice.totalProfit),
+      0,
+    );
 
     return {
       todaySalesTotal: todayInvoices.reduce((sum, invoice) => sum + safeNumber(invoice.total), 0),
       todayInvoicesCount: todayInvoices.length,
-      todayProfitTotal: todayInvoices.reduce(
-        (sum, invoice) => sum + safeNumber(invoice.totalProfit),
-        0,
-      ),
+      todayProfitTotal: grossProfit - sumReturnProfit(todayReturns),
     };
-  }, [invoices]);
+  }, [invoices, returns]);
 
   const monthStats = useMemo(() => {
     const currentMonth = new Date().getMonth();
@@ -351,7 +380,7 @@ export function useBusinessMetrics({
     [subscriptionRequests, getPharmacyId],
   );
 
-  const filteredReportProfitTotal = useMemo(
+  const filteredReportGrossProfitTotal = useMemo(
     () => filteredReportInvoices.reduce((sum, invoice) => sum + (invoice.totalProfit || 0), 0),
     [filteredReportInvoices],
   );
@@ -431,15 +460,28 @@ export function useBusinessMetrics({
     [filteredReportInvoices],
   );
 
-  const reportReturnsTotal = useMemo(
+  const filteredReportReturns = useMemo(
     () =>
-      returns
-        .filter((record) => {
-          const key = (record.createdAt || record.date || "").slice(0, 10);
-          return key && key >= reportFrom && key <= reportTo;
-        })
-        .reduce((sum, record) => sum + safeNumber(record.total), 0),
+      returns.filter((record) => {
+        const key = (record.createdAt || record.date || "").slice(0, 10);
+        return key && key >= reportFrom && key <= reportTo;
+      }),
     [returns, reportFrom, reportTo],
+  );
+
+  const reportReturnsTotal = useMemo(
+    () => filteredReportReturns.reduce((sum, record) => sum + safeNumber(record.total), 0),
+    [filteredReportReturns],
+  );
+
+  const reportReturnsProfitTotal = useMemo(
+    () => sumReturnProfit(filteredReportReturns),
+    [filteredReportReturns],
+  );
+
+  const filteredReportProfitTotal = useMemo(
+    () => filteredReportGrossProfitTotal - reportReturnsProfitTotal,
+    [filteredReportGrossProfitTotal, reportReturnsProfitTotal],
   );
 
   const filteredReportCosts = useMemo(() => {

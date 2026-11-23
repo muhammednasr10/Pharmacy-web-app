@@ -8,6 +8,13 @@ export async function addActivityLog(log: ActivityLog) {
   if (!payload.pharmacy_id) {
     Object.assign(payload, stampPharmacy({}));
   }
+  // Legacy schemas require NOT NULL `action`; newer ones also store `type`.
+  const kind = String(payload.type || payload.action || "activity");
+  payload.type = kind;
+  payload.action = kind;
+  if (!payload.user_uid && payload.user_id) {
+    payload.user_uid = payload.user_id;
+  }
   const { error } = await supabase.from("activity_logs").insert([payload]);
 
   if (error) {

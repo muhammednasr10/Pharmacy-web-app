@@ -1,5 +1,9 @@
+import { useState } from "react";
+import { ensureQaTestStock, isQaTestBranch, QA_TEST_BARCODE } from "../../utils/qaTestStock";
+
 type DashboardGettingStartedProps = {
   isArabic: boolean;
+  pharmacyId?: string | null;
   totalMedicinesCount: number;
   hasOpenShift: boolean;
   hasCompletedSale: boolean;
@@ -7,10 +11,12 @@ type DashboardGettingStartedProps = {
   canAccessPos: boolean;
   onOpenInventory: () => void;
   onOpenPOS: () => void;
+  onQaStockReady?: () => void | Promise<void>;
 };
 
 export default function DashboardGettingStarted({
   isArabic,
+  pharmacyId,
   totalMedicinesCount,
   hasOpenShift,
   hasCompletedSale,
@@ -18,7 +24,11 @@ export default function DashboardGettingStarted({
   canAccessPos,
   onOpenInventory,
   onOpenPOS,
+  onQaStockReady,
 }: DashboardGettingStartedProps) {
+  const [seedingQa, setSeedingQa] = useState(false);
+  const [qaSeedMessage, setQaSeedMessage] = useState("");
+
   if (totalMedicinesCount > 0 && hasOpenShift && hasCompletedSale) {
     return null;
   }
@@ -26,6 +36,30 @@ export default function DashboardGettingStarted({
   // Only guide empty / early pharmacies.
   if (totalMedicinesCount > 0 && hasCompletedSale) {
     return null;
+  }
+
+  const showQaSeed = isQaTestBranch(pharmacyId) && totalMedicinesCount === 0 && canAccessInventory;
+
+  async function handleSeedQaStock() {
+    if (!pharmacyId || seedingQa) return;
+    setSeedingQa(true);
+    setQaSeedMessage("");
+    try {
+      const result = await ensureQaTestStock(pharmacyId);
+      setQaSeedMessage(
+        isArabic
+          ? `جاهز للبيع — باركود ${QA_TEST_BARCODE} · كمية ${result.qty}`
+          : `Ready to sell — barcode ${QA_TEST_BARCODE} · qty ${result.qty}`,
+      );
+      await onQaStockReady?.();
+    } catch (error) {
+      console.error("QA seed failed:", error);
+      setQaSeedMessage(
+        isArabic ? "تعذّر تهيئة صنف الاختبار" : "Could not seed the QA test medicine",
+      );
+    } finally {
+      setSeedingQa(false);
+    }
   }
 
   const steps = [
@@ -77,6 +111,32 @@ export default function DashboardGettingStarted({
           ? "المخزون لسه فاضي أو لسه ما عملتش أول بيع — نفّذ الخطوات دي بالترتيب"
           : "Stock is empty or you have not made a first sale — complete these steps in order"}
       </p>
+
+      {showQaSeed ? (
+        <div className="dashboardQaSeedBox">
+          <p>
+            {isArabic
+              ? "فرع الاختبار فاضي — اضغط لتهيئة صنف QA القياسي بكمية قابلة للبيع."
+              : "QA branch is empty — seed the standard sellable QA medicine."}
+          </p>
+          <button
+            type="button"
+            className="completeBtn"
+            disabled={seedingQa}
+            onClick={() => void handleSeedQaStock()}
+          >
+            {seedingQa
+              ? isArabic
+                ? "جاري التهيئة..."
+                : "Seeding..."
+              : isArabic
+                ? "تهيئة صنف اختبار QA"
+                : "Seed QA test medicine"}
+          </button>
+          {qaSeedMessage ? <p className="returnsSectionHint">{qaSeedMessage}</p> : null}
+        </div>
+      ) : null}
+
       <ol className="dashboardGettingStartedList">
         {steps.map((step, index) => (
           <li

@@ -11,7 +11,7 @@ export async function expectSubscriptionPanelLoaded(page: Page) {
   await expect(
     page.locator(".subscriptionCompareSection, .subscriptionHero, .subscriptionProgressCard"),
   ).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".subscriptionCompareGrid, .subscriptionHistoryCard")).toBeVisible({
+  await expect(page.locator(".subscriptionCalculatorRenew, .subscriptionHistoryCard")).toBeVisible({
     timeout: 15_000,
   });
 }

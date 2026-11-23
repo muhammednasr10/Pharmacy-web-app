@@ -103,6 +103,7 @@ export default function InventoryMovementsPanel({
             <option value="all">{isArabic ? "كل الحركات" : "All movements"}</option>
             <option value="sale">{getMovementTypeLabel("sale", isArabic)}</option>
             <option value="return">{getMovementTypeLabel("return", isArabic)}</option>
+            <option value="sale_return">{getMovementTypeLabel("sale_return", isArabic)}</option>
             <option value="purchase">{getMovementTypeLabel("purchase", isArabic)}</option>
             <option value="medicine_create">
               {getMovementTypeLabel("medicine_create", isArabic)}

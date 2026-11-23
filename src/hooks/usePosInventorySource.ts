@@ -9,6 +9,15 @@ import {
 } from "../services/pharmacy/inventoryPaginationService";
 import * as pharmacyService from "../services/pharmacyService";
 import { LARGE_MEDICINE_CATALOG } from "../constants/medicineCatalog";
+import {
+  findMedicineByBarcode,
+  medicineMatchesInventorySearch,
+  sortMedicinesBySearchRelevance,
+} from "../utils/medicineLookup";
+import {
+  loadCachedMedicines,
+  mergeMedicinesIntoOfflineCache,
+} from "../utils/offlinePosStorage";
 
 type UsePosInventorySourceOptions = {
   pharmacyId: string;
@@ -19,6 +28,7 @@ type UsePosInventorySourceOptions = {
   refreshKey?: number | string;
   lowStockThreshold?: number;
   expiringSoonDays?: number;
+  isOnline?: boolean;
 };
 
 export function usePosInventorySource({
@@ -29,6 +39,7 @@ export function usePosInventorySource({
   refreshKey = 0,
   lowStockThreshold = 10,
   expiringSoonDays = 90,
+  isOnline = typeof navigator === "undefined" ? true : navigator.onLine,
 }: UsePosInventorySourceOptions) {
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState<Medicine[]>([]);
@@ -50,12 +61,56 @@ export function usePosInventorySource({
     setPage(1);
   }, [trimmedSearch, pharmacyId, scopedIds.join("|"), lowStockThreshold, expiringSoonDays]);
 
+  const rememberForOffline = useCallback(
+    async (incoming: Medicine[]) => {
+      if (!pharmacyId || isAllBranchesMode(pharmacyId) || incoming.length === 0) return;
+      try {
+        const { medicines } = await mergeMedicinesIntoOfflineCache(pharmacyId, incoming);
+        setBranchSnapshot((current) => {
+          if (current.length === 0) return medicines;
+          const map = new Map<number, Medicine>();
+          for (const medicine of current) map.set(medicine.id, medicine);
+          for (const medicine of incoming) map.set(medicine.id, medicine);
+          return Array.from(map.values());
+        });
+      } catch (cacheError) {
+        console.warn("POS offline cache merge failed:", cacheError);
+      }
+    },
+    [pharmacyId],
+  );
+
   const loadPage = useCallback(async () => {
     if (!branchReady) {
       setRows([]);
       setTotal(0);
       setCatalogTotal(0);
       setError(null);
+      return;
+    }
+
+    if (!isOnline) {
+      setLoading(true);
+      setError(null);
+      try {
+        const { medicines: cached } = await loadCachedMedicines(pharmacyId);
+        const filtered = trimmedSearch
+          ? sortMedicinesBySearchRelevance(
+              cached.filter((medicine) => medicineMatchesInventorySearch(medicine, trimmedSearch)),
+              trimmedSearch,
+            )
+          : cached.filter((medicine) => medicine.qty > 0);
+        setRows(filtered.slice(0, INVENTORY_PAGE_SIZE));
+        setTotal(filtered.length);
+        setCatalogTotal(cached.length);
+        setBranchSnapshot(cached);
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : String(loadError));
+        setRows([]);
+        setTotal(0);
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 
@@ -91,6 +146,9 @@ export function usePosInventorySource({
       if (allCountResult) {
         setCatalogTotal(allCountResult.total);
       }
+      if (pageResult.rows.length > 0) {
+        void rememberForOffline(pageResult.rows);
+      }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : String(loadError));
       setRows([]);
@@ -98,7 +156,17 @@ export function usePosInventorySource({
     } finally {
       setLoading(false);
     }
-  }, [branchReady, page, trimmedSearch, scopedIds, lowStockThreshold, expiringSoonDays]);
+  }, [
+    branchReady,
+    isOnline,
+    pharmacyId,
+    page,
+    trimmedSearch,
+    scopedIds,
+    lowStockThreshold,
+    expiringSoonDays,
+    rememberForOffline,
+  ]);
 
   useEffect(() => {
     void loadPage();
@@ -111,42 +179,80 @@ export function usePosInventorySource({
     }
 
     let cancelled = false;
-    void pharmacyService.getMedicinesForPharmacy(pharmacyId).then((medicines) => {
-      if (!cancelled) setBranchSnapshot(medicines);
-    });
+
+    void (async () => {
+      if (!isOnline) {
+        const cached = await loadCachedMedicines(pharmacyId);
+        if (!cancelled) setBranchSnapshot(cached.medicines);
+        return;
+      }
+
+      const medicines = await pharmacyService.getMedicinesForPharmacy(pharmacyId);
+      if (cancelled) return;
+
+      if (medicines.length > 0) {
+        setBranchSnapshot(medicines);
+        void rememberForOffline(medicines);
+        return;
+      }
+
+      const cached = await loadCachedMedicines(pharmacyId);
+      if (!cancelled) setBranchSnapshot(cached.medicines);
+    })();
 
     return () => {
       cancelled = true;
     };
-  }, [branchReady, pharmacyId, refreshKey]);
+  }, [branchReady, pharmacyId, refreshKey, isOnline, rememberForOffline]);
 
   const lookupBarcode = useCallback(
     async (barcode: string) => {
       if (!branchReady) return null;
-      const fromServer = await lookupInventoryMedicineByBarcode(barcode);
-      if (fromServer) return fromServer;
-      return branchSnapshot.find((medicine) => medicine.barcode === barcode.trim()) || null;
+      const code = String(barcode ?? "").trim();
+      if (!code) return null;
+
+      if (!isOnline) {
+        const pool =
+          branchSnapshot.length > 0
+            ? branchSnapshot
+            : (await loadCachedMedicines(pharmacyId)).medicines;
+        return findMedicineByBarcode(pool, code) || null;
+      }
+
+      const fromServer = await lookupInventoryMedicineByBarcode(code);
+      if (fromServer) {
+        void rememberForOffline([fromServer]);
+        return fromServer;
+      }
+      return findMedicineByBarcode(branchSnapshot, code) || null;
     },
-    [branchReady, branchSnapshot],
+    [branchReady, branchSnapshot, isOnline, pharmacyId, rememberForOffline],
   );
 
   const lookupSearch = useCallback(
     async (query: string, limit = 8) => {
       if (!branchReady) return [];
-      if (branchSnapshot.length > 0 && branchSnapshot.length <= LARGE_MEDICINE_CATALOG) {
-        const value = query.trim().toLowerCase();
-        return branchSnapshot
-          .filter((medicine) => {
-            const haystack = [medicine.name_ar, medicine.name_en, medicine.barcode]
-              .join(" ")
-              .toLowerCase();
-            return haystack.includes(value);
-          })
-          .slice(0, limit);
+      if (!isOnline) {
+        const pool =
+          branchSnapshot.length > 0
+            ? branchSnapshot
+            : (await loadCachedMedicines(pharmacyId)).medicines;
+        return sortMedicinesBySearchRelevance(
+          pool.filter((medicine) => medicineMatchesInventorySearch(medicine, query)),
+          query,
+        ).slice(0, limit);
       }
-      return searchInventoryMedicines(query, limit, true);
+      if (branchSnapshot.length > 0 && branchSnapshot.length <= LARGE_MEDICINE_CATALOG) {
+        return sortMedicinesBySearchRelevance(
+          branchSnapshot.filter((medicine) => medicineMatchesInventorySearch(medicine, query)),
+          query,
+        ).slice(0, limit);
+      }
+      const rows = await searchInventoryMedicines(query, limit, true);
+      if (rows.length > 0) void rememberForOffline(rows);
+      return rows;
     },
-    [branchReady, branchSnapshot],
+    [branchReady, branchSnapshot, isOnline, pharmacyId, rememberForOffline],
   );
 
   const sellableCount = useMemo(

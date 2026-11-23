@@ -3,6 +3,7 @@ import {
   DEFAULT_PRICING_CALCULATOR_CONFIG,
   computePricingQuote,
   savePricingQuote,
+  type PricingBillingCycle,
   type PricingCalculatorConfig,
   type PricingCalculatorQuote,
 } from "../../config/pricingCalculator";
@@ -13,6 +14,8 @@ export function usePricingCalculatorState() {
   const [branches, setBranches] = useState(1);
   const [users, setUsers] = useState(3);
   const [staffAddon, setStaffAddon] = useState(false);
+  const [customersAddon, setCustomersAddon] = useState(false);
+  const [billingCycle, setBillingCycle] = useState<PricingBillingCycle>("monthly");
 
   useEffect(() => {
     let cancelled = false;
@@ -30,8 +33,15 @@ export function usePricingCalculatorState() {
   }, []);
 
   const quote = useMemo(
-    () => computePricingQuote(config, { branches, users, staffAddon }),
-    [config, branches, users, staffAddon],
+    () =>
+      computePricingQuote(config, {
+        branches,
+        users,
+        staffAddon,
+        customersAddon,
+        billingCycle,
+      }),
+    [config, branches, users, staffAddon, customersAddon, billingCycle],
   );
 
   useEffect(() => {
@@ -50,6 +60,10 @@ export function usePricingCalculatorState() {
     setUsers,
     staffAddon,
     setStaffAddon,
+    customersAddon,
+    setCustomersAddon,
+    billingCycle,
+    setBillingCycle,
     quote,
     persistQuote,
   };

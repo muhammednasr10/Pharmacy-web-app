@@ -149,7 +149,12 @@ export default function CashierShiftsReport({
                   <td>{shift.cashierName || shift.cashierId}</td>
                   <td>{formatAppDateTime(shift.openedAt, isArabic)}</td>
                   <td>{formatAppDateTime(shift.closedAt, isArabic)}</td>
-                  <td>{formatMoney(shift.totalSales, currency)}</td>
+                  <td>
+                    {formatMoney(
+                      Math.max(0, Number(shift.totalSales ?? 0) - Number(shift.returnsTotal ?? 0)),
+                      currency,
+                    )}
+                  </td>
                   <td>{formatMoney(shift.expectedCash ?? 0, currency)}</td>
                   <td>{formatMoney(shift.actualCash ?? 0, currency)}</td>
                   <td

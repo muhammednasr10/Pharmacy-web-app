@@ -122,15 +122,33 @@ export default function PosCart({
                   </span>
                 </div>
                 <div className="posCartItemActions">
-                  <div className="qtyControls">
-                    <button type="button" onClick={() => onDecreaseQty(item.id)}>
-                      -
+                  <div className="qtyControls posQtyControls">
+                    <button
+                      type="button"
+                      className="posQtyBtn"
+                      aria-label={isArabic ? "إنقاص الكمية" : "Decrease quantity"}
+                      onClick={() => onDecreaseQty(item.id)}
+                    >
+                      −
                     </button>
-                    <span>{item.cartQty}</span>
-                    <button type="button" onClick={() => onIncreaseQty(item.id)}>
+                    <span className="posQtyValue" title={isArabic ? "الكمية" : "Quantity"}>
+                      {item.cartQty}
+                    </span>
+                    <button
+                      type="button"
+                      className="posQtyBtn"
+                      aria-label={isArabic ? "زيادة الكمية" : "Increase quantity"}
+                      onClick={() => onIncreaseQty(item.id)}
+                      disabled={item.cartQty >= item.qty}
+                    >
                       +
                     </button>
                   </div>
+                  {item.cartQty > 1 ? (
+                    <span className="posQtyConfirmHint">
+                      {isArabic ? "كمية أكبر من 1 — ستُؤكد عند البيع" : "Qty > 1 — confirm at checkout"}
+                    </span>
+                  ) : null}
                   <button
                     type="button"
                     className="deleteBtn posCartRemoveBtn"

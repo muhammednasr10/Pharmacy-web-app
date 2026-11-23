@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import * as pharmacyService from "../../services/pharmacyService";
-import { ACTIVE_PAGE_STORAGE_KEY } from "../../utils/sessionNavigation";
+import {
+  ACTIVE_PAGE_STORAGE_KEY,
+  NAV_RESTORED_ONCE_KEY,
+} from "../../utils/sessionNavigation";
 import { pageFromPath } from "../../routes/pageRoutes";
 import { getAllowedPages } from "../../utils/roles";
 import {
@@ -46,8 +49,8 @@ export function useAppAuthSlice({ isArabic, activePage, setActivePage }: UseAppA
     });
   }, [appUser?.uid, appUser?.pharmacyId, branches]);
 
-  // Restore last page once after login when landing on `/` or `/dashboard`.
-  // Do not re-run on later navigations to dashboard (that blocked returning to it).
+  // Restore last page once per tab after login on `/` or `/dashboard`.
+  // Later remounts / hard navigations keep the URL (e.g. /dashboard stays dashboard).
   useEffect(() => {
     if (!appUser) {
       didRestoreSavedPageRef.current = false;
@@ -57,17 +60,26 @@ export function useAppAuthSlice({ isArabic, activePage, setActivePage }: UseAppA
 
     const urlPage = pageFromPath(location.pathname);
     const allowed = getAllowedPages(appUser);
+    const alreadyRestoredOnce = sessionStorage.getItem(NAV_RESTORED_ONCE_KEY) === "1";
+
+    if (alreadyRestoredOnce) {
+      didRestoreSavedPageRef.current = true;
+      return;
+    }
+
     const isDefaultLanding =
       location.pathname === "/" || location.pathname === "/dashboard";
 
     if (!isDefaultLanding) {
       if (allowed.includes(urlPage)) {
         didRestoreSavedPageRef.current = true;
+        sessionStorage.setItem(NAV_RESTORED_ONCE_KEY, "1");
       }
       return;
     }
 
     didRestoreSavedPageRef.current = true;
+    sessionStorage.setItem(NAV_RESTORED_ONCE_KEY, "1");
     const savedPage = sessionStorage.getItem(ACTIVE_PAGE_STORAGE_KEY) as Page | null;
     if (!savedPage) return;
     const page = savedPage === "hr" ? "users" : savedPage;

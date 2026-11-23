@@ -39,6 +39,47 @@ function sumByPaymentMethod(
   }, 0);
 }
 
+export type CashierShiftsReadiness = {
+  ok: boolean;
+  reason?: "missing_table" | "forbidden" | "pharmacy_missing" | "unknown";
+  detail?: string;
+};
+
+/** Lightweight probe before opening the start-shift modal. */
+export async function probeCashierShiftsReady(
+  pharmacyId: string,
+): Promise<CashierShiftsReadiness> {
+  if (!pharmacyId) {
+    return { ok: false, reason: "pharmacy_missing", detail: "pharmacy_required" };
+  }
+
+  const { error } = await supabase
+    .from("cashier_shifts")
+    .select("id")
+    .eq("pharmacy_id", pharmacyId)
+    .limit(1);
+
+  if (!error) return { ok: true };
+
+  const message = error.message || "";
+  console.error("probeCashierShiftsReady:", message, error);
+
+  const lower = message.toLowerCase();
+  if (
+    lower.includes("does not exist") ||
+    lower.includes("schema cache") ||
+    lower.includes("could not find the table") ||
+    /pgrst20[45]/i.test(message) ||
+    lower.includes("42p01")
+  ) {
+    return { ok: false, reason: "missing_table", detail: message };
+  }
+  if (/row-level security|permission denied|42501|not authorized/i.test(message)) {
+    return { ok: false, reason: "forbidden", detail: message };
+  }
+  return { ok: false, reason: "unknown", detail: message };
+}
+
 export async function getOpenCashierShift(
   pharmacyId: string,
   cashierId: string,
@@ -102,6 +143,7 @@ export async function openCashierShift(params: {
     .single();
 
   if (error) {
+    console.error("openCashierShift:", error.message, error);
     if (error.message.includes("cashier_shifts_one_open_per_cashier")) {
       throw new Error("shift_already_open");
     }
@@ -158,11 +200,13 @@ export async function computeCashierShiftSummary(
   }, 0);
 
   const returnsTotal = returns.reduce((sum, row) => sum + Number(row.total ?? 0), 0);
+  const netSales = Math.max(0, totalSales - returnsTotal);
   const expectedCash =
     Number(shift.openingCash ?? 0) + cashSales + customerPaymentsCash - returnsTotal;
 
   return {
     totalSales,
+    netSales,
     cashSales,
     visaSales,
     walletSales,

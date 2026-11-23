@@ -70,13 +70,23 @@ export function getSubscriptionAmountForDays(days: number, monthlyPrice?: number
   return Math.round(safeDays * dailyRate);
 }
 
-export function getPlanAmountForTier(plan: string, tier: SubscriptionTier, customDays?: number) {
-  const monthly = getTierPackagePrice(tier) || subscriptionPlanPricing.monthly.amount;
+export function getPlanAmountFromMonthlyPrice(
+  plan: string,
+  monthlyPrice: number,
+  customDays?: number,
+) {
+  const monthly =
+    monthlyPrice > 0 ? Math.round(monthlyPrice) : subscriptionPlanPricing.monthly.amount;
   if (plan === "monthly") return monthly;
   if (plan === "quarterly") return getQuarterlyPlanAmount(monthly);
   if (plan === "yearly") return getYearlyPlanAmount(monthly);
   if (plan === "custom" && customDays) return getSubscriptionAmountForDays(customDays, monthly);
   return 0;
+}
+
+/** @deprecated Prefer getPlanAmountFromMonthlyPrice with calculator quote. */
+export function getPlanAmountForTier(plan: string, tier: SubscriptionTier, customDays?: number) {
+  return getPlanAmountFromMonthlyPrice(plan, getTierPackagePrice(tier), customDays);
 }
 
 export function getPlanDays(plan: string) {

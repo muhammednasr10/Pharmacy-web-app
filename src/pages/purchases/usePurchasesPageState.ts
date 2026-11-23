@@ -49,6 +49,15 @@ export function usePurchasesPageState(props: PurchasesPageProps) {
   const [supplierName, setSupplierName] = useState("");
   const [notes, setNotes] = useState("");
   const [itemForm, setItemForm] = useState(emptyItemForm);
+  const [itemFieldErrors, setItemFieldErrors] = useState<{
+    qty?: string;
+    expiry?: string;
+    barcode?: string;
+    name_ar?: string;
+    name_en?: string;
+    buyPrice?: string;
+    price?: string;
+  }>({});
   const [draftItems, setDraftItems] = useState<PurchaseLineDraft[]>([]);
   const [branchMedicines, setBranchMedicines] = useState<Medicine[]>([]);
   const [saving, setSaving] = useState(false);
@@ -279,30 +288,49 @@ export function usePurchasesPageState(props: PurchasesPageProps) {
   function cancelDraftItemEdit() {
     setEditingDraftKey(null);
     setItemForm(emptyItemForm);
+    setItemFieldErrors({});
     setItemLookupResetKey((key) => key + 1);
   }
 
+  function handleItemFormChange(next: typeof emptyItemForm) {
+    setItemForm(next);
+    setItemFieldErrors({});
+  }
+
   function addDraftItem() {
-    if (
-      !itemForm.barcode ||
-      !itemForm.name_ar ||
-      !itemForm.name_en ||
-      !itemForm.expiry ||
-      itemForm.qty <= 0 ||
-      itemForm.buyPrice < 0 ||
-      itemForm.price <= 0
-    ) {
-      alert(
-        isArabic
-          ? editingDraftKey
-            ? "أكمل بيانات الصنف قبل الحفظ"
-            : "أكمل بيانات الصنف قبل الإضافة"
-          : editingDraftKey
-            ? "Complete item details before saving"
-            : "Complete item details before adding",
-      );
+    const errors: typeof itemFieldErrors = {};
+    if (!itemForm.barcode.trim()) {
+      errors.barcode = isArabic ? "أدخل الباركود" : "Enter barcode";
+    }
+    if (!itemForm.name_ar.trim()) {
+      errors.name_ar = isArabic ? "أدخل الاسم العربي" : "Enter Arabic name";
+    }
+    if (!itemForm.name_en.trim()) {
+      errors.name_en = isArabic ? "أدخل الاسم الإنجليزي" : "Enter English name";
+    }
+    if (!itemForm.expiry.trim()) {
+      errors.expiry = isArabic
+        ? "أدخل تاريخ صلاحية الدفعة الفعلي"
+        : "Enter the real batch expiry date";
+    }
+    if (!Number.isFinite(itemForm.qty) || itemForm.qty <= 0) {
+      errors.qty = isArabic
+        ? "أدخل كمية توريد صحيحة أكبر من صفر"
+        : "Enter a valid purchase quantity greater than zero";
+    }
+    if (!Number.isFinite(itemForm.buyPrice) || itemForm.buyPrice < 0) {
+      errors.buyPrice = isArabic ? "سعر الشراء غير صحيح" : "Invalid buy price";
+    }
+    if (!Number.isFinite(itemForm.price) || itemForm.price <= 0) {
+      errors.price = isArabic ? "سعر البيع غير صحيح" : "Invalid sell price";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setItemFieldErrors(errors);
       return;
     }
+
+    setItemFieldErrors({});
 
     const nextItem: PurchaseLineDraft = {
       key: editingDraftKey || `${Date.now()}-${draftItems.length}`,
@@ -480,7 +508,8 @@ export function usePurchasesPageState(props: PurchasesPageProps) {
     notes,
     setNotes,
     itemForm,
-    setItemForm,
+    setItemForm: handleItemFormChange,
+    itemFieldErrors,
     draftItems,
     setDraftItems,
     branchMedicines,

@@ -1,10 +1,8 @@
-import { getSubscriptionTierLabel, subscriptionTiers } from "../config/subscriptionTiers";
 import type { SubscriptionRequest } from "../types";
 import {
   buildSaasAdminStats,
   formatSaasMoney,
   getRequestTypeSummary,
-  subscriptionTierOrder,
   type SaasAdminStats,
 } from "../utils/saasAdminStats";
 import type { AppUser, PharmacySettings } from "../types";
@@ -58,55 +56,51 @@ export default function SaasAdminStatsPanel({
     <section className="saasStatsDashboard">
       <div className="saasPageHeader">
         <div>
-          <h3>{isArabic ? "لوحة إحصائيات SaaS" : "SaaS statistics dashboard"}</h3>
+          <h3>{isArabic ? "ملخص النظام" : "System summary"}</h3>
           <p className="pageHint">
             {isArabic
-              ? "ملخص العملاء والإيرادات والباقات والفروع"
-              : "Overview of tenants, revenue, packages, and branches"}
+              ? "عدد الصيدليات والفروع والحالة والاشتراكات والمستخدمين"
+              : "Pharmacies, branches, status, subscriptions, and users"}
           </p>
         </div>
       </div>
 
       <div className="saasStats saasStatsPrimary">
         <StatCard
-          label={isArabic ? "المنظمات / العملاء" : "Organizations / clients"}
+          label={isArabic ? "عدد الصيدليات" : "Pharmacies"}
           value={String(stats.totalOrganizations)}
+          sub={isArabic ? "عملاء مسجّلون في النظام" : "Registered clients in the system"}
+          tone="blue"
+        />
+        <StatCard
+          label={isArabic ? "عدد الفروع" : "Branches"}
+          value={String(stats.totalBranches)}
           sub={
             isArabic
-              ? `${stats.totalBranches} فرع مسجّل`
-              : `${stats.totalBranches} registered branches`
+              ? `متوسط ${(stats.totalOrganizations ? stats.totalBranches / stats.totalOrganizations : 0).toFixed(1)} فرع لكل صيدلية`
+              : `Avg ${(stats.totalOrganizations ? stats.totalBranches / stats.totalOrganizations : 0).toFixed(1)} branches per pharmacy`
           }
           tone="blue"
         />
         <StatCard
-          label={isArabic ? "صيدليات نشطة" : "Active pharmacies"}
+          label={isArabic ? "نشط" : "Active"}
           value={String(stats.activePharmacies)}
           sub={
             isArabic
-              ? `${stats.suspendedPharmacies} موقوفة`
-              : `${stats.suspendedPharmacies} suspended`
+              ? `من أصل ${stats.totalPharmacies} فرع`
+              : `of ${stats.totalPharmacies} branches`
           }
           tone="green"
         />
         <StatCard
-          label={isArabic ? "إيرادات معتمدة" : "Approved revenue"}
-          value={formatSaasMoney(stats.approvedRevenueTotal)}
+          label={isArabic ? "غير نشط" : "Inactive"}
+          value={String(stats.suspendedPharmacies)}
           sub={
             isArabic
-              ? `${formatSaasMoney(stats.approvedRevenueLast30Days)} آخر 30 يوم`
-              : `${formatSaasMoney(stats.approvedRevenueLast30Days)} last 30 days`
+              ? "موقوف أو منتهي الاشتراك"
+              : "Suspended or expired subscription"
           }
-          tone="green"
-        />
-        <StatCard
-          label={isArabic ? "طلبات العملاء قيد المراجعة" : "Pending customer requests"}
-          value={String(stats.pendingSubscriptionRequests + stats.pendingLoginAccountRequests)}
-          sub={
-            isArabic
-              ? `${stats.pendingSubscriptionRequests} اشتراك · ${stats.pendingLoginAccountRequests} حساب · ${formatSaasMoney(stats.pendingRevenueTotal)} متوقعة`
-              : `${stats.pendingSubscriptionRequests} subscription · ${stats.pendingLoginAccountRequests} login · ${formatSaasMoney(stats.pendingRevenueTotal)} expected`
-          }
-          tone="warn"
+          tone={stats.suspendedPharmacies > 0 ? "red" : "default"}
         />
       </div>
 
@@ -114,7 +108,11 @@ export default function SaasAdminStatsPanel({
         <StatCard
           label={isArabic ? "المستخدمون" : "Users"}
           value={String(stats.totalUsers)}
-          sub={isArabic ? `${stats.activeUsers} نشط` : `${stats.activeUsers} active`}
+          sub={
+            isArabic
+              ? `${stats.activeUsers} نشط · ${Math.max(0, stats.totalUsers - stats.activeUsers)} غير نشط`
+              : `${stats.activeUsers} active · ${Math.max(0, stats.totalUsers - stats.activeUsers)} inactive`
+          }
         />
         <StatCard
           label={isArabic ? "اشتراكات تنتهي خلال 7 أيام" : "Expiring within 7 days"}
@@ -127,46 +125,33 @@ export default function SaasAdminStatsPanel({
           tone={stats.expiredSubscriptions > 0 ? "red" : "default"}
         />
         <StatCard
-          label={isArabic ? "إجمالي الفروع" : "Total branches"}
-          value={String(stats.totalBranches)}
+          label={isArabic ? "طلبات قيد المراجعة" : "Pending requests"}
+          value={String(stats.pendingSubscriptionRequests + stats.pendingLoginAccountRequests)}
           sub={
             isArabic
-              ? `عبر ${stats.totalOrganizations} منظمة`
-              : `across ${stats.totalOrganizations} organizations`
+              ? `${stats.pendingSubscriptionRequests} اشتراك · ${stats.pendingLoginAccountRequests} حساب`
+              : `${stats.pendingSubscriptionRequests} subscription · ${stats.pendingLoginAccountRequests} login`
           }
-          tone="blue"
+          tone="warn"
         />
       </div>
 
-      <div className="saasTierStatsRow">
-        <h4>{isArabic ? "الباقات النشطة" : "Active packages"}</h4>
-        <div className="saasTierStatsGrid">
-          {subscriptionTierOrder.map((tierId) => {
-            const tier = subscriptionTiers[tierId];
-            const total = stats.tierCounts[tierId];
-            const active = stats.activeTierCounts[tierId];
-            return (
-              <article key={tierId} className={`saasTierStatCard ${tierId}`}>
-                <div className="saasTierStatTop">
-                  <strong>{getSubscriptionTierLabel(tierId, isArabic)}</strong>
-                  <span>
-                    {isArabic ? `${tier.maxBranches} فروع` : `${tier.maxBranches} branches`}
-                  </span>
-                </div>
-                <div className="saasTierStatCounts">
-                  <div>
-                    <span>{isArabic ? "نشطة" : "Active"}</span>
-                    <strong>{active}</strong>
-                  </div>
-                  <div>
-                    <span>{isArabic ? "الإجمالي" : "Total"}</span>
-                    <strong>{total}</strong>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
+      <div className="saasStats saasStatsSecondary">
+        <StatCard
+          label={isArabic ? "إيرادات معتمدة" : "Approved revenue"}
+          value={formatSaasMoney(stats.approvedRevenueTotal)}
+          sub={
+            isArabic
+              ? `${formatSaasMoney(stats.approvedRevenueLast30Days)} آخر 30 يوم`
+              : `${formatSaasMoney(stats.approvedRevenueLast30Days)} last 30 days`
+          }
+          tone="green"
+        />
+        <StatCard
+          label={isArabic ? "إيرادات متوقعة (طلبات معلّقة)" : "Expected revenue (pending)"}
+          value={formatSaasMoney(stats.pendingRevenueTotal)}
+          tone={stats.pendingRevenueTotal > 0 ? "warn" : "default"}
+        />
       </div>
 
       {stats.recentApprovedRequests.length > 0 && (

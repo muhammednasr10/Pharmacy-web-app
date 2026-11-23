@@ -1,5 +1,6 @@
 import { SettingsPage } from "../../pages/lazyPages";
-import { getSubscriptionTierLabel } from "../../config/subscriptionTiers";
+import { resolveMaxBranches } from "../../utils/branchLimits";
+import { resolveMaxUsers } from "../../utils/userLimits";
 import type { AppPageRouterProps } from "./types";
 
 export type AppSettingsRouteProps = Pick<
@@ -18,6 +19,7 @@ export type AppSettingsRouteProps = Pick<
   | "isTrialSubscription"
   | "getSubscriptionPlanLabel"
   | "orgSubscriptionTier"
+  | "pharmacySettings"
   | "handleSubmitSubscriptionRequest"
   | "handleSubmitTierUpgradeRequest"
   | "pharmacySubscriptionRequests"
@@ -53,6 +55,7 @@ export default function AppSettingsRoute({
   isTrialSubscription,
   getSubscriptionPlanLabel,
   orgSubscriptionTier,
+  pharmacySettings,
   handleSubmitSubscriptionRequest,
   handleSubmitTierUpgradeRequest,
   pharmacySubscriptionRequests,
@@ -74,6 +77,9 @@ export default function AppSettingsRoute({
 }: AppSettingsRouteProps) {
   if (!canOpenPage("settings")) return null;
 
+  const maxBranches = pharmacySettings ? resolveMaxBranches(pharmacySettings) : 1;
+  const maxUsers = pharmacySettings ? resolveMaxUsers(pharmacySettings) : 1;
+
   return (
     <SettingsPage
       isArabic={isArabic}
@@ -87,8 +93,9 @@ export default function AppSettingsRoute({
       isSubscriptionExpiringSoon={isSubscriptionExpiringSoon}
       isTrialSubscription={isTrialSubscription}
       getSubscriptionPlanLabel={getSubscriptionPlanLabel}
-      subscriptionTierLabel={getSubscriptionTierLabel(orgSubscriptionTier, isArabic)}
       subscriptionTier={orgSubscriptionTier}
+      maxBranches={maxBranches}
+      maxUsers={maxUsers}
       submitSubscriptionRequest={handleSubmitSubscriptionRequest}
       submitTierUpgradeRequest={handleSubmitTierUpgradeRequest}
       pharmacySubscriptionRequests={pharmacySubscriptionRequests}

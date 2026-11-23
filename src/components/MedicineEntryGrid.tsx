@@ -9,6 +9,7 @@ import {
   searchMedicines,
   type MedicineEntryValues,
 } from "../utils/medicineLookup";
+import { formatExpiryDisplay, isCatalogPlaceholderExpiry } from "../utils/catalogExpiry";
 import { playBarcodeBeep } from "../utils/barcodeBeep";
 import { useHardwareBarcodeScanner } from "../utils/useHardwareBarcodeScanner";
 import BarcodeCameraScanner, { canUseBarcodeCameraScanner } from "./BarcodeCameraScanner";
@@ -517,7 +518,7 @@ export default function MedicineEntryGrid({
           <input
             type="date"
             className={fieldErrors?.expiry ? "is-invalid" : undefined}
-            value={value.expiry}
+            value={isCatalogPlaceholderExpiry(value.expiry) ? "" : value.expiry}
             onChange={(e) => updateField("expiry", e.target.value)}
             disabled={disabled}
             aria-invalid={Boolean(fieldErrors?.expiry)}
@@ -525,6 +526,12 @@ export default function MedicineEntryGrid({
           {fieldErrors?.expiry ? (
             <span className="fieldErrorText" role="alert">
               {fieldErrors.expiry}
+            </span>
+          ) : matchedMedicine && isCatalogPlaceholderExpiry(matchedMedicine.expiry) ? (
+            <span className="mutedText">
+              {isArabic
+                ? `صلاحية الكتالوج: ${formatExpiryDisplay(matchedMedicine.expiry, true)} — أدخل تاريخ الدفعة الفعلي`
+                : `Catalog expiry: ${formatExpiryDisplay(matchedMedicine.expiry, false)} — enter the real batch date`}
             </span>
           ) : null}
         </div>

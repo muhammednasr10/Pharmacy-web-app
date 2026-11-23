@@ -1,3 +1,7 @@
+import { CATALOG_PLACEHOLDER_EXPIRY } from "./catalogExpiry";
+
+export { CATALOG_PLACEHOLDER_EXPIRY } from "./catalogExpiry";
+
 export type MedicineCatalogImportRow = {
   name_ar: string;
   name_en: string;
@@ -13,8 +17,6 @@ export type MedicineCatalogImportRow = {
 export const MEDICINE_CATALOG_CSV_FILENAME = "egyptian-medicine-catalog.csv";
 
 export const MEDICINE_CATALOG_IMPORT_BATCH_SIZE = 250;
-
-const CATALOG_PLACEHOLDER_EXPIRY = "2099-12-31";
 
 const HEADER_ALIASES: Record<string, keyof MedicineCatalogImportRow | "active_ingredient"> = {
   name_ar: "name_ar",

@@ -69,7 +69,8 @@ export function buildSaasAdminStats(params: {
   const monthAgo = new Date(now);
   monthAgo.setDate(monthAgo.getDate() - 30);
 
-  const activePharmacies = pharmacies.filter(isPharmacyActive).length;
+  // Do not pass isPharmacyActive directly to filter/some — they pass the index as 2nd arg.
+  const activePharmacies = pharmacies.filter((pharmacy) => isPharmacyActive(pharmacy)).length;
   const suspendedPharmacies = pharmacies.length - activePharmacies;
   const activeUsers = systemUsers.filter((user) => user.isActive !== false).length;
 
@@ -87,7 +88,7 @@ export function buildSaasAdminStats(params: {
     const tier = resolveSubscriptionTier(representative);
     tierCounts[tier] += 1;
 
-    if (orgPharmacies.some(isPharmacyActive)) {
+    if (orgPharmacies.some((pharmacy) => isPharmacyActive(pharmacy))) {
       activeTierCounts[tier] += 1;
     }
   });
@@ -145,9 +146,7 @@ export function formatSaasMoney(value: number, currency = "EGP") {
 
 export function getRequestTypeSummary(request: SubscriptionRequest, isArabic: boolean) {
   if (isTierUpgradePlan(request.plan)) {
-    return isArabic ? "ترقية باقة" : "Package upgrade";
+    return isArabic ? "تعديل حدود الاشتراك" : "Limit change";
   }
   return isArabic ? "تجديد اشتراك" : "Renewal";
 }
-
-export { subscriptionTierOrder };

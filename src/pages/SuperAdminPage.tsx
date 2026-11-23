@@ -1,12 +1,11 @@
 import SuperAdminOverviewTab from "./super-admin/SuperAdminOverviewTab";
 import SuperAdminCustomerRequestsTab from "./super-admin/SuperAdminCustomerRequestsTab";
 import SuperAdminRolesTab from "./super-admin/SuperAdminRolesTab";
-import SuperAdminPackagesTab from "./super-admin/SuperAdminPackagesTab";
+import SuperAdminPricingTab from "./super-admin/SuperAdminPricingTab";
 import SuperAdminPharmaciesTab from "./super-admin/SuperAdminPharmaciesTab";
 import SuperAdminAddTenantModal from "./super-admin/modals/SuperAdminAddTenantModal";
 import SuperAdminManageTenantModal from "./super-admin/modals/SuperAdminManageTenantModal";
 import SuperAdminSystemUserModal from "./super-admin/modals/SuperAdminSystemUserModal";
-import SuperAdminTierEditModal from "./super-admin/modals/SuperAdminTierEditModal";
 import SuperAdminRoleModal from "./super-admin/modals/SuperAdminRoleModal";
 import SuperAdminBranchModal from "./super-admin/modals/SuperAdminBranchModal";
 import SuperAdminConfirmModals from "./super-admin/modals/SuperAdminConfirmModals";
@@ -25,11 +24,6 @@ export default function SuperAdminPage(props: SuperAdminPageProps) {
       <div className="saasPageHeader">
         <div>
           <h2>{isArabic ? "إدارة" : "Management"}</h2>
-          <p className="pageHint">
-            {isArabic
-              ? "كل صيدلية = عميل منفصل. البيانات معزولة عبر pharmacy_id و RLS."
-              : "Each pharmacy is an isolated tenant (pharmacy_id + RLS)."}
-          </p>
         </div>
       </div>
 
@@ -76,13 +70,12 @@ export default function SuperAdminPage(props: SuperAdminPageProps) {
       {activeTab === "roles" && <SuperAdminRolesTab state={state} />}
       {activeTab === "overview" && <SuperAdminOverviewTab state={state} />}
       {activeTab === "customerRequests" && <SuperAdminCustomerRequestsTab state={state} />}
-      {activeTab === "packages" && <SuperAdminPackagesTab state={state} />}
+      {activeTab === "pricing" && <SuperAdminPricingTab state={state} />}
       {activeTab === "pharmacies" && <SuperAdminPharmaciesTab state={state} />}
 
       <SuperAdminAddTenantModal state={state} />
       <SuperAdminManageTenantModal state={state} />
       <SuperAdminSystemUserModal state={state} />
-      <SuperAdminTierEditModal state={state} />
       <SuperAdminRoleModal state={state} />
       <SuperAdminBranchModal state={state} />
       <SuperAdminConfirmModals state={state} />

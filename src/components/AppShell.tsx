@@ -15,6 +15,7 @@ import type { AppUser, CustomerDebt, Invoice, Lang, Medicine, Page, PharmacySett
 import type { GlobalSearchResult } from "../utils/globalSearch";
 import { getPageLabel, pageIcons } from "../utils/navigation";
 import { resolveBranchDisplay } from "../utils/branchDisplay";
+import { brandPharmacyName } from "../branding";
 import * as pharmacyService from "../services/pharmacyService";
 
 export type AppShellProps = {
@@ -64,7 +65,8 @@ export type AppShellProps = {
   onCloseMenu: () => void;
   resolveBranchLabel: (branchId?: string) => string;
   onOpenSubscriptionSettings: () => void;
-  tierUpgradePrompt: TierUpgradePrompt | null;
+  /** Kept for callers; package upgrade CTAs were removed from the shell. */
+  tierUpgradePrompt?: TierUpgradePrompt | null;
   isOnline?: boolean;
   pendingOfflineSalesCount?: number;
   appDataCacheAt?: string | null;
@@ -122,7 +124,7 @@ export default function AppShell({
   onCloseMenu,
   resolveBranchLabel,
   onOpenSubscriptionSettings,
-  tierUpgradePrompt,
+  tierUpgradePrompt: _tierUpgradePrompt = null,
   isOnline = true,
   pendingOfflineSalesCount = 0,
   appDataCacheAt = null,
@@ -200,8 +202,6 @@ export default function AppShell({
             pharmacyPhone={pharmacySettings?.phone || ""}
             pharmacyAddress={pharmacySettings?.address || ""}
             pharmacyLogo={appLogo}
-            subscriptionTier={orgSubscriptionTier}
-            tierUpgradePrompt={tierUpgradePrompt}
             onOpenSubscriptionSettings={onOpenSubscriptionSettings}
             appUser={appUser}
             isArabic={isArabic}
@@ -297,8 +297,8 @@ export default function AppShell({
         t={t}
         pharmacyName={
           isArabic
-            ? pharmacySettings?.name || "صيدلية Focus"
-            : pharmacySettings?.name_en || "Focus Pharmacy"
+            ? pharmacySettings?.name || brandPharmacyName.ar
+            : pharmacySettings?.name_en || brandPharmacyName.en
         }
         pharmacyPhone={pharmacySettings?.phone || (isArabic ? "نظام إدارة" : "Management System")}
         pharmacyLogo={appLogo}

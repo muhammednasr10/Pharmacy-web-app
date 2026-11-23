@@ -7,7 +7,11 @@ import { formatUserCreationError } from "../utils/userCreationErrors";
 import { syncSentryUser } from "../utils/sentryMonitoring";
 import { isAccountant, isOrgPharmacyAdmin, isSuperAdmin } from "../utils/roles";
 import { appUserFromStoredProfile, isBrowserOffline } from "../utils/offlineAuth";
-import { buildAppAuthSession, clearAppAuthSession } from "../services/appAuthSession";
+import {
+  buildAppAuthSession,
+  clearAppAuthSession,
+  hasValidAppAccessToken,
+} from "../services/appAuthSession";
 import type { AppUser } from "../types";
 
 export type LoginScreenStatus = "loading" | "login" | "denied";
@@ -18,10 +22,22 @@ type UseAppAuthOptions = {
   setActiveBranchId: Dispatch<SetStateAction<string | null>>;
 };
 
+function readBootstrappedAuth() {
+  const cached = appUserFromStoredProfile();
+  if (!cached || !hasValidAppAccessToken()) {
+    return { user: null as { uid: string; email?: string } | null, appUser: null as AppUser | null };
+  }
+  return {
+    user: { uid: cached.uid, email: cached.email || undefined },
+    appUser: cached,
+  };
+}
+
 export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseAppAuthOptions) {
-  const [user, setUser] = useState<{ uid: string; email?: string } | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [appUser, setAppUser] = useState<AppUser | null>(null);
+  const bootstrapped = readBootstrappedAuth();
+  const [user, setUser] = useState<{ uid: string; email?: string } | null>(bootstrapped.user);
+  const [authLoading, setAuthLoading] = useState(!bootstrapped.appUser);
+  const [appUser, setAppUser] = useState<AppUser | null>(bootstrapped.appUser);
   const [userLoading, setUserLoading] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -35,8 +51,9 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
   const [registering, setRegistering] = useState(false);
   const [subscriptionBlocked, setSubscriptionBlocked] = useState("");
   const accessRevokedRef = useRef(false);
-  const appUserRef = useRef<AppUser | null>(null);
+  const appUserRef = useRef<AppUser | null>(bootstrapped.appUser);
   const isArabicRef = useRef(isArabic);
+  const didBootstrapBranchRef = useRef(false);
 
   appUserRef.current = appUser;
   isArabicRef.current = isArabic;
@@ -64,6 +81,12 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
   }
 
   useEffect(() => {
+    if (bootstrapped.appUser && !didBootstrapBranchRef.current) {
+      didBootstrapBranchRef.current = true;
+      pharmacyService.setCurrentAppUser(bootstrapped.appUser);
+      applyBranchScopeForUser(bootstrapped.appUser);
+    }
+
     let cancelled = false;
 
     const processSession = async (
@@ -195,6 +218,14 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
 
     const authSubscription = pharmacyService.onAuthStateChange((event, session) => {
       if (event === "INITIAL_SESSION") return;
+      // Soft session events must not remount the shell / re-show auth loading.
+      if (
+        (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") &&
+        appUserRef.current &&
+        session
+      ) {
+        return;
+      }
       window.setTimeout(() => {
         if (!cancelled) void processSession(session);
       }, 0);
@@ -359,6 +390,7 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
           branches: quote?.branches,
           users: quote?.users,
           staffAddon: quote?.staffAddon,
+          customersAddon: quote?.customersAddon,
         });
         clearPricingQuote();
 

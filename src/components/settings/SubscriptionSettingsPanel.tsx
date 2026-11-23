@@ -1,7 +1,7 @@
 import SubscriptionPaymentModal from "./subscription/SubscriptionPaymentModal";
 import SubscriptionHeroSection, { SubscriptionProgressSection } from "./subscription/SubscriptionHeroSection";
 import SubscriptionRequestsHistory from "./subscription/SubscriptionRequestsHistory";
-import SubscriptionTierComparisonSection from "./subscription/SubscriptionTierComparisonSection";
+import SubscriptionCalculatorRenewSection from "./subscription/SubscriptionCalculatorRenewSection";
 import { useSubscriptionSettingsState } from "./subscription/useSubscriptionSettingsState";
 import type { SubscriptionSettingsPanelProps } from "./subscription/types";
 
@@ -14,8 +14,9 @@ export default function SubscriptionSettingsPanel(props: SubscriptionSettingsPan
     t,
     settingsForm,
     getSubscriptionPlanLabel,
-    subscriptionTierLabel,
-    subscriptionTier = "basic",
+    maxBranches = 1,
+    maxUsers = 1,
+    staffAddonEnabled = false,
     pharmacySubscriptionRequests,
     subscriptionRenewLogs,
     subscriptionDaysLeft,
@@ -23,6 +24,9 @@ export default function SubscriptionSettingsPanel(props: SubscriptionSettingsPan
 
   const state = useSubscriptionSettingsState(props);
   const { displayValues } = state;
+  const limitsLabel = isArabic
+    ? `${maxBranches} فرع · ${maxUsers} مستخدم`
+    : `${maxBranches} branches · ${maxUsers} users`;
 
   return (
     <>
@@ -33,23 +37,24 @@ export default function SubscriptionSettingsPanel(props: SubscriptionSettingsPan
           subscriptionStatusLabel={displayValues.subscriptionStatusLabel}
           subscriptionMessage={displayValues.subscriptionMessage}
           daysLeftLabel={displayValues.daysLeftLabel}
-          subscriptionTierLabel={subscriptionTierLabel}
+          subscriptionTierLabel={limitsLabel}
           billingPeriodLabel={getSubscriptionPlanLabel(settingsForm.subscriptionPlan)}
           formattedEndDate={displayValues.formattedEndDate}
           renewalsCount={subscriptionRenewLogs.length}
         />
 
-        <SubscriptionTierComparisonSection
+        <SubscriptionCalculatorRenewSection
           isArabic={isArabic}
-          currentTier={subscriptionTier}
           isOrgAdmin={isOrgAdmin}
-          pendingTierUpgrade={state.pendingTierUpgrade}
+          maxBranches={maxBranches}
+          maxUsers={maxUsers}
+          staffAddon={staffAddonEnabled}
           pendingRenewal={state.pendingRenewal}
           pendingRequest={state.pendingRequest}
-          submittingTierUpgrade={state.submittingTierUpgrade}
           submittingRequest={state.submittingRequest}
-          onSubmitUpgrade={(targetTier) => void state.handleSubmitTierUpgradeRequest(targetTier)}
-          onSubmitRenewal={(billingView) => void state.handleSubmitRenewalRequest(billingView)}
+          onSubmitRenewal={(billingView, amount) =>
+            void state.handleSubmitRenewalRequest(billingView, amount)
+          }
           onShowPaymentInfo={state.setPaymentRequest}
         />
 

@@ -1,18 +1,7 @@
 import { computeTrialEndDate } from "../../../../config/subscription";
-import {
-  getSubscriptionTierLabel,
-  subscriptionTierOrder,
-  subscriptionTiers,
-  type SubscriptionTier,
-} from "../../../../config/subscriptionTiers";
 import { resolveBranchDisplay } from "../../../../utils/branchLabel";
 import { formatDateInput } from "../../../../utils/date";
-import { formatWarehouseQuota } from "../../../../utils/tierPackageCopy";
-import {
-  formatUsageLabel,
-  getTierBadgeClass,
-  usagePercent,
-} from "../../helpers";
+import { formatUsageLabel, usagePercent } from "../../helpers";
 import type { SuperAdminPageState } from "../../useSuperAdminPageState";
 
 type Props = Pick<
@@ -22,24 +11,19 @@ type Props = Pick<
   | "selectedBranchUsage"
   | "selectedUserUsage"
   | "selectedOrgBranches"
-  | "selectedTier"
-  | "selectedTierCap"
   | "freeTrialDraft"
   | "setFreeTrialDraft"
   | "freeTrialSavingId"
-  | "tierSavingId"
   | "setMaxBranchDrafts"
   | "setMaxUserDrafts"
   | "maxBranchSavingId"
   | "maxUserSavingId"
   | "getMaxBranchDraft"
   | "getMaxUserDraft"
-  | "handleTierChange"
   | "saveMaxBranches"
   | "saveMaxUsers"
-  | "applyTierWarehouseLimit"
   | "saveFreeTrial"
-  | "openPackagesTabFromManage"
+  | "openPricingTabFromManage"
 >;
 
 export default function ManageTenantSubscriptionSection({ state }: { state: Props }) {
@@ -49,24 +33,19 @@ export default function ManageTenantSubscriptionSection({ state }: { state: Prop
     selectedBranchUsage,
     selectedUserUsage,
     selectedOrgBranches,
-    selectedTier,
-    selectedTierCap,
     freeTrialDraft,
     setFreeTrialDraft,
     freeTrialSavingId,
-    tierSavingId,
     setMaxBranchDrafts,
     setMaxUserDrafts,
     maxBranchSavingId,
     maxUserSavingId,
     getMaxBranchDraft,
     getMaxUserDraft,
-    handleTierChange,
     saveMaxBranches,
     saveMaxUsers,
-    applyTierWarehouseLimit,
     saveFreeTrial,
-    openPackagesTabFromManage,
+    openPricingTabFromManage,
   } = state;
 
   if (!selectedBranchUsage || !selectedUserUsage || !selected) return null;
@@ -75,65 +54,36 @@ export default function ManageTenantSubscriptionSection({ state }: { state: Prop
     <section className="saasManageLimitsCard">
       <div className="saasManageLimitsHead">
         <div>
-          <h3>{isArabic ? "الباقة والحدود" : "Package & limits"}</h3>
+          <h3>{isArabic ? "حدود الاشتراك" : "Subscription limits"}</h3>
           <p className="saasManageLimitsHint">
             {isArabic
-              ? "حد المخازن يتحكم في عدد المخازن داخل «إدارة المخزن». تغيير الباقة يضبط الحد الافتراضي — أو عدّله يدوياً لهذه الصيدلية."
-              : "Warehouse cap controls stores in Inventory Management. Changing the package sets the default — or override it for this pharmacy."}
+              ? "الحدود دي بتيجي من حاسبة التسعير عند التسجيل، وتقدر تعدّلها يدويًا للصيدلية دي. سعر التجديد يتحسب من الحاسبة (شهري أو سنوي بخصم 20%)."
+              : "These caps come from the pricing calculator at signup and can be overridden per pharmacy. Renewal pricing uses the calculator (monthly or yearly with 20% off)."}
           </p>
           <button
             type="button"
             className="saasManagePackagesLink"
-            onClick={openPackagesTabFromManage}
+            onClick={openPricingTabFromManage}
           >
             {isArabic
-              ? "تعديل حدود الباقات الافتراضية ← تبويب الباقات"
-              : "Edit default package limits → Packages tab"}
+              ? "تعديل أسعار الحاسبة ← تبويب التسعير"
+              : "Edit calculator prices → Pricing tab"}
           </button>
         </div>
-        <span className={getTierBadgeClass(selectedTier)}>
-          {getSubscriptionTierLabel(selectedTier, isArabic)}
-        </span>
       </div>
 
       <div className="saasManageLimitsTiles">
         <div className="saasManageLimitTile">
-          <span className="saasManageLimitTileLabel">{isArabic ? "الباقة" : "Package"}</span>
-          <select
-            className="saasTierSelect saasManageLimitControl"
-            value={selectedTier}
-            disabled={tierSavingId === selectedBranchUsage.organizationId}
-            onChange={(e) => void handleTierChange(selected, e.target.value as SubscriptionTier)}
-          >
-            {subscriptionTierOrder.map((tierId) => {
-              const tier = subscriptionTiers[tierId];
-              return (
-                <option key={tierId} value={tierId}>
-                  {isArabic
-                    ? `${tier.labelAr} — ${formatWarehouseQuota(tier.maxBranches, true)}`
-                    : `${tier.labelEn} — ${formatWarehouseQuota(tier.maxBranches, false)}`}
-                </option>
-              );
-            })}
-          </select>
-          <small className="saasTierQuotaHint">
-            {isArabic
-              ? `حد الباقة الافتراضي: ${formatWarehouseQuota(selectedTierCap.maxBranches, true)}`
-              : `Package default: ${formatWarehouseQuota(selectedTierCap.maxBranches, false)}`}
-          </small>
-        </div>
-
-        <div className="saasManageLimitTile">
           <div className="saasManageLimitTileTop">
             <span className="saasManageLimitTileLabel">
-              {isArabic ? "حد المخازن (لهذه الصيدلية)" : "Warehouse limit (this pharmacy)"}
+              {isArabic ? "حد الفروع" : "Branch limit"}
             </span>
             <span className="saasManageUsageChip">
               {formatUsageLabel(
                 selectedBranchUsage.used,
                 selectedBranchUsage.max,
-                "مخزن",
-                "warehouses",
+                "فرع",
+                "branches",
                 isArabic,
               )}
             </span>
@@ -146,13 +96,6 @@ export default function ManageTenantSubscriptionSection({ state }: { state: Prop
               }}
             />
           </div>
-          {selectedBranchUsage.max !== selectedTierCap.maxBranches ? (
-            <p className="saasManageLimitOverrideNote">
-              {isArabic
-                ? `الحد الحالي (${selectedBranchUsage.max}) يختلف عن حد الباقة (${selectedTierCap.maxBranches})`
-                : `Current cap (${selectedBranchUsage.max}) differs from package default (${selectedTierCap.maxBranches})`}
-            </p>
-          ) : null}
           <div className="saasBranchLimitEditor">
             <input
               type="number"
@@ -169,7 +112,7 @@ export default function ManageTenantSubscriptionSection({ state }: { state: Prop
                   [selectedBranchUsage.organizationId]: e.target.value,
                 }))
               }
-              aria-label={isArabic ? "الحد الأقصى للمخازن" : "Max warehouses"}
+              aria-label={isArabic ? "الحد الأقصى للفروع" : "Max branches"}
             />
             <button
               type="button"
@@ -188,21 +131,6 @@ export default function ManageTenantSubscriptionSection({ state }: { state: Prop
                   ? "حفظ"
                   : "Save"}
             </button>
-            {selectedBranchUsage.max !== selectedTierCap.maxBranches ? (
-              <button
-                type="button"
-                className="smallBtn secondary"
-                disabled={maxBranchSavingId === selectedBranchUsage.organizationId}
-                onClick={() =>
-                  void applyTierWarehouseLimit(
-                    selectedBranchUsage.organizationId,
-                    selectedBranchUsage.used,
-                  )
-                }
-              >
-                {isArabic ? "تطبيق حد الباقة" : "Apply package cap"}
-              </button>
-            ) : null}
           </div>
         </div>
 
@@ -328,7 +256,7 @@ export default function ManageTenantSubscriptionSection({ state }: { state: Prop
       {selectedOrgBranches.length > 0 && (
         <div className="saasManageBranchesList">
           <span className="saasManageBranchesListLabel">
-            {isArabic ? "المخازن الحالية" : "Current warehouses"}
+            {isArabic ? "الفروع الحالية" : "Current branches"}
           </span>
           <div className="saasManageBranchChips">
             {selectedOrgBranches.map((branch) => {

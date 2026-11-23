@@ -3,6 +3,7 @@ import { toCamelCase } from "./mappers";
 import { applyPharmacyFilter, resolveReadPharmacyId } from "./scope";
 import type { ActivityLog, Medicine, StockMovement } from "../../types";
 import { formatDateInput } from "../../utils/date";
+import { sortMedicinesBySearchRelevance } from "../../utils/medicineLookup";
 
 export const INVENTORY_PAGE_SIZE = 50;
 export const MOVEMENTS_PAGE_SIZE = 40;
@@ -48,19 +49,44 @@ function quoteIlikePattern(pattern: string): string {
   return `"${pattern.replace(/"/g, '""')}"`;
 }
 
+function looksLikeBarcodeTerm(term: string): boolean {
+  if (term.length < 6) return false;
+  const digits = term.replace(/\D/g, "");
+  return digits.length >= 6 && digits.length / term.length >= 0.8;
+}
+
 function applyMedicineSearch<T extends { or: (filters: string) => T }>(
   query: T,
   search?: string,
 ): T {
   const term = search?.trim();
   if (!term) return query;
-  const pattern = quoteIlikePattern(`%${escapeIlike(term)}%`);
+  const escaped = escapeIlike(term);
+  const contains = quoteIlikePattern(`%${escaped}%`);
+
+  // Barcode-like queries: exact + prefix first so partial mid-string noise stays out.
+  if (looksLikeBarcodeTerm(term)) {
+    const prefix = quoteIlikePattern(`${escaped}%`);
+    const digitsOnly = term.replace(/\D/g, "");
+    const filters = [
+      `barcode.eq.${term}`,
+      `barcode.ilike.${prefix}`,
+      `name_ar.ilike.${contains}`,
+      `name_en.ilike.${contains}`,
+    ];
+    if (digitsOnly && digitsOnly !== term) {
+      filters.unshift(`barcode.eq.${digitsOnly}`);
+      filters.push(`barcode.ilike.${quoteIlikePattern(`${digitsOnly}%`)}`);
+    }
+    return query.or(filters.join(","));
+  }
+
   return query.or(
     [
-      `name_ar.ilike.${pattern}`,
-      `name_en.ilike.${pattern}`,
-      `barcode.ilike.${pattern}`,
-      `active_ingredient.ilike.${pattern}`,
+      `name_ar.ilike.${contains}`,
+      `name_en.ilike.${contains}`,
+      `barcode.ilike.${contains}`,
+      `active_ingredient.ilike.${contains}`,
     ].join(","),
   );
 }
@@ -493,5 +519,8 @@ export async function searchInventoryMedicines(
     return [];
   }
 
-  return (data || []).map((row) => toCamelCase<Medicine>(row));
+  return sortMedicinesBySearchRelevance(
+    (data || []).map((row) => toCamelCase<Medicine>(row)),
+    term,
+  );
 }

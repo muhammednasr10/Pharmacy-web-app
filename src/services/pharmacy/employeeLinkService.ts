@@ -103,11 +103,13 @@ export function resolveLinkedEmployeeFromData(
     if (linked) return linked;
   }
 
-  const normalizedEmail = appUser.email.trim().toLowerCase();
+  const normalizedEmail = String(appUser.email ?? "")
+    .trim()
+    .toLowerCase();
 
   for (const catalog of catalogAccounts) {
     if (!catalog.isActive || catalog.status !== "approved" || !catalog.employeeId) continue;
-    if (catalog.email !== normalizedEmail) continue;
+    if ((catalog.email || "").toLowerCase() !== normalizedEmail) continue;
     const linked = employees.find((item) => item.id === catalog.employeeId && item.isActive);
     if (linked) return linked;
   }
@@ -121,16 +123,16 @@ export function resolveLinkedEmployeeFromData(
     );
 
   for (const request of approvedRequests) {
-    if (request.email.trim().toLowerCase() !== normalizedEmail) continue;
+    if (String(request.email ?? "").trim().toLowerCase() !== normalizedEmail) continue;
     if (!request.employeeId) continue;
     const linked = employees.find((item) => item.id === request.employeeId && item.isActive);
     if (linked) return linked;
   }
 
-  const identity = (appUser.username || appUser.name || "").trim();
+  const identity = String(appUser.username || appUser.name || "").trim();
   if (identity) {
     for (const request of approvedRequests) {
-      if (request.username.trim() !== identity) continue;
+      if (String(request.username ?? "").trim() !== identity) continue;
       if (!request.employeeId) continue;
       const linked = employees.find((item) => item.id === request.employeeId && item.isActive);
       if (linked) return linked;

@@ -127,6 +127,11 @@ export async function seedPharmacyFromCatalogReference(
 
   onProgress?.({ done: 0, total: stats.total, phase: "clearing" });
   const deleted = await clearPharmacyMedicineCatalog(pharmacyId);
+  onProgress?.({
+    done: Math.min(stats.total, deleted),
+    total: Math.max(stats.total, deleted, 1),
+    phase: "clearing",
+  });
 
   let inserted = 0;
   let afterId = 0;

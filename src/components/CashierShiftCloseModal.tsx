@@ -72,6 +72,49 @@ export default function CashierShiftCloseModal({
     setFeedback(null);
     setBusy(true);
     try {
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        const { queueOfflineShiftClose, clearCachedOpenCashierShift } = await import(
+          "../utils/offlinePosStorage"
+        );
+        await queueOfflineShiftClose({
+          shiftId: shift.id,
+          pharmacyId: shift.pharmacyId,
+          actualCash: parsed.value,
+          notes: closeNotes.trim() || undefined,
+          closedById: appUser.uid,
+          closedByName: appUser.name,
+        });
+        await clearCachedOpenCashierShift(shift.pharmacyId, appUser.uid);
+        const queuedClose: CashierShift = {
+          ...shift,
+          status: "closed",
+          actualCash: parsed.value,
+          expectedCash: summary.expectedCash,
+          cashVariance: parsed.value - summary.expectedCash,
+          totalSales: summary.totalSales,
+          cashSales: summary.cashSales,
+          visaSales: summary.visaSales,
+          walletSales: summary.walletSales,
+          creditSales: summary.creditSales,
+          returnsTotal: summary.returnsTotal,
+          customerPaymentsCash: summary.customerPaymentsCash,
+          customerPaymentsOther: summary.customerPaymentsOther,
+          invoiceCount: summary.invoiceCount,
+          closedAt: new Date().toISOString(),
+          closedById: appUser.uid,
+          closedByName: appUser.name,
+          notes: closeNotes.trim() || shift.notes,
+        };
+        setFeedback({
+          type: "success",
+          text: isArabic
+            ? "تم حفظ إغلاق الوردية محلياً — سيُرفع تلقائياً عند عودة الاتصال."
+            : "Shift close saved locally — it will upload automatically when you reconnect.",
+        });
+        onClosed(queuedClose);
+        return;
+      }
+
       const closed = await pharmacyService.closeCashierShift({
         shiftId: shift.id,
         actualCash: parsed.value,
@@ -155,8 +198,8 @@ export default function CashierShiftCloseModal({
                 <strong>{formatMoney(summary.customerPaymentsCash, currency)}</strong>
               </div>
               <div>
-                <span>{isArabic ? "إجمالي المبيعات" : "Total sales"}</span>
-                <strong>{formatMoney(summary.totalSales, currency)}</strong>
+                <span>{isArabic ? "صافي المبيعات" : "Net sales"}</span>
+                <strong>{formatMoney(summary.netSales, currency)}</strong>
               </div>
               <div className="cashierShiftCloseHighlight">
                 <span>{isArabic ? "النقد المتوقع (للقراءة فقط)" : "Expected cash (read-only)"}</span>

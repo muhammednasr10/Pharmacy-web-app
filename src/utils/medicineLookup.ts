@@ -1,4 +1,5 @@
 import type { Medicine } from "../types";
+import { resolveEntryExpiry } from "./catalogExpiry";
 
 export type MedicineEntryValues = {
   barcode: string;
@@ -80,6 +81,63 @@ export function medicineMatchesInventorySearch(medicine: Medicine, query: string
   return haystack.some((part) => part.includes(value));
 }
 
+/** Digit-heavy queries (scanners / pasted barcodes) should prefer exact barcode hits. */
+export function looksLikeBarcodeQuery(query: string): boolean {
+  const value = normalizeMedicineText(query);
+  if (value.length < 6) return false;
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 6 && digits.length / value.length >= 0.8;
+}
+
+function medicineSearchRank(
+  medicine: Medicine,
+  query: string,
+  recentBarcodes?: Set<string>,
+): number {
+  const value = normalizeMedicineText(query).toLowerCase();
+  if (!value) return 99;
+  const barcode = normalizeMedicineText(medicine.barcode).toLowerCase();
+  const nameAr = normalizeMedicineText(medicine.name_ar).toLowerCase();
+  const nameEn = normalizeMedicineText(medicine.name_en).toLowerCase();
+  const isBarcodeQuery = looksLikeBarcodeQuery(value);
+
+  if (barcode && barcode === value) return 0;
+  if (isBarcodeQuery && barcode && barcode.startsWith(value)) return 1;
+  if (barcode && barcode.startsWith(value)) return 2;
+  if (nameAr === value || nameEn === value) return 3;
+  if (barcode && barcode.includes(value)) return isBarcodeQuery ? 2 : 4;
+  if (nameAr.startsWith(value) || nameEn.startsWith(value)) return 5;
+  if (recentBarcodes?.has(barcode)) return 6;
+  return 8;
+}
+
+export function sortMedicinesBySearchRelevance(
+  medicines: Medicine[],
+  query: string,
+  recentBarcodes?: string[],
+): Medicine[] {
+  const value = normalizeMedicineText(query);
+  if (!value || medicines.length < 2) return medicines;
+  const recentSet =
+    recentBarcodes && recentBarcodes.length > 0
+      ? new Set(recentBarcodes.map((code) => normalizeMedicineText(code).toLowerCase()).filter(Boolean))
+      : undefined;
+  return [...medicines].sort((left, right) => {
+    const rankDiff =
+      medicineSearchRank(left, value, recentSet) - medicineSearchRank(right, value, recentSet);
+    if (rankDiff !== 0) return rankDiff;
+    if (recentSet) {
+      const leftRecent = recentSet.has(normalizeMedicineText(left.barcode).toLowerCase()) ? 0 : 1;
+      const rightRecent = recentSet.has(normalizeMedicineText(right.barcode).toLowerCase()) ? 0 : 1;
+      if (leftRecent !== rightRecent) return leftRecent - rightRecent;
+    }
+    return normalizeMedicineText(left.name_ar).localeCompare(
+      normalizeMedicineText(right.name_ar),
+      "ar",
+    );
+  });
+}
+
 export function findMedicineByBarcode(medicines: Medicine[], barcode: string) {
   const code = normalizeMedicineText(barcode);
   if (!code) return undefined;
@@ -101,15 +159,19 @@ export function searchMedicines(medicines: Medicine[], query: string, limit = 8)
   const value = normalizeMedicineText(query).toLowerCase();
   if (value.length < 1) return [];
 
-  return medicines
-    .filter((medicine) => medicineMatchesInventorySearch(medicine, query))
-    .slice(0, limit);
+  const matched = medicines.filter((medicine) => medicineMatchesInventorySearch(medicine, query));
+  return sortMedicinesBySearchRelevance(matched, query).slice(0, limit);
 }
 
 export function medicineToEntryValues(
   medicine: Medicine,
   current?: Partial<MedicineEntryValues>,
 ): MedicineEntryValues {
+  const resolvedExpiry =
+    current?.expiry !== undefined
+      ? resolveEntryExpiry(current.expiry)
+      : resolveEntryExpiry(medicine.expiry);
+
   return {
     barcode: medicine.barcode,
     name_ar: medicine.name_ar,
@@ -117,7 +179,8 @@ export function medicineToEntryValues(
     qty: current?.qty ?? 0,
     buyPrice: medicine.buyPrice || 0,
     price: medicine.price || 0,
-    expiry: medicine.expiry || "",
+    // Never copy catalog sentinel 2099-12-31 as a real batch expiry.
+    expiry: resolvedExpiry,
   };
 }
 

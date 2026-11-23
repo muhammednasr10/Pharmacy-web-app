@@ -1,4 +1,5 @@
 import type { Medicine } from "../../types";
+import { formatExpiryDisplay } from "../../utils/catalogExpiry";
 import {
   resolveMedicineActiveIngredient,
   resolveMedicineArabicName,
@@ -116,7 +117,7 @@ export default function MedicineTableRow({
           </span>
         )}
       </td>
-      <td>{medicine.expiry}</td>
+      <td>{formatExpiryDisplay(medicine.expiry, isArabic)}</td>
       {showCostProfitColumns && (
         <td>
           {(medicine.buyPrice || 0).toFixed(2)} {currency}

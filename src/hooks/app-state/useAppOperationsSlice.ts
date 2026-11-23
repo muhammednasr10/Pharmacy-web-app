@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as pharmacyService from "../../services/pharmacyService";
 import { getShiftDisplayName } from "../../utils/workSchedule";
 import { useOnlineStatus } from "../useOnlineStatus";
@@ -8,6 +8,11 @@ import { useMedicineManagement } from "../useMedicineManagement";
 import { useReturns } from "../useReturns";
 import { useBranchOperations } from "../useBranchOperations";
 import { useOfflinePosSync } from "../useOfflinePosSync";
+import {
+  cacheOpenCashierShift,
+  clearCachedOpenCashierShift,
+  loadCachedOpenCashierShift,
+} from "../../utils/offlinePosStorage";
 import {
   getPaymentLabel as formatPaymentLabel,
   showSubscriptionExpiredAlert as alertSubscriptionExpired,
@@ -145,6 +150,9 @@ export function useAppOperationsSlice({
     isOnline,
   });
 
+  const activeCashierShiftRef = useRef(activeCashierShift);
+  activeCashierShiftRef.current = activeCashierShift;
+
   const refreshActiveCashierShift = useCallback(async () => {
     const pharmacyId = getPharmacyId();
     const uid = appUser?.uid;
@@ -152,9 +160,38 @@ export function useAppOperationsSlice({
       setActiveCashierShift(null);
       return null;
     }
-    const shift = await pharmacyService.getOpenCashierShift(pharmacyId, uid);
-    setActiveCashierShift(shift);
-    return shift;
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      const current = activeCashierShiftRef.current;
+      if (current) return current;
+      const cached = await loadCachedOpenCashierShift(pharmacyId, uid);
+      if (cached) {
+        setActiveCashierShift(cached);
+        return cached;
+      }
+      return null;
+    }
+
+    try {
+      const shift = await pharmacyService.getOpenCashierShift(pharmacyId, uid);
+      setActiveCashierShift(shift);
+      if (shift) {
+        await cacheOpenCashierShift(shift);
+      } else {
+        await clearCachedOpenCashierShift(pharmacyId, uid);
+      }
+      return shift;
+    } catch (error) {
+      console.warn("refreshActiveCashierShift:", error);
+      const current = activeCashierShiftRef.current;
+      if (current) return current;
+      const cached = await loadCachedOpenCashierShift(pharmacyId, uid);
+      if (cached) {
+        setActiveCashierShift(cached);
+        return cached;
+      }
+      return null;
+    }
   }, [appUser?.uid, getPharmacyId]);
 
   const bumpCashierShiftSalesTick = useCallback(() => {
@@ -272,6 +309,7 @@ export function useAppOperationsSlice({
     medicines: branchMedicines,
     setMedicines,
     activeCashierShift,
+    setActiveCashierShift,
     getPharmacyId,
     refreshMedicinesFromDb,
     reloadAppDataFromDb,
@@ -399,6 +437,7 @@ export function useAppOperationsSlice({
     refreshMedicinesFromDb,
     setStockMovements,
     onViewInvoice: setSelectedInvoice,
+    bumpCashierShiftSalesTick,
   });
 
   useEffect(() => {

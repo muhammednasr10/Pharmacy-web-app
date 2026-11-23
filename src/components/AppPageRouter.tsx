@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { isSubscriptionWriteBlocked } from "../utils/subscriptionAccess";
 import { pageToPath } from "../routes/pageRoutes";
@@ -15,6 +16,7 @@ import AppReturnsRoute from "./app-router/AppReturnsRoute";
 import AppSettingsRoute from "./app-router/AppSettingsRoute";
 import AppSuperAdminRoute from "./app-router/AppSuperAdminRoute";
 import AppUserGuideRoute from "./app-router/AppUserGuideRoute";
+import PageLoadingCard from "./PageLoadingCard";
 
 export type { AppPageRouterProps } from "./app-router/types";
 
@@ -26,6 +28,7 @@ export default function AppPageRouter(props: AppPageRouterProps) {
   const routeProps = { ...props, subscriptionBlocksWrite };
 
   return (
+    <Suspense fallback={<PageLoadingCard isArabic={props.isArabic} compact />}>
     <Routes>
       <Route index element={<Navigate to={pageToPath("dashboard")} replace />} />
       <Route path="/dashboard" element={<AppDashboardRoute {...props} />} />
@@ -51,5 +54,6 @@ export default function AppPageRouter(props: AppPageRouterProps) {
         element={<Navigate to={pageToPath(props.displayPage)} replace />}
       />
     </Routes>
+    </Suspense>
   );
 }

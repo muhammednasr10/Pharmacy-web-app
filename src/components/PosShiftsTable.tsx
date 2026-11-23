@@ -17,12 +17,18 @@ type PosShiftsTableProps = {
   refreshKey?: string | number;
   onSelectShift?: (shift: CashierShift) => void;
   onShiftClosed?: (shift: CashierShift) => void;
+  onBeforeCloseShift?: () => void;
 };
 
 type LiveOpenTotals = {
   totalSales: number;
+  netSales: number;
   invoiceCount: number;
 };
+
+function shiftNetSales(shift: Pick<CashierShift, "totalSales" | "returnsTotal">) {
+  return Math.max(0, Number(shift.totalSales ?? 0) - Number(shift.returnsTotal ?? 0));
+}
 
 function formatMoney(value: number, currency: string) {
   return `${Number(value || 0).toFixed(2)} ${currency}`;
@@ -39,6 +45,7 @@ export default function PosShiftsTable({
   refreshKey = 0,
   onSelectShift,
   onShiftClosed,
+  onBeforeCloseShift,
 }: PosShiftsTableProps) {
   const [rows, setRows] = useState<CashierShift[]>([]);
   const [liveOpenTotals, setLiveOpenTotals] = useState<Record<number, LiveOpenTotals>>({});
@@ -102,13 +109,18 @@ export default function PosShiftsTable({
             const summary = await pharmacyService.computeCashierShiftSummary(shift);
             return [
               shift.id,
-              { totalSales: summary.totalSales, invoiceCount: summary.invoiceCount },
+              {
+                totalSales: summary.totalSales,
+                netSales: summary.netSales,
+                invoiceCount: summary.invoiceCount,
+              },
             ] as const;
           } catch {
             return [
               shift.id,
               {
                 totalSales: Number(shift.totalSales ?? 0),
+                netSales: shiftNetSales(shift),
                 invoiceCount: Number(shift.invoiceCount ?? 0),
               },
             ] as const;
@@ -284,7 +296,7 @@ export default function PosShiftsTable({
                   const isActive = shift.id === activeShiftId;
                   const variance = Number(shift.cashVariance ?? 0);
                   const live = shift.status === "open" ? liveOpenTotals[shift.id] : undefined;
-                  const salesTotal = live?.totalSales ?? Number(shift.totalSales ?? 0);
+                  const salesTotal = live?.netSales ?? shiftNetSales(shift);
                   const invoices = live?.invoiceCount ?? Number(shift.invoiceCount ?? 0);
                   const canDelete =
                     shift.status === "closed" &&
@@ -354,7 +366,10 @@ export default function PosShiftsTable({
                             <button
                               type="button"
                               className="dangerBtn posShiftsTableCloseBtn"
-                              onClick={() => setClosingShift(shift)}
+                              onClick={() => {
+                                onBeforeCloseShift?.();
+                                setClosingShift(shift);
+                              }}
                               title={isArabic ? "إغلاق الوردية" : "Close shift"}
                             >
                               {isArabic ? "إغلاق" : "Close"}

@@ -1,5 +1,6 @@
 import BranchScopeSelect from "../../components/BranchScopeSelect";
 import MedicineEntryGrid from "../../components/MedicineEntryGrid";
+import { formatExpiryDisplay } from "../../utils/catalogExpiry";
 import type { PurchasesPageState } from "./usePurchasesPageState";
 
 type Props = { state: PurchasesPageState };
@@ -21,6 +22,7 @@ export default function PurchaseBatchModal({ state }: Props) {
     setNotes,
     itemForm,
     setItemForm,
+    itemFieldErrors,
     draftItems,
     setDraftItems,
     branchMedicines,
@@ -132,6 +134,7 @@ export default function PurchaseBatchModal({ state }: Props) {
               resetKey={`${itemLookupResetKey}-${editingDraftKey || "new"}`}
               enableHardwareScanner
               lookupBarcode={lookupPurchaseMedicineByBarcode}
+              fieldErrors={itemFieldErrors}
             />
           </div>
           <div className="purchaseAddItemActions">
@@ -190,7 +193,7 @@ export default function PurchaseBatchModal({ state }: Props) {
                       <td>{item.qty}</td>
                       <td>{item.buyPrice.toFixed(2)}</td>
                       <td>{item.price.toFixed(2)}</td>
-                      <td>{item.expiry}</td>
+                      <td>{formatExpiryDisplay(item.expiry, isArabic)}</td>
                       <td>
                         <div className="actionButtons purchaseRowActions">
                           <button

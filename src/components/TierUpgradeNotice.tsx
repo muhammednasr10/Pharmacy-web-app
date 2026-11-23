@@ -16,7 +16,7 @@ export default function TierUpgradeNotice({
       <p>{message}</p>
       {onAction ? (
         <button type="button" className="smallBtn" onClick={onAction}>
-          {actionLabel || (isArabic ? "الاشتراك والباقة" : "Subscription & plan")}
+          {actionLabel || (isArabic ? "الاشتراك" : "Subscription")}
         </button>
       ) : null}
     </div>

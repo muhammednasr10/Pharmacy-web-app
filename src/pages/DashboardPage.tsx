@@ -31,6 +31,8 @@ export default function DashboardPage({
   branchesCount,
   hasOpenShift = false,
   hasCompletedSale = false,
+  pharmacyId = null,
+  onQaStockReady,
   lowStockMedicines,
   expiringSoonMedicines,
   expiredMedicines,
@@ -90,6 +92,7 @@ export default function DashboardPage({
       {(totalMedicinesCount === 0 || !hasCompletedSale) && (
         <DashboardGettingStarted
           isArabic={isArabic}
+          pharmacyId={pharmacyId}
           totalMedicinesCount={totalMedicinesCount}
           hasOpenShift={hasOpenShift}
           hasCompletedSale={hasCompletedSale}
@@ -97,6 +100,7 @@ export default function DashboardPage({
           canAccessPos={canAccess("pos")}
           onOpenInventory={() => onOpenInventory("all")}
           onOpenPOS={onOpenPOS}
+          onQaStockReady={onQaStockReady}
         />
       )}
 
@@ -155,6 +159,7 @@ export default function DashboardPage({
           getBranchLabel={getBranchLabel}
           onOpenInventory={onOpenInventory}
           onOpenReorderSuggestions={onOpenReorderSuggestions}
+          onOpenPurchases={onOpenPurchases}
         />
       )}
     </div>

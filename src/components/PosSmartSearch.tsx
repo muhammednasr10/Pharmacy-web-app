@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Medicine, PharmacySettings } from "../types";
 import { usePosInventorySource } from "../hooks/usePosInventorySource";
-import { medicineMatchesInventorySearch } from "../utils/medicineLookup";
+import {
+  medicineMatchesInventorySearch,
+  sortMedicinesBySearchRelevance,
+} from "../utils/medicineLookup";
+import { readRecentBarcodes } from "../utils/offlineRecentMedicines";
 import type { PosSearchScope } from "./PosManualSalePanel";
 import { playBarcodeBeep } from "../utils/barcodeBeep";
 
@@ -66,18 +70,26 @@ export default function PosSmartSearch({
     expiringSoonDays,
   });
 
+  const recentBarcodes = useMemo(() => readRecentBarcodes(pharmacyId), [pharmacyId, inventoryRefreshKey]);
+
   const offlineRows = useMemo(() => {
     if (!debouncedSearch || isOnline) return [];
     const pool = searchingOtherBranches
       ? medicines
       : medicines.filter((medicine) => (medicine.pharmacyId || pharmacyId) === pharmacyId);
-    return pool
-      .filter((medicine) => medicine.qty > 0)
-      .filter((medicine) => medicineMatchesInventorySearch(medicine, debouncedSearch))
-      .slice(0, 12);
-  }, [debouncedSearch, isOnline, medicines, pharmacyId, searchingOtherBranches]);
+    return sortMedicinesBySearchRelevance(
+      pool
+        .filter((medicine) => medicine.qty > 0)
+        .filter((medicine) => medicineMatchesInventorySearch(medicine, debouncedSearch)),
+      debouncedSearch,
+      recentBarcodes,
+    ).slice(0, 12);
+  }, [debouncedSearch, isOnline, medicines, pharmacyId, recentBarcodes, searchingOtherBranches]);
 
-  const results = isOnline ? rows.slice(0, 12) : offlineRows;
+  const results = useMemo(() => {
+    const list = isOnline ? rows : offlineRows;
+    return sortMedicinesBySearchRelevance(list, debouncedSearch, recentBarcodes).slice(0, 12);
+  }, [debouncedSearch, isOnline, offlineRows, recentBarcodes, rows]);
   const showResults = debouncedSearch.length >= 2 && branchReady;
 
   function pickMedicine(medicine: Medicine) {

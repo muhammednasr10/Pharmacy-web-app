@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import { ARABIC_FONT_BASE64 } from "../arabicFont";
+import { brandPharmacyName } from "../branding";
 import { tryAddPdfLogoImage } from "./pdfLogo";
 import type { CustomerDebt, CustomerPayment } from "../types";
 import { formatDateInput } from "./date";
@@ -46,8 +47,8 @@ async function addPdfHeader(docPdf: jsPDF, ctx: CustomerExportContext, title: st
   }
 
   const pharmacyName = ctx.isArabic
-    ? ctx.pharmacySettings?.name || "صيدلية Focus"
-    : ctx.pharmacySettings?.name_en || "Focus Pharmacy";
+    ? ctx.pharmacySettings?.name || brandPharmacyName.ar
+    : ctx.pharmacySettings?.name_en || brandPharmacyName.en;
 
   docPdf.setFontSize(18);
   docPdf.text(pharmacyName, pageWidth / 2, y, { align: "center" });
@@ -92,8 +93,8 @@ function addPdfFooter(docPdf: jsPDF, ctx: CustomerExportContext, y: number) {
   }
 
   const pharmacyName = ctx.isArabic
-    ? ctx.pharmacySettings?.name || "صيدلية Focus"
-    : ctx.pharmacySettings?.name_en || "Focus Pharmacy";
+    ? ctx.pharmacySettings?.name || brandPharmacyName.ar
+    : ctx.pharmacySettings?.name_en || brandPharmacyName.en;
 
   docPdf.setFontSize(8);
   docPdf.text(pharmacyName, pageWidth / 2, y, { align: "center" });

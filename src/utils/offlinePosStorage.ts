@@ -1,6 +1,7 @@
 import type {
   ActivityLog,
   CartItem,
+  CashierShift,
   CustomerPayment,
   HeldInvoice,
   Invoice,
@@ -11,9 +12,10 @@ import type {
   ReturnRecord,
   StockMovement,
 } from "../types";
+import { OFFLINE_POS_MEDICINES_CACHE_MAX } from "../constants/medicineCatalog";
 
 const DB_NAME = "focus-pharmacy-offline";
-const DB_VERSION = 2;
+const DB_VERSION = 4;
 
 export type AppDataSnapshot = {
   cacheKey: string;
@@ -51,6 +53,31 @@ type MedicinesCacheRow = {
   updatedAt: string;
 };
 
+type OpenShiftCacheRow = {
+  key: string;
+  pharmacyId: string;
+  cashierId: string;
+  shift: CashierShift;
+  updatedAt: string;
+};
+
+export type PendingOfflineShiftClose = {
+  localId: string;
+  shiftId: number;
+  pharmacyId: string;
+  actualCash: number;
+  notes?: string;
+  closedById?: string;
+  closedByName?: string;
+  queuedAt: string;
+  status: "pending" | "syncing" | "failed";
+  lastError?: string;
+};
+
+function openShiftCacheKey(pharmacyId: string, cashierId: string) {
+  return `${pharmacyId}:${cashierId}`;
+}
+
 function openOfflineDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     if (typeof indexedDB === "undefined") {
@@ -73,6 +100,14 @@ function openOfflineDb(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains("appSnapshots")) {
         db.createObjectStore("appSnapshots", { keyPath: "cacheKey" });
+      }
+      if (!db.objectStoreNames.contains("openShifts")) {
+        db.createObjectStore("openShifts", { keyPath: "key" });
+      }
+      if (!db.objectStoreNames.contains("pendingShiftCloses")) {
+        const store = db.createObjectStore("pendingShiftCloses", { keyPath: "localId" });
+        store.createIndex("pharmacyId", "pharmacyId", { unique: false });
+        store.createIndex("status", "status", { unique: false });
       }
     };
   });
@@ -125,6 +160,79 @@ export async function loadCachedMedicines(pharmacyId: string): Promise<{
     medicines: row?.medicines ?? [],
     updatedAt: row?.updatedAt ?? null,
   };
+}
+
+/** Merge medicines into the offline POS cache (in-stock preferred when trimming). */
+export async function mergeMedicinesIntoOfflineCache(
+  pharmacyId: string,
+  incoming: Medicine[],
+  maxItems = OFFLINE_POS_MEDICINES_CACHE_MAX,
+): Promise<{ medicines: Medicine[]; updatedAt: string }> {
+  if (!pharmacyId) {
+    return { medicines: [], updatedAt: new Date().toISOString() };
+  }
+  const { medicines: cached } = await loadCachedMedicines(pharmacyId);
+  if (incoming.length === 0) {
+    return {
+      medicines: cached,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  const merged = new Map<number, Medicine>();
+  for (const medicine of cached) merged.set(medicine.id, medicine);
+  for (const medicine of incoming) merged.set(medicine.id, medicine);
+
+  const next = Array.from(merged.values())
+    .sort((left, right) => {
+      const leftStock = left.qty > 0 ? 1 : 0;
+      const rightStock = right.qty > 0 ? 1 : 0;
+      if (leftStock !== rightStock) return rightStock - leftStock;
+      return String(left.name_ar || "").localeCompare(String(right.name_ar || ""), "ar");
+    })
+    .slice(0, Math.max(1, maxItems));
+
+  const updatedAt = new Date().toISOString();
+  await runTransaction("medicines", "readwrite", (store) =>
+    store.put({ pharmacyId, medicines: next, updatedAt } satisfies MedicinesCacheRow),
+  );
+  return { medicines: next, updatedAt };
+}
+
+export async function cacheOpenCashierShift(shift: CashierShift): Promise<void> {
+  if (!shift?.pharmacyId || !shift?.cashierId || shift.status !== "open") return;
+  const row: OpenShiftCacheRow = {
+    key: openShiftCacheKey(shift.pharmacyId, shift.cashierId),
+    pharmacyId: shift.pharmacyId,
+    cashierId: shift.cashierId,
+    shift,
+    updatedAt: new Date().toISOString(),
+  };
+  await runTransaction("openShifts", "readwrite", (store) => store.put(row));
+}
+
+export async function loadCachedOpenCashierShift(
+  pharmacyId: string,
+  cashierId: string,
+): Promise<CashierShift | null> {
+  if (!pharmacyId || !cashierId) return null;
+  const row = (await runTransaction<OpenShiftCacheRow | undefined>(
+    "openShifts",
+    "readonly",
+    (store) => store.get(openShiftCacheKey(pharmacyId, cashierId)),
+  )) as OpenShiftCacheRow | undefined;
+  if (!row?.shift || row.shift.status !== "open") return null;
+  return row.shift;
+}
+
+export async function clearCachedOpenCashierShift(
+  pharmacyId: string,
+  cashierId: string,
+): Promise<void> {
+  if (!pharmacyId || !cashierId) return;
+  await runTransaction("openShifts", "readwrite", (store) =>
+    store.delete(openShiftCacheKey(pharmacyId, cashierId)),
+  );
 }
 
 export async function queueOfflineSale(input: {
@@ -201,4 +309,48 @@ export function applyOptimisticStockDeduction(medicines: Medicine[], cart: CartI
     if (!soldQty) return medicine;
     return { ...medicine, qty: Math.max(0, medicine.qty - soldQty) };
   });
+}
+
+export async function queueOfflineShiftClose(
+  input: Omit<PendingOfflineShiftClose, "localId" | "queuedAt" | "status" | "lastError">,
+): Promise<PendingOfflineShiftClose> {
+  const entry: PendingOfflineShiftClose = {
+    ...input,
+    localId: `close-${input.shiftId}-${Date.now()}`,
+    queuedAt: new Date().toISOString(),
+    status: "pending",
+  };
+  await runTransaction("pendingShiftCloses", "readwrite", (store) => store.put(entry));
+  return entry;
+}
+
+export async function listPendingOfflineShiftCloses(
+  pharmacyId?: string,
+): Promise<PendingOfflineShiftClose[]> {
+  const rows = (await runTransaction<PendingOfflineShiftClose[]>(
+    "pendingShiftCloses",
+    "readonly",
+    (store) => store.getAll(),
+  )) as PendingOfflineShiftClose[] | void;
+  const all = rows ?? [];
+  return pharmacyId ? all.filter((row) => row.pharmacyId === pharmacyId) : all;
+}
+
+export async function updatePendingOfflineShiftClose(
+  localId: string,
+  updates: Partial<PendingOfflineShiftClose>,
+): Promise<void> {
+  const existing = (await runTransaction<PendingOfflineShiftClose | undefined>(
+    "pendingShiftCloses",
+    "readonly",
+    (store) => store.get(localId),
+  )) as PendingOfflineShiftClose | undefined;
+  if (!existing) return;
+  await runTransaction("pendingShiftCloses", "readwrite", (store) =>
+    store.put({ ...existing, ...updates }),
+  );
+}
+
+export async function removePendingOfflineShiftClose(localId: string): Promise<void> {
+  await runTransaction("pendingShiftCloses", "readwrite", (store) => store.delete(localId));
 }
