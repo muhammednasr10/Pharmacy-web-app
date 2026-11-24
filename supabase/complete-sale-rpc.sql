@@ -141,13 +141,15 @@ begin
     total,
     payment_method,
     customer_name,
+    customer_phone,
     cashier_id,
     cashier_name,
     pharmacy_id,
     total_cost,
     total_profit,
     created_at,
-    shift_id
+    shift_id,
+    cashier_shift_id
   )
   values (
     v_invoice_id,
@@ -158,13 +160,15 @@ begin
     coalesce((p_invoice->>'total')::numeric, 0),
     coalesce(nullif(trim(p_invoice->>'payment_method'), ''), 'cash'),
     coalesce(p_invoice->>'customer_name', ''),
+    coalesce(p_invoice->>'customer_phone', ''),
     v_cashier_id,
     v_cashier_name,
     p_pharmacy_id,
     coalesce((p_invoice->>'total_cost')::numeric, 0),
     coalesce((p_invoice->>'total_profit')::numeric, 0),
     coalesce((p_invoice->>'created_at')::timestamptz, now()),
-    v_shift_id
+    v_shift_id,
+    nullif(p_invoice->>'cashier_shift_id', '')::bigint
   );
 
   for v_item in

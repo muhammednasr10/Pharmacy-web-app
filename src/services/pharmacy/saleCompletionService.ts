@@ -72,4 +72,26 @@ export async function completeSaleWithStockDeduction(
     }
     throw new Error(code);
   }
+
+  await patchInvoiceExtrasAfterSale(invoice, pharmacyId);
+}
+
+/** Older RPC builds omit customer_phone / cashier_shift_id — patch after insert. */
+async function patchInvoiceExtrasAfterSale(invoice: Invoice, pharmacyId: string) {
+  const phone = String(invoice.customerPhone || "").trim();
+  const cashierShiftId = invoice.cashierShiftId;
+  if (!phone && !cashierShiftId) return;
+
+  const patch: Record<string, unknown> = {};
+  if (phone) patch.customer_phone = phone;
+  if (cashierShiftId) patch.cashier_shift_id = cashierShiftId;
+
+  const { error: patchError } = await supabase
+    .from("invoices")
+    .update(patch)
+    .eq("id", invoice.id)
+    .eq("pharmacy_id", pharmacyId);
+  if (patchError) {
+    console.warn("Invoice customer/shift patch skipped:", patchError.message);
+  }
 }

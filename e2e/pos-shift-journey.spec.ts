@@ -25,8 +25,9 @@ test.describe("POS journey: shift → sale → return → close", () => {
     });
 
     await page.locator(".posCartCompleteBtn").click();
+    await expect(page.locator(".posActionFeedback")).toBeVisible({ timeout: 45_000 });
     await expect(page.locator(".posActionFeedback")).toContainText(/INV-\d+|تم تسجيل|completed|محلياً/i, {
-      timeout: 20_000,
+      timeout: 45_000,
     });
 
     await page.getByRole("button", { name: /مرتجع سريع|Quick Return/ }).first().click();

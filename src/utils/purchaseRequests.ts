@@ -23,6 +23,41 @@ export type PurchaseRequestItem = {
   createdByName?: string;
 };
 
+export function isPurchaseRequestsTableMissingError(message: string) {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("pharmacy_purchase_requests") &&
+    (lower.includes("does not exist") ||
+      lower.includes("schema cache") ||
+      lower.includes("could not find"))
+  );
+}
+
+export function normalizePurchaseRequestItem(row: PurchaseRequestItem): PurchaseRequestItem {
+  return {
+    ...row,
+    id: String(row.id),
+    pharmacyId: String(row.pharmacyId || ""),
+    medicineId: Number(row.medicineId) || 0,
+    barcode: String(row.barcode || ""),
+    name_ar: String(row.name_ar || ""),
+    name_en: String(row.name_en || ""),
+    currentQty: Number(row.currentQty) || 0,
+    requestedQty: Math.max(1, Number(row.requestedQty) || 1),
+    requestCount: Math.max(1, Number(row.requestCount) || 1),
+    buyPrice: Number(row.buyPrice) || 0,
+    sellPrice: Number(row.sellPrice) || 0,
+    expiry: String(row.expiry || ""),
+    note: String(row.note || ""),
+    status: (["open", "ordered", "done", "cancelled"].includes(String(row.status))
+      ? row.status
+      : "open") as PurchaseRequestStatus,
+    createdAt: String(row.createdAt || new Date().toISOString()),
+    updatedAt: String(row.updatedAt || row.createdAt || new Date().toISOString()),
+    createdByName: row.createdByName ? String(row.createdByName) : undefined,
+  };
+}
+
 const STORAGE_PREFIX = "pharmacy_purchase_requests:";
 export const PURCHASE_REQUESTS_CHANGED_EVENT = "pharmacy:purchase-requests-changed";
 

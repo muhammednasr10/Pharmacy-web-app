@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import type { PaymentMethod } from "../types";
+import PosCustomerDataPanel from "./pos/PosCustomerDataPanel";
+import PosPaymentMethodSelect from "./pos/PosPaymentMethodSelect";
+import type { PaymentOption } from "./pos/paymentTypes";
 
-export type PaymentOption = {
-  value: string;
-  label: string;
-};
+export type { PaymentOption };
 
 type PaymentBoxProps = {
   discount: number;
@@ -67,29 +67,16 @@ export default function PaymentBox({
       />
       <label>{t.paymentMethod}</label>
       <div className="paymentMethodRow">
-        {useCustomOptions ? (
-          <select
-            value={paymentOptionValue || paymentOptions![0]?.value || ""}
-            onChange={(e) => onPaymentOptionChange?.(e.target.value)}
-          >
-            {paymentOptions!.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <select
-            value={paymentMethod}
-            onChange={(e) => onPaymentMethodChange(e.target.value as PaymentMethod)}
-          >
-            <option value="cash">{getPaymentLabel("cash")}</option>
-            <option value="visa">{getPaymentLabel("visa")}</option>
-            <option value="wallet">{getPaymentLabel("wallet")}</option>
-            <option value="delivery">{getPaymentLabel("delivery")}</option>
-            {!disableCredit && <option value="credit">{getPaymentLabel("credit")}</option>}
-          </select>
-        )}
+        <PosPaymentMethodSelect
+          paymentMethod={paymentMethod}
+          isArabic={isArabic}
+          getPaymentLabel={getPaymentLabel}
+          disableCredit={disableCredit}
+          paymentOptions={paymentOptions}
+          paymentOptionValue={paymentOptionValue}
+          onPaymentMethodChange={onPaymentMethodChange}
+          onPaymentOptionChange={onPaymentOptionChange}
+        />
         <button
           type="button"
           className={`posCustomerDataBtn${hasCustomerData ? " has-data" : ""}${customerPanelOpen ? " is-open" : ""}`}
@@ -108,30 +95,14 @@ export default function PaymentBox({
         </p>
       )}
       {customerPanelOpen ? (
-        <div className="posCustomerDataPanel">
-          <label>{isArabic ? "اسم العميل" : "Customer name"}</label>
-          <input
-            value={customerName}
-            onChange={(e) => onCustomerNameChange(e.target.value)}
-            placeholder={
-              needsCustomer
-                ? isArabic
-                  ? "مطلوب للدليفري / الآجل"
-                  : "Required for delivery / credit"
-                : isArabic
-                  ? "اختياري — يظهر على الفاتورة"
-                  : "Optional — shown on invoice"
-            }
-          />
-          <label>{isArabic ? "رقم الموبايل" : "Phone"}</label>
-          <input
-            type="tel"
-            inputMode="tel"
-            value={customerPhone}
-            onChange={(e) => onCustomerPhoneChange?.(e.target.value)}
-            placeholder={isArabic ? "اختياري" : "Optional"}
-          />
-        </div>
+        <PosCustomerDataPanel
+          isArabic={isArabic}
+          customerName={customerName}
+          customerPhone={customerPhone}
+          required={needsCustomer}
+          onCustomerNameChange={onCustomerNameChange}
+          onCustomerPhoneChange={onCustomerPhoneChange}
+        />
       ) : null}
     </div>
   );

@@ -3,6 +3,7 @@ import * as pharmacyService from "../../services/pharmacyService";
 import type { PurchaseRequestItem } from "../../utils/purchaseRequests";
 import { subscribePurchaseRequestsChanged } from "../../utils/purchaseRequests";
 import { saveReorderPurchaseDraft } from "../../utils/reorderSuggestions";
+import InventoryPurchaseRequestsTable from "./InventoryPurchaseRequestsTable";
 
 type InventoryPurchaseRequestsPanelProps = {
   isArabic: boolean;
@@ -133,68 +134,14 @@ export default function InventoryPurchaseRequestsPanel({
             : "No open requests — from POS tap the restock icon beside an out-of-stock medicine."}
         </p>
       ) : (
-        <div className="tableWrap">
-          <table>
-            <thead>
-              <tr>
-                <th>{isArabic ? "الدواء" : "Medicine"}</th>
-                <th>{isArabic ? "الباركود" : "Barcode"}</th>
-                <th>{isArabic ? "الكمية الحالية" : "Current qty"}</th>
-                <th>{isArabic ? "كمية التوريد" : "Order qty"}</th>
-                <th>{isArabic ? "مرات الطلب" : "Times asked"}</th>
-                <th>{isArabic ? "بواسطة" : "By"}</th>
-                <th>{isArabic ? "الإجراءات" : "Actions"}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((item) => (
-                <tr key={item.id}>
-                  <td>
-                    <strong>{isArabic ? item.name_ar : item.name_en || item.name_ar}</strong>
-                  </td>
-                  <td>{item.barcode || "—"}</td>
-                  <td>
-                    <span className={item.currentQty <= 0 ? "badge danger" : "badge warn"}>
-                      {item.currentQty}
-                    </span>
-                  </td>
-                  <td>
-                    <input
-                      type="number"
-                      min={1}
-                      className="invMgmtInlineQty"
-                      value={item.requestedQty}
-                      disabled={busyId === item.id}
-                      onChange={(event) => void handleQtyChange(item, event.target.value)}
-                    />
-                  </td>
-                  <td>{item.requestCount}</td>
-                  <td>{item.createdByName || "—"}</td>
-                  <td>
-                    <div className="actionButtons">
-                      <button
-                        type="button"
-                        className="editBtn"
-                        disabled={busyId === item.id}
-                        onClick={() => void handleMarkOrdered(item)}
-                      >
-                        {isArabic ? "تم التوريد" : "Mark ordered"}
-                      </button>
-                      <button
-                        type="button"
-                        className="deleteSmallBtn"
-                        disabled={busyId === item.id}
-                        onClick={() => void handleRemove(item)}
-                      >
-                        {isArabic ? "حذف" : "Remove"}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <InventoryPurchaseRequestsTable
+          isArabic={isArabic}
+          rows={rows}
+          busyId={busyId}
+          onQtyChange={(item, value) => void handleQtyChange(item, value)}
+          onMarkOrdered={(item) => void handleMarkOrdered(item)}
+          onRemove={(item) => void handleRemove(item)}
+        />
       )}
     </div>
   );

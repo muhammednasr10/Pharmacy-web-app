@@ -5,6 +5,7 @@ import {
   expectInventoryPagination,
   expectInventoryStockResults,
   openInventoryMovementsTab,
+  openInventoryPurchaseRequestsTab,
   openInventoryStockCountLogTab,
   openInventoryStockTab,
   searchInventoryMovements,
@@ -24,6 +25,12 @@ test.describe("Inventory management", () => {
     await expectInventoryStockResults(page);
     await expectInventoryBarcodeVisible(page, env!.barcode);
     await expectInventoryPagination(page);
+
+    await openInventoryPurchaseRequestsTab(page);
+    const purchaseRequestsPanel = page.locator('.invMgmtTabPanels > [aria-hidden="false"]');
+    await expect(
+      purchaseRequestsPanel.locator(".tableWrap, .empty, .invMgmtError").first(),
+    ).toBeVisible({ timeout: 15_000 });
 
     await openInventoryMovementsTab(page);
     await searchInventoryMovements(page, env!.barcode);

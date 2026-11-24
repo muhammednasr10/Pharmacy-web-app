@@ -1,5 +1,7 @@
 import type { CartItem, PaymentMethod } from "../types";
-import PaymentBox, { type PaymentOption } from "./PaymentBox";
+import type { PaymentOption } from "./pos/paymentTypes";
+import PosCartCheckout from "./pos/PosCartCheckout";
+import PosCartItems from "./pos/PosCartItems";
 
 type PosCartProps = {
   cart: CartItem[];
@@ -104,164 +106,51 @@ export default function PosCart({
 
   const cartBody = (
     <div className="posCartBody">
-      {cart.length === 0 ? (
-        <div className="posCartEmpty">
-          <span className="posCartEmptyIcon" aria-hidden="true">
-            🛒
-          </span>
-          <p>{t.emptyCart}</p>
-          <small>
-            {isArabic
-              ? "امسح باركود أو اختر من البحث السريع"
-              : "Scan a barcode or pick from quick search"}
-          </small>
-        </div>
-      ) : (
-        <div className="cartList posCartList">
-          {cart.map((item) => {
-            const lineTotal = item.price * item.cartQty;
-            return (
-              <div className="cartItem posCartItem" key={item.id}>
-                <div className="posCartItemMain">
-                  <strong>{isArabic ? item.name_ar : item.name_en}</strong>
-                  <p>
-                    {item.price.toFixed(2)} {currency} × {item.cartQty}
-                  </p>
-                  <span className="posCartLineTotal">
-                    {lineTotal.toFixed(2)} {currency}
-                  </span>
-                </div>
-                <div className="posCartItemActions">
-                  <div className="qtyControls posQtyControls">
-                    <button
-                      type="button"
-                      className="posQtyBtn"
-                      aria-label={isArabic ? "إنقاص الكمية" : "Decrease quantity"}
-                      onClick={() => onDecreaseQty(item.id)}
-                    >
-                      −
-                    </button>
-                    <span className="posQtyValue" title={isArabic ? "الكمية" : "Quantity"}>
-                      {item.cartQty}
-                    </span>
-                    <button
-                      type="button"
-                      className="posQtyBtn"
-                      aria-label={isArabic ? "زيادة الكمية" : "Increase quantity"}
-                      onClick={() => onIncreaseQty(item.id)}
-                      disabled={item.cartQty >= item.qty}
-                    >
-                      +
-                    </button>
-                  </div>
-                  {item.cartQty > 1 ? (
-                    <span className="posQtyConfirmHint">
-                      {isArabic ? "كمية أكبر من 1 — ستُؤكد عند البيع" : "Qty > 1 — confirm at checkout"}
-                    </span>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="deleteBtn posCartRemoveBtn"
-                    onClick={() => onRemoveItem(item.id)}
-                  >
-                    {t.remove}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <PosCartItems
+        cart={cart}
+        isArabic={isArabic}
+        t={t}
+        currency={currency}
+        onDecreaseQty={onDecreaseQty}
+        onIncreaseQty={onIncreaseQty}
+        onRemoveItem={onRemoveItem}
+      />
     </div>
   );
 
   const cartCheckout = (
-    <div className="posCartCheckout">
-      <PaymentBox
-        discount={discount}
-        paymentMethod={paymentMethod}
-        customerName={customerName}
-        customerPhone={customerPhone}
-        isArabic={isArabic}
-        t={t}
-        onDiscountChange={onDiscountChange}
-        onPaymentMethodChange={onPaymentMethodChange}
-        onCustomerNameChange={onCustomerNameChange}
-        onCustomerPhoneChange={onCustomerPhoneChange}
-        getPaymentLabel={getPaymentLabel}
-        disableCredit={!isOnline}
-        paymentOptions={paymentOptions}
-        paymentOptionValue={paymentOptionValue}
-        onPaymentOptionChange={onPaymentOptionChange}
-      />
-      <div className="subtotalLine posCartSubtotal">
-        <span>{t.subtotal}</span>
-        <strong>
-          {subtotal.toFixed(2)} {currency}
-        </strong>
-      </div>
-      <div className="totalBox posCartTotal">
-        <span>{t.total}</span>
-        <strong>
-          {total.toFixed(2)} {currency}
-        </strong>
-      </div>
-      <div className="posActionRow">
-        {cart.length > 0 && (
-          <button
-            className="posActionBtn holdBtn"
-            type="button"
-            onClick={onHoldInvoice}
-            disabled={isHolding || isSubscriptionExpired || !isOnline}
-          >
-            {isHolding
-              ? isArabic
-                ? "جاري التعليق..."
-                : "Holding..."
-              : isArabic
-                ? "تعليق الفاتورة"
-                : "Hold Invoice"}
-          </button>
-        )}
-        <button
-          className="posActionBtn"
-          type="button"
-          onClick={onOpenHeldInvoices}
-          disabled={!isOnline}
-        >
-          {isArabic ? "الفواتير المعلقة" : "Held Invoices"}
-          {heldInvoicesCount > 0 ? ` (${heldInvoicesCount})` : ""}
-        </button>
-        <button
-          className="posActionBtn"
-          type="button"
-          onClick={onOpenInstantReturn}
-          disabled={!isOnline}
-        >
-          {isArabic ? "مرتجع سريع" : "Quick Return"}
-        </button>
-      </div>
-      <button
-        type="button"
-        className="completeBtn posCartCompleteBtn"
-        onClick={onCompleteSale}
-        disabled={isSelling || saleBlocked || cart.length === 0}
-      >
-        {subscriptionBlocksSale
-          ? isArabic
-            ? "الاشتراك منتهي"
-            : "Subscription Expired"
-          : shiftSaleBlocked
-            ? isArabic
-              ? "افتح وردية أولاً"
-              : "Open shift first"
-            : isSelling
-              ? isArabic
-                ? "جاري تسجيل البيع..."
-                : "Completing sale..."
-              : t.completeSale}
-      </button>
-    </div>
+    <PosCartCheckout
+      cartLength={cart.length}
+      subtotal={subtotal}
+      total={total}
+      discount={discount}
+      paymentMethod={paymentMethod}
+      customerName={customerName}
+      customerPhone={customerPhone}
+      isArabic={isArabic}
+      t={t}
+      currency={currency}
+      isSelling={isSelling}
+      isSubscriptionExpired={isSubscriptionExpired}
+      saleBlocked={saleBlocked}
+      subscriptionBlocksSale={subscriptionBlocksSale}
+      shiftSaleBlocked={shiftSaleBlocked}
+      onDiscountChange={onDiscountChange}
+      onPaymentMethodChange={onPaymentMethodChange}
+      onCustomerNameChange={onCustomerNameChange}
+      onCustomerPhoneChange={onCustomerPhoneChange}
+      onCompleteSale={onCompleteSale}
+      getPaymentLabel={getPaymentLabel}
+      heldInvoicesCount={heldInvoicesCount}
+      isHolding={isHolding}
+      onHoldInvoice={onHoldInvoice}
+      onOpenHeldInvoices={onOpenHeldInvoices}
+      onOpenInstantReturn={onOpenInstantReturn}
+      isOnline={isOnline}
+      paymentOptions={paymentOptions}
+      paymentOptionValue={paymentOptionValue}
+      onPaymentOptionChange={onPaymentOptionChange}
+    />
   );
 
   if (splitLayout) {

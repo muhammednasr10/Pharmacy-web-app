@@ -3,7 +3,9 @@ import type { Medicine } from "../../types";
 import { toCamelCase, toSnakeCase } from "./mappers";
 import {
   countOpenPurchaseRequests,
+  isPurchaseRequestsTableMissingError,
   listLocalPurchaseRequests,
+  normalizePurchaseRequestItem,
   removeLocalPurchaseRequest,
   updateLocalPurchaseRequest,
   upsertLocalPurchaseRequest,
@@ -13,39 +15,8 @@ import {
 import { suggestReorderQty } from "../../utils/reorderSuggestions";
 import type { ReorderPurchaseDraft } from "../../utils/reorderSuggestions";
 
-function isMissingTableError(message: string) {
-  const lower = message.toLowerCase();
-  return (
-    lower.includes("pharmacy_purchase_requests") &&
-    (lower.includes("does not exist") ||
-      lower.includes("schema cache") ||
-      lower.includes("could not find"))
-  );
-}
-
-function normalizeRow(row: PurchaseRequestItem): PurchaseRequestItem {
-  return {
-    ...row,
-    id: String(row.id),
-    pharmacyId: String(row.pharmacyId || ""),
-    medicineId: Number(row.medicineId) || 0,
-    barcode: String(row.barcode || ""),
-    name_ar: String(row.name_ar || ""),
-    name_en: String(row.name_en || ""),
-    currentQty: Number(row.currentQty) || 0,
-    requestedQty: Math.max(1, Number(row.requestedQty) || 1),
-    requestCount: Math.max(1, Number(row.requestCount) || 1),
-    buyPrice: Number(row.buyPrice) || 0,
-    sellPrice: Number(row.sellPrice) || 0,
-    expiry: String(row.expiry || ""),
-    note: String(row.note || ""),
-    status: (["open", "ordered", "done", "cancelled"].includes(String(row.status))
-      ? row.status
-      : "open") as PurchaseRequestStatus,
-    createdAt: String(row.createdAt || new Date().toISOString()),
-    updatedAt: String(row.updatedAt || row.createdAt || new Date().toISOString()),
-    createdByName: row.createdByName ? String(row.createdByName) : undefined,
-  };
+function mapRow(row: Record<string, unknown>): PurchaseRequestItem {
+  return normalizePurchaseRequestItem(toCamelCase<PurchaseRequestItem>(row));
 }
 
 export async function listPurchaseRequests(
@@ -67,15 +38,13 @@ export async function listPurchaseRequests(
 
   const { data, error } = await query;
   if (error) {
-    if (isMissingTableError(error.message)) {
+    if (isPurchaseRequestsTableMissingError(error.message)) {
       return listLocalPurchaseRequests(pharmacyId, status);
     }
     throw new Error(error.message);
   }
 
-  return (data || []).map((row) =>
-    normalizeRow(toCamelCase<PurchaseRequestItem>(row as Record<string, unknown>)),
-  );
+  return (data || []).map((row) => mapRow(row as Record<string, unknown>));
 }
 
 export async function countPurchaseRequests(pharmacyId: string): Promise<number> {
@@ -87,7 +56,7 @@ export async function countPurchaseRequests(pharmacyId: string): Promise<number>
     .eq("status", "open");
 
   if (error) {
-    if (isMissingTableError(error.message)) {
+    if (isPurchaseRequestsTableMissingError(error.message)) {
       return countOpenPurchaseRequests(pharmacyId);
     }
     throw new Error(error.message);
@@ -118,7 +87,6 @@ export async function addMedicineToPurchaseRequests(params: {
     params.lowStockThreshold ?? 10,
   );
 
-  // Prefer updating an existing open row for the same medicine/barcode.
   const { data: existingRows, error: existingError } = await supabase
     .from("pharmacy_purchase_requests")
     .select("*")
@@ -135,12 +103,11 @@ export async function addMedicineToPurchaseRequests(params: {
     .limit(1);
 
   if (existingError) {
-    if (isMissingTableError(existingError.message)) return local;
-    // Fall through to insert attempt with local already saved.
+    if (isPurchaseRequestsTableMissingError(existingError.message)) return local;
   }
 
   const existing = existingRows?.[0]
-    ? normalizeRow(toCamelCase<PurchaseRequestItem>(existingRows[0] as Record<string, unknown>))
+    ? mapRow(existingRows[0] as Record<string, unknown>)
     : null;
 
   if (existing) {
@@ -162,12 +129,10 @@ export async function addMedicineToPurchaseRequests(params: {
       .select("*")
       .maybeSingle();
     if (error) {
-      if (isMissingTableError(error.message)) return local;
+      if (isPurchaseRequestsTableMissingError(error.message)) return local;
       throw new Error(error.message);
     }
-    return data
-      ? normalizeRow(toCamelCase<PurchaseRequestItem>(data as Record<string, unknown>))
-      : local;
+    return data ? mapRow(data as Record<string, unknown>) : local;
   }
 
   const insertPayload = toSnakeCase({
@@ -198,13 +163,11 @@ export async function addMedicineToPurchaseRequests(params: {
     .maybeSingle();
 
   if (error) {
-    if (isMissingTableError(error.message)) return local;
+    if (isPurchaseRequestsTableMissingError(error.message)) return local;
     throw new Error(error.message);
   }
 
-  return data
-    ? normalizeRow(toCamelCase<PurchaseRequestItem>(data as Record<string, unknown>))
-    : local;
+  return data ? mapRow(data as Record<string, unknown>) : local;
 }
 
 export async function updatePurchaseRequest(
@@ -226,7 +189,7 @@ export async function updatePurchaseRequest(
     .eq("id", id)
     .eq("pharmacy_id", pharmacyId);
 
-  if (error && !isMissingTableError(error.message)) {
+  if (error && !isPurchaseRequestsTableMissingError(error.message)) {
     throw new Error(error.message);
   }
 }
@@ -239,7 +202,7 @@ export async function deletePurchaseRequest(pharmacyId: string, id: string): Pro
     .eq("id", id)
     .eq("pharmacy_id", pharmacyId);
 
-  if (error && !isMissingTableError(error.message)) {
+  if (error && !isPurchaseRequestsTableMissingError(error.message)) {
     throw new Error(error.message);
   }
 }
