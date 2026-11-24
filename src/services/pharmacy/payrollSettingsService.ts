@@ -3,10 +3,13 @@ import type { AppUser, PharmacySettings, PharmacyShift, ShiftId, WorkBreak } fro
 import {
   WORK_SCHEDULE_DEFAULTS,
   DEFAULT_PHARMACY_SHIFTS,
+  DEFAULT_REST_WEEKDAYS,
   clonePharmacyShifts,
   inferShiftIdFromTime,
+  normalizeRestWeekdays,
   normalizeTimeValue,
   parsePharmacyShifts,
+  parseRestWeekdays,
   parseWorkBreaks,
   resolveWorkSchedule,
   type WorkSchedule,
@@ -31,6 +34,7 @@ export const PAYROLL_DEFAULTS = {
   workBreaks: [] as WorkBreak[],
   workShifts: clonePharmacyShifts(DEFAULT_PHARMACY_SHIFTS),
   defaultShiftId: "A" as ShiftId,
+  restWeekdays: [...DEFAULT_REST_WEEKDAYS],
 } as const;
 
 export type PayrollSettingsValues = {
@@ -47,6 +51,7 @@ export type PayrollSettingsValues = {
   workBreaks: WorkBreak[];
   workShifts: PharmacyShift[];
   defaultShiftId: ShiftId;
+  restWeekdays: number[];
 };
 
 export function resolvePharmacyWorkSchedule(
@@ -95,6 +100,7 @@ export function resolvePayrollSettings(
   const workSchedule = resolvePharmacyWorkSchedule(settings);
   const workShifts = resolvePharmacyShifts(settings);
   const defaultShiftId = (settings?.defaultShiftId as ShiftId) || PAYROLL_DEFAULTS.defaultShiftId;
+  const restWeekdays = parseRestWeekdays(settings?.restWeekdays);
 
   if (
     payDay == null &&
@@ -108,12 +114,14 @@ export function resolvePayrollSettings(
     settings?.payrollWorkDayStart == null &&
     settings?.payrollWorkDayEnd == null &&
     settings?.payrollWorkBreaks == null &&
-    settings?.workShifts == null
+    settings?.workShifts == null &&
+    settings?.restWeekdays == null
   ) {
     return {
       ...PAYROLL_DEFAULTS,
       workBreaks: [...PAYROLL_DEFAULTS.workBreaks],
       workShifts: clonePharmacyShifts(PAYROLL_DEFAULTS.workShifts),
+      restWeekdays: [...PAYROLL_DEFAULTS.restWeekdays],
     };
   }
 
@@ -122,6 +130,7 @@ export function resolvePayrollSettings(
       ...PAYROLL_DEFAULTS,
       workBreaks: [...PAYROLL_DEFAULTS.workBreaks],
       workShifts: clonePharmacyShifts(PAYROLL_DEFAULTS.workShifts),
+      restWeekdays: [...PAYROLL_DEFAULTS.restWeekdays],
     };
   }
 
@@ -148,6 +157,7 @@ export function resolvePayrollSettings(
     workBreaks: workSchedule.breaks.map((item) => ({ ...item })),
     workShifts: clonePharmacyShifts(workShifts),
     defaultShiftId,
+    restWeekdays: normalizeRestWeekdays(restWeekdays),
   };
 }
 
@@ -170,6 +180,7 @@ export async function loadPayrollSettings(pharmacyId: string): Promise<PayrollSe
       settings.payrollWorkBreaks == null ||
       settings.workShifts == null ||
       settings.defaultShiftId == null ||
+      settings.restWeekdays == null ||
       isLegacyPayrollDefaults(settings));
 
   if (shouldPersist) {
@@ -189,6 +200,7 @@ export async function loadPayrollSettings(pharmacyId: string): Promise<PayrollSe
         payrollWorkBreaks: shiftA.breaks,
         workShifts: resolved.workShifts,
         defaultShiftId: resolved.defaultShiftId,
+        restWeekdays: resolved.restWeekdays,
       });
     } catch (error) {
       console.error("loadPayrollSettings persist error:", error);

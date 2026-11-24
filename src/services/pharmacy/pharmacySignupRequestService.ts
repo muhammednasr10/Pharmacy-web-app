@@ -100,3 +100,25 @@ export async function rejectPharmacySignupRequest(
     throw new Error(error.message);
   }
 }
+
+/** Mark signup reviewed without changing trial limits (pharmacy already provisioned). */
+export async function markPharmacySignupRequestReviewed(
+  requestId: string,
+  status: "approved" | "rejected" = "approved",
+  reviewNote?: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("pharmacy_signup_requests")
+    .update({
+      status,
+      review_note: reviewNote || null,
+      reviewed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", requestId)
+    .eq("status", "pending");
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}

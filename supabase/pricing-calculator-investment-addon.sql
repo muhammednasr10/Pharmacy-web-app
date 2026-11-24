@@ -1,0 +1,288 @@
+-- Investment add-on for pricing calculator (same model as staff/customers).
+
+alter table public.pricing_calculator_config
+  add column if not exists investment_addon_enabled boolean not null default true;
+alter table public.pricing_calculator_config
+  add column if not exists investment_addon_price numeric not null default 100;
+alter table public.pricing_calculator_config
+  add column if not exists investment_addon_title_ar text not null default 'الاستثمار';
+alter table public.pricing_calculator_config
+  add column if not exists investment_addon_title_en text not null default 'Investment';
+alter table public.pricing_calculator_config
+  add column if not exists investment_addon_desc_ar text not null default 'خطة الاستثمار والتكاليف التشغيلية ومتابعة العائد داخل الصيدلية';
+alter table public.pricing_calculator_config
+  add column if not exists investment_addon_desc_en text not null default 'Investment plan, operating costs, and return tracking inside the pharmacy';
+
+alter table public.pharmacy_signup_requests
+  add column if not exists quoted_investment_addon boolean not null default false;
+
+update public.pricing_calculator_config
+set
+  investment_addon_enabled = coalesce(investment_addon_enabled, true),
+  investment_addon_price = coalesce(investment_addon_price, 100),
+  investment_addon_title_ar = coalesce(nullif(investment_addon_title_ar, ''), 'الاستثمار'),
+  investment_addon_title_en = coalesce(nullif(investment_addon_title_en, ''), 'Investment'),
+  investment_addon_desc_ar = coalesce(
+    nullif(investment_addon_desc_ar, ''),
+    'خطة الاستثمار والتكاليف التشغيلية ومتابعة العائد داخل الصيدلية'
+  ),
+  investment_addon_desc_en = coalesce(
+    nullif(investment_addon_desc_en, ''),
+    'Investment plan, operating costs, and return tracking inside the pharmacy'
+  )
+where id = 'default';
+
+-- Replace register RPC with investment add-on support.
+drop function if exists public.register_trial_app_user(text, text, text, text, text, text, integer, integer, boolean);
+drop function if exists public.register_trial_app_user(text, text, text, text, text, text, integer, integer, boolean, boolean);
+drop function if exists public.register_trial_app_user(text, text, text, text, text, text, integer, integer, boolean, boolean, boolean);
+
+create or replace function public.register_trial_app_user(
+  p_email text,
+  p_password text,
+  p_name text,
+  p_pharmacy_name text,
+  p_phone text default '',
+  p_address text default '',
+  p_branches integer default 1,
+  p_users integer default 1,
+  p_staff_addon boolean default false,
+  p_customers_addon boolean default false,
+  p_investment_addon boolean default false
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_email text := lower(trim(p_email));
+  v_name text := trim(p_name);
+  v_pharmacy_name text := trim(p_pharmacy_name);
+  v_phone text := trim(coalesce(p_phone, ''));
+  v_address text := trim(coalesce(p_address, ''));
+  v_uid text := gen_random_uuid()::text;
+  v_request_id uuid := gen_random_uuid();
+  v_request_number text;
+  v_trial jsonb;
+  v_branches integer := greatest(1, least(coalesce(p_branches, 1), 50));
+  v_users integer := greatest(1, least(coalesce(p_users, 1), 200));
+  v_staff boolean := coalesce(p_staff_addon, false);
+  v_customers boolean := coalesce(p_customers_addon, false);
+  v_investment boolean := coalesce(p_investment_addon, false);
+  v_cfg public.pricing_calculator_config%rowtype;
+  v_monthly numeric := 0;
+  v_snapshot jsonb;
+  v_pharmacy_id text;
+  v_org_id text;
+begin
+  if v_email = '' or position('@' in v_email) = 0 then
+    raise exception 'email_address_invalid_format';
+  end if;
+
+  if right(v_email, length('@victory.com')) <> '@victory.com' then
+    raise exception 'email_domain_rejected';
+  end if;
+
+  if length(coalesce(p_password, '')) < 6 then
+    raise exception 'password_too_short';
+  end if;
+
+  if char_length(v_name) < 2 then
+    raise exception 'name_required';
+  end if;
+
+  if char_length(v_pharmacy_name) < 2 then
+    raise exception 'pharmacy_name_required';
+  end if;
+
+  if char_length(v_phone) < 8 then
+    raise exception 'phone_required';
+  end if;
+
+  if char_length(v_address) < 3 then
+    raise exception 'address_required';
+  end if;
+
+  if exists (select 1 from public.users where lower(email) = v_email) then
+    raise exception 'email_already_registered';
+  end if;
+
+  if exists (
+    select 1
+    from public.pharmacy_signup_requests
+    where lower(email) = v_email
+      and status = 'pending'
+  ) then
+    raise exception 'signup_request_already_pending';
+  end if;
+
+  select * into v_cfg
+  from public.pricing_calculator_config
+  where id = 'default';
+
+  if not found then
+    v_monthly :=
+      (v_branches * 200)
+      + (v_users * 50)
+      + (case when v_staff then 150 else 0 end)
+      + (case when v_customers then 100 else 0 end)
+      + (case when v_investment then 100 else 0 end);
+    v_snapshot := jsonb_build_object(
+      'price_per_branch', 200,
+      'price_per_user', 50,
+      'staff_addon_price', 150,
+      'customers_addon_price', 100,
+      'investment_addon_price', 100,
+      'branches', v_branches,
+      'users', v_users,
+      'staff_addon', v_staff,
+      'customers_addon', v_customers,
+      'investment_addon', v_investment,
+      'monthly_price', v_monthly
+    );
+  else
+    if not coalesce(v_cfg.staff_addon_enabled, true) then
+      v_staff := false;
+    end if;
+    if not coalesce(v_cfg.customers_addon_enabled, true) then
+      v_customers := false;
+    end if;
+    if not coalesce(v_cfg.investment_addon_enabled, true) then
+      v_investment := false;
+    end if;
+    v_monthly :=
+      (v_branches * coalesce(v_cfg.price_per_branch, 0))
+      + (v_users * coalesce(v_cfg.price_per_user, 0))
+      + (case when v_staff then coalesce(v_cfg.staff_addon_price, 0) else 0 end)
+      + (case when v_customers then coalesce(v_cfg.customers_addon_price, 0) else 0 end)
+      + (case when v_investment then coalesce(v_cfg.investment_addon_price, 0) else 0 end);
+    v_snapshot := jsonb_build_object(
+      'price_per_branch', v_cfg.price_per_branch,
+      'price_per_user', v_cfg.price_per_user,
+      'staff_addon_price', v_cfg.staff_addon_price,
+      'staff_addon_title_ar', v_cfg.staff_addon_title_ar,
+      'staff_addon_title_en', v_cfg.staff_addon_title_en,
+      'customers_addon_price', v_cfg.customers_addon_price,
+      'customers_addon_title_ar', v_cfg.customers_addon_title_ar,
+      'customers_addon_title_en', v_cfg.customers_addon_title_en,
+      'investment_addon_price', v_cfg.investment_addon_price,
+      'investment_addon_title_ar', v_cfg.investment_addon_title_ar,
+      'investment_addon_title_en', v_cfg.investment_addon_title_en,
+      'branches', v_branches,
+      'users', v_users,
+      'staff_addon', v_staff,
+      'customers_addon', v_customers,
+      'investment_addon', v_investment,
+      'monthly_price', v_monthly
+    );
+  end if;
+
+  v_trial := public.provision_trial_tenant_only(v_pharmacy_name);
+  v_pharmacy_id := v_trial->>'pharmacy_id';
+  v_org_id := v_trial->>'organization_id';
+
+  update public.pharmacies
+  set
+    phone = coalesce(nullif(v_phone, ''), phone),
+    address = coalesce(nullif(v_address, ''), address),
+    max_branches = v_branches,
+    max_users = v_users,
+    subscription_tier = 'professional'
+  where id = v_pharmacy_id;
+
+  begin
+    update public.organizations
+    set
+      max_branches = v_branches,
+      max_users = v_users,
+      subscription_tier = 'professional'
+    where id = v_org_id;
+  exception
+    when undefined_column then
+      update public.organizations
+      set
+        max_branches = v_branches,
+        subscription_tier = 'professional'
+      where id = v_org_id;
+  end;
+
+  insert into public.users (
+    uid, name, email, role, pharmacy_id, is_active, password_hash
+  )
+  values (
+    v_uid,
+    v_name,
+    v_email,
+    'pharmacy_admin',
+    v_pharmacy_id,
+    true,
+    public.hash_app_password(p_password)
+  );
+
+  v_request_number := 'SIG-' || to_char(now(), 'YYMMDD') || '-' || upper(substr(replace(v_request_id::text, '-', ''), 1, 6));
+
+  insert into public.pharmacy_signup_requests (
+    id,
+    request_number,
+    pharmacy_name,
+    admin_name,
+    email,
+    password_hash,
+    phone,
+    address,
+    status,
+    pharmacy_id,
+    quoted_branches,
+    quoted_users,
+    quoted_staff_addon,
+    quoted_customers_addon,
+    quoted_investment_addon,
+    quoted_monthly_price,
+    quote_snapshot
+  ) values (
+    v_request_id,
+    v_request_number,
+    v_pharmacy_name,
+    v_name,
+    v_email,
+    public.hash_app_password(p_password),
+    v_phone,
+    v_address,
+    'pending',
+    v_pharmacy_id,
+    v_branches,
+    v_users,
+    v_staff,
+    v_customers,
+    v_investment,
+    v_monthly,
+    v_snapshot
+  );
+
+  return jsonb_build_object(
+    'uid', v_uid,
+    'pharmacy_id', v_pharmacy_id,
+    'organization_id', v_org_id,
+    'subscription_end_date', v_trial->>'subscription_end_date',
+    'trial_days', v_trial->>'trial_days',
+    'pending_approval', false,
+    'awaiting_review', true,
+    'can_sign_in', true,
+    'request_id', v_request_id,
+    'request_number', v_request_number,
+    'quoted_branches', v_branches,
+    'quoted_users', v_users,
+    'quoted_staff_addon', v_staff,
+    'quoted_customers_addon', v_customers,
+    'quoted_investment_addon', v_investment,
+    'quoted_monthly_price', v_monthly
+  );
+end;
+$$;
+
+revoke all on function public.register_trial_app_user(text, text, text, text, text, text, integer, integer, boolean, boolean, boolean) from public;
+grant execute on function public.register_trial_app_user(text, text, text, text, text, text, integer, integer, boolean, boolean, boolean)
+  to anon, authenticated;
+
+notify pgrst, 'reload schema';

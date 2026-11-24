@@ -8,11 +8,11 @@ const branchManagerPages: Page[] = [
   "invoices",
   "returns",
   "purchases",
-  "costs",
   "customers",
   "reports",
   "stockMovements",
   "users",
+  "costs",
   "settings",
 ];
 
@@ -25,11 +25,11 @@ const builtinDefaultPages: Record<BuiltinUserRole, Page[]> = {
     "invoices",
     "returns",
     "purchases",
-    "costs",
     "customers",
     "reports",
     "stockMovements",
     "users",
+    "costs",
     "settings",
     "tenants",
   ],
@@ -43,10 +43,10 @@ const builtinDefaultPages: Record<BuiltinUserRole, Page[]> = {
     "invoices",
     "returns",
     "customers",
-    "costs",
     "reports",
     "stockMovements",
     "users",
+    "costs",
   ],
 };
 
@@ -81,11 +81,11 @@ export const ROLE_PAGE_OPTIONS: RolePageOption[] = [
   { page: "invoices", labelAr: "المبيعات", labelEn: "Sales" },
   { page: "returns", labelAr: "المرتجعات", labelEn: "Returns" },
   { page: "purchases", labelAr: "المشتريات", labelEn: "Purchases" },
-  { page: "costs", labelAr: "استثمارى", labelEn: "Investment" },
   { page: "customers", labelAr: "العملاء", labelEn: "Customers" },
   { page: "reports", labelAr: "التقارير", labelEn: "Reports" },
   { page: "stockMovements", labelAr: "حركات المخزون", labelEn: "Stock movements" },
   { page: "users", labelAr: "الموظفين", labelEn: "Staff" },
+  { page: "costs", labelAr: "الاستثمار", labelEn: "Investment" },
   { page: "settings", labelAr: "الإعدادات", labelEn: "Settings" },
 ];
 

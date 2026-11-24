@@ -112,7 +112,7 @@ export function usePharmacySettings({
     [isArabic],
   );
 
-  const savePharmacySettings = useCallback(async () => {
+  const savePharmacySettings = useCallback(async (options?: { silent?: boolean }) => {
     if (!canEditOrgWideSettings(appUser) && !isBranchManager(appUser)) {
       alert(
         isArabic
@@ -212,7 +212,9 @@ export function usePharmacySettings({
       referenceId: getPharmacyId(),
     });
 
-    alert(isArabic ? "تم حفظ الإعدادات" : "Settings saved");
+    if (!options?.silent) {
+      alert(isArabic ? "تم حفظ الإعدادات" : "Settings saved");
+    }
   }, [addActivityLog, appUser, getPharmacyId, isArabic, setPharmacySettings, settingsForm]);
 
   const handleRequestExpiryNotificationPermission = useCallback(async () => {

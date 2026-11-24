@@ -3,8 +3,8 @@ import type { Dispatch, SetStateAction } from "react";
 import type { ActivityLog, AppUser, SubscriptionRequest } from "../types";
 import DeveloperCredit from "../components/DeveloperCredit";
 import CustomerSupportPanel from "../components/CustomerSupportPanel";
-import PayrollSettingsPanel from "../components/PayrollSettingsPanel";
 import EmployeeSettingsPanel from "../components/EmployeeSettingsPanel";
+import WorkHoursSettingsPanel from "../components/WorkHoursSettingsPanel";
 import SubscriptionSettingsPanel from "../components/settings/SubscriptionSettingsPanel";
 import { type SubscriptionTier } from "../config/subscriptionTiers";
 import DisplayPreferencesPanel from "../components/DisplayPreferencesPanel";
@@ -14,13 +14,23 @@ import type { FontScale, ThemeMode } from "../utils/displayPreferences";
 export type SettingsTab =
   | "pharmacy"
   | "invoice"
-  | "inventory"
+  | "store"
   | "employees"
+  /** @deprecated Use "store" — kept for deep-link compatibility */
+  | "inventory"
+  /** @deprecated Use "employees" — kept for deep-link compatibility */
   | "payroll"
+  | "workHours"
   | "subscription"
   | "display"
   | "support"
   | "health";
+
+function normalizeSettingsTab(tab: SettingsTab): SettingsTab {
+  if (tab === "inventory") return "store";
+  if (tab === "payroll") return "employees";
+  return tab;
+}
 
 export type SettingsForm = {
   name: string;
@@ -59,6 +69,8 @@ type SettingsPageProps = {
   maxBranches?: number;
   maxUsers?: number;
   staffAddonEnabled?: boolean;
+  customersAddonEnabled?: boolean;
+  investmentAddonEnabled?: boolean;
   submitSubscriptionRequest: (input: {
     plan: string;
     days: number;
@@ -100,6 +112,8 @@ export default function SettingsPage({
   maxBranches = 1,
   maxUsers = 1,
   staffAddonEnabled = false,
+  customersAddonEnabled = false,
+  investmentAddonEnabled = false,
   submitSubscriptionRequest,
   submitTierUpgradeRequest,
   pharmacySubscriptionRequests,
@@ -121,19 +135,21 @@ export default function SettingsPage({
 }: SettingsPageProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>("pharmacy");
   const isOrgAdmin = hasRole(["pharmacy_admin", "super_admin"]);
+  const isStoreSettingsTab = activeTab === "store";
+  const isEmployeeSettingsTab = activeTab === "employees";
 
   useEffect(() => {
     if (initialTab) {
-      setActiveTab(initialTab);
+      setActiveTab(normalizeSettingsTab(initialTab));
     }
   }, [initialTab]);
 
   const allTabs: { id: SettingsTab; ar: string; en: string }[] = [
     { id: "pharmacy", ar: "بيانات الصيدلية", en: "Pharmacy" },
     { id: "invoice", ar: "بيانات الفاتورة", en: "Invoice" },
-    { id: "inventory", ar: "انتهاء المخزون", en: "Inventory Alerts" },
+    { id: "store", ar: "إعدادات المخزن", en: "Store Settings" },
     { id: "employees", ar: "إعدادات الموظفين", en: "Employee Settings" },
-    { id: "payroll", ar: "إعدادات المرتبات", en: "Payroll" },
+    { id: "workHours", ar: "مواعيد العمل", en: "Work Hours" },
     { id: "subscription", ar: "الاشتراك والترخيص", en: "Subscription" },
     { id: "display", ar: "المظهر والخط", en: "Display" },
     { id: "health", ar: "صحة النظام", en: "System Health" },
@@ -256,7 +272,7 @@ export default function SettingsPage({
           </div>
 
           <div className="settingsFieldsGrid">
-            <div className="settingsField">
+            <div className="settingsField settingsField--lg">
               <label>{isArabic ? "اسم الصيدلية" : "Pharmacy Name"}</label>
               <input
                 value={settingsForm.name}
@@ -265,7 +281,7 @@ export default function SettingsPage({
               />
             </div>
 
-            <div className="settingsField">
+            <div className="settingsField settingsField--lg">
               <label>{isArabic ? "اسم الصيدلية بالإنجليزي" : "English Name"}</label>
               <input
                 value={settingsForm.name_en}
@@ -274,16 +290,17 @@ export default function SettingsPage({
               />
             </div>
 
-            <div className="settingsField">
+            <div className="settingsField settingsField--md">
               <label>{isArabic ? "رقم الهاتف" : "Phone"}</label>
               <input
+                type="tel"
                 value={settingsForm.phone}
                 onChange={(e) => setSettingsForm({ ...settingsForm, phone: e.target.value })}
                 placeholder={isArabic ? "رقم الهاتف" : "Phone"}
               />
             </div>
 
-            <div className="settingsField">
+            <div className="settingsField settingsField--lg">
               <label>{isArabic ? "العنوان" : "Address"}</label>
               <input
                 value={settingsForm.address}
@@ -292,7 +309,7 @@ export default function SettingsPage({
               />
             </div>
 
-            <div className="settingsField">
+            <div className="settingsField settingsField--xs">
               <label>{isArabic ? "العملة" : "Currency"}</label>
               <input
                 value={settingsForm.currency}
@@ -338,7 +355,7 @@ export default function SettingsPage({
         </div>
       )}
 
-      {activeTab === "inventory" && (
+      {isStoreSettingsTab && (
         <div className="settingsForm settingsTabPanel">
           <div className="settingsSectionTitle">
             <h3>{isArabic ? "تنبيهات انتهاء المخزون" : "Inventory Alert Rules"}</h3>
@@ -351,7 +368,7 @@ export default function SettingsPage({
 
           {isOrgAdmin ? (
             <div className="settingsFieldsGrid">
-              <div className="settingsField">
+              <div className="settingsField settingsField--sm">
                 <label>{isArabic ? "حد الكمية الناقصة" : "Low Stock Threshold"}</label>
                 <input
                   type="number"
@@ -372,7 +389,7 @@ export default function SettingsPage({
                 </p>
               </div>
 
-              <div className="settingsField">
+              <div className="settingsField settingsField--sm">
                 <label>{isArabic ? "أيام قرب انتهاء الصلاحية" : "Expiring Soon (Days)"}</label>
                 <input
                   type="number"
@@ -404,7 +421,7 @@ export default function SettingsPage({
                 </div>
               </div>
 
-              <div className="settingsField">
+              <div className="settingsField settingsFieldFull">
                 <label className="settingsCheckboxLabel">
                   <input
                     type="checkbox"
@@ -425,12 +442,12 @@ export default function SettingsPage({
                 </p>
               </div>
 
-              <div className="settingsField">
+              <div className="settingsField settingsField--md">
                 <label>
                   {isArabic ? "واتساب للتنبيهات (اختياري)" : "WhatsApp number (optional)"}
                 </label>
                 <input
-                  type="text"
+                  type="tel"
                   value={settingsForm.expiryNotifyPhone}
                   onChange={(e) =>
                     setSettingsForm({ ...settingsForm, expiryNotifyPhone: e.target.value })
@@ -443,7 +460,7 @@ export default function SettingsPage({
                 />
               </div>
 
-              <div className="settingsField">
+              <div className="settingsField settingsField--md">
                 <label>{isArabic ? "بريد للتنبيهات (اختياري)" : "Alert email (optional)"}</label>
                 <input
                   type="email"
@@ -506,7 +523,7 @@ export default function SettingsPage({
         </div>
       )}
 
-      {activeTab === "employees" && (
+      {isEmployeeSettingsTab && (
         <EmployeeSettingsPanel
           isArabic={isArabic}
           pharmacyId={pharmacyId}
@@ -518,8 +535,12 @@ export default function SettingsPage({
         />
       )}
 
-      {activeTab === "payroll" && (
-        <PayrollSettingsPanel isArabic={isArabic} pharmacyId={pharmacyId} canEdit={isOrgAdmin} />
+      {activeTab === "workHours" && (
+        <WorkHoursSettingsPanel
+          isArabic={isArabic}
+          pharmacyId={pharmacyId}
+          canEdit={isOrgAdmin}
+        />
       )}
 
       {activeTab === "subscription" && (
@@ -540,6 +561,8 @@ export default function SettingsPage({
           maxBranches={maxBranches}
           maxUsers={maxUsers}
           staffAddonEnabled={staffAddonEnabled}
+          customersAddonEnabled={customersAddonEnabled}
+          investmentAddonEnabled={investmentAddonEnabled}
           submitSubscriptionRequest={submitSubscriptionRequest}
           submitTierUpgradeRequest={submitTierUpgradeRequest}
           pharmacySubscriptionRequests={pharmacySubscriptionRequests}

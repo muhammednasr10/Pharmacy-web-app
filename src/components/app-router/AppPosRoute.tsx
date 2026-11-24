@@ -8,6 +8,7 @@ export type AppPosRouteProps = Pick<
   | "t"
   | "isArabic"
   | "getPharmacyId"
+  | "allowedPages"
   | "canUsePOS"
   | "canManageInventory"
   | "canDeleteMedicine"
@@ -65,6 +66,7 @@ export default function AppPosRoute({
   t,
   isArabic,
   getPharmacyId,
+  allowedPages,
   canUsePOS,
   canManageInventory,
   canDeleteMedicine,
@@ -175,6 +177,7 @@ export default function AppPosRoute({
       pendingOfflineSalesCount={pendingOfflineSalesCount}
       offlineMedicinesCacheAt={offlineMedicinesCacheAt}
       isSyncingOfflineSales={isSyncingOfflineSales}
+      useInvestmentPaymentWallets={allowedPages.includes("costs")}
     />
   );
 }

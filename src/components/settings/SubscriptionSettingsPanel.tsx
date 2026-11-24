@@ -14,9 +14,12 @@ export default function SubscriptionSettingsPanel(props: SubscriptionSettingsPan
     t,
     settingsForm,
     getSubscriptionPlanLabel,
+    subscriptionTier = "basic",
     maxBranches = 1,
     maxUsers = 1,
     staffAddonEnabled = false,
+    customersAddonEnabled = false,
+    investmentAddonEnabled = false,
     pharmacySubscriptionRequests,
     subscriptionRenewLogs,
     subscriptionDaysLeft,
@@ -46,14 +49,21 @@ export default function SubscriptionSettingsPanel(props: SubscriptionSettingsPan
         <SubscriptionCalculatorRenewSection
           isArabic={isArabic}
           isOrgAdmin={isOrgAdmin}
+          subscriptionTier={subscriptionTier}
           maxBranches={maxBranches}
           maxUsers={maxUsers}
           staffAddon={staffAddonEnabled}
+          customersAddon={customersAddonEnabled}
+          investmentAddon={investmentAddonEnabled}
           pendingRenewal={state.pendingRenewal}
+          pendingLimitChange={state.pendingLimitChange}
           pendingRequest={state.pendingRequest}
           submittingRequest={state.submittingRequest}
           onSubmitRenewal={(billingView, amount) =>
             void state.handleSubmitRenewalRequest(billingView, amount)
+          }
+          onSubmitLimitChange={(change, amount) =>
+            void state.handleSubmitLimitChangeRequest(change, amount)
           }
           onShowPaymentInfo={state.setPaymentRequest}
         />

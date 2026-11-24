@@ -1,6 +1,9 @@
 import type { ActivityLog, SubscriptionRequest } from "../../../types";
-import { isTierUpgradePlan } from "../../../utils/subscriptionFeatures";
-import { getRequestStatusLabel, getRequestTypeLabel } from "./subscriptionSettingsHelpers";
+import {
+  getRequestDetailsLabel,
+  getRequestStatusLabel,
+  getRequestTypeLabel,
+} from "./subscriptionSettingsHelpers";
 
 type SubscriptionRequestsHistoryProps = {
   isArabic: boolean;
@@ -53,9 +56,13 @@ export default function SubscriptionRequestsHistory({
                     <td dir="ltr">{request.requestNumber}</td>
                     <td>{getRequestTypeLabel(isArabic, request.plan)}</td>
                     <td>
-                      {isTierUpgradePlan(request.plan)
-                        ? `${request.amount} ${request.currency || "EGP"}`
-                        : `${request.days} ${isArabic ? "يوم" : "days"} · ${request.amount} ${request.currency || "EGP"}`}
+                      {getRequestDetailsLabel(
+                        isArabic,
+                        request.plan,
+                        request.days,
+                        request.amount,
+                        request.currency || "EGP",
+                      )}
                     </td>
                     <td>
                       <span className={`subscriptionRequestBadge ${request.status}`}>

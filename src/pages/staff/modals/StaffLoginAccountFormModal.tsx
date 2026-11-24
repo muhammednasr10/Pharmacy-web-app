@@ -12,6 +12,7 @@ export default function StaffLoginAccountFormModal({ state }: Props) {
     catalogForm,
     setCatalogForm,
     canRequestLoginAccounts,
+    orgUserUsage,
     loginAccountRoleSelectOptions,
     onCatalogFormRoleChange,
     busy,
@@ -20,6 +21,12 @@ export default function StaffLoginAccountFormModal({ state }: Props) {
   } = state;
 
   if (!accountModal) return null;
+
+  const withinUserLimit = !orgUserUsage || orgUserUsage.canAdd;
+  const isLimitIncreaseRequest =
+    canRequestLoginAccounts && accountModal === "add" && !withinUserLimit;
+  const isDirectAdd =
+    accountModal === "add" && (!canRequestLoginAccounts || withinUserLimit);
 
   return (
     <div className="modalOverlay">
@@ -36,10 +43,10 @@ export default function StaffLoginAccountFormModal({ state }: Props) {
                   ? "طلب تغيير كلمة المرور"
                   : "Request password change"
                 : accountModal === "add"
-                  ? canRequestLoginAccounts
+                  ? isLimitIncreaseRequest
                     ? isArabic
-                      ? "طلب حساب دخول جديد"
-                      : "Request new login account"
+                      ? "طلب زيادة حد المستخدمين"
+                      : "Request user limit increase"
                     : isArabic
                       ? "إضافة حساب دخول"
                       : "Add login account"
@@ -134,11 +141,22 @@ export default function StaffLoginAccountFormModal({ state }: Props) {
               autoFocus={accountModal === "password-request"}
             />
           </div>
-          {canRequestLoginAccounts && accountModal === "add" && (
+          {isLimitIncreaseRequest && (
             <p className="catalogLinkToolbarHint">
               {isArabic
-                ? "سيُرسل الطلب لمالك النظام. بعد الاعتماد يُنشأ المستخدم في Supabase Auth."
-                : "The request goes to the system owner. After approval, the user is created in Supabase Auth."}
+                ? `وصلت للحد التعاقدي (${orgUserUsage?.used}/${orgUserUsage?.max}). سيُرسل الطلب لمالك النظام لزيادة الحد ثم إنشاء الحساب.`
+                : `Contracted limit reached (${orgUserUsage?.used}/${orgUserUsage?.max}). The request goes to the system owner to raise the limit and create the account.`}
+            </p>
+          )}
+          {isDirectAdd && canRequestLoginAccounts && (
+            <p className="catalogLinkToolbarHint">
+              {isArabic
+                ? orgUserUsage
+                  ? `ضمن الحد التعاقدي (${orgUserUsage.used}/${orgUserUsage.max}) — يُنشأ الحساب فوراً.`
+                  : "يُنشأ الحساب فوراً ضمن الحد التعاقدي."
+                : orgUserUsage
+                  ? `Within contracted limit (${orgUserUsage.used}/${orgUserUsage.max}) — account is created immediately.`
+                  : "Account is created immediately within the contracted limit."}
             </p>
           )}
         </div>
@@ -155,19 +173,19 @@ export default function StaffLoginAccountFormModal({ state }: Props) {
           >
             {busy === "save-catalog"
               ? isArabic
-                ? "جاري الإرسال..."
-                : "Sending..."
-              : accountModal === "password-request"
+                ? isDirectAdd
+                  ? "جاري الحفظ..."
+                  : "جاري الإرسال..."
+                : isDirectAdd
+                  ? "Saving..."
+                  : "Sending..."
+              : accountModal === "password-request" || isLimitIncreaseRequest
                 ? isArabic
                   ? "إرسال الطلب"
                   : "Send request"
-                : canRequestLoginAccounts && accountModal === "add"
-                  ? isArabic
-                    ? "إرسال الطلب"
-                    : "Send request"
-                  : isArabic
-                    ? "حفظ"
-                    : "Save"}
+                : isArabic
+                  ? "حفظ"
+                  : "Save"}
           </button>
           <button type="button" className="editBtn" onClick={() => setAccountModal(null)}>
             {isArabic ? "إلغاء" : "Cancel"}

@@ -137,8 +137,8 @@ export function useStaffPermissionsState({
       if (customRoleRequestMode) {
         alert(
           isArabic
-            ? `تم إرسال طلب دور «${created.nameAr}» — سيظهر لمالك النظام في «طلبات العملاء».`
-            : `Role request «${created.nameEn}» submitted — it will appear under Customer requests.`,
+            ? `تم إرسال طلب دور «${created.nameAr}» — سيظهر لمالك النظام في تبويب «أدوار» للاعتماد.`
+            : `Role request «${created.nameEn}» submitted — it will appear under the Roles tab for approval.`,
         );
         return;
       }

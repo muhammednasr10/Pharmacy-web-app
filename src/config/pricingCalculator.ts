@@ -17,6 +17,12 @@ export type PricingCalculatorConfig = {
   customersAddonTitleEn: string;
   customersAddonDescAr: string;
   customersAddonDescEn: string;
+  investmentAddonEnabled: boolean;
+  investmentAddonPrice: number;
+  investmentAddonTitleAr: string;
+  investmentAddonTitleEn: string;
+  investmentAddonDescAr: string;
+  investmentAddonDescEn: string;
 };
 
 export type PricingCalculatorQuote = {
@@ -24,6 +30,7 @@ export type PricingCalculatorQuote = {
   users: number;
   staffAddon: boolean;
   customersAddon: boolean;
+  investmentAddon: boolean;
   monthlyPrice: number;
   billingCycle: PricingBillingCycle;
 };
@@ -35,14 +42,20 @@ export const DEFAULT_PRICING_CALCULATOR_CONFIG: PricingCalculatorConfig = {
   staffAddonPrice: 150,
   staffAddonTitleAr: "الموظفين",
   staffAddonTitleEn: "Staff",
-  staffAddonDescAr: "إدارة الموظفين والحسابات والصلاحيات داخل الصيدلية",
-  staffAddonDescEn: "Manage staff accounts and permissions inside the pharmacy",
+  staffAddonDescAr: "إدارة الموظفين والصلاحيات + صفحة بروفايلى (نفس السعر)",
+  staffAddonDescEn: "Staff management and permissions + My Profile (same price)",
   customersAddonEnabled: true,
   customersAddonPrice: 100,
   customersAddonTitleAr: "العملاء",
   customersAddonTitleEn: "Customers",
   customersAddonDescAr: "دفتر العملاء والمديونية والتحصيل داخل الصيدلية",
   customersAddonDescEn: "Customer book, credit balances, and collections inside the pharmacy",
+  investmentAddonEnabled: true,
+  investmentAddonPrice: 100,
+  investmentAddonTitleAr: "الاستثمار",
+  investmentAddonTitleEn: "Investment",
+  investmentAddonDescAr: "خطة الاستثمار والتكاليف التشغيلية ومتابعة العائد داخل الصيدلية",
+  investmentAddonDescEn: "Investment plan, operating costs, and return tracking inside the pharmacy",
 };
 
 export const PRICING_QUOTE_STORAGE_KEY = "victory_pricing_quote_v1";
@@ -77,6 +90,7 @@ export function computePricingQuote(
     users: number;
     staffAddon: boolean;
     customersAddon?: boolean;
+    investmentAddon?: boolean;
     billingCycle?: PricingBillingCycle;
   },
 ): PricingCalculatorQuote {
@@ -84,17 +98,20 @@ export function computePricingQuote(
   const users = clampPricingCount(input.users, 1, 200);
   const staffAddon = Boolean(config.staffAddonEnabled && input.staffAddon);
   const customersAddon = Boolean(config.customersAddonEnabled && input.customersAddon);
+  const investmentAddon = Boolean(config.investmentAddonEnabled && input.investmentAddon);
   const monthlyPrice =
     branches * Math.max(0, config.pricePerBranch) +
     users * Math.max(0, config.pricePerUser) +
     (staffAddon ? Math.max(0, config.staffAddonPrice) : 0) +
-    (customersAddon ? Math.max(0, config.customersAddonPrice) : 0);
+    (customersAddon ? Math.max(0, config.customersAddonPrice) : 0) +
+    (investmentAddon ? Math.max(0, config.investmentAddonPrice) : 0);
 
   return {
     branches,
     users,
     staffAddon,
     customersAddon,
+    investmentAddon,
     monthlyPrice: Math.round(monthlyPrice),
     billingCycle: normalizePricingBillingCycle(input.billingCycle),
   };
@@ -119,6 +136,7 @@ export function loadPricingQuote(): PricingCalculatorQuote | null {
       users: clampPricingCount(Number(parsed.users) || 1, 1, 200),
       staffAddon: Boolean(parsed.staffAddon),
       customersAddon: Boolean(parsed.customersAddon),
+      investmentAddon: Boolean(parsed.investmentAddon),
       monthlyPrice: Math.max(0, Math.round(Number(parsed.monthlyPrice) || 0)),
       billingCycle: normalizePricingBillingCycle(parsed.billingCycle),
     };

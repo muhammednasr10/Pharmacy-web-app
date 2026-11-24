@@ -2386,6 +2386,50 @@ select optgroup {
   margin: 0 0 0.35rem;
 }
 
+.posPageTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.posPageTabBtn {
+  border: 1px solid #d0d5dd;
+  background: #fff;
+  color: #344054;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.posPageTabBtn:hover {
+  border-color: #98a2b3;
+}
+
+.posPageTabBtn.active {
+  border-color: #027a48;
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+html[data-theme="dark"] .posPageTabBtn {
+  background: #1f242b;
+  border-color: #3a424e;
+  color: #e5e7eb;
+}
+
+html[data-theme="dark"] .posPageTabBtn.active {
+  background: #12352a;
+  border-color: #12b76a;
+  color: #6ce9a6;
+}
+
+.posShiftsTabPanel {
+  min-height: 280px;
+}
+
 .posShiftWorkspace {
   display: flex;
   flex-direction: column;
@@ -2430,19 +2474,22 @@ select optgroup {
 .posQuickSaleOverlay {
   position: fixed;
   inset: 0;
-  z-index: 1200;
+  /* Above POS shift chrome, below sticky topbar/sidebar (1220+). */
+  z-index: 1210;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1rem;
   background: rgba(15, 23, 42, 0.45);
   backdrop-filter: blur(2px);
-  /* Let shift chrome (close/refresh) stay clickable under the dimmed layer. */
-  pointer-events: none;
+  /* Catch clicks so shift bar / shifts table cannot float through the modal. */
+  pointer-events: auto;
 }
 
 .posQuickSaleOverlay.is-fullscreen {
   padding: 0;
+  align-items: stretch;
+  justify-content: stretch;
   background: var(--surface, #fff);
   pointer-events: auto;
   /* Cover shell chrome only while fullscreen POS is intentional. */
@@ -2450,7 +2497,7 @@ select optgroup {
 }
 
 .posQuickSaleCard {
-  width: min(960px, 100%);
+  width: min(1100px, 100%);
   max-height: min(92vh, 100%);
   display: flex;
   flex-direction: column;
@@ -2461,32 +2508,29 @@ select optgroup {
   pointer-events: auto;
 }
 
-/* Keep cashier shift controls above the quick-sale overlay. */
 .posShiftWorkspace > .cashierShiftPanel,
 .posShiftWorkspace > .posShiftsTableSection {
   position: relative;
-  z-index: 1210;
+  z-index: 1;
 }
 
-/* While selling, the shifts table must not steal clicks from the sale card. */
+/* Dim and ignore underlying POS chrome while the sale card is open. */
+.posShiftWorkspace--quickSaleOpen > .cashierShiftPanel,
 .posShiftWorkspace--quickSaleOpen > .posShiftsTableSection {
   pointer-events: none;
+}
+
+.posShiftWorkspace--quickSaleOpen > .posShiftsTableSection {
   opacity: 0.55;
-}
-
-.posShiftWorkspace--quickSaleOpen > .cashierShiftPanel {
-  z-index: 1220;
-}
-
-.posShiftWorkspace--quickSaleOpen .posQuickSaleOverlay {
-  z-index: 1215;
 }
 
 .posQuickSaleCard:fullscreen,
 .posQuickSaleCard.is-css-fullscreen {
   width: 100%;
+  max-width: none;
   max-height: none;
   height: 100%;
+  min-height: 100dvh;
   border-radius: 0;
   border: 0;
   box-shadow: none;
@@ -2494,6 +2538,8 @@ select optgroup {
 
 .posQuickSaleOverlay.is-fullscreen .posQuickSaleCard.is-css-fullscreen {
   border-radius: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .posQuickSaleCardHeader {
@@ -2504,6 +2550,10 @@ select optgroup {
   padding: 0.85rem 1rem;
   border-bottom: 1px solid rgba(148, 163, 184, 0.25);
   background: linear-gradient(180deg, #f0fdf4 0%, #fff 100%);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  flex-shrink: 0;
 }
 
 .posQuickSaleCardTitles h3 {
@@ -2524,8 +2574,36 @@ select optgroup {
 .posQuickSaleCardActions {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  flex-wrap: wrap;
+  gap: 0.45rem;
   flex-shrink: 0;
+}
+
+.posQuickSaleActionBtn {
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 10px;
+  background: #fff;
+  color: #334155;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.posQuickSaleActionBtn:hover {
+  background: #f8fafc;
+  border-color: rgba(34, 197, 94, 0.45);
+}
+
+.posQuickSaleActionBtn--danger {
+  border-color: #fda29b;
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.posQuickSaleActionBtn--danger:hover {
+  background: #fee4e2;
 }
 
 .posQuickSaleIconBtn {
@@ -2796,7 +2874,7 @@ select optgroup {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  overflow: auto;
+  overflow: hidden;
   padding: 0.75rem;
   border: 1px solid rgba(148, 163, 184, 0.3);
   border-radius: 14px;
@@ -2834,9 +2912,72 @@ select optgroup {
   max-height: none;
 }
 
+.posQuickSaleCard:fullscreen .posCartSplitSide,
+.posQuickSaleCard.is-css-fullscreen .posCartSplitSide {
+  overflow: hidden;
+  padding: 0.55rem 0.65rem;
+}
+
+.posQuickSaleCard:fullscreen .posCartPanel--split .posCartCheckout,
+.posQuickSaleCard.is-css-fullscreen .posCartPanel--split .posCartCheckout {
+  gap: 0.4rem;
+  min-height: 0;
+}
+
+.posQuickSaleCard:fullscreen .posCartSplitSide .paymentBox,
+.posQuickSaleCard.is-css-fullscreen .posCartSplitSide .paymentBox {
+  gap: 0.35rem;
+}
+
+.posQuickSaleCard:fullscreen .posCartSplitSide .paymentBox label,
+.posQuickSaleCard.is-css-fullscreen .posCartSplitSide .paymentBox label {
+  font-size: 0.78rem;
+  margin-bottom: 0.15rem;
+}
+
+.posQuickSaleCard:fullscreen .posCartSplitSide .paymentBox input,
+.posQuickSaleCard:fullscreen .posCartSplitSide .paymentBox select,
+.posQuickSaleCard.is-css-fullscreen .posCartSplitSide .paymentBox input,
+.posQuickSaleCard.is-css-fullscreen .posCartSplitSide .paymentBox select {
+  padding: 0.4rem 0.55rem;
+  font-size: 0.88rem;
+}
+
+.posQuickSaleCard:fullscreen .posCartPanel--split .posCartSubtotal,
+.posQuickSaleCard.is-css-fullscreen .posCartPanel--split .posCartSubtotal {
+  padding: 0.45rem 0.65rem;
+  font-size: 0.85rem;
+}
+
+.posQuickSaleCard:fullscreen .posCartPanel--split .posCartTotal,
+.posQuickSaleCard.is-css-fullscreen .posCartPanel--split .posCartTotal {
+  margin-top: 0;
+  padding: 0.55rem 0.7rem;
+}
+
 .posQuickSaleCard:fullscreen .posCartPanel--split .posCartTotal strong,
 .posQuickSaleCard.is-css-fullscreen .posCartPanel--split .posCartTotal strong {
-  font-size: 1.65rem;
+  font-size: 1.35rem;
+}
+
+.posQuickSaleCard:fullscreen .posCartSplitSide .posActionRow,
+.posQuickSaleCard.is-css-fullscreen .posCartSplitSide .posActionRow {
+  gap: 0.35rem;
+  margin-top: 0;
+}
+
+.posQuickSaleCard:fullscreen .posCartSplitSide .posActionBtn,
+.posQuickSaleCard.is-css-fullscreen .posCartSplitSide .posActionBtn {
+  padding: 0.45rem 0.55rem;
+  font-size: 0.82rem;
+  min-width: 0;
+}
+
+.posQuickSaleCard:fullscreen .posCartPanel--split .posCartCompleteBtn,
+.posQuickSaleCard.is-css-fullscreen .posCartPanel--split .posCartCompleteBtn {
+  margin-top: 0;
+  padding: 0.7rem 0.85rem;
+  font-size: 0.95rem;
 }
 
 .posSearchScopeBar {
@@ -3146,10 +3287,17 @@ html[data-theme="dark"] .posQuickSaleCardTitles h3 {
   color: #86efac;
 }
 
-html[data-theme="dark"] .posQuickSaleIconBtn {
+html[data-theme="dark"] .posQuickSaleIconBtn,
+html[data-theme="dark"] .posQuickSaleActionBtn {
   background: rgba(15, 23, 42, 0.85);
   border-color: rgba(148, 163, 184, 0.35);
   color: #e2e8f0;
+}
+
+html[data-theme="dark"] .posQuickSaleActionBtn--danger {
+  background: rgba(127, 29, 29, 0.35);
+  border-color: rgba(248, 113, 113, 0.45);
+  color: #fecaca;
 }
 
 html[data-theme="dark"] .posQuickSaleCardMeta {
@@ -4305,6 +4453,17 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
   padding: 0;
 }
 
+.userGuideGettingStarted {
+  margin-bottom: 4px;
+}
+
+.userGuideGettingStartedHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .dashboardGettingStartedIntro {
   margin: 0 0 0.85rem;
 }
@@ -4542,7 +4701,8 @@ input.is-invalid {
   display: grid;
   place-items: center;
   padding: 20px;
-  z-index: 999;
+  /* Above sticky header / topbar / sidebar so add-employee and other modals stay fully visible. */
+  z-index: 1300;
 }
 
 .modalOverlay.modalOverlay--abovePos {
@@ -5742,12 +5902,51 @@ html[data-theme="dark"] .loginWelcomeSecondary,
   gap: 14px;
 }
 
+.userGuideSectionToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: inherit;
+  font: inherit;
+}
+
+.userGuideSectionToggle:focus-visible {
+  outline: 2px solid var(--color-primary, #0d9488);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
 .userGuideSection h3 {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 0 0 12px;
+  margin: 0;
   color: var(--color-text);
+  font-size: inherit;
+  font-weight: 700;
+}
+
+.userGuideSectionChevron {
+  flex-shrink: 0;
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+  transition: transform 0.15s ease;
+}
+
+.userGuideSection.is-open .userGuideSectionChevron {
+  color: var(--color-text);
+}
+
+.userGuideSectionBody {
+  margin-top: 12px;
 }
 
 .userGuideSectionIcon {
@@ -6126,6 +6325,17 @@ html[data-theme="dark"] .loginWelcomeSecondary,
   width: 100%;
 }
 
+.storeSettingsStack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.storeSettingsStack > .settingsTabPanel {
+  margin-top: 0;
+}
+
 .hrPage .hrFilters {
   display: flex;
   flex-wrap: wrap;
@@ -6202,6 +6412,43 @@ html[data-theme="dark"] .loginWelcomeSecondary,
 
 .hrAttendanceCardsSearch .tableInput {
   width: 100%;
+}
+
+.hrAttendanceTodayTableWrap {
+  margin-top: 4px;
+}
+
+.hrAttendanceTodayEmployee {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.hrAttendanceTodayEmployee .employeePhotoThumbForm,
+.hrAttendanceTodayEmployee .employeePhotoPlaceholderForm {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.hrAttendanceTodayEmployee > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.hrAttendanceTodayEmployee strong {
+  font-size: 14px;
+}
+
+.hrAttendanceTodayRow.is-in {
+  background: rgba(0, 123, 73, 0.06);
+}
+
+.hrAttendanceTodayRow.is-done {
+  background: rgba(3, 152, 85, 0.08);
 }
 
 .hrAttendanceCardsGrid {
@@ -6875,8 +7122,9 @@ html[data-theme="dark"] .loginWelcomeSecondary,
 
 .workScheduleTimes {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  grid-template-columns: repeat(2, max-content);
+  gap: 10px 14px;
+  justify-content: start;
 }
 
 .workScheduleTimes label,
@@ -6886,6 +7134,14 @@ html[data-theme="dark"] .loginWelcomeSecondary,
   gap: 4px;
   font-size: 13px;
   color: var(--color-text-secondary);
+  width: max-content;
+}
+
+.workScheduleTimes .tableInput,
+.workScheduleBreakRow .tableInput {
+  width: 7.5rem;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .workScheduleHint,
@@ -6911,9 +7167,10 @@ html[data-theme="dark"] .loginWelcomeSecondary,
 
 .workScheduleBreakRow {
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns: max-content max-content auto;
   gap: 8px;
   align-items: end;
+  justify-content: start;
 }
 
 .workScheduleRemoveBtn {
@@ -7014,7 +7271,9 @@ html[data-theme="dark"] .loginWelcomeSecondary,
 }
 
 .workShiftLateGraceField .searchInput {
-  max-width: 140px;
+  width: 5.5rem;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .hrShiftBadge {
@@ -7259,10 +7518,11 @@ html[data-theme="dark"] .loginWelcomeSecondary,
 }
 
 .hrPayrollSettingsGrid {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  align-items: stretch;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, max-content));
+  gap: 12px 14px;
+  align-items: start;
+  justify-content: start;
   margin-bottom: 0.75rem;
 }
 
@@ -7271,12 +7531,14 @@ html[data-theme="dark"] .loginWelcomeSecondary,
   flex-direction: column;
   gap: 6px;
   font-size: 13px;
-  width: 100%;
+  width: max-content;
+  max-width: 100%;
 }
 
 .hrPayrollSettingsGrid .tableInput,
 .hrPayrollSettingsGrid select {
-  width: 100%;
+  width: 5.25rem;
+  max-width: 100%;
   box-sizing: border-box;
 }
 
@@ -8181,6 +8443,14 @@ html[data-theme="dark"] .loginWelcomeSecondary,
   flex-shrink: 0;
   padding: 8px 14px;
   font-size: 13px;
+  white-space: nowrap;
+}
+
+.staffLoginUsageHint {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
   white-space: nowrap;
 }
 
@@ -9330,6 +9600,90 @@ html[data-theme="dark"] .loginWelcomeSecondary,
   margin-top: 6px;
 }
 
+.subscriptionPagesAccessBlock {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--color-border);
+}
+
+.subscriptionPagesAccessBlock h5 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--color-text);
+}
+
+.subscriptionPagesAccessList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.subscriptionPageAccessRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-surface);
+  font-size: 13px;
+}
+
+.subscriptionPageAccessRow strong {
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.subscriptionPageAccessRow.is-included {
+  border-color: rgba(0, 123, 73, 0.35);
+}
+
+.subscriptionPageAccessRow.is-included strong {
+  color: #039855;
+}
+
+.subscriptionPageAccessRow.is-excluded {
+  opacity: 0.78;
+}
+
+.subscriptionPageAccessRow.is-excluded strong {
+  color: #d92d20;
+}
+
+.subscriptionPackageEditGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  margin-bottom: 8px;
+}
+
+.subscriptionPackageAddonCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.subscriptionPackageActions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.subscriptionCompareHint.inline {
+  padding: 0;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
 .subscriptionCompareCardAction {
   padding: 0 20px 20px;
   background: var(--color-bg-muted);
@@ -10062,16 +10416,11 @@ html[data-theme="dark"] .loginWelcomeSecondary,
 }
 
 .settingsFieldsGrid {
-  display: grid;
-  gap: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 20px;
+  align-items: flex-start;
   width: 100%;
-}
-
-@media (min-width: 900px) {
-  .settingsFieldsGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 18px;
-  }
 }
 
 .settingsField {
@@ -10079,14 +10428,40 @@ html[data-theme="dark"] .loginWelcomeSecondary,
   flex-direction: column;
   gap: 6px;
   min-width: 0;
+  flex: 0 0 auto;
 }
 
 .settingsFieldFull {
+  flex: 1 1 100%;
   width: 100%;
+  max-width: min(100%, 36rem);
+}
+
+.settingsFieldFull.expiryNotifyActions,
+.settingsFieldsGrid > .settingsActions,
+.settingsForm > .settingsActions {
+  max-width: none;
+  flex: 1 1 100%;
+}
+
+.settingsField--xs {
+  max-width: 6.5rem;
+}
+
+.settingsField--sm {
+  max-width: 9rem;
+}
+
+.settingsField--md {
+  max-width: 14rem;
+}
+
+.settingsField--lg {
+  max-width: 20rem;
 }
 
 .settingsGeoBlock {
-  grid-column: 1 / -1;
+  flex: 1 1 100%;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -10123,15 +10498,60 @@ html[data-theme="dark"] .loginWelcomeSecondary,
 
 .settingsField input,
 .settingsField textarea,
+.settingsField select,
 .settingsForm textarea {
-  width: 100%;
   border: 1px solid var(--color-border-strong);
   border-radius: 12px;
-  padding: 12px 14px;
+  padding: 10px 12px;
   outline: none;
   background: var(--color-bg-input);
   color: var(--color-text);
   font-family: inherit;
+  box-sizing: border-box;
+}
+
+.settingsField input:not([type="checkbox"]):not([type="radio"]),
+.settingsField select {
+  width: 14rem;
+  max-width: 100%;
+}
+
+.settingsField input[type="number"],
+.settingsField input[type="time"] {
+  width: 5.5rem;
+}
+
+.settingsField input[type="email"],
+.settingsField input[type="tel"] {
+  width: 14rem;
+}
+
+.settingsField--xs input:not([type="checkbox"]):not([type="radio"]),
+.settingsField--xs select {
+  width: 5.5rem;
+}
+
+.settingsField--sm input:not([type="checkbox"]):not([type="radio"]),
+.settingsField--sm select {
+  width: 8rem;
+}
+
+.settingsField--md input:not([type="checkbox"]):not([type="radio"]),
+.settingsField--md select {
+  width: 12rem;
+}
+
+.settingsField--lg input:not([type="checkbox"]):not([type="radio"]),
+.settingsField--lg select {
+  width: 18rem;
+}
+
+.settingsFieldFull input:not([type="checkbox"]):not([type="radio"]),
+.settingsFieldFull select,
+.settingsFieldFull textarea,
+.settingsForm textarea {
+  width: 100%;
+  max-width: 100%;
 }
 
 .settingsField textarea,
@@ -11775,8 +12195,76 @@ button:disabled {
   margin: 12px 0;
 }
 
-.employeeSettingsPanel .settingsActions {
+.employeeGpsSettingsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, max-content));
+  gap: 12px 14px;
+  align-items: start;
+  justify-content: start;
+}
+
+.employeeGpsSettingsGrid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  width: max-content;
+  max-width: 100%;
+}
+
+.employeeGpsSettingsGrid input {
+  width: 7.5rem;
+  max-width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 12px;
+  padding: 10px 12px;
+  outline: none;
+  background: var(--color-bg-input);
+  color: var(--color-text);
+  font-family: inherit;
+}
+
+.employeeGpsSettingsGrid input[type="number"] {
+  width: 5.25rem;
+}
+
+.employeeSettingsPanel .settingsActions,
+.workHoursSettingsPanel .settingsActions {
   margin-top: 4px;
+}
+
+.workDaysPlanGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 8px;
+}
+
+.workDaysPlanChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-surface, #1e1e1e) 92%, transparent);
+  cursor: pointer;
+  user-select: none;
+}
+
+.workDaysPlanChip input {
+  margin: 0;
+}
+
+.workDaysPlanChip.active {
+  border-color: color-mix(in srgb, var(--color-primary, #2e7d32) 70%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary, #2e7d32) 18%, transparent);
+}
+
+.workDaysPlanChip:has(input:disabled) {
+  opacity: 0.7;
+  cursor: default;
 }
 
 .collapsibleSummaryCard {
@@ -12091,6 +12579,70 @@ button:disabled {
 .saasRequestsTable td {
   text-align: center;
   vertical-align: middle;
+}
+
+.saasRequestLinkBtn {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #38bdf8;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.saasRequestLinkBtn:hover {
+  color: #7dd3fc;
+}
+
+.customerRequestInfoModal {
+  max-width: 480px;
+}
+
+.customerRequestInfoGrid {
+  margin-top: 8px;
+}
+
+.signupPackageEditModal {
+  max-width: 720px;
+}
+
+.signupPackageEditGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+  margin-top: 8px;
+}
+
+.signupPackagePagesBlock {
+  margin-top: 16px;
+}
+
+.signupPackagePagesBlock h4 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.signupPackagePagesList {
+  margin-top: 10px;
+  max-height: 280px;
+  overflow: auto;
+}
+
+.signupPackagePageCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+@media (max-width: 720px) {
+  .signupPackageEditGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .saasTable .saasDateCell,
@@ -13254,6 +13806,22 @@ html[data-theme="dark"] .saasLinkButton.saasOrgPharmacyName,
   gap: 12px;
 }
 
+.saasManageLimitsCard .subscriptionPagesAccessBlock {
+  margin-top: 16px;
+  margin-bottom: 4px;
+  padding-top: 14px;
+}
+
+.saasManageLimitsCard .subscriptionPagesAccessList {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 720px) {
+  .saasManageLimitsCard .subscriptionPagesAccessList {
+    grid-template-columns: 1fr;
+  }
+}
+
 .saasManageLimitTile {
   display: flex;
   flex-direction: column;
@@ -13563,12 +14131,36 @@ html[data-theme="dark"] .saasLinkButton.saasOrgPharmacyName,
 
 .saasProgramRolesCard {
   margin-top: 4px;
+  margin-bottom: 16px;
   padding: 0;
   border: 1px solid var(--color-border);
   border-radius: 14px;
   background: var(--color-bg-surface);
   overflow: hidden;
   box-shadow: 0 1px 2px var(--color-shadow);
+}
+
+.saasRolesSectionHead {
+  padding: 14px 16px 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.saasRolesSectionHead h4 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  color: var(--color-text);
+}
+
+.saasRolesSectionHead .pageHint {
+  margin: 0;
+}
+
+.saasManageRolePharmacy {
+  display: inline-block;
+  margin-inline-start: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
 }
 
 .saasProgramRolesEmpty {
@@ -14694,6 +15286,74 @@ html[data-theme="dark"] .saasLinkButton.saasOrgPharmacyName,
 
 .investmentPage .investmentSummaryGrid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.investmentTabsNav {
+  margin-top: 4px;
+}
+
+.investmentPlanActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.investmentPlanActionBtn.smallBtn {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 8px;
+  background: rgba(0, 123, 73, 0.12);
+  border: 1px solid #007b49;
+  color: #007b49;
+}
+
+.investmentPlanActionBtn.smallBtn:hover:not(:disabled) {
+  background: rgba(0, 123, 73, 0.2);
+}
+
+.investmentPlanActionBtn.smallBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.investmentPortfoliosGrid {
+  margin-top: 8px;
+}
+
+.investmentPortfolioCard strong {
+  display: block;
+  margin-top: 6px;
+}
+
+.investmentPortfolioMeta {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.investmentPortfolioMeta.negative {
+  color: #d92d20;
+}
+
+.investmentPortfolioMeta.positive {
+  color: #039855;
+}
+
+.investmentWalletCardActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.investmentWalletHeaderActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 .investmentMonthBar {
@@ -16355,6 +17015,44 @@ html[data-theme="dark"] .invMgmtStockCountLogMeta {
   font-weight: 700;
 }
 
+.invMgmtBuyPriceUnlockBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  background: #fff;
+  color: #475569;
+  border-radius: 10px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.invMgmtBuyPriceUnlockBtn.is-unlocked {
+  border-color: #86efac;
+  background: #ecfdf3;
+  color: #067647;
+}
+
+.inventoryBuyPriceUnlockModal {
+  width: min(92vw, 420px);
+}
+
+html[data-theme="dark"] .invMgmtBuyPriceUnlockBtn {
+  background: #1e293b;
+  border-color: #475569;
+  color: #cbd5e1;
+}
+
+html[data-theme="dark"] .invMgmtBuyPriceUnlockBtn.is-unlocked {
+  background: rgba(3, 152, 85, 0.18);
+  border-color: rgba(134, 239, 172, 0.45);
+  color: #6ce9a6;
+}
+
 .invMgmtPagination {
   display: flex;
   flex-wrap: wrap;
@@ -16568,6 +17266,57 @@ html[data-theme="dark"] .invMgmtStockChip.is-active {
   overflow: auto;
   display: grid;
   gap: 0.85rem;
+  background: var(--color-bg-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  position: relative;
+  z-index: 1;
+}
+
+.inventoryBranchDataModal .modalHeader {
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.inventoryBranchDataModal .modalHeader h3 {
+  margin: 0 0 4px;
+  color: var(--color-text);
+}
+
+.inventoryBranchDataModal .hintText {
+  margin: 0;
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.inventoryBranchDataModal .tableWrap {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  overflow: auto;
+}
+
+html[data-theme="dark"] .inventoryBranchDataModal {
+  background: #151d2b;
+  border-color: #334155;
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.65);
+}
+
+html[data-theme="dark"] .inventoryBranchDataModal .hintText {
+  background: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+html[data-theme="dark"] .inventoryBranchDataModal .tableWrap {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+html[data-theme="dark"] .invoiceModal.inventoryBranchDataModal {
+  background: #151d2b;
 }
 
 .invMgmtTransfersPanel {

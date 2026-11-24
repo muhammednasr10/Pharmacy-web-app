@@ -204,9 +204,9 @@ export default function StaffPermissionsTab({ state }: Props) {
             type="button"
             className="completeBtn catalogAddRoleBtn"
             disabled={!!busy}
-            onClick={() => openCustomRoleModal()}
+            onClick={() => openCustomRoleModal(true)}
           >
-            {isArabic ? "إضافة دور جديد" : "Add new role"}
+            {isArabic ? "طلب دور جديد" : "Request new role"}
           </button>
         )}
         {isSuperAdmin(appUser) && (
@@ -220,8 +220,8 @@ export default function StaffPermissionsTab({ state }: Props) {
       <h3>{isArabic ? "قوالب الأدوار" : "Role templates"}</h3>
       <p className="catalogLinkToolbarHint">
         {isArabic
-          ? "مدير عام فقط دور ثابت — باقي الأدوار تُضاف كأدوار مخصصة وتُحذف وتُعدّل بحرية."
-          : "General Manager is the only fixed role — add other roles as custom roles and edit or delete them freely."}
+          ? "الأدوار الافتراضية ثابتة من البرنامج. أي دور جديد يُرسل لمالك النظام في تبويب «أدوار» للاعتماد قبل الاستخدام."
+          : "Default roles come from the program. Any new role is sent to the system owner under the Roles tab for approval before use."}
       </p>
       {!canManageRolePermissions && (
         <p className="catalogLinkToolbarHint">

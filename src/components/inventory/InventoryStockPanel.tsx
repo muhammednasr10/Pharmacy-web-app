@@ -15,6 +15,7 @@ import { usePaginatedMedicines } from "../../hooks/usePaginatedMedicines";
 import { useOnlineStatus } from "../../hooks/useOnlineStatus";
 import { inventoryEmptySearchMessage } from "../../utils/inventorySearchErrors";
 import InventoryPaginationBar from "./InventoryPaginationBar";
+import InventoryBuyPriceUnlockModal from "./InventoryBuyPriceUnlockModal";
 import InventoryStockToolbar from "./InventoryStockToolbar";
 
 type InventoryStockPanelProps = {
@@ -115,6 +116,8 @@ export default function InventoryStockPanel({
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [stockFilter, setStockFilter] = useState<StockCatalogFilter>("all");
+  const [buyPriceUnlocked, setBuyPriceUnlocked] = useState(false);
+  const [showBuyPriceUnlockModal, setShowBuyPriceUnlockModal] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -214,6 +217,8 @@ export default function InventoryStockPanel({
   }
 
   const formTitle = editingMedicineId ? t.editMedicine : t.addMedicine;
+  const showBuyPriceColumns = canViewInventoryCostProfit && buyPriceUnlocked;
+  const pharmacyUnlockPhone = fallbackSettings?.phone || "";
 
   return (
     <div className="invMgmtPanel" role="tabpanel">
@@ -229,6 +234,15 @@ export default function InventoryStockPanel({
         canManageInventory={canManageInventory}
         showReorder={Boolean(onOpenPurchasesWithReorder)}
         showStockCount={Boolean(onApplyStockCount)}
+        canUnlockBuyPrice={canViewInventoryCostProfit}
+        buyPriceUnlocked={buyPriceUnlocked}
+        onToggleBuyPriceUnlock={() => {
+          if (buyPriceUnlocked) {
+            setBuyPriceUnlocked(false);
+            return;
+          }
+          setShowBuyPriceUnlockModal(true);
+        }}
         onOpenTransfer={() => setShowTransferModal(true)}
         onOpenReorder={() => setShowReorderModal(true)}
         onOpenStockCount={() => setShowStockCountModal(true)}
@@ -275,8 +289,8 @@ export default function InventoryStockPanel({
           canUsePOS={false}
           canManageInventory={canManageInventory}
           canDeleteMedicine={canDeleteMedicine}
-          showCostProfitColumns={canViewInventoryCostProfit}
-          showProfitColumn={canViewInventoryCostProfit && !isTrialSubscription}
+          showCostProfitColumns={showBuyPriceColumns}
+          showProfitColumn={showBuyPriceColumns && !isTrialSubscription}
           onEditMedicine={handleEditMedicine}
           onDeleteMedicine={handleDelete}
           onViewStockDetail={setStockDetailMedicine}
@@ -421,7 +435,7 @@ export default function InventoryStockPanel({
               isSaving={isSaving}
               showCancel
               hideTitle
-              showBuyPrice={canViewInventoryCostProfit}
+              showBuyPrice={showBuyPriceColumns}
               lookupResetKey={editingMedicineId ?? "new"}
               feedback={medicineFormFeedback}
             />
@@ -440,6 +454,18 @@ export default function InventoryStockPanel({
           await reload();
         }}
       />
+
+      {showBuyPriceUnlockModal ? (
+        <InventoryBuyPriceUnlockModal
+          isArabic={isArabic}
+          pharmacyPhone={pharmacyUnlockPhone}
+          onUnlock={() => {
+            setBuyPriceUnlocked(true);
+            setShowBuyPriceUnlockModal(false);
+          }}
+          onClose={() => setShowBuyPriceUnlockModal(false)}
+        />
+      ) : null}
     </div>
   );
 }

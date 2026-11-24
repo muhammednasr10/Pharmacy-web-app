@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { getE2EEnv, login, navigateToPage } from "./helpers/app";
 import {
+  expectInventoryBarcodeVisible,
   expectInventoryPagination,
   expectInventoryStockResults,
   openInventoryMovementsTab,
@@ -21,6 +22,7 @@ test.describe("Inventory management", () => {
     await openInventoryStockTab(page);
     await searchInventoryStock(page, env!.barcode);
     await expectInventoryStockResults(page);
+    await expectInventoryBarcodeVisible(page, env!.barcode);
     await expectInventoryPagination(page);
 
     await openInventoryMovementsTab(page);
@@ -28,6 +30,9 @@ test.describe("Inventory management", () => {
     await expectInventoryPagination(page);
 
     await openInventoryStockCountLogTab(page);
-    await expect(page.locator(".invMgmtPagination, .empty")).toBeVisible({ timeout: 15_000 });
+    const activePanel = page.locator('.invMgmtTabPanels > [aria-hidden="false"]');
+    await expect(activePanel.locator(".invMgmtPagination, .empty, .invMgmtStockCountLog").first()).toBeVisible({
+      timeout: 15_000,
+    });
   });
 });

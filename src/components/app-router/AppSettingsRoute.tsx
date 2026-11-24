@@ -1,6 +1,7 @@
 import { SettingsPage } from "../../pages/lazyPages";
 import { resolveMaxBranches } from "../../utils/branchLimits";
 import { resolveMaxUsers } from "../../utils/userLimits";
+import { resolvePharmacyAddonFlags } from "../../utils/subscriptionLimitChange";
 import type { AppPageRouterProps } from "./types";
 
 export type AppSettingsRouteProps = Pick<
@@ -79,6 +80,7 @@ export default function AppSettingsRoute({
 
   const maxBranches = pharmacySettings ? resolveMaxBranches(pharmacySettings) : 1;
   const maxUsers = pharmacySettings ? resolveMaxUsers(pharmacySettings) : 1;
+  const addonFlags = resolvePharmacyAddonFlags(pharmacySettings, orgSubscriptionTier);
 
   return (
     <SettingsPage
@@ -96,6 +98,9 @@ export default function AppSettingsRoute({
       subscriptionTier={orgSubscriptionTier}
       maxBranches={maxBranches}
       maxUsers={maxUsers}
+      staffAddonEnabled={addonFlags.staffAddon}
+      customersAddonEnabled={addonFlags.customersAddon}
+      investmentAddonEnabled={addonFlags.investmentAddon}
       submitSubscriptionRequest={handleSubmitSubscriptionRequest}
       submitTierUpgradeRequest={handleSubmitTierUpgradeRequest}
       pharmacySubscriptionRequests={pharmacySubscriptionRequests}

@@ -60,6 +60,7 @@ export default function LoginWelcomeLanding({
           isArabic={isArabic}
           staffAddonEnabled={pricing.staffAddon}
           customersAddonEnabled={pricing.customersAddon}
+          investmentAddonEnabled={pricing.investmentAddon}
         />
 
         <LoginWelcomeSignupCard
@@ -86,12 +87,14 @@ export default function LoginWelcomeLanding({
           users={pricing.users}
           staffAddon={pricing.staffAddon}
           customersAddon={pricing.customersAddon}
+          investmentAddon={pricing.investmentAddon}
           billingCycle={pricing.billingCycle}
           quote={pricing.quote}
           onBranchesChange={pricing.setBranches}
           onUsersChange={pricing.setUsers}
           onStaffAddonChange={pricing.setStaffAddon}
           onCustomersAddonChange={pricing.setCustomersAddon}
+          onInvestmentAddonChange={pricing.setInvestmentAddon}
           onBillingCycleChange={pricing.setBillingCycle}
         />
 

@@ -102,7 +102,10 @@ export async function login(page: Page, email: string, password: string) {
     denied.waitFor({ state: "visible", timeout: 30_000 }).then(() => "denied" as const),
   ]).catch(() => "timeout" as const);
 
-  if (outcome === "app") return;
+  if (outcome === "app") {
+    await ensureConcreteBranchSelected(page);
+    return;
+  }
 
   if (outcome === "error") {
     const message = (await loginError.textContent())?.trim() || "Unknown login error";
@@ -118,11 +121,51 @@ export async function login(page: Page, email: string, password: string) {
   );
 }
 
+/** Prefer a real pharmacy branch over "All branches" so scoped writes/searches work in E2E. */
+export async function ensureConcreteBranchSelected(page: Page) {
+  const select = page
+    .locator(".topbarBranchChip select, select[aria-label*='الفرع'], select[aria-label*='Branch']")
+    .first();
+  if ((await select.count()) === 0) return;
+  if (!(await select.isVisible().catch(() => false))) return;
+
+  // Wait briefly for concrete branch options to hydrate after login.
+  await expect
+    .poll(
+      async () => {
+        const values = await select.locator("option").evaluateAll((nodes) =>
+          nodes.map((node) => (node as HTMLOptionElement).value),
+        );
+        return values.some((value) => value && value !== "__all__");
+      },
+      { timeout: 8_000 },
+    )
+    .toBe(true)
+    .catch(() => undefined);
+
+  const selectedValue = (await select.inputValue().catch(() => "")) || "";
+  const selectedLabel = ((await select.locator("option:checked").textContent()) || "").trim();
+  const isAllBranches =
+    selectedValue === "__all__" || /كل الفروع|All branches/i.test(selectedLabel);
+  if (selectedValue && !isAllBranches) return;
+
+  const options = select.locator("option");
+  const count = await options.count();
+  for (let index = 0; index < count; index += 1) {
+    const option = options.nth(index);
+    const label = ((await option.textContent()) || "").trim();
+    const value = await option.getAttribute("value");
+    if (!value || value === "__all__" || /كل الفروع|All branches/i.test(label)) continue;
+    await select.selectOption(value);
+    return;
+  }
+}
+
 export async function navigateToPage(page: Page, pageName: AppPageName) {
   await page.goto(PAGE_URLS[pageName]);
 
   if (pageName === "pos") {
-    await expect(page.locator(".posOnlyPage, .posShiftGate, .posShiftWorkspace")).toBeVisible();
+    await expect(page.locator(".posOnlyPage, .posShiftGate, .posShiftWorkspace").first()).toBeVisible();
     return;
   }
 
@@ -152,8 +195,18 @@ export async function navigateToPage(page: Page, pageName: AppPageName) {
   }
 
   if (pageName === "branches") {
-    await expect(page.locator(".branchesPage")).toBeVisible({ timeout: 30_000 });
-    return;
+    // Dedicated /branches may redirect for super_admin; warehouse bar lives on inventory.
+    const branchesPage = page.locator(".branchesPage");
+    try {
+      await expect(branchesPage).toBeVisible({ timeout: 8_000 });
+      return;
+    } catch {
+      await page.goto("/inventory");
+      await expect(
+        page.locator(".inventoryManagementPage, .inventoryWarehouseBar").first(),
+      ).toBeVisible({ timeout: 30_000 });
+      return;
+    }
   }
 
   if (pageName === "settings") {

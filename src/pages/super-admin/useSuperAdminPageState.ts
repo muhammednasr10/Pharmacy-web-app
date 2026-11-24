@@ -7,6 +7,8 @@ import { useSuperAdminRequestsState } from "./state/useSuperAdminRequestsState";
 import { useSuperAdminManageTenantState } from "./state/useSuperAdminManageTenantState";
 import { useSuperAdminRolesState } from "./state/useSuperAdminRolesState";
 import { useSuperAdminSystemUsersState } from "./state/useSuperAdminSystemUsersState";
+import { useSuperAdminSuggestionsState } from "./state/useSuperAdminSuggestionsState";
+import { useMemo } from "react";
 
 export function useSuperAdminPageState(props: SuperAdminPageProps) {
   const {
@@ -47,6 +49,23 @@ export function useSuperAdminPageState(props: SuperAdminPageProps) {
     pendingCustomRoles,
   });
 
+  const suggestions = useSuperAdminSuggestionsState({
+    isArabic: shared.isArabic,
+    activeTab: overview.activeTab,
+    operatorUid: shared.operatorUid,
+    operatorName: props.systemUsers.find((user) => user.uid === shared.operatorUid)?.name,
+  });
+
+  const saasTabs = useMemo(
+    () =>
+      overview.saasTabs.map((tab) =>
+        tab.id === "suggestions"
+          ? { ...tab, badge: suggestions.pendingSuggestionsCount }
+          : tab,
+      ),
+    [overview.saasTabs, suggestions.pendingSuggestionsCount],
+  );
+
   const manage = useSuperAdminManageTenantState({
     isArabic: shared.isArabic,
     pharmacies: shared.pharmacies,
@@ -67,6 +86,7 @@ export function useSuperAdminPageState(props: SuperAdminPageProps) {
     onDeleteOrganization,
     onDeleteOrganizationBranch,
     onUpdateTenantStatus,
+    onRefreshAdminRequests,
   });
 
   const pricing = useSuperAdminPricingCalculatorState({
@@ -106,6 +126,7 @@ export function useSuperAdminPageState(props: SuperAdminPageProps) {
     manageModalOpen: manage.manageModalOpen,
     reloadManageRoles: manage.reloadManageRoles,
     onRefreshSystemUsers,
+    onRefreshAdminRequests,
   });
 
   const systemUsersState = useSuperAdminSystemUsersState({
@@ -211,10 +232,20 @@ export function useSuperAdminPageState(props: SuperAdminPageProps) {
     setMaxBranchDrafts: limits.setMaxBranchDrafts,
     maxUserDrafts: limits.maxUserDrafts,
     setMaxUserDrafts: limits.setMaxUserDrafts,
-    saasTabs: overview.saasTabs,
+    saasTabs,
+    suggestions: suggestions.suggestions,
+    pendingSuggestionsCount: suggestions.pendingSuggestionsCount,
+    suggestionsLoading: suggestions.suggestionsLoading,
+    suggestionBusyId: suggestions.suggestionBusyId,
+    refreshSuggestions: suggestions.refreshSuggestions,
+    handleApproveSuggestion: suggestions.handleApproveSuggestion,
+    handleRejectSuggestion: suggestions.handleRejectSuggestion,
     customerRequestRows: overview.customerRequestRows,
     pharmacyOrgGroups: overview.pharmacyOrgGroups,
     filteredProgramRoleListRows: roles.filteredProgramRoleListRows,
+    filteredDefaultRoleListRows: roles.filteredDefaultRoleListRows,
+    filteredPendingRoleSuggestionRows: roles.filteredPendingRoleSuggestionRows,
+    pendingRoleSuggestionsCount: roles.pendingRoleSuggestionsCount,
     manageUnifiedRoleRows: manage.manageUnifiedRoleRows,
     manageRoleAccountDisplayRows: manage.manageRoleAccountDisplayRows,
     manageUnifiedRolesTableColSpan: manage.manageUnifiedRolesTableColSpan,
@@ -254,6 +285,7 @@ export function useSuperAdminPageState(props: SuperAdminPageProps) {
     handleOpenEmployeesPage: manage.handleOpenEmployeesPage,
     saveRoleForm: roles.saveRoleForm,
     activateCustomRole: roles.activateCustomRole,
+    rejectCustomRole: roles.rejectCustomRole,
     deleteCustomRole: roles.deleteCustomRole,
     openAddSystemUserModal: systemUsersState.openAddSystemUserModal,
     openEditSystemUserModal: systemUsersState.openEditSystemUserModal,
@@ -268,6 +300,11 @@ export function useSuperAdminPageState(props: SuperAdminPageProps) {
     isCustomerRequestBusy: requests.isCustomerRequestBusy,
     toggleOrgExpanded: overview.toggleOrgExpanded,
     openPricingTabFromManage: limits.openPricingTabFromManage,
+    onUpdateTenantStatus,
+    onUpdateMaxBranches,
+    onUpdateMaxUsers,
+    onUpdateOrganizationFreeTrial,
+    onRefreshPharmacies,
   };
 }
 

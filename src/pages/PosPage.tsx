@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   AppUser,
   CashierShift,
@@ -6,6 +6,7 @@ import type {
   CartItem,
   PaymentMethod,
   PharmacySettings,
+  PharmacyWallet,
 } from "../types";
 import PosBarcodeInput, { type PosBarcodeInputHandle } from "../components/PosBarcodeInput";
 import PosCart from "../components/PosCart";
@@ -21,7 +22,13 @@ import PosShortcutsModal from "../components/PosShortcutsModal";
 import { usePosKeyboardShortcuts } from "../hooks/usePosKeyboardShortcuts";
 import { usePosInventorySource } from "../hooks/usePosInventorySource";
 import type { PosActionFeedback } from "../hooks/usePosSales";
+import * as pharmacyService from "../services/pharmacyService";
 import { isPharmacyManager, isSuperAdmin } from "../utils/roles";
+import {
+  buildPosWalletPaymentOptions,
+  pickDefaultPosWallet,
+  walletTypeToPaymentMethod,
+} from "../utils/posPaymentWallets";
 
 function usesCashierShiftGate(appUser: AppUser | null) {
   if (!appUser) return false;
@@ -85,6 +92,8 @@ type PosPageProps = {
   pendingOfflineSalesCount?: number;
   offlineMedicinesCacheAt?: string | null;
   isSyncingOfflineSales?: boolean;
+  /** When true (investment/costs page subscribed), POS payment methods = pharmacy wallets. */
+  useInvestmentPaymentWallets?: boolean;
 };
 
 export default function PosPage({
@@ -144,18 +153,69 @@ export default function PosPage({
   pendingOfflineSalesCount = 0,
   offlineMedicinesCacheAt = null,
   isSyncingOfflineSales = false,
+  useInvestmentPaymentWallets = false,
 }: PosPageProps) {
   const barcodeInputRef = useRef<PosBarcodeInputHandle>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [manualSaleOpen, setManualSaleOpen] = useState(false);
   const [quickSaleCardOpen, setQuickSaleCardOpen] = useState(false);
   const [quickSaleFullscreen, setQuickSaleFullscreen] = useState(false);
+  const [posMainTab, setPosMainTab] = useState<"sell" | "shifts">("sell");
   const [searchScope, setSearchScope] = useState<PosSearchScope>("current");
   const [posActionFeedback, setPosActionFeedback] = useState<PosActionFeedback | null>(null);
+  const [posWallets, setPosWallets] = useState<PharmacyWallet[]>([]);
+  const [selectedPosWalletId, setSelectedPosWalletId] = useState<string>("");
   const posActionFeedbackTimerRef = useRef<number | null>(null);
   const shiftGateEnabled = usesCashierShiftGate(appUser);
   const shiftReady = !shiftGateEnabled || Boolean(activeCashierShift);
   const shortcutsEnabled = canUsePOS && !isSubscriptionExpired && shiftReady;
+
+  useEffect(() => {
+    if (!useInvestmentPaymentWallets || !pharmacyId) {
+      setPosWallets([]);
+      setSelectedPosWalletId("");
+      return;
+    }
+    let cancelled = false;
+    void pharmacyService
+      .getPharmacyWallets(pharmacyId)
+      .then((rows) => {
+        if (cancelled) return;
+        const active = rows.filter((item) => item.isActive !== false);
+        setPosWallets(active);
+        const preferred = pickDefaultPosWallet(active);
+        if (preferred) {
+          setSelectedPosWalletId(String(preferred.id));
+          onPaymentMethodChange(walletTypeToPaymentMethod(preferred.walletType));
+        }
+      })
+      .catch((error) => {
+        console.error("POS wallets load failed:", error);
+        if (!cancelled) setPosWallets([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [useInvestmentPaymentWallets, pharmacyId, onPaymentMethodChange]);
+
+  const walletPaymentOptions = useMemo(
+    () =>
+      useInvestmentPaymentWallets && posWallets.length > 0
+        ? buildPosWalletPaymentOptions(posWallets, isArabic)
+        : undefined,
+    [useInvestmentPaymentWallets, posWallets, isArabic],
+  );
+
+  const handlePosWalletChange = useCallback(
+    (walletId: string) => {
+      setSelectedPosWalletId(walletId);
+      const wallet = posWallets.find((item) => String(item.id) === walletId);
+      if (wallet) {
+        onPaymentMethodChange(walletTypeToPaymentMethod(wallet.walletType));
+      }
+    },
+    [posWallets, onPaymentMethodChange],
+  );
 
   const { lookupBarcode, branchSnapshot } = usePosInventorySource({
     pharmacyId,
@@ -245,11 +305,39 @@ export default function PosPage({
   }, [saleFeedback, showPosActionFeedback, focusBarcode, onClearSaleFeedback]);
 
   const handleCompleteSale = useCallback(async () => {
+    const walletId = Number(selectedPosWalletId);
     const result = await onCompleteSale();
     if (result === true) {
+      if (
+        useInvestmentPaymentWallets &&
+        Number.isFinite(walletId) &&
+        walletId > 0 &&
+        total > 0 &&
+        isOnline
+      ) {
+        try {
+          await pharmacyService.creditPharmacyWalletBalance(walletId, total);
+          setPosWallets((current) =>
+            current.map((wallet) =>
+              wallet.id === walletId
+                ? { ...wallet, balance: Number(wallet.balance || 0) + total }
+                : wallet,
+            ),
+          );
+        } catch (error) {
+          console.error("Credit POS wallet failed:", error);
+        }
+      }
       requestAnimationFrame(() => focusBarcode());
     }
-  }, [onCompleteSale, focusBarcode]);
+  }, [
+    onCompleteSale,
+    focusBarcode,
+    selectedPosWalletId,
+    useInvestmentPaymentWallets,
+    total,
+    isOnline,
+  ]);
 
   usePosKeyboardShortcuts({
     enabled: shortcutsEnabled,
@@ -349,6 +437,9 @@ export default function PosPage({
           onOpenHeldInvoices={onOpenHeldInvoices}
           onOpenInstantReturn={onOpenInstantReturn}
           isOnline={isOnline}
+          paymentOptions={walletPaymentOptions}
+          paymentOptionValue={selectedPosWalletId}
+          onPaymentOptionChange={handlePosWalletChange}
         />
       </div>
     </div>
@@ -424,6 +515,9 @@ export default function PosPage({
           onOpenHeldInvoices={onOpenHeldInvoices}
           onOpenInstantReturn={onOpenInstantReturn}
           isOnline={isOnline}
+          paymentOptions={walletPaymentOptions}
+          paymentOptionValue={selectedPosWalletId}
+          onPaymentOptionChange={handlePosWalletChange}
         />
       </div>
     </div>
@@ -463,6 +557,7 @@ export default function PosPage({
         onClearCart();
       }
       onCashierShiftChange(shift);
+      setPosMainTab("sell");
       setQuickSaleCardOpen(true);
       focusBarcode();
     },
@@ -539,7 +634,31 @@ export default function PosPage({
       </div>
 
       {shiftGateEnabled ? (
-        shiftReady ? (
+        <nav className="posPageTabs" aria-label={isArabic ? "أقسام نقطة البيع" : "POS sections"}>
+          <button
+            type="button"
+            className={`posPageTabBtn${posMainTab === "sell" ? " active" : ""}`}
+            onClick={() => setPosMainTab("sell")}
+          >
+            {isArabic ? "البيع والوردية" : "Sell & shift"}
+          </button>
+          <button
+            type="button"
+            className={`posPageTabBtn${posMainTab === "shifts" ? " active" : ""}`}
+            onClick={() => {
+              setQuickSaleCardOpen(false);
+              setPosMainTab("shifts");
+            }}
+          >
+            {isArabic ? "جدول الورديات" : "Shifts table"}
+          </button>
+        </nav>
+      ) : null}
+
+      {shiftGateEnabled ? (
+        posMainTab === "shifts" ? (
+          <div className="posShiftsTabPanel">{shiftsTable}</div>
+        ) : shiftReady ? (
           <div
             className={`posShiftWorkspace${quickSaleCardOpen ? " posShiftWorkspace--quickSaleOpen" : ""}`}
           >
@@ -561,12 +680,12 @@ export default function PosPage({
               }}
               onCloseQuickSale={() => setQuickSaleCardOpen(false)}
               onShiftOpened={() => {
+                setPosMainTab("sell");
                 setQuickSaleCardOpen(true);
                 focusBarcode();
               }}
               summaryRefreshKey={cashierShiftSalesTick}
             />
-            {shiftsTable}
             {saleWorkspaceShift}
           </div>
         ) : (
@@ -582,12 +701,12 @@ export default function PosPage({
               onShiftChange={onCashierShiftChange}
               getPaymentLabel={getPaymentLabel}
               onShiftOpened={() => {
+                setPosMainTab("sell");
                 setQuickSaleCardOpen(true);
                 focusBarcode();
               }}
               summaryRefreshKey={cashierShiftSalesTick}
             />
-            {shiftsTable}
           </div>
         )
       ) : (

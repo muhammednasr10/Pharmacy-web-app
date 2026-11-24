@@ -7,6 +7,10 @@ import type {
 } from "../types";
 import { getRoleLabel } from "./roles";
 import { isTierUpgradePlan, parseTierUpgradePlan } from "./subscriptionFeatures";
+import {
+  formatLimitChangeSummary,
+  parseLimitChangePlan,
+} from "./subscriptionLimitChange";
 
 export type CustomerRequestCategory = "subscription" | "login" | "role" | "signup";
 
@@ -33,6 +37,10 @@ export function getSubscriptionRequestTypeLabel(
   request: SubscriptionRequest,
   isArabic: boolean,
 ): string {
+  const limitChange = parseLimitChangePlan(request.plan);
+  if (limitChange) {
+    return isArabic ? "تعديل الباقة" : "Package change";
+  }
   const targetTier = parseTierUpgradePlan(request.plan);
   if (targetTier) {
     return isArabic
@@ -46,6 +54,10 @@ export function getSubscriptionRequestDetails(
   request: SubscriptionRequest,
   isArabic: boolean,
 ): string {
+  const limitChange = parseLimitChangePlan(request.plan);
+  if (limitChange) {
+    return `${formatLimitChangeSummary(limitChange, isArabic)} · ${request.amount} ${request.currency || "EGP"}`;
+  }
   if (isTierUpgradePlan(request.plan)) {
     return `${request.amount} ${request.currency || "EGP"}`;
   }
@@ -130,8 +142,8 @@ export function buildCustomerRequestRows(input: {
           requestedBy: request.adminName,
           createdAt: request.createdAt,
           resultAfterApproval: isArabic
-            ? "فتح صيدلية بتجربة 14 يوماً — الباقة تُختار عند الاعتماد"
-            : "Create pharmacy with 14-day trial — tier chosen on approval",
+            ? "تجربة 14 يوم مفعّلة تلقائياً — عدّل التاريخ والحدود والصفحات من الإجراءات"
+            : "14-day trial already active — edit end date, limits, and pages from actions",
           signupRequest: request,
         });
       });

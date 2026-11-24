@@ -115,8 +115,8 @@ export default function HrPayrollDeductionsModal({ state }: Props) {
               </div>
               <p className="returnsSectionHint">
                 {isArabic
-                  ? "تُعدّل النسب من الإعدادات ← إعدادات المرتبات."
-                  : "Percentages are configured in Settings → Payroll."}
+                  ? "تُعدّل النسب من الإعدادات ← إعدادات الموظفين."
+                  : "Percentages are configured in Settings → Employee Settings."}
               </p>
             </div>
     

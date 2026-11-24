@@ -13,10 +13,11 @@ describe("pageRoutes", () => {
     expect(pageToPath("stockMovements")).toBe("/inventory/movements");
   });
 
-  it("maps reports and investment alias", () => {
+  it("maps reports and investment routes", () => {
     expect(pageFromPath("/reports")).toBe("reports");
+    expect(pageFromPath("/investment")).toBe("costs");
     expect(pageFromPath("/reports/investment")).toBe("costs");
-    expect(pageToPath("costs")).toBe("/reports/investment");
+    expect(pageToPath("costs")).toBe("/investment");
   });
 
   it("maps staff and legacy hr page", () => {

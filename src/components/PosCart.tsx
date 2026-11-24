@@ -1,5 +1,5 @@
 import type { CartItem, PaymentMethod } from "../types";
-import PaymentBox from "./PaymentBox";
+import PaymentBox, { type PaymentOption } from "./PaymentBox";
 
 type PosCartProps = {
   cart: CartItem[];
@@ -33,6 +33,9 @@ type PosCartProps = {
   onOpenHeldInvoices: () => void;
   onOpenInstantReturn: () => void;
   isOnline?: boolean;
+  paymentOptions?: PaymentOption[];
+  paymentOptionValue?: string;
+  onPaymentOptionChange?: (value: string) => void;
 };
 
 export default function PosCart({
@@ -67,6 +70,9 @@ export default function PosCart({
   onOpenHeldInvoices,
   onOpenInstantReturn,
   isOnline = true,
+  paymentOptions,
+  paymentOptionValue,
+  onPaymentOptionChange,
 }: PosCartProps) {
   const saleBlocked = subscriptionBlocksSale || shiftSaleBlocked;
   const splitLayout = layout === "split";
@@ -178,6 +184,9 @@ export default function PosCart({
         onCustomerNameChange={onCustomerNameChange}
         getPaymentLabel={getPaymentLabel}
         disableCredit={!isOnline}
+        paymentOptions={paymentOptions}
+        paymentOptionValue={paymentOptionValue}
+        onPaymentOptionChange={onPaymentOptionChange}
       />
       <div className="subtotalLine posCartSubtotal">
         <span>{t.subtotal}</span>

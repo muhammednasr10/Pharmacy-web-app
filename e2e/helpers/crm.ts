@@ -45,19 +45,33 @@ export async function createCrmCustomer(page: Page, input: CrmCustomerInput) {
       .fill(input.email);
   }
 
+  // Avoid empty date fields being posted as "".
+  for (const dateInput of await modal.locator('input[type="date"]').all()) {
+    const value = await dateInput.inputValue();
+    if (!value) {
+      await dateInput.fill("1990-01-01");
+    }
+  }
+
   const dialogPromise = acceptNextDialog(page);
   await modal.getByRole("button", { name: /^حفظ$|^Save$/ }).click();
   const message = await dialogPromise;
 
   expect(message).toMatch(/تم حفظ بيانات العميل|Customer saved/);
   await expect(modal).toBeHidden({ timeout: 15_000 });
+  await expect(page.getByText(input.name, { exact: true }).first()).toBeVisible({
+    timeout: 15_000,
+  });
 }
 
 export async function openCustomerProfile(page: Page, customerName: string) {
-  await page.getByPlaceholder(/بحث بالاسم أو الهاتف|Search name or phone/).fill(customerName);
-  await expect(page.getByRole("cell", { name: customerName })).toBeVisible({ timeout: 15_000 });
+  const search = page.getByPlaceholder(/بحث بالاسم أو الهاتف|Search name or phone/);
+  await search.fill(customerName);
+  await expect(page.getByText(customerName, { exact: true }).first()).toBeVisible({
+    timeout: 15_000,
+  });
 
-  const row = page.locator("tr", { hasText: customerName });
+  const row = page.locator("tr", { hasText: customerName }).first();
   await row.getByRole("button", { name: /^الملف$|^Profile$/ }).click();
   await expect(page.locator(".crmDetailModal")).toBeVisible({ timeout: 15_000 });
 }

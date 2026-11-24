@@ -211,9 +211,18 @@ export function useCustomersPageState(props: CustomersPageProps) {
     }
     setSavingCustomer(true);
     try {
-      await pharmacyService.saveCrmCustomer({
+      const saved = await pharmacyService.saveCrmCustomer({
         ...customer,
         pharmacyId: getPharmacyId(),
+      });
+      setCrmCustomers((prev) => {
+        const index = prev.findIndex((item) => item.id === saved.id);
+        if (index >= 0) {
+          const next = [...prev];
+          next[index] = saved;
+          return next;
+        }
+        return [saved, ...prev];
       });
       setCustomerFormOpen(false);
       setCustomerFormInitial(null);
@@ -234,9 +243,18 @@ export function useCustomersPageState(props: CustomersPageProps) {
 
   async function addCustomerActivity(activity: CustomerActivity) {
     try {
-      await pharmacyService.saveCustomerActivity({
+      const saved = await pharmacyService.saveCustomerActivity({
         ...activity,
         pharmacyId: getPharmacyId(),
+      });
+      setCustomerActivities((prev) => {
+        const index = prev.findIndex((item) => item.id === saved.id);
+        if (index >= 0) {
+          const next = [...prev];
+          next[index] = saved;
+          return next;
+        }
+        return [saved, ...prev];
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

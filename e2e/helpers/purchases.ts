@@ -28,6 +28,9 @@ export async function addPurchaseBatchItem(page: Page, input: PurchaseBatchInput
   await barcodeInput.press("Enter");
 
   await expect(modal.locator(".medicineLookupStatus")).toBeVisible({ timeout: 15_000 });
+  await expect(modal.locator(".medicineLookupStatus.isLoading")).toHaveCount(0, {
+    timeout: 15_000,
+  });
 
   const nameArInput = modal.getByPlaceholder(/اسم الدواء بالعربي|Arabic medicine name/);
   if ((await nameArInput.inputValue()).trim() === "") {
@@ -39,26 +42,32 @@ export async function addPurchaseBatchItem(page: Page, input: PurchaseBatchInput
     await nameEnInput.fill("E2E Medicine");
   }
 
-  const qtyInput = modal.getByPlaceholder(/كمية التوريد|Purchase quantity|الكمية|Qty/);
-  await qtyInput.fill(String(qty));
-
-  const expiryInput = modal.locator('input[type="date"]').first();
-  const expiryValue = await expiryInput.inputValue();
-  if (!expiryValue) {
-    await expiryInput.fill(expiry);
-  }
-
+  const qtyInput = modal.locator('.medicineEntryField input[type="number"]').first();
   const sellPriceInput = modal.getByPlaceholder(/سعر البيع|Sell price/);
-  const sellPriceValue = await sellPriceInput.inputValue();
-  if (!sellPriceValue || sellPriceValue === "0") {
-    await sellPriceInput.fill("20");
-  }
-
   const buyPriceInput = modal.getByPlaceholder(/سعر الشراء|Buy price/);
-  const buyPriceValue = await buyPriceInput.inputValue();
-  if (!buyPriceValue || buyPriceValue === "0") {
-    await buyPriceInput.fill("12");
-  }
+  const expiryInput = modal.locator('.medicineEntryField input[type="date"]').first();
+
+  // Lookup re-apply can wipe qty/expiry shortly after match — fill then verify.
+  await expect
+    .poll(
+      async () => {
+        const sellPriceValue = await sellPriceInput.inputValue();
+        if (!sellPriceValue || sellPriceValue === "0") {
+          await sellPriceInput.fill("20");
+        }
+        const buyPriceValue = await buyPriceInput.inputValue();
+        if (!buyPriceValue || buyPriceValue === "0") {
+          await buyPriceInput.fill("12");
+        }
+        await qtyInput.fill(String(qty));
+        await expiryInput.fill(expiry);
+        const qtyValue = await qtyInput.inputValue();
+        const expiryValue = await expiryInput.inputValue();
+        return qtyValue === String(qty) && expiryValue === expiry;
+      },
+      { timeout: 15_000 },
+    )
+    .toBe(true);
 
   await modal.getByRole("button", { name: /\+ إضافة للتوريد|\+ Add to purchase/ }).click();
   await expect(modal.locator(".purchaseDraftTableWrap tbody tr")).toHaveCount(1, {

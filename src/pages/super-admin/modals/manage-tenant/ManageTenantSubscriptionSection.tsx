@@ -1,6 +1,12 @@
+import { useMemo } from "react";
+import SubscriptionPagesAccessList from "../../../../components/settings/subscription/SubscriptionPagesAccessList";
 import { computeTrialEndDate } from "../../../../config/subscription";
 import { resolveBranchDisplay } from "../../../../utils/branchLabel";
 import { formatDateInput } from "../../../../utils/date";
+import {
+  buildSubscriptionPageAccessRows,
+  resolvePharmacyAddonFlags,
+} from "../../../../utils/subscriptionLimitChange";
 import { formatUsageLabel, usagePercent } from "../../helpers";
 import type { SuperAdminPageState } from "../../useSuperAdminPageState";
 
@@ -8,6 +14,7 @@ type Props = Pick<
   SuperAdminPageState,
   | "isArabic"
   | "selected"
+  | "selectedTier"
   | "selectedBranchUsage"
   | "selectedUserUsage"
   | "selectedOrgBranches"
@@ -30,6 +37,7 @@ export default function ManageTenantSubscriptionSection({ state }: { state: Prop
   const {
     isArabic,
     selected,
+    selectedTier,
     selectedBranchUsage,
     selectedUserUsage,
     selectedOrgBranches,
@@ -47,6 +55,25 @@ export default function ManageTenantSubscriptionSection({ state }: { state: Prop
     saveFreeTrial,
     openPricingTabFromManage,
   } = state;
+
+  const pageAccessRows = useMemo(() => {
+    if (!selected) return [];
+    const addons = resolvePharmacyAddonFlags(selected, selectedTier);
+    return buildSubscriptionPageAccessRows({
+      isArabic,
+      tier: selectedTier,
+      staffAddon: addons.staffAddon,
+      customersAddon: addons.customersAddon,
+      investmentAddon: addons.investmentAddon,
+    });
+  }, [
+    isArabic,
+    selected,
+    selectedTier,
+    selected?.staffAddon,
+    selected?.customersAddon,
+    selected?.investmentAddon,
+  ]);
 
   if (!selectedBranchUsage || !selectedUserUsage || !selected) return null;
 
@@ -189,6 +216,12 @@ export default function ManageTenantSubscriptionSection({ state }: { state: Prop
           </div>
         </div>
       </div>
+
+      <SubscriptionPagesAccessList
+        isArabic={isArabic}
+        rows={pageAccessRows}
+        title={isArabic ? "الصفحات المشترك فيها (من التسجيل)" : "Subscribed pages (from registration)"}
+      />
 
       <div className="saasManageFreeTrialSection">
         <div className="saasManageFreeTrialHead">

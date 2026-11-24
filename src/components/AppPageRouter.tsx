@@ -11,6 +11,7 @@ import AppInventoryRoute from "./app-router/AppInventoryRoute";
 import AppInvoicesRoute from "./app-router/AppInvoicesRoute";
 import AppPosRoute from "./app-router/AppPosRoute";
 import AppPurchasesRoute from "./app-router/AppPurchasesRoute";
+import AppCostsRoute from "./app-router/AppCostsRoute";
 import AppReportsRoute from "./app-router/AppReportsRoute";
 import AppReturnsRoute from "./app-router/AppReturnsRoute";
 import AppSettingsRoute from "./app-router/AppSettingsRoute";
@@ -39,7 +40,8 @@ export default function AppPageRouter(props: AppPageRouterProps) {
       <Route path="/returns" element={<AppReturnsRoute {...routeProps} />} />
       <Route path="/purchases" element={<AppPurchasesRoute {...props} />} />
       <Route path="/customers" element={<AppCustomersRoute {...props} />} />
-      <Route path="/reports/investment" element={<AppReportsRoute {...props} />} />
+      <Route path="/investment" element={<AppCostsRoute {...props} />} />
+      <Route path="/reports/investment" element={<Navigate to={pageToPath("costs")} replace />} />
       <Route path="/reports" element={<AppReportsRoute {...props} />} />
       <Route path="/activity-logs" element={<Navigate to={pageToPath("dashboard")} replace />} />
       <Route path="/staff" element={<AppEmployeesRoute {...routeProps} />} />

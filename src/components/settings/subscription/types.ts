@@ -17,6 +17,8 @@ export type SubscriptionSettingsPanelProps = {
   maxBranches?: number;
   maxUsers?: number;
   staffAddonEnabled?: boolean;
+  customersAddonEnabled?: boolean;
+  investmentAddonEnabled?: boolean;
   submitSubscriptionRequest: (input: {
     plan: string;
     days: number;

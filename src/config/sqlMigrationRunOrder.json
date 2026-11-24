@@ -23,6 +23,8 @@
   { "file": "organization-user-limit.sql", "kind": "required", "group": "saas", "titleAr": "حد المستخدمين", "titleEn": "User limit" },
   { "file": "create-saas-pharmacy.sql", "kind": "required", "group": "saas", "titleAr": "إنشاء صيدلية SaaS", "titleEn": "Create SaaS pharmacy" },
   { "file": "subscription-requests.sql", "kind": "required", "group": "saas", "titleAr": "طلبات الاشتراك", "titleEn": "Subscription requests" },
+  { "file": "pharmacy-subscription-addons.sql", "kind": "required", "group": "saas", "titleAr": "إضافات صفحات الاشتراك", "titleEn": "Pharmacy subscription add-ons" },
+  { "file": "pharmacy-wallets-default-pos.sql", "kind": "required", "group": "core", "titleAr": "محفظة POS افتراضية", "titleEn": "Default POS wallet" },
   { "file": "subscription-request-notify.sql", "kind": "optional", "group": "saas", "titleAr": "Webhook اشتراك", "titleEn": "Subscription webhook" },
   { "file": "trial-signup.sql", "kind": "required", "group": "saas", "titleAr": "تجربة 14 يوم", "titleEn": "Trial signup" },
   { "file": "fix-trial-registration.sql", "kind": "required", "group": "core", "titleAr": "إصلاح التجربة", "titleEn": "Fix trial signup" },

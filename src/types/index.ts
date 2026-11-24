@@ -111,6 +111,12 @@ export type PharmacySettings = {
   organizationId?: string;
   maxBranches?: number;
   maxUsers?: number;
+  /** Optional staff + My Profile pages. null/undefined = follow tier pages. */
+  staffAddon?: boolean | null;
+  /** Optional customers page. null/undefined = follow tier pages. */
+  customersAddon?: boolean | null;
+  /** Optional investment page. null/undefined = follow tier pages. */
+  investmentAddon?: boolean | null;
   name: string;
   name_en: string;
   phone: string;
@@ -143,6 +149,8 @@ export type PharmacySettings = {
   payrollWorkBreaks?: WorkBreak[];
   workShifts?: PharmacyShift[];
   defaultShiftId?: ShiftId;
+  /** JS weekday numbers that are rest days (0=Sun … 6=Sat). */
+  restWeekdays?: number[];
   createdAt?: string;
   updatedAt?: string;
   latitude?: number | null;
@@ -285,6 +293,22 @@ export type PharmacyCostPlan = {
   title: string;
   plannedAmount: number;
   notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type PharmacyWalletType = "cash" | "bank" | "ewallet";
+
+export type PharmacyWallet = {
+  id: number;
+  pharmacyId: string;
+  name: string;
+  walletType: PharmacyWalletType;
+  balance: number;
+  notes?: string;
+  isActive?: boolean;
+  /** Pre-selected as POS payment method when investment wallets mode is on. */
+  isDefaultPos?: boolean;
   createdAt?: string;
   updatedAt?: string;
 };

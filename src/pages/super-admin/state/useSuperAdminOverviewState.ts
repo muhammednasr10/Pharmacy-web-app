@@ -19,6 +19,7 @@ type OverviewParams = Pick<SuperAdminSharedContext, "isArabic" | "pharmacies"> &
   pendingPharmacyLoginAccounts: PharmacyLoginAccount[];
   pendingPharmacySignupRequests: PharmacySignupRequest[];
   pendingCustomRoles: PharmacyCustomRole[];
+  pendingSuggestionsCount?: number;
 };
 
 export function useSuperAdminOverviewState(params: OverviewParams) {
@@ -29,6 +30,7 @@ export function useSuperAdminOverviewState(params: OverviewParams) {
     pendingPharmacyLoginAccounts,
     pendingPharmacySignupRequests,
     pendingCustomRoles,
+    pendingSuggestionsCount = 0,
   } = params;
 
   const [activeTab, setActiveTab] = useState<SaasTab>("overview");
@@ -39,11 +41,11 @@ export function useSuperAdminOverviewState(params: OverviewParams) {
     () => subscriptionRequests.filter((request) => request.status === "pending"),
     [subscriptionRequests],
   );
+  // Role suggestions are handled in the Roles tab (not counted here).
   const pendingCustomerRequestsCount =
     pendingSubscriptionRequests.length +
     pendingPharmacyLoginAccounts.length +
-    pendingPharmacySignupRequests.length +
-    pendingCustomRoles.length;
+    pendingPharmacySignupRequests.length;
 
   const pharmacyNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -62,20 +64,33 @@ export function useSuperAdminOverviewState(params: OverviewParams) {
     setExpandedOrgIds((prev) => ({ ...prev, [organizationId]: !prev[organizationId] }));
   }
 
+  const pendingRoleSuggestionsCount = pendingCustomRoles.length;
+
   const saasTabs = useMemo(
     () => [
       { id: "overview" as const, ar: "ملخص", en: "Summary" },
       { id: "pharmacies" as const, ar: "الصيدليات", en: "Pharmacies" },
-      { id: "roles" as const, ar: "أدوار", en: "Roles" },
+      {
+        id: "roles" as const,
+        ar: "أدوار",
+        en: "Roles",
+        badge: pendingRoleSuggestionsCount,
+      },
       {
         id: "customerRequests" as const,
         ar: "طلبات العملاء",
         en: "Customer requests",
         badge: pendingCustomerRequestsCount,
       },
+      {
+        id: "suggestions" as const,
+        ar: "اقتراحات",
+        en: "Suggestions",
+        badge: pendingSuggestionsCount,
+      },
       { id: "pricing" as const, ar: "التسعير", en: "Pricing" },
     ],
-    [pendingCustomerRequestsCount],
+    [pendingCustomerRequestsCount, pendingRoleSuggestionsCount, pendingSuggestionsCount],
   );
 
   const customerRequestRows = useMemo(
@@ -83,7 +98,7 @@ export function useSuperAdminOverviewState(params: OverviewParams) {
       buildCustomerRequestRows({
         subscriptionRequests,
         loginAccounts: pendingPharmacyLoginAccounts,
-        customRoles: pendingCustomRoles,
+        customRoles: [],
         signupRequests: pendingPharmacySignupRequests,
         pharmacyNameById,
         isArabic,
@@ -93,7 +108,6 @@ export function useSuperAdminOverviewState(params: OverviewParams) {
       subscriptionRequests,
       pendingPharmacyLoginAccounts,
       pendingPharmacySignupRequests,
-      pendingCustomRoles,
       pharmacyNameById,
       isArabic,
       customerRequestFilter,

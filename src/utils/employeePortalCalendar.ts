@@ -1,5 +1,6 @@
 import type { AttendanceRecord, EmployeeRequest } from "../types";
 import {
+  DEFAULT_REST_WEEKDAYS,
   formatScheduleWindow,
   getShiftDisplayName,
   type PharmacyShift,
@@ -17,8 +18,6 @@ export type EmployeeMonthDay = {
   dayKind: "work" | "off" | "leave";
   attendance?: AttendanceRecord;
 };
-
-const DEFAULT_REST_WEEKDAYS = [5];
 
 function eachDateInRange(startIso: string, endIso: string) {
   const dates: string[] = [];

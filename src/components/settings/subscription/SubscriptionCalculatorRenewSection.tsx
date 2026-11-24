@@ -1,88 +1,73 @@
-import { useEffect, useMemo, useState } from "react";
 import type { SubscriptionRequest } from "../../../types";
-import {
-  DEFAULT_PRICING_CALCULATOR_CONFIG,
-  computePricingQuote,
-  getQuoteBillingAmount,
-  getYearlyDiscountPercent,
-  type PricingBillingCycle,
-  type PricingCalculatorConfig,
-} from "../../../config/pricingCalculator";
-import { subscriptionPaymentInfo } from "../../../config/subscription";
-import * as pharmacyService from "../../../services/pharmacyService";
+import type { SubscriptionTier } from "../../../config/subscriptionTiers";
+import type { SubscriptionLimitChange } from "../../../utils/subscriptionLimitChange";
 import type { BillingView } from "./types";
+import SubscriptionPackageActions from "./SubscriptionPackageActions";
+import SubscriptionPackageEditForm from "./SubscriptionPackageEditForm";
+import SubscriptionPagesAccessList from "./SubscriptionPagesAccessList";
+import { useSubscriptionCalculatorState } from "./useSubscriptionCalculatorState";
 
 type Props = {
   isArabic: boolean;
   isOrgAdmin: boolean;
+  subscriptionTier: SubscriptionTier;
   maxBranches: number;
   maxUsers: number;
   staffAddon?: boolean;
   customersAddon?: boolean;
+  investmentAddon?: boolean;
   pendingRenewal?: SubscriptionRequest;
+  pendingLimitChange?: SubscriptionRequest;
   pendingRequest?: SubscriptionRequest;
   submittingRequest: boolean;
   onSubmitRenewal: (billingView: BillingView, amount: number) => void;
+  onSubmitLimitChange: (change: SubscriptionLimitChange, amount: number) => void;
   onShowPaymentInfo: (request: SubscriptionRequest) => void;
 };
 
 export default function SubscriptionCalculatorRenewSection({
   isArabic,
   isOrgAdmin,
+  subscriptionTier,
   maxBranches,
   maxUsers,
   staffAddon = false,
   customersAddon = false,
+  investmentAddon = false,
   pendingRenewal,
+  pendingLimitChange,
   pendingRequest,
   submittingRequest,
   onSubmitRenewal,
+  onSubmitLimitChange,
   onShowPaymentInfo,
 }: Props) {
-  const [config, setConfig] = useState<PricingCalculatorConfig>(DEFAULT_PRICING_CALCULATOR_CONFIG);
-  const [billingCycle, setBillingCycle] = useState<PricingBillingCycle>("monthly");
-  const yearlyDiscountPct = getYearlyDiscountPercent();
-  const currency = subscriptionPaymentInfo.currency;
+  const state = useSubscriptionCalculatorState({
+    isArabic,
+    subscriptionTier,
+    maxBranches,
+    maxUsers,
+    staffAddon,
+    customersAddon,
+    investmentAddon,
+  });
 
-  useEffect(() => {
-    let cancelled = false;
-    void pharmacyService
-      .loadPricingCalculatorConfig()
-      .then((row) => {
-        if (!cancelled) setConfig(row);
-      })
-      .catch(() => {
-        if (!cancelled) setConfig(DEFAULT_PRICING_CALCULATOR_CONFIG);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const quote = useMemo(
-    () =>
-      computePricingQuote(config, {
-        branches: maxBranches,
-        users: maxUsers,
-        staffAddon: Boolean(config.staffAddonEnabled && staffAddon),
-        customersAddon: Boolean(config.customersAddonEnabled && customersAddon),
-        billingCycle,
-      }),
-    [config, maxBranches, maxUsers, staffAddon, customersAddon, billingCycle],
-  );
-
-  const billedAmount = getQuoteBillingAmount(quote.monthlyPrice, billingCycle);
-  const yearlyMonthlyEquivalent =
-    billingCycle === "yearly" ? Math.round(billedAmount / 12) : quote.monthlyPrice;
+  const draftChange: SubscriptionLimitChange = {
+    branches: state.draftBranches,
+    users: state.draftUsers,
+    staffAddon: state.draftStaffAddon,
+    customersAddon: state.draftCustomersAddon,
+    investmentAddon: state.draftInvestmentAddon,
+  };
 
   return (
     <section className="subscriptionCompareSection subscriptionCalculatorRenew">
       <div className="subscriptionCompareIntro">
-        <h3>{isArabic ? "تجديد الاشتراك" : "Renew subscription"}</h3>
+        <h3>{isArabic ? "تجديد وتعديل الباقة" : "Renew & edit package"}</h3>
         <p>
           {isArabic
-            ? "السعر محسوم من حدود الصيدلية الحالية (فروع ومستخدمين) عبر حاسبة الاشتراك"
-            : "Price is calculated from your current branch and user limits via the subscription calculator"}
+            ? "حدودك الحالية والصفحات المشتركة. تقدر تعدّل الباقة ويُعتمد الطلب من مالك النظام أولاً."
+            : "Your current limits and included pages. You can edit the package; the system owner must approve first."}
         </p>
       </div>
 
@@ -94,22 +79,22 @@ export default function SubscriptionCalculatorRenewSection({
         <button
           type="button"
           role="tab"
-          aria-selected={billingCycle === "monthly"}
-          className={billingCycle === "monthly" ? "active" : ""}
-          onClick={() => setBillingCycle("monthly")}
+          aria-selected={state.billingCycle === "monthly"}
+          className={state.billingCycle === "monthly" ? "active" : ""}
+          onClick={() => state.setBillingCycle("monthly")}
         >
           {isArabic ? "الاشتراك الشهري" : "Monthly billing"}
         </button>
         <button
           type="button"
           role="tab"
-          aria-selected={billingCycle === "yearly"}
-          className={billingCycle === "yearly" ? "active" : ""}
-          onClick={() => setBillingCycle("yearly")}
+          aria-selected={state.billingCycle === "yearly"}
+          className={state.billingCycle === "yearly" ? "active" : ""}
+          onClick={() => state.setBillingCycle("yearly")}
         >
           {isArabic
-            ? `الاشتراك السنوي (وفر ${yearlyDiscountPct}%)`
-            : `Annual billing (save ${yearlyDiscountPct}%)`}
+            ? `الاشتراك السنوي (وفر ${state.yearlyDiscountPct}%)`
+            : `Annual billing (save ${state.yearlyDiscountPct}%)`}
         </button>
       </div>
 
@@ -121,10 +106,10 @@ export default function SubscriptionCalculatorRenewSection({
         <div className="subscriptionCompareCardHead">
           <h4>{isArabic ? "حاسبة الاشتراك" : "Subscription calculator"}</h4>
           <div className="subscriptionComparePrice">
-            <strong>{billedAmount.toLocaleString(isArabic ? "ar-EG" : "en-US")}</strong>
+            <strong>{state.billedAmount.toLocaleString(isArabic ? "ar-EG" : "en-US")}</strong>
             <span>
-              {currency}
-              {billingCycle === "monthly"
+              {state.currency}
+              {state.billingCycle === "monthly"
                 ? isArabic
                   ? " / شهر"
                   : " / month"
@@ -133,93 +118,106 @@ export default function SubscriptionCalculatorRenewSection({
                   : " / year"}
             </span>
           </div>
-          {billingCycle === "yearly" ? (
+          {state.billingCycle === "yearly" ? (
             <p className="subscriptionCompareEquivalent">
               {isArabic
-                ? `≈ ${yearlyMonthlyEquivalent.toLocaleString("ar-EG")} ${currency} / شهر بعد خصم ${yearlyDiscountPct}%`
-                : `≈ ${yearlyMonthlyEquivalent.toLocaleString("en-US")} ${currency} / month after ${yearlyDiscountPct}% off`}
+                ? `≈ ${state.yearlyMonthlyEquivalent.toLocaleString("ar-EG")} ${state.currency} / شهر بعد خصم ${state.yearlyDiscountPct}%`
+                : `≈ ${state.yearlyMonthlyEquivalent.toLocaleString("en-US")} ${state.currency} / month after ${state.yearlyDiscountPct}% off`}
             </p>
           ) : (
             <p className="subscriptionCompareEquivalent">
               {isArabic
-                ? `الأساس الشهري: ${quote.monthlyPrice.toLocaleString("ar-EG")} ${currency}`
-                : `Monthly base: ${quote.monthlyPrice.toLocaleString("en-US")} ${currency}`}
+                ? `الأساس الشهري: ${state.quote.monthlyPrice.toLocaleString("ar-EG")} ${state.currency}`
+                : `Monthly base: ${state.quote.monthlyPrice.toLocaleString("en-US")} ${state.currency}`}
             </p>
           )}
         </div>
 
         <div className="subscriptionCompareCardBody">
-          <ul className="subscriptionCompareFeatureList">
-            <li>
-              {isArabic
-                ? `${quote.branches} فرع × ${config.pricePerBranch.toLocaleString("ar-EG")} ج.م`
-                : `${quote.branches} branches × ${config.pricePerBranch.toLocaleString("en-US")} EGP`}
-            </li>
-            <li>
-              {isArabic
-                ? `${quote.users} مستخدم × ${config.pricePerUser.toLocaleString("ar-EG")} ج.م`
-                : `${quote.users} users × ${config.pricePerUser.toLocaleString("en-US")} EGP`}
-            </li>
-            {quote.staffAddon ? (
+          {state.editingPackage && isOrgAdmin ? (
+            <SubscriptionPackageEditForm
+              isArabic={isArabic}
+              config={state.config}
+              draftBranches={state.draftBranches}
+              draftUsers={state.draftUsers}
+              draftStaffAddon={state.draftStaffAddon}
+              draftCustomersAddon={state.draftCustomersAddon}
+              draftInvestmentAddon={state.draftInvestmentAddon}
+              onBranchesChange={state.setDraftBranches}
+              onUsersChange={state.setDraftUsers}
+              onStaffAddonChange={state.setDraftStaffAddon}
+              onCustomersAddonChange={state.setDraftCustomersAddon}
+              onInvestmentAddonChange={state.setDraftInvestmentAddon}
+            />
+          ) : (
+            <ul className="subscriptionCompareFeatureList">
               <li>
                 {isArabic
-                  ? `إضافة الموظفين: +${config.staffAddonPrice.toLocaleString("ar-EG")} ج.م`
-                  : `Staff add-on: +${config.staffAddonPrice.toLocaleString("en-US")} EGP`}
+                  ? `${state.quote.branches} فرع × ${state.config.pricePerBranch.toLocaleString("ar-EG")} ج.م`
+                  : `${state.quote.branches} branches × ${state.config.pricePerBranch.toLocaleString("en-US")} EGP`}
               </li>
-            ) : null}
-            {quote.customersAddon ? (
               <li>
                 {isArabic
-                  ? `إضافة العملاء: +${config.customersAddonPrice.toLocaleString("ar-EG")} ج.م`
-                  : `Customers add-on: +${config.customersAddonPrice.toLocaleString("en-US")} EGP`}
+                  ? `${state.quote.users} مستخدم × ${state.config.pricePerUser.toLocaleString("ar-EG")} ج.م`
+                  : `${state.quote.users} users × ${state.config.pricePerUser.toLocaleString("en-US")} EGP`}
               </li>
-            ) : null}
-            {billingCycle === "yearly" ? (
-              <li>
-                {isArabic
-                  ? `خصم سنوي ${yearlyDiscountPct}% بدل الدفع الشهري 12 شهر`
-                  : `${yearlyDiscountPct}% yearly discount vs paying monthly for 12 months`}
-              </li>
-            ) : null}
-          </ul>
+              {state.quote.staffAddon ? (
+                <li>
+                  {isArabic
+                    ? `إضافة الموظفين: +${state.config.staffAddonPrice.toLocaleString("ar-EG")} ج.م`
+                    : `Staff add-on: +${state.config.staffAddonPrice.toLocaleString("en-US")} EGP`}
+                </li>
+              ) : null}
+              {state.quote.customersAddon ? (
+                <li>
+                  {isArabic
+                    ? `إضافة العملاء: +${state.config.customersAddonPrice.toLocaleString("ar-EG")} ج.م`
+                    : `Customers add-on: +${state.config.customersAddonPrice.toLocaleString("en-US")} EGP`}
+                </li>
+              ) : null}
+              {state.quote.investmentAddon ? (
+                <li>
+                  {isArabic
+                    ? `إضافة الاستثمار: +${state.config.investmentAddonPrice.toLocaleString("ar-EG")} ج.م`
+                    : `Investment add-on: +${state.config.investmentAddonPrice.toLocaleString("en-US")} EGP`}
+                </li>
+              ) : null}
+              {state.billingCycle === "yearly" ? (
+                <li>
+                  {isArabic
+                    ? `خصم سنوي ${state.yearlyDiscountPct}% بدل الدفع الشهري 12 شهر`
+                    : `${state.yearlyDiscountPct}% yearly discount vs paying monthly for 12 months`}
+                </li>
+              ) : null}
+            </ul>
+          )}
+
+          <SubscriptionPagesAccessList isArabic={isArabic} rows={state.pageRows} />
         </div>
 
         {isOrgAdmin ? (
-          <div className="subscriptionCompareCardAction">
-            {pendingRenewal ? (
-              <button
-                type="button"
-                className="subscriptionCompareBtn outline"
-                onClick={() => onShowPaymentInfo(pendingRenewal)}
-              >
-                {isArabic ? "تعليمات الدفع" : "Payment info"}
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="subscriptionCompareBtn primary"
-                disabled={submittingRequest || Boolean(pendingRequest)}
-                onClick={() => onSubmitRenewal(billingCycle, billedAmount)}
-              >
-                {submittingRequest
-                  ? isArabic
-                    ? "جاري الإرسال..."
-                    : "Submitting..."
-                  : billingCycle === "yearly"
-                    ? isArabic
-                      ? `تجديد سنوي — ${billedAmount.toLocaleString("ar-EG")} ${currency}`
-                      : `Renew yearly — ${billedAmount.toLocaleString("en-US")} ${currency}`
-                    : isArabic
-                      ? `تجديد شهري — ${billedAmount.toLocaleString("ar-EG")} ${currency}`
-                      : `Renew monthly — ${billedAmount.toLocaleString("en-US")} ${currency}`}
-              </button>
-            )}
-          </div>
+          <SubscriptionPackageActions
+            isArabic={isArabic}
+            currency={state.currency}
+            billingCycle={state.billingCycle}
+            billedAmount={state.billedAmount}
+            editingPackage={state.editingPackage}
+            packageChanged={state.packageChanged}
+            submittingRequest={submittingRequest}
+            pendingRequest={pendingRequest}
+            pendingRenewal={pendingRenewal}
+            pendingLimitChange={pendingLimitChange}
+            onStartEdit={state.startEditingPackage}
+            onCancelEdit={state.cancelEditingPackage}
+            onSubmitRenewal={() => onSubmitRenewal(state.billingCycle, state.billedAmount)}
+            onSubmitLimitChange={() => onSubmitLimitChange(draftChange, state.billedAmount)}
+            onShowPaymentInfo={onShowPaymentInfo}
+          />
         ) : (
           <p className="subscriptionCompareHint">
             {isArabic
-              ? "تواصل مع مدير الصيدلية لتجديد الاشتراك"
-              : "Contact your pharmacy admin to renew"}
+              ? "تواصل مع مدير الصيدلية لتجديد أو تعديل الاشتراك"
+              : "Contact your pharmacy admin to renew or edit the package"}
           </p>
         )}
       </article>

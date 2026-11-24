@@ -1,12 +1,16 @@
+import { useState } from "react";
 import { formatPlanMonthLabel } from "../utils/investmentAnalysis";
 import CostPlanModal from "./costs/CostPlanModal";
 import InvestmentPlanTable from "./costs/InvestmentPlanTable";
+import InvestmentPortfoliosTab from "./costs/InvestmentPortfoliosTab";
 import InvestmentSummaryGrid from "./costs/InvestmentSummaryGrid";
 import InvestmentVerdict from "./costs/InvestmentVerdict";
 import type { CostsPageProps } from "./costs/types";
 import { useCostsPageState } from "./costs/useCostsPageState";
 
 export type { CostsPageProps } from "./costs/types";
+
+type InvestmentTab = "plan" | "portfolios";
 
 export default function CostsPage({
   embedded = false,
@@ -25,6 +29,7 @@ export default function CostsPage({
   downloadCSV,
   onRefreshCosts,
 }: CostsPageProps) {
+  const [activeTab, setActiveTab] = useState<InvestmentTab>("plan");
   const state = useCostsPageState({
     costs,
     invoices,
@@ -45,46 +50,38 @@ export default function CostsPage({
     ? "reportsEmbeddedPanel costsPage investmentPage"
     : "card costsPage investmentPage";
 
+  const tabs: { id: InvestmentTab; ar: string; en: string }[] = [
+    { id: "plan", ar: "الخطة", en: "Plan" },
+    { id: "portfolios", ar: "المحافظ", en: "Portfolios" },
+  ];
+
   return (
     <RootTag className={rootClassName}>
       <div className={`cardHeader returnsPageActions ${embedded ? "reportsEmbeddedHeader" : ""}`}>
         <div>
-          {!embedded && <h2>{isArabic ? "استثمارى" : "Investment"}</h2>}
+          {!embedded && <h2>{isArabic ? "الاستثمار" : "Investment"}</h2>}
           <p className="returnsSectionHint">
             {isArabic
               ? "خطة التكاليف المتوقعة مقابل المصروفات الفعلية ومقارنتها بالمبيعات والأرباح"
               : "Planned vs actual costs compared to sales and profit"}
           </p>
         </div>
-        {canManageCosts && (
-          <div className="returnsHeaderBtns">
-            <button
-              type="button"
-              className="completeBtn"
-              onClick={() => void state.handleApplyYearPlan()}
-              disabled={
-                isSubscriptionExpired || state.loadingPlans || state.applyingYearPlan
-              }
-            >
-              {state.applyingYearPlan
-                ? isArabic
-                  ? "جاري التطبيق..."
-                  : "Applying..."
-                : isArabic
-                  ? "الخطة الافتراضية لشهور السنة"
-                  : "Default plan for year"}
-            </button>
-            <button
-              type="button"
-              className="completeBtn"
-              onClick={state.openAddPlanModal}
-              disabled={isSubscriptionExpired || state.loadingPlans}
-            >
-              {isArabic ? "+ بند خطة" : "+ Plan Line"}
-            </button>
-          </div>
-        )}
       </div>
+
+      <nav className="settingsTabsNav investmentTabsNav" role="tablist" aria-label={isArabic ? "أقسام الاستثمار" : "Investment sections"}>
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            className={`settingsTabBtn${activeTab === tab.id ? " active" : ""}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {isArabic ? tab.ar : tab.en}
+          </button>
+        ))}
+      </nav>
 
       <div className="investmentMonthBar">
         <label className="investmentMonthField">
@@ -100,35 +97,78 @@ export default function CostsPage({
         </span>
       </div>
 
-      <InvestmentVerdict isArabic={isArabic} currency={currency} analysis={state.analysis} />
+      {activeTab === "plan" && (
+        <>
+          {canManageCosts && (
+            <div className="investmentPlanActions">
+              <button
+                type="button"
+                className="smallBtn investmentPlanActionBtn"
+                onClick={() => void state.handleApplyYearPlan()}
+                disabled={
+                  isSubscriptionExpired || state.loadingPlans || state.applyingYearPlan
+                }
+              >
+                {state.applyingYearPlan
+                  ? isArabic
+                    ? "جاري التطبيق..."
+                    : "Applying..."
+                  : isArabic
+                    ? "الخطة الافتراضية لشهور السنة"
+                    : "Default plan for year"}
+              </button>
+              <button
+                type="button"
+                className="smallBtn investmentPlanActionBtn"
+                onClick={state.openAddPlanModal}
+                disabled={isSubscriptionExpired || state.loadingPlans}
+              >
+                {isArabic ? "+ بند خطة" : "+ Plan Line"}
+              </button>
+            </div>
+          )}
 
-      <InvestmentSummaryGrid
-        isArabic={isArabic}
-        currency={currency}
-        analysis={state.analysis}
-        monthCostsCount={state.monthCosts.length}
-      />
+          <InvestmentVerdict isArabic={isArabic} currency={currency} analysis={state.analysis} />
 
-      <InvestmentPlanTable
-        isArabic={isArabic}
-        t={t}
-        currency={currency}
-        loadingPlans={state.loadingPlans}
-        planRows={state.planRows}
-        plans={state.plans}
-        analysis={state.analysis}
-        canManageCosts={canManageCosts}
-        isSubscriptionExpired={isSubscriptionExpired}
-        saving={state.saving}
-        deletingId={state.deletingId}
-        savingActualRowId={state.savingActualRowId}
-        getActualDraftValue={state.getActualDraftValue}
-        setActualDraftValue={state.setActualDraftValue}
-        onSaveActualRow={state.handleSaveActualRow}
-        onEditPlan={state.openEditPlanModal}
-        onDeletePlan={state.handleDeletePlan}
-        onExportCSV={state.exportPlanCSV}
-      />
+          <InvestmentSummaryGrid
+            isArabic={isArabic}
+            currency={currency}
+            analysis={state.analysis}
+            monthCostsCount={state.monthCosts.length}
+          />
+
+          <InvestmentPlanTable
+            isArabic={isArabic}
+            t={t}
+            currency={currency}
+            loadingPlans={state.loadingPlans}
+            planRows={state.planRows}
+            plans={state.plans}
+            analysis={state.analysis}
+            canManageCosts={canManageCosts}
+            isSubscriptionExpired={isSubscriptionExpired}
+            saving={state.saving}
+            deletingId={state.deletingId}
+            savingActualRowId={state.savingActualRowId}
+            getActualDraftValue={state.getActualDraftValue}
+            setActualDraftValue={state.setActualDraftValue}
+            onSaveActualRow={state.handleSaveActualRow}
+            onEditPlan={state.openEditPlanModal}
+            onDeletePlan={state.handleDeletePlan}
+            onExportCSV={state.exportPlanCSV}
+          />
+        </>
+      )}
+
+      {activeTab === "portfolios" && (
+        <InvestmentPortfoliosTab
+          isArabic={isArabic}
+          currency={currency}
+          pharmacyId={pharmacyId}
+          canManageCosts={canManageCosts}
+          isSubscriptionExpired={isSubscriptionExpired}
+        />
+      )}
 
       {state.showPlanModal && (
         <CostPlanModal

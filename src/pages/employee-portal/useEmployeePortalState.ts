@@ -85,6 +85,7 @@ export function useEmployeePortalState({
       isArabic,
       monthRecords,
       requests,
+      restWeekdays: payrollConfig.restWeekdays,
     });
   }, [
     schedule,

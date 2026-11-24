@@ -17,12 +17,14 @@ type LoginWelcomeCalculatorCardProps = {
   users: number;
   staffAddon: boolean;
   customersAddon: boolean;
+  investmentAddon: boolean;
   billingCycle: PricingBillingCycle;
   quote: PricingCalculatorQuote;
   onBranchesChange: (value: number) => void;
   onUsersChange: (value: number) => void;
   onStaffAddonChange: (value: boolean) => void;
   onCustomersAddonChange: (value: boolean) => void;
+  onInvestmentAddonChange: (value: boolean) => void;
   onBillingCycleChange: (value: PricingBillingCycle) => void;
 };
 
@@ -33,12 +35,14 @@ export default function LoginWelcomeCalculatorCard({
   users,
   staffAddon,
   customersAddon,
+  investmentAddon,
   billingCycle,
   quote,
   onBranchesChange,
   onUsersChange,
   onStaffAddonChange,
   onCustomersAddonChange,
+  onInvestmentAddonChange,
   onBillingCycleChange,
 }: LoginWelcomeCalculatorCardProps) {
   const yearlyDiscountPct = getYearlyDiscountPercent();
@@ -47,8 +51,9 @@ export default function LoginWelcomeCalculatorCard({
     billingCycle === "yearly" ? Math.round(billedAmount / 12) : quote.monthlyPrice;
 
   const extrasLabel = [
-    quote.staffAddon ? (isArabic ? "موظفين" : "staff") : null,
+    quote.staffAddon ? (isArabic ? "موظفين + بروفايلى" : "staff + profile") : null,
     quote.customersAddon ? (isArabic ? "عملاء" : "customers") : null,
+    quote.investmentAddon ? (isArabic ? "استثمار" : "investment") : null,
   ]
     .filter(Boolean)
     .join(isArabic ? " · " : " · ");
@@ -166,6 +171,27 @@ export default function LoginWelcomeCalculatorCard({
                 {isArabic
                   ? `+ ${config.customersAddonPrice.toLocaleString("ar-EG")} ج.م / شهر`
                   : `+ ${config.customersAddonPrice.toLocaleString("en-EG")} EGP / month`}
+              </b>
+            </span>
+          </label>
+        ) : null}
+
+        {config.investmentAddonEnabled ? (
+          <label className={`loginWelcomeCalcAddon${investmentAddon ? " is-on" : ""}`}>
+            <input
+              type="checkbox"
+              checked={investmentAddon}
+              onChange={(e) => onInvestmentAddonChange(e.target.checked)}
+            />
+            <span>
+              <strong>
+                {isArabic ? config.investmentAddonTitleAr : config.investmentAddonTitleEn}
+              </strong>
+              <em>{isArabic ? config.investmentAddonDescAr : config.investmentAddonDescEn}</em>
+              <b>
+                {isArabic
+                  ? `+ ${config.investmentAddonPrice.toLocaleString("ar-EG")} ج.م / شهر`
+                  : `+ ${config.investmentAddonPrice.toLocaleString("en-EG")} EGP / month`}
               </b>
             </span>
           </label>

@@ -172,6 +172,17 @@ export function useMedicineManagement({
       const oldMedicine = medicines.find((item) => item.id === medicineId);
       if (editingMedicineId) {
         await pharmacyService.updateMedicine(medicineId, medicine);
+        try {
+          await pharmacyService.submitMedicineCatalogSuggestion({
+            pharmacyId: getPharmacyId(),
+            medicine,
+            previous: oldMedicine,
+            requestedById: user?.uid,
+            requestedByName: appUser?.name,
+          });
+        } catch (suggestionError) {
+          console.error("Catalog suggestion submit failed:", suggestionError);
+        }
       } else {
         await pharmacyService.addMedicine(medicine);
       }

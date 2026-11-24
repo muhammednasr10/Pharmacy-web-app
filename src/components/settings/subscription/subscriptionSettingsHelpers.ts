@@ -1,6 +1,10 @@
 import { TRIAL_SUBSCRIPTION_DAYS } from "../../../config/subscription";
 import { getSubscriptionTier } from "../../../config/subscriptionTiers";
 import { parseTierUpgradePlan } from "../../../utils/subscriptionFeatures";
+import {
+  formatLimitChangeSummary,
+  parseLimitChangePlan,
+} from "../../../utils/subscriptionLimitChange";
 import type { SubscriptionTone } from "./types";
 
 export function getRequestStatusLabel(isArabic: boolean, status: string) {
@@ -10,12 +14,33 @@ export function getRequestStatusLabel(isArabic: boolean, status: string) {
 }
 
 export function getRequestTypeLabel(isArabic: boolean, plan: string) {
+  const limitChange = parseLimitChangePlan(plan);
+  if (limitChange) {
+    return isArabic ? "تعديل الباقة" : "Package change";
+  }
   const targetTier = parseTierUpgradePlan(plan);
   if (targetTier) {
     const target = getSubscriptionTier(targetTier);
     return isArabic ? `ترقية إلى ${target.labelAr}` : `Upgrade to ${target.labelEn}`;
   }
   return isArabic ? "تجديد اشتراك" : "Renewal";
+}
+
+export function getRequestDetailsLabel(
+  isArabic: boolean,
+  plan: string,
+  days: number,
+  amount: number,
+  currency = "EGP",
+) {
+  const limitChange = parseLimitChangePlan(plan);
+  if (limitChange) {
+    return `${formatLimitChangeSummary(limitChange, isArabic)} · ${amount} ${currency}`;
+  }
+  if (parseTierUpgradePlan(plan)) {
+    return `${amount} ${currency}`;
+  }
+  return `${days} ${isArabic ? "يوم" : "days"} · ${amount} ${currency}`;
 }
 
 type SubscriptionDisplayInput = {

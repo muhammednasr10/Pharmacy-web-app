@@ -15,6 +15,7 @@ export function usePricingCalculatorState() {
   const [users, setUsers] = useState(3);
   const [staffAddon, setStaffAddon] = useState(false);
   const [customersAddon, setCustomersAddon] = useState(false);
+  const [investmentAddon, setInvestmentAddon] = useState(false);
   const [billingCycle, setBillingCycle] = useState<PricingBillingCycle>("monthly");
 
   useEffect(() => {
@@ -39,9 +40,10 @@ export function usePricingCalculatorState() {
         users,
         staffAddon,
         customersAddon,
+        investmentAddon,
         billingCycle,
       }),
-    [config, branches, users, staffAddon, customersAddon, billingCycle],
+    [config, branches, users, staffAddon, customersAddon, investmentAddon, billingCycle],
   );
 
   useEffect(() => {
@@ -62,6 +64,8 @@ export function usePricingCalculatorState() {
     setStaffAddon,
     customersAddon,
     setCustomersAddon,
+    investmentAddon,
+    setInvestmentAddon,
     billingCycle,
     setBillingCycle,
     quote,

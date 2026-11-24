@@ -54,7 +54,7 @@ export function getPageLabel(page: Page, isArabic: boolean, t: Record<string, st
     case "purchases":
       return isArabic ? "المشتريات" : "Purchases";
     case "costs":
-      return isArabic ? "استثمارى" : "Investment";
+      return isArabic ? "الاستثمار" : "Investment";
     case "customers":
       return isArabic ? "العملاء (CRM)" : "Customers (CRM)";
     case "reports":
@@ -114,24 +114,49 @@ export function flattenNavigationEntries(entries: NavEntry[]): NavItem[] {
   return items;
 }
 
+/** Main-nav order: العملاء قبل الموظفين، واستثمارى بعد الموظفين. */
+const MAIN_NAV_PAGE_ORDER: Page[] = [
+  "dashboard",
+  "employeePortal",
+  "inventory",
+  "pos",
+  "invoices",
+  "returns",
+  "purchases",
+  "customers",
+  "reports",
+  "users",
+  "costs",
+  "settings",
+  "userGuide",
+  "tenants",
+];
+
+function orderNavPages(pages: Page[]): Page[] {
+  const visible = pages.filter(
+    (page) =>
+      page !== "stockMovements" &&
+      page !== "activityLogs" &&
+      page !== "sqlMigrations" &&
+      page !== "branches" &&
+      page !== "hr",
+  );
+  const rank = new Map(MAIN_NAV_PAGE_ORDER.map((page, index) => [page, index]));
+  return [...visible].sort((a, b) => {
+    const aRank = rank.get(a) ?? MAIN_NAV_PAGE_ORDER.length + 1;
+    const bRank = rank.get(b) ?? MAIN_NAV_PAGE_ORDER.length + 1;
+    if (aRank !== bRank) return aRank - bRank;
+    return 0;
+  });
+}
+
 export function buildNavigationTree(
   pages: Page[],
   isArabic: boolean,
   t: Record<string, string>,
   lockedPages?: Set<Page>,
 ): NavEntry[] {
-  const mergedPages = pages.filter(
-    (page) =>
-      page !== "stockMovements" &&
-      page !== "costs" &&
-      page !== "activityLogs" &&
-      page !== "sqlMigrations" &&
-      page !== "branches",
-  );
-  /** إدارة (tenants) دايمًا آخر تبويب في القائمة */
-  const orderedPages = mergedPages.includes("tenants")
-    ? [...mergedPages.filter((page) => page !== "tenants"), "tenants" as Page]
-    : mergedPages;
+  const orderedPages = orderNavPages(pages);
   const billingChildren = (BILLING_NAV_PAGES as Page[])
     .filter((page) => (orderedPages as Page[]).includes(page))
     .map((page) => buildPageEntry(page, isArabic, t, lockedPages));

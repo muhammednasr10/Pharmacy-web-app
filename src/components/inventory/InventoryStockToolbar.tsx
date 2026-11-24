@@ -20,6 +20,9 @@ type InventoryStockToolbarProps = {
   canManageInventory: boolean;
   showReorder: boolean;
   showStockCount: boolean;
+  canUnlockBuyPrice?: boolean;
+  buyPriceUnlocked?: boolean;
+  onToggleBuyPriceUnlock?: () => void;
   onOpenTransfer: () => void;
   onOpenReorder: () => void;
   onOpenStockCount: () => void;
@@ -40,6 +43,9 @@ export default function InventoryStockToolbar({
   canManageInventory,
   showReorder,
   showStockCount,
+  canUnlockBuyPrice = false,
+  buyPriceUnlocked = false,
+  onToggleBuyPriceUnlock,
   onOpenTransfer,
   onOpenReorder,
   onOpenStockCount,
@@ -75,6 +81,43 @@ export default function InventoryStockToolbar({
             </button>
           ))}
         </div>
+        {canUnlockBuyPrice && onToggleBuyPriceUnlock ? (
+          <button
+            type="button"
+            className={`invMgmtBuyPriceUnlockBtn${buyPriceUnlocked ? " is-unlocked" : ""}`}
+            onClick={onToggleBuyPriceUnlock}
+            title={
+              buyPriceUnlocked
+                ? isArabic
+                  ? "إخفاء سعر الشراء"
+                  : "Hide buy price"
+                : isArabic
+                  ? "إظهار سعر الشراء (برقم التليفون)"
+                  : "Show buy price (phone unlock)"
+            }
+            aria-label={
+              buyPriceUnlocked
+                ? isArabic
+                  ? "إخفاء سعر الشراء"
+                  : "Hide buy price"
+                : isArabic
+                  ? "إظهار سعر الشراء"
+                  : "Show buy price"
+            }
+            aria-pressed={buyPriceUnlocked}
+          >
+            <span aria-hidden="true">{buyPriceUnlocked ? "🔓" : "🔒"}</span>
+            <span>
+              {buyPriceUnlocked
+                ? isArabic
+                  ? "سعر الشراء ظاهر"
+                  : "Buy price visible"
+                : isArabic
+                  ? "سعر الشراء"
+                  : "Buy price"}
+            </span>
+          </button>
+        ) : null}
       </div>
       <div className="inventoryHeaderActions">
         {branchesCount > 1 && (canTransferStock || transferUpgradeNotice) ? (

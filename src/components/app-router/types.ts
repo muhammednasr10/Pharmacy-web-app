@@ -108,6 +108,7 @@ export type AppPageRouterProps = {
   appLogo: string;
   activeBranchId: string | null;
   settingsInitialTab?: SettingsTab;
+  setSettingsInitialTab: (tab: SettingsTab | undefined) => void;
   settingsForm: SettingsFormState;
   setSettingsForm: Dispatch<SetStateAction<SettingsFormState>>;
   lowStockThreshold: number;

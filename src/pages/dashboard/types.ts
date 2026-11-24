@@ -29,10 +29,6 @@ export type DashboardPageProps = {
   totalPurchasesCount: number;
   totalReturnsCount: number;
   branchesCount: number;
-  hasOpenShift?: boolean;
-  hasCompletedSale?: boolean;
-  pharmacyId?: string | null;
-  onQaStockReady?: () => void | Promise<void>;
   lowStockMedicines: Medicine[];
   expiringSoonMedicines: Medicine[];
   expiredMedicines: Medicine[];

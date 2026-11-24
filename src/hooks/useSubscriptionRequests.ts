@@ -9,6 +9,10 @@ import {
 } from "../config/subscription";
 import { getSubscriptionTierLabel, type SubscriptionTier } from "../config/subscriptionTiers";
 import { buildTierUpgradePlan, parseTierUpgradePlan } from "../utils/subscriptionFeatures";
+import {
+  formatLimitChangeSummary,
+  parseLimitChangePlan,
+} from "../utils/subscriptionLimitChange";
 import { canRequestSubscription, isOrgPharmacyAdmin, isSuperAdmin } from "../utils/roles";
 import type { SettingsFormState } from "../utils/pharmacySettingsForm";
 
@@ -229,6 +233,67 @@ export function useSubscriptionRequests({
             isArabic
               ? `تم اعتماد ترقية الباقة إلى ${getSubscriptionTierLabel(targetTier, true)}`
               : `Package upgraded to ${getSubscriptionTierLabel(targetTier, false)}`,
+          );
+          return true;
+        }
+
+        const limitChange = parseLimitChangePlan(request.plan);
+        if (limitChange) {
+          const organizationId = pharmacy?.organizationId || `org-${request.pharmacyId}`;
+          await pharmacyService.updateOrganizationMaxBranches(
+            organizationId,
+            limitChange.branches,
+            appUser,
+          );
+          await pharmacyService.updateOrganizationMaxUsers(
+            organizationId,
+            limitChange.users,
+            appUser,
+          );
+
+          const orgPharmacies = branches.filter(
+            (item) =>
+              (item.organizationId || `org-${item.id}`) === organizationId ||
+              item.id === request.pharmacyId,
+          );
+          const targetIds =
+            orgPharmacies.length > 0
+              ? orgPharmacies.map((item) => item.id)
+              : [request.pharmacyId];
+
+          for (const pharmacyId of targetIds) {
+            await pharmacyService.updatePharmacySettings(pharmacyId, {
+              staffAddon: limitChange.staffAddon,
+              customersAddon: limitChange.customersAddon,
+              investmentAddon: limitChange.investmentAddon,
+              maxBranches: limitChange.branches,
+              maxUsers: limitChange.users,
+            });
+          }
+
+          await pharmacyService.updateSubscriptionRequestStatus(requestId, {
+            status: "approved",
+            reviewedBy: appUser?.uid,
+            reviewedByName: appUser?.name,
+          });
+
+          await addActivityLog({
+            type: "subscription_renew",
+            title: isArabic ? "اعتماد تعديل الباقة" : "Package change approved",
+            description: isArabic
+              ? `تم اعتماد ${request.requestNumber} — ${formatLimitChangeSummary(limitChange, true)}`
+              : `Approved ${request.requestNumber} — ${formatLimitChangeSummary(limitChange, false)}`,
+            referenceType: "subscription_request",
+            referenceId: String(requestId),
+            pharmacyId: request.pharmacyId,
+          });
+
+          setSubscriptionRequests(await pharmacyService.getAllSubscriptionRequests());
+          setBranches(await pharmacyService.getPharmacies());
+          alert(
+            isArabic
+              ? `تم اعتماد تعديل الباقة: ${formatLimitChangeSummary(limitChange, true)}`
+              : `Package change approved: ${formatLimitChangeSummary(limitChange, false)}`,
           );
           return true;
         }

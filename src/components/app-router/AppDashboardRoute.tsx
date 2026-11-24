@@ -18,8 +18,6 @@ export type AppDashboardRouteProps = Pick<
   | "dashboardProfitTotal"
   | "totalInvoicesCount"
   | "totalMedicinesCount"
-  | "todayInvoicesCount"
-  | "activeCashierShift"
   | "purchases"
   | "returns"
   | "branches"
@@ -48,8 +46,6 @@ export type AppDashboardRouteProps = Pick<
   | "pendingBranchTransferGroups"
   | "handleApproveBranchTransfer"
   | "handleRejectBranchTransfer"
-  | "getPharmacyId"
-  | "refreshMedicinesFromDb"
 >;
 
 export default function AppDashboardRoute({
@@ -66,8 +62,6 @@ export default function AppDashboardRoute({
   dashboardProfitTotal,
   totalInvoicesCount,
   totalMedicinesCount,
-  todayInvoicesCount = 0,
-  activeCashierShift = null,
   purchases,
   returns,
   branches,
@@ -96,8 +90,6 @@ export default function AppDashboardRoute({
   pendingBranchTransferGroups,
   handleApproveBranchTransfer,
   handleRejectBranchTransfer,
-  getPharmacyId,
-  refreshMedicinesFromDb,
 }: AppDashboardRouteProps) {
   return (
     <DashboardPage
@@ -117,10 +109,6 @@ export default function AppDashboardRoute({
       totalPurchasesCount={purchases.length}
       totalReturnsCount={returns.length}
       branchesCount={branches.length}
-      hasOpenShift={Boolean(activeCashierShift)}
-      hasCompletedSale={todayInvoicesCount > 0 || totalInvoicesCount > 0}
-      pharmacyId={getPharmacyId()}
-      onQaStockReady={() => void refreshMedicinesFromDb()}
       lowStockMedicines={lowStockMedicines}
       expiringSoonMedicines={expiringSoonMedicines}
       expiredMedicines={expiredMedicines}

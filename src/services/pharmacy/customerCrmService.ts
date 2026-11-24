@@ -53,9 +53,11 @@ export function subscribeCustomerActivities(callback: (activities: CustomerActiv
 
 export async function saveCrmCustomer(customer: CrmCustomer): Promise<CrmCustomer> {
   const now = new Date().toISOString();
+  const birthDate = String(customer.birthDate || "").trim() || null;
   const payload = stampPharmacy(
     toSnakeCase({
       ...customer,
+      birthDate,
       tags: customer.tags || [],
       isActive: customer.isActive !== false,
       updatedAt: now,

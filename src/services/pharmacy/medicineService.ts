@@ -4,3 +4,4 @@ export * from "./purchaseBatchService";
 export * from "./medicineStockActivityService";
 export * from "./branchStockService";
 export * from "./medicineCatalogService";
+export * from "./medicineCatalogSuggestionService";

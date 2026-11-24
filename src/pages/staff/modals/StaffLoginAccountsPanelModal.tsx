@@ -20,6 +20,7 @@ export default function StaffLoginAccountsPanelModal({ state }: Props) {
     setLoginAccountsPanelBranchFilter,
     canRequestLoginAccounts,
     canManageLoginAccountsCatalog,
+    orgUserUsage,
     busy,
     openLoginAccountRequestFromEmployeesPanel,
     employeesPanelAccessUsers,
@@ -34,6 +35,9 @@ export default function StaffLoginAccountsPanelModal({ state }: Props) {
   } = state;
 
   if (!canShowEmployeesAccessPanels || loading || employeesAccessPanel !== "login") return null;
+
+  const withinUserLimit = !orgUserUsage || orgUserUsage.canAdd;
+  const needsUserLimitRequest = canRequestLoginAccounts && !withinUserLimit;
 
   return (
     <div className="modalOverlay staffLoginModalOverlay">
@@ -76,6 +80,13 @@ export default function StaffLoginAccountsPanelModal({ state }: Props) {
                   />
                 </label>
               )}
+              {orgUserUsage && (
+                <p className="staffLoginUsageHint">
+                  {isArabic
+                    ? `المستخدمون: ${orgUserUsage.used} / ${orgUserUsage.max}`
+                    : `Users: ${orgUserUsage.used} / ${orgUserUsage.max}`}
+                </p>
+              )}
               {(canRequestLoginAccounts || canManageLoginAccountsCatalog) && (
                 <button
                   type="button"
@@ -84,11 +95,11 @@ export default function StaffLoginAccountsPanelModal({ state }: Props) {
                   onClick={openLoginAccountRequestFromEmployeesPanel}
                 >
                   {isArabic
-                    ? canRequestLoginAccounts
-                      ? "طلب إضافة مستخدم دخول جديد"
+                    ? needsUserLimitRequest
+                      ? "طلب زيادة حد المستخدمين"
                       : "إضافة مستخدم دخول جديد"
-                    : canRequestLoginAccounts
-                      ? "Request new login user"
+                    : needsUserLimitRequest
+                      ? "Request user limit increase"
                       : "Add login user"}
                 </button>
               )}
@@ -117,8 +128,8 @@ export default function StaffLoginAccountsPanelModal({ state }: Props) {
                       className="catalogEmptyCell saasManageEmptyCell"
                     >
                       {isArabic
-                        ? "لا يوجد مستخدمون في جدول users لهذا الفرع — أضفهم من Supabase كما في الخطوات أعلاه"
-                        : "No rows in users for this branch — add them in Supabase as described above"}
+                        ? "لا يوجد مستخدمو دخول لهذا الفرع — أضفهم من الزر أعلاه ضمن الحد التعاقدي"
+                        : "No login users for this branch — add them with the button above within your contracted limit"}
                     </td>
                   </tr>
                 ) : (

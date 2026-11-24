@@ -391,6 +391,7 @@ export function useAppAuth({ isArabic, activeBranchId, setActiveBranchId }: UseA
           users: quote?.users,
           staffAddon: quote?.staffAddon,
           customersAddon: quote?.customersAddon,
+          investmentAddon: quote?.investmentAddon,
         });
         clearPricingQuote();
 

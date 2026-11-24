@@ -81,7 +81,13 @@ export function useAppAuthSlice({ isArabic, activePage, setActivePage }: UseAppA
     didRestoreSavedPageRef.current = true;
     sessionStorage.setItem(NAV_RESTORED_ONCE_KEY, "1");
     const savedPage = sessionStorage.getItem(ACTIVE_PAGE_STORAGE_KEY) as Page | null;
-    if (!savedPage) return;
+    if (!savedPage) {
+      // First login / new signup: land on the permanent getting-started guide.
+      if (allowed.includes("userGuide") && urlPage !== "userGuide") {
+        setActivePage("userGuide");
+      }
+      return;
+    }
     const page = savedPage === "hr" ? "users" : savedPage;
     if (allowed.includes(page) && page !== urlPage) {
       setActivePage(page);

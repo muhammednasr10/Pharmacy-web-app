@@ -9,6 +9,7 @@ import { useAppBindingsSlice } from "./app-state/useAppBindingsSlice";
 import { useAppPermissions } from "./useAppPermissions";
 import { getAllowedPages } from "../utils/roles";
 import { filterPagesBySubscriptionTier } from "../utils/subscriptionFeatures";
+import { filterPagesByPharmacyAddons } from "../utils/subscriptionLimitChange";
 import { getSubscriptionStatus } from "../utils/subscriptionStatus";
 import * as pharmacyService from "../services/pharmacyService";
 import type { Page } from "../types";
@@ -50,17 +51,25 @@ export function useAppState() {
 
   const allowedPages = useMemo(() => {
     if (!auth.appUser) return [];
-    return filterPagesBySubscriptionTier(
-      getAllowedPages(auth.appUser),
+    const rolePages = getAllowedPages(auth.appUser);
+    const tierPages = filterPagesBySubscriptionTier(
+      rolePages,
       auth.appUser,
       org.orgSubscriptionTier,
     );
-  }, [auth.appUser, org.orgSubscriptionTier, tierConfigsVersion]);
+    return filterPagesByPharmacyAddons(tierPages, data.pharmacySettings, rolePages);
+  }, [
+    auth.appUser,
+    org.orgSubscriptionTier,
+    tierConfigsVersion,
+    data.pharmacySettings?.staffAddon,
+    data.pharmacySettings?.customersAddon,
+    data.pharmacySettings?.investmentAddon,
+  ]);
 
   const displayPage = useMemo((): Page => {
     if (!auth.appUser) return shared.activePage;
     if (shared.activePage === "hr") return "users";
-    if (shared.activePage === "costs") return "reports";
     if (shared.activePage === "stockMovements") return "inventory";
     if (allowedPages.includes(shared.activePage)) return shared.activePage;
     return allowedPages[0] || "dashboard";

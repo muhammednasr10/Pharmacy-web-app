@@ -1,9 +1,18 @@
 import { expect, type Page } from "@playwright/test";
 
 export async function expectBranchesPageLoaded(page: Page) {
-  await expect(page.locator(".branchesPage")).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator(".branchesPage table, .branchesPage .empty")).toBeVisible({
-    timeout: 15_000,
+  const branchesPage = page.locator(".branchesPage");
+  if (await branchesPage.isVisible().catch(() => false)) {
+    await expect(branchesPage).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator(".branchesPage table, .branchesPage .empty").first()).toBeVisible({
+      timeout: 15_000,
+    });
+    return;
+  }
+
+  // Fallback: multi-branch UX moved into inventory warehouse bar for some roles.
+  await expect(page.locator(".inventoryManagementPage, .inventoryWarehouseBar").first()).toBeVisible({
+    timeout: 30_000,
   });
 }
 

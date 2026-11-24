@@ -58,6 +58,7 @@ export function useAppBindingsSlice({
     setActivePage,
     navigate,
     settingsInitialTab,
+    setSettingsInitialTab,
     openSubscriptionSettings,
     isMenuOpen,
     setIsMenuOpen,
@@ -176,11 +177,6 @@ export function useAppBindingsSlice({
 
       switch (result.type) {
         case "page":
-          if (result.page === "costs") {
-            setReportsTab("investment");
-            setActivePage("reports");
-            break;
-          }
           if (allowedPages.includes(result.page)) {
             setActivePage(result.page);
           }
@@ -286,6 +282,7 @@ export function useAppBindingsSlice({
     appLogo: data.appLogo,
     activeBranchId,
     settingsInitialTab,
+    setSettingsInitialTab,
     settingsForm: data.settingsForm,
     setSettingsForm: data.setSettingsForm,
     lowStockThreshold: metrics.lowStockThreshold,

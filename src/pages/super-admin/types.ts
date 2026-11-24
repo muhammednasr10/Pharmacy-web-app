@@ -66,6 +66,8 @@ export type ProgramRoleRow = {
   kind: "builtin" | "custom";
   customRole?: PharmacyCustomRole;
   isPending: boolean;
+  pharmacyId?: string;
+  pharmacyName?: string;
 };
 
 export type ManageUnifiedRoleRow = {
@@ -85,7 +87,13 @@ export type ManageRoleAccountDisplayRow = {
   user: AppUser;
 };
 
-export type SaasTab = "overview" | "pharmacies" | "roles" | "customerRequests" | "pricing";
+export type SaasTab =
+  | "overview"
+  | "pharmacies"
+  | "roles"
+  | "customerRequests"
+  | "suggestions"
+  | "pricing";
 
 export const emptySystemUserForm = {
   pharmacyId: "",
@@ -101,8 +109,15 @@ export type DeleteTarget =
       organizationId: string;
       pharmacy: PharmacySettings;
       branchCount: number;
+      signupRequestId?: string;
     }
-  | { kind: "branch"; branch: PharmacySettings; organizationId: string };
+  | { kind: "branch"; branch: PharmacySettings; organizationId: string; signupRequestId?: string };
+
+export type StatusTarget = {
+  pharmacy: PharmacySettings;
+  nextStatus: "active" | "suspended";
+  signupRequestId?: string;
+};
 
 export type SuperAdminPageProps = {
   isArabic: boolean;

@@ -4,6 +4,7 @@ import type { Page } from "../types";
 export const PATH_TO_PAGE: readonly { path: string; page: Page }[] = [
   { path: "/inventory/movements", page: "stockMovements" },
   { path: "/reports/investment", page: "costs" },
+  { path: "/investment", page: "costs" },
   { path: "/admin/tenants", page: "tenants" },
   { path: "/admin/sql", page: "sqlMigrations" },
   { path: "/activity-logs", page: "activityLogs" },
@@ -30,7 +31,7 @@ const PAGE_TO_PATH: Partial<Record<Page, string>> = {
   invoices: "/invoices",
   returns: "/returns",
   purchases: "/purchases",
-  costs: "/reports/investment",
+  costs: "/investment",
   customers: "/customers",
   reports: "/reports",
   activityLogs: "/activity-logs",

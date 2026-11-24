@@ -18,6 +18,7 @@ import {
   type DeleteTarget,
   type ManageRoleAccountDisplayRow,
   type ManageUnifiedRoleRow,
+  type StatusTarget,
   type SuperAdminPageProps,
 } from "../types";
 import { makeBranchId } from "../helpers";
@@ -45,6 +46,7 @@ type ManageParams = Pick<
   onDeleteOrganization: SuperAdminPageProps["onDeleteOrganization"];
   onDeleteOrganizationBranch: SuperAdminPageProps["onDeleteOrganizationBranch"];
   onUpdateTenantStatus: SuperAdminPageProps["onUpdateTenantStatus"];
+  onRefreshAdminRequests: () => Promise<void>;
 };
 
 export function useSuperAdminManageTenantState(params: ManageParams) {
@@ -67,6 +69,7 @@ export function useSuperAdminManageTenantState(params: ManageParams) {
     onDeleteOrganization,
     onDeleteOrganizationBranch,
     onUpdateTenantStatus,
+    onRefreshAdminRequests,
   } = params;
 
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -81,10 +84,7 @@ export function useSuperAdminManageTenantState(params: ManageParams) {
   const [manageEmployees, setManageEmployees] = useState<Employee[]>([]);
   const [manageLoginAccounts, setManageLoginAccounts] = useState<PharmacyLoginAccount[]>([]);
   const [manageOrgSystemUsers, setManageOrgSystemUsers] = useState<AppUser[]>([]);
-  const [statusTarget, setStatusTarget] = useState<{
-    pharmacy: PharmacySettings;
-    nextStatus: "active" | "suspended";
-  } | null>(null);
+  const [statusTarget, setStatusTarget] = useState<StatusTarget | null>(null);
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleteUpdating, setDeleteUpdating] = useState(false);
@@ -356,7 +356,20 @@ export function useSuperAdminManageTenantState(params: ManageParams) {
     setStatusUpdating(true);
     try {
       const ok = await onUpdateTenantStatus(statusTarget.pharmacy.id, statusTarget.nextStatus);
-      if (ok) setStatusTarget(null);
+      if (ok) {
+        if (statusTarget.signupRequestId) {
+          try {
+            await pharmacyService.markPharmacySignupRequestReviewed(
+              statusTarget.signupRequestId,
+              statusTarget.nextStatus === "suspended" ? "rejected" : "approved",
+            );
+            await onRefreshAdminRequests();
+          } catch (error) {
+            console.error(error);
+          }
+        }
+        setStatusTarget(null);
+      }
     } finally {
       setStatusUpdating(false);
     }
@@ -380,6 +393,17 @@ export function useSuperAdminManageTenantState(params: ManageParams) {
             delete next[deleteTarget.organizationId];
             return next;
           });
+        }
+        if (deleteTarget.signupRequestId) {
+          try {
+            await pharmacyService.markPharmacySignupRequestReviewed(
+              deleteTarget.signupRequestId,
+              "rejected",
+            );
+            await onRefreshAdminRequests();
+          } catch (error) {
+            console.error(error);
+          }
         }
         setDeleteTarget(null);
       }

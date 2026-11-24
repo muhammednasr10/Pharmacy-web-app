@@ -5,15 +5,18 @@ type LoginWelcomeProgramPagesProps = {
   isArabic: boolean;
   staffAddonEnabled: boolean;
   customersAddonEnabled: boolean;
+  investmentAddonEnabled: boolean;
 };
 
 function isAddonOn(
   pageKey: ProgramPageKey,
   staffAddonEnabled: boolean,
   customersAddonEnabled: boolean,
+  investmentAddonEnabled: boolean,
 ) {
-  if (pageKey === "users") return staffAddonEnabled;
+  if (pageKey === "users" || pageKey === "employeePortal") return staffAddonEnabled;
   if (pageKey === "customers") return customersAddonEnabled;
+  if (pageKey === "costs") return investmentAddonEnabled;
   return false;
 }
 
@@ -21,6 +24,7 @@ export default function LoginWelcomeProgramPages({
   isArabic,
   staffAddonEnabled,
   customersAddonEnabled,
+  investmentAddonEnabled,
 }: LoginWelcomeProgramPagesProps) {
   const [selectedPageKey, setSelectedPageKey] = useState<ProgramPageKey | null>(null);
 
@@ -37,7 +41,8 @@ export default function LoginWelcomeProgramPages({
       <ul className="loginWelcomePageList">
         {PROGRAM_PAGES.map((page) => {
           const addonEnabled =
-            page.hasCheckbox && isAddonOn(page.key, staffAddonEnabled, customersAddonEnabled);
+            page.hasCheckbox &&
+            isAddonOn(page.key, staffAddonEnabled, customersAddonEnabled, investmentAddonEnabled);
           return (
             <li key={page.key}>
               <button
@@ -72,7 +77,12 @@ export default function LoginWelcomeProgramPages({
               "modalContent loginWelcomePageCard",
               selectedPage.hasCheckbox ? "is-addon" : "",
               selectedPage.hasCheckbox &&
-              isAddonOn(selectedPage.key, staffAddonEnabled, customersAddonEnabled)
+              isAddonOn(
+                selectedPage.key,
+                staffAddonEnabled,
+                customersAddonEnabled,
+                investmentAddonEnabled,
+              )
                 ? "is-addon-on"
                 : "",
             ]
@@ -101,9 +111,13 @@ export default function LoginWelcomeProgramPages({
             </ul>
             {selectedPage.hasCheckbox ? (
               <p className="loginWelcomePageCardHint">
-                {isArabic
-                  ? "إضافة اختيارية — تفعّلها من تشيك بوكس حاسبة الاشتراك."
-                  : "Optional add-on — enable it from the subscription calculator checkbox."}
+                {selectedPage.key === "employeePortal"
+                  ? isArabic
+                    ? "مش إضافة منفصلة — تتفعل وتتسعر مع تشيك بوكس «الموظفين» في الحاسبة."
+                    : "Not a separate add-on — enabled and priced with the Staff checkbox in the calculator."
+                  : isArabic
+                    ? "إضافة اختيارية — تفعّلها من تشيك بوكس حاسبة الاشتراك."
+                    : "Optional add-on — enable it from the subscription calculator checkbox."}
               </p>
             ) : null}
           </div>

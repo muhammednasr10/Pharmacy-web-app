@@ -70,6 +70,11 @@ export default function PharmacyRolesSettingsPanel({
     [customRoles, pharmacyId],
   );
 
+  const pendingCustomRoles = useMemo(
+    () => customRoles.filter((role) => role.pharmacyId === pharmacyId && role.isActive === false),
+    [customRoles, pharmacyId],
+  );
+
   const rolesMeta = useMemo(() => {
     const builtinCount = EDITABLE_BUILTIN_ROLES.filter((roleKey) =>
       isOrgPharmacyAdmin(appUser) && !isSuperAdmin(appUser) ? roleKey !== "pharmacy_admin" : true,
@@ -88,7 +93,7 @@ export default function PharmacyRolesSettingsPanel({
     setLoading(true);
     try {
       const [roleRows, configRows] = await Promise.all([
-        pharmacyService.getPharmacyCustomRoles(pharmacyId),
+        pharmacyService.getPharmacyCustomRoles(pharmacyId, { includeInactive: true }),
         pharmacyService.getPharmacyRoleConfigs(pharmacyId),
       ]);
       setCustomRoles(roleRows);
@@ -147,20 +152,25 @@ export default function PharmacyRolesSettingsPanel({
 
     setBusy("save-custom-role");
     try {
+      const asRequest = !isSuperAdmin(appUser);
       const created = await pharmacyService.createPharmacyCustomRole({
         pharmacyId,
         nameAr: customRoleForm.nameAr,
         nameEn: customRoleForm.nameEn,
         baseRole: customRoleForm.baseRole,
         allowedPages: customRoleForm.allowedPages,
-        isActive: true,
+        isActive: !asRequest,
       });
       setCustomRoleModal(false);
       await loadRoles();
       alert(
-        isArabic
-          ? `تم إنشاء دور «${created.nameAr}» — يمكنك نسبته للموظفين من صفحة الموظفين.`
-          : `Role «${created.nameEn}» created — assign it to staff from the Employees page.`,
+        asRequest
+          ? isArabic
+            ? `تم إرسال طلب دور «${created.nameAr}» — سيظهر لمالك النظام في تبويب «أدوار» للاعتماد.`
+            : `Role request «${created.nameEn}» submitted — it will appear under the Roles tab for approval.`
+          : isArabic
+            ? `تم إنشاء دور «${created.nameAr}» — يمكنك نسبته للموظفين من صفحة الموظفين.`
+            : `Role «${created.nameEn}» created — assign it to staff from the Employees page.`,
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
@@ -317,8 +327,8 @@ export default function PharmacyRolesSettingsPanel({
       >
         <p className="returnsSectionHint">
           {isArabic
-            ? "حدّد الأدوار التي تُنسب للموظفين — يمكنك إضافة أدوار مخصصة وتعديل صلاحيات كل دور."
-            : "Define roles assigned to employees — add custom roles and edit each role's permissions."}
+            ? "الأدوار الافتراضية من البرنامج ثابتة. أي دور جديد يُرسل لمالك النظام في تبويب «أدوار» للاعتماد قبل الاستخدام."
+            : "Default program roles are fixed. Any new role is sent to the system owner under the Roles tab for approval before use."}
         </p>
 
         {canCreateRoles && (
@@ -329,10 +339,26 @@ export default function PharmacyRolesSettingsPanel({
               disabled={Boolean(busy)}
               onClick={openCustomRoleModal}
             >
-              {isArabic ? "إضافة دور جديد" : "Add new role"}
+              {isArabic ? "طلب دور جديد" : "Request new role"}
             </button>
           </div>
         )}
+
+        {pendingCustomRoles.length > 0 ? (
+          <div className="pharmacyPendingRolesBox" style={{ marginBottom: "0.85rem" }}>
+            <p className="catalogLinkToolbarHint" style={{ marginBottom: "0.4rem" }}>
+              {isArabic ? "طلبات أدوار بانتظار الاعتماد" : "Role requests awaiting approval"}
+            </p>
+            <ul className="saasManageRolesList" style={{ margin: 0 }}>
+              {pendingCustomRoles.map((role) => (
+                <li key={role.id} className="saasManageRoleItem pending">
+                  <span className="saasManageRoleName">{isArabic ? role.nameAr : role.nameEn}</span>
+                  <span className="badge warn">{isArabic ? "بانتظار الاعتماد" : "Pending"}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         {!canManageRolePermissions && (
           <p className="catalogLinkToolbarHint">
@@ -476,8 +502,8 @@ export default function PharmacyRolesSettingsPanel({
 
         <p className="settingsFieldHint">
           {isArabic
-            ? "بعد إنشاء الدور، اذهب إلى «الموظفين» لربط الدور بحساب دخول الموظف."
-            : "After creating a role, go to Employees to assign it to a staff login account."}
+            ? "بعد اعتماد الدور من مالك النظام، اذهب إلى «الموظفين» لربطه بحساب دخول."
+            : "After the system owner approves the role, go to Employees to assign it to a login account."}
         </p>
       </SettingsCollapsibleSection>
 
@@ -489,7 +515,7 @@ export default function PharmacyRolesSettingsPanel({
             dir={isArabic ? "rtl" : "ltr"}
           >
             <div className="modalHeader catalogAccountModalHeader">
-              <h2>{isArabic ? "إضافة دور جديد" : "Add new role"}</h2>
+              <h2>{isArabic ? "طلب دور جديد" : "Request new role"}</h2>
               <button
                 type="button"
                 className="deleteSmallBtn"
@@ -567,11 +593,11 @@ export default function PharmacyRolesSettingsPanel({
               >
                 {busy === "save-custom-role"
                   ? isArabic
-                    ? "جاري الحفظ..."
-                    : "Saving..."
+                    ? "جاري الإرسال..."
+                    : "Sending..."
                   : isArabic
-                    ? "إنشاء الدور"
-                    : "Create role"}
+                    ? "إرسال الطلب"
+                    : "Send request"}
               </button>
             </div>
           </div>

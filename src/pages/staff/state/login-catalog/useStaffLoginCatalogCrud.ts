@@ -10,6 +10,7 @@ import {
 } from "../../../../utils/pharmacyGeneralManager";
 import {
   getDefaultLoginAccountDraft,
+  isOrgPharmacyAdmin,
   isSuperAdmin,
   parseLoginAccountRole,
 } from "../../../../utils/roles";
@@ -241,12 +242,17 @@ export function useStaffLoginCatalogCrud(params: StaffLoginCatalogCrudParams) {
 
     setBusy("save-catalog");
     try {
-      const autoApprove = isSuperAdmin(appUser);
+      const withinUserLimit = !orgUserUsage || orgUserUsage.canAdd;
+      const isPharmacyAdminAdd =
+        accountModal === "add" && isOrgPharmacyAdmin(appUser) && !isSuperAdmin(appUser);
+      const requestingLimitIncrease = isPharmacyAdminAdd && !withinUserLimit;
+      const autoApprove =
+        isSuperAdmin(appUser) || (isPharmacyAdminAdd && withinUserLimit);
       let savedAccountId = editCatalogId || null;
 
       if (accountModal === "edit" && editCatalogId) {
         const editing = branchLoginCatalog.find((item) => item.id === editCatalogId);
-        if (!autoApprove && editing?.status === "approved") {
+        if (!isSuperAdmin(appUser) && editing?.status === "approved") {
           await pharmacyService.submitPharmacyLoginAccountEditRequest(
             editCatalogId,
             { email, password, role },
@@ -258,16 +264,18 @@ export function useStaffLoginCatalogCrud(params: StaffLoginCatalogCrudParams) {
             email,
             password,
             role,
-            ...(autoApprove || editing?.status === "approved" ? {} : { status: "pending" }),
+            ...(isSuperAdmin(appUser) || editing?.status === "approved"
+              ? {}
+              : { status: "pending" }),
           });
         }
         savedAccountId = editCatalogId;
       } else if (accountModal === "add") {
-        if (orgUserUsage && !orgUserUsage.canAdd) {
+        if (orgUserUsage && !orgUserUsage.canAdd && isSuperAdmin(appUser)) {
           alert(
             isArabic
-              ? `تم الوصول للحد الأقصى للمستخدمين (${orgUserUsage.used}/${orgUserUsage.max}). تواصل مع الدعم لزيادة الباقة.`
-              : `User limit reached (${orgUserUsage.used}/${orgUserUsage.max}). Contact support to upgrade.`,
+              ? `تم الوصول للحد الأقصى للمستخدمين (${orgUserUsage.used}/${orgUserUsage.max}). زِد الحد من إدارة الصيدليات أولاً.`
+              : `User limit reached (${orgUserUsage.used}/${orgUserUsage.max}). Raise the limit in Pharmacy Tenants first.`,
           );
           return;
         }
@@ -323,9 +331,13 @@ export function useStaffLoginCatalogCrud(params: StaffLoginCatalogCrudParams) {
             ? isArabic
               ? "تم إرسال التعديل — سيظهر لمالك النظام في «طلبات العملاء»"
               : "Changes submitted — they will appear under Customer requests"
-            : isArabic
-              ? "تم إرسال الطلب — سيظهر لمالك النظام في «طلبات العملاء»"
-              : "Request submitted — it will appear for the system owner under Customer requests",
+            : requestingLimitIncrease
+              ? isArabic
+                ? `تم إرسال طلب إضافة مستخدم لمالك النظام لزيادة الحد (${orgUserUsage?.used}/${orgUserUsage?.max})`
+                : `Add-user request sent to the system owner to raise the limit (${orgUserUsage?.used}/${orgUserUsage?.max})`
+              : isArabic
+                ? "تم إرسال الطلب — سيظهر لمالك النظام في «طلبات العملاء»"
+                : "Request submitted — it will appear for the system owner under Customer requests",
       );
     } catch (err) {
       alert(staffActionErrorMessage(err, isArabic, isArabic ? "تعذر الحفظ" : "Save failed"));

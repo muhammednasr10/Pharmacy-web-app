@@ -33,6 +33,9 @@ export function extractCopyableBranchSettings(source: PharmacySettings): Partial
     payrollWorkBreaks,
     workShifts,
     defaultShiftId: source.defaultShiftId,
+    restWeekdays: Array.isArray(source.restWeekdays)
+      ? source.restWeekdays.map((day) => Number(day))
+      : undefined,
   };
 }
 

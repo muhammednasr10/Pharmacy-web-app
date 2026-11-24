@@ -435,3 +435,57 @@ export function formatScheduleWindow(schedule: WorkSchedule, isArabic: boolean):
     ? `${schedule.dayStart} → ${schedule.dayEnd}`
     : `${schedule.dayStart} → ${schedule.dayEnd}`;
 }
+
+/** JS Date.getDay(): 0=Sun … 6=Sat. Default rest day = Friday. */
+export const DEFAULT_REST_WEEKDAYS: number[] = [5];
+
+export const WEEKDAY_ORDER_SAT_FIRST: number[] = [6, 0, 1, 2, 3, 4, 5];
+
+export function getWeekdayLabel(day: number, isArabic: boolean): string {
+  const ar = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+  const en = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const index = Math.min(6, Math.max(0, Math.floor(day)));
+  return isArabic ? ar[index] : en[index];
+}
+
+export function parseRestWeekdays(raw: unknown): number[] {
+  if (raw == null) return [...DEFAULT_REST_WEEKDAYS];
+
+  let list: unknown[] | null = null;
+  if (Array.isArray(raw)) {
+    list = raw;
+  } else if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) list = parsed;
+    } catch {
+      return [...DEFAULT_REST_WEEKDAYS];
+    }
+  }
+
+  if (!list) return [...DEFAULT_REST_WEEKDAYS];
+
+  return Array.from(
+    new Set(
+      list
+        .map((item) => Number(item))
+        .filter((item) => Number.isInteger(item) && item >= 0 && item <= 6),
+    ),
+  ).sort((a, b) => a - b);
+}
+
+export function normalizeRestWeekdays(days: number[]): number[] {
+  return parseRestWeekdays(days);
+}
+
+export function formatRestWeekdaysMeta(days: number[], isArabic: boolean): string {
+  const rest = normalizeRestWeekdays(days);
+  if (rest.length === 0) {
+    return isArabic ? "كل الأيام عمل" : "All days work";
+  }
+  if (rest.length === 7) {
+    return isArabic ? "كل الأيام إجازة" : "All days off";
+  }
+  const labels = rest.map((day) => getWeekdayLabel(day, isArabic));
+  return isArabic ? `إجازة: ${labels.join("، ")}` : `Off: ${labels.join(", ")}`;
+}

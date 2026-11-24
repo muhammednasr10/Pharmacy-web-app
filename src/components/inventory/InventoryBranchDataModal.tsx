@@ -21,7 +21,7 @@ export default function InventoryBranchDataModal({ state, onClose }: InventoryBr
   return (
     <div className="modalOverlay" role="dialog" aria-modal="true" onClick={onClose}>
       <div
-        className="modalContent inventoryBranchDataModal"
+        className="invoiceModal inventoryBranchDataModal"
         onClick={(event) => event.stopPropagation()}
       >
         <BranchFormModal state={state} />

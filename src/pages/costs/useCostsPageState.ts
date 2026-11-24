@@ -371,6 +371,34 @@ export function useCostsPageState({
     }
   }
 
+  async function handleDeleteCost(cost: PharmacyCost) {
+    if (!canManageCosts || isSubscriptionExpired) return;
+
+    const confirmed = window.confirm(
+      isArabic
+        ? `حذف المعاملة "${cost.title}" بمبلغ ${Number(cost.amount).toFixed(2)}؟`
+        : `Delete transaction "${cost.title}" for ${Number(cost.amount).toFixed(2)}?`,
+    );
+    if (!confirmed) return;
+
+    setDeletingId(cost.id);
+    try {
+      await pharmacyService.deletePharmacyCost(cost.id);
+      await onRefreshCosts();
+    } catch (error) {
+      console.error("Delete cost error:", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : isArabic
+            ? "تعذر حذف المعاملة"
+            : "Could not delete transaction",
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   function exportPlanCSV() {
     const rows = [
       [
@@ -427,6 +455,7 @@ export function useCostsPageState({
     handleSaveActualRow,
     handleSavePlan,
     handleDeletePlan,
+    handleDeleteCost,
     exportPlanCSV,
   };
 }

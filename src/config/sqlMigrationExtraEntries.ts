@@ -399,6 +399,14 @@ export const SQL_MIGRATION_EXTRA_ENTRIES: SqlMigrationDefinition[] = [
     probe: { type: "column", table: "pharmacies", column: "work_shifts" },
   },
   {
+    id: "add-rest-weekdays",
+    file: "add-rest-weekdays.sql",
+    group: "hr",
+    titleAr: "أيام الإجازة الأسبوعية",
+    titleEn: "Weekly rest days",
+    probe: { type: "column", table: "pharmacies", column: "rest_weekdays" },
+  },
+  {
     id: "add-work-schedule-settings",
     file: "add-work-schedule-settings.sql",
     group: "hr",

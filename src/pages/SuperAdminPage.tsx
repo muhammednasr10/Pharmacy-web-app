@@ -2,6 +2,7 @@ import SuperAdminOverviewTab from "./super-admin/SuperAdminOverviewTab";
 import SuperAdminCustomerRequestsTab from "./super-admin/SuperAdminCustomerRequestsTab";
 import SuperAdminRolesTab from "./super-admin/SuperAdminRolesTab";
 import SuperAdminPricingTab from "./super-admin/SuperAdminPricingTab";
+import SuperAdminSuggestionsTab from "./super-admin/SuperAdminSuggestionsTab";
 import SuperAdminPharmaciesTab from "./super-admin/SuperAdminPharmaciesTab";
 import SuperAdminAddTenantModal from "./super-admin/modals/SuperAdminAddTenantModal";
 import SuperAdminManageTenantModal from "./super-admin/modals/SuperAdminManageTenantModal";
@@ -70,6 +71,7 @@ export default function SuperAdminPage(props: SuperAdminPageProps) {
       {activeTab === "roles" && <SuperAdminRolesTab state={state} />}
       {activeTab === "overview" && <SuperAdminOverviewTab state={state} />}
       {activeTab === "customerRequests" && <SuperAdminCustomerRequestsTab state={state} />}
+      {activeTab === "suggestions" && <SuperAdminSuggestionsTab state={state} />}
       {activeTab === "pricing" && <SuperAdminPricingTab state={state} />}
       {activeTab === "pharmacies" && <SuperAdminPharmaciesTab state={state} />}
 

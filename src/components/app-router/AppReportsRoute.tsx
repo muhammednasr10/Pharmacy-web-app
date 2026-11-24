@@ -1,6 +1,3 @@
-import { useEffect } from "react";
-import { useLocation } from "react-router-dom";
-import CostsPage from "../../pages/CostsPage";
 import { ReportsPage } from "../../pages/lazyPages";
 import type { AppPageRouterProps } from "./types";
 
@@ -38,17 +35,8 @@ export type AppReportsRouteProps = Pick<
   | "openSubscriptionSettings"
   | "getPharmacyId"
   | "appUser"
-  | "user"
   | "pharmacySettings"
   | "medicines"
-  | "pharmacyCosts"
-  | "invoices"
-  | "canManageCosts"
-  | "isSubscriptionExpired"
-  | "addActivityLog"
-  | "safeNumber"
-  | "downloadCSV"
-  | "refreshPharmacyCostsFromDb"
 >;
 
 export default function AppReportsRoute({
@@ -84,33 +72,10 @@ export default function AppReportsRoute({
   openSubscriptionSettings,
   getPharmacyId,
   appUser,
-  user,
   pharmacySettings,
   medicines,
-  pharmacyCosts,
-  invoices,
-  canManageCosts,
-  isSubscriptionExpired,
-  addActivityLog,
-  safeNumber,
-  downloadCSV,
-  refreshPharmacyCostsFromDb,
 }: AppReportsRouteProps) {
-  const location = useLocation();
-  const showFinancialTab = canOpenPage("reports");
-  const showInvestmentTab = canOpenPage("costs");
-
-  useEffect(() => {
-    if (location.pathname.includes("/investment")) {
-      setReportsTab("investment");
-      return;
-    }
-    if (showFinancialTab) {
-      setReportsTab("financial");
-    }
-  }, [location.pathname, setReportsTab, showFinancialTab]);
-
-  if (!showFinancialTab && !showInvestmentTab) {
+  if (!canOpenPage("reports")) {
     return null;
   }
 
@@ -120,8 +85,8 @@ export default function AppReportsRoute({
       t={t}
       reportsTab={reportsTab}
       setReportsTab={setReportsTab}
-      showFinancialTab={showFinancialTab}
-      showInvestmentTab={showInvestmentTab}
+      showFinancialTab
+      showInvestmentTab={false}
       reportFrom={reportFrom}
       reportTo={reportTo}
       setReportFrom={setReportFrom}
@@ -152,27 +117,6 @@ export default function AppReportsRoute({
       appUser={appUser}
       pharmacySettings={pharmacySettings}
       medicines={medicines}
-      investmentPanel={
-        showInvestmentTab ? (
-          <CostsPage
-            embedded
-            costs={pharmacyCosts}
-            invoices={invoices}
-            isArabic={isArabic}
-            t={t}
-            currency={t.currency}
-            pharmacyId={getPharmacyId()}
-            canManageCosts={canManageCosts()}
-            isSubscriptionExpired={isSubscriptionExpired}
-            userId={user?.uid}
-            userName={appUser?.name}
-            onActivityLog={addActivityLog}
-            safeNumber={safeNumber}
-            downloadCSV={downloadCSV}
-            onRefreshCosts={refreshPharmacyCostsFromDb}
-          />
-        ) : null
-      }
     />
   );
 }

@@ -12,17 +12,18 @@ export async function expectAttendanceTableLoaded(page: Page) {
 }
 
 export async function checkInFirstAvailableEmployee(page: Page) {
-  const todayRow = page.locator(".hrAttendanceTable tbody tr").first();
+  const todayRow = page.locator(".hrAttendanceTodayTable tbody tr, .hrAttendanceTable tbody tr").first();
   await expect(todayRow).toBeVisible({ timeout: 15_000 });
 
   const checkInBtn = todayRow.getByRole("button", { name: /^حضور$|^In$/ });
   if (await checkInBtn.isVisible()) {
     await checkInBtn.click();
-    await expect(todayRow.locator("td.col-time").first()).not.toHaveText(/^—$|^-$/);
+    await expect(todayRow.locator("td").nth(2)).not.toHaveText(/^—$|^-$|^$/);
     return "checked_in";
   }
 
-  const checkInCell = todayRow.locator("td.col-time").nth(0);
-  await expect(checkInCell).not.toHaveText(/^—$|^-$/);
+  // Already checked in: time cell should show a clock value.
+  const checkInCell = todayRow.locator("td").nth(2);
+  await expect(checkInCell).not.toHaveText(/^—$|^-$|^$/);
   return "already_checked_in";
 }

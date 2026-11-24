@@ -255,11 +255,11 @@ const branchManagerPages: Page[] = [
   "invoices",
   "returns",
   "purchases",
-  "costs",
   "customers",
   "reports",
   "stockMovements",
   "users",
+  "costs",
   "settings",
 ];
 
@@ -272,11 +272,11 @@ export const allowedPagesByRole: Record<BuiltinUserRole, Page[]> = {
     "invoices",
     "returns",
     "purchases",
-    "costs",
     "customers",
     "reports",
     "stockMovements",
     "users",
+    "costs",
     "settings",
     "tenants",
   ],
@@ -290,10 +290,10 @@ export const allowedPagesByRole: Record<BuiltinUserRole, Page[]> = {
     "invoices",
     "returns",
     "customers",
-    "costs",
     "reports",
     "stockMovements",
     "users",
+    "costs",
   ],
 };
 

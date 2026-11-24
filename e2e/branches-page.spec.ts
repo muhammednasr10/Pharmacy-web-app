@@ -15,7 +15,8 @@ test.describe("Branches page", () => {
     await navigateToPage(page, "branches");
     await expectBranchesPageLoaded(page);
 
-    await expect(page.getByRole("heading", { name: /الفروع|Branches/i })).toBeVisible();
+    const branchesHeading = page.getByRole("heading", { name: /الفروع|Branches|إدارة المخزن|Inventory/i });
+    await expect(branchesHeading.first()).toBeVisible();
     await expectBranchSwitcherIfPresent(page);
     await expectTransferStockButtonIfPresent(page);
   });

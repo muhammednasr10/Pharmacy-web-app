@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { PharmacyCustomRole, UserRole } from "../../../types";
 import * as pharmacyService from "../../../services/pharmacyService";
+import { getBranchLabel } from "../../../utils/branchLabel";
 import { defaultPagesForCustomRoleTemplate } from "../../../utils/customRolePages";
 import { getEffectiveRoleAccess } from "../../../utils/roleAccess";
 import {
@@ -21,6 +22,7 @@ type RolesParams = Pick<SuperAdminSharedContext, "isArabic" | "pharmacies" | "se
   manageModalOpen: boolean;
   reloadManageRoles: () => Promise<void>;
   onRefreshSystemUsers: () => Promise<void>;
+  onRefreshAdminRequests: () => Promise<void>;
 };
 
 export function useSuperAdminRolesState(params: RolesParams) {
@@ -32,6 +34,7 @@ export function useSuperAdminRolesState(params: RolesParams) {
     manageModalOpen,
     reloadManageRoles,
     onRefreshSystemUsers,
+    onRefreshAdminRequests,
   } = params;
 
   const [roleModalOpen, setRoleModalOpen] = useState(false);
@@ -42,9 +45,6 @@ export function useSuperAdminRolesState(params: RolesParams) {
   const [rolesReferenceRoleConfigs, setRolesReferenceRoleConfigs] = useState<
     import("../../../types").PharmacyRoleConfig[]
   >([]);
-  const [rolesReferenceUsers, setRolesReferenceUsers] = useState<
-    import("../../../types").AppUser[]
-  >([]);
   const [rolesReferenceLoading, setRolesReferenceLoading] = useState(false);
   const [rolesReferenceQuery, setRolesReferenceQuery] = useState("");
 
@@ -53,22 +53,19 @@ export function useSuperAdminRolesState(params: RolesParams) {
   async function reloadRolesReference() {
     setRolesReferenceLoading(true);
     try {
-      const [customRoles, users, roleConfigs] = await Promise.all([
+      const [customRoles, roleConfigs] = await Promise.all([
         pharmacyService.getPharmacyCustomRolesForPharmacies(allPharmacyIds, {
           includeInactive: true,
         }),
-        pharmacyService.getAllSystemUsers(),
         pharmacyService.getPharmacyRoleConfigsForPharmacies(allPharmacyIds),
       ]);
       setRolesReferenceRows(customRoles);
       setRolesReferenceRoleConfigs(roleConfigs);
-      setRolesReferenceUsers(users);
-      await onRefreshSystemUsers();
+      await Promise.all([onRefreshSystemUsers(), onRefreshAdminRequests()]);
     } catch (error) {
       console.error(error);
       setRolesReferenceRows([]);
       setRolesReferenceRoleConfigs([]);
-      setRolesReferenceUsers([]);
     } finally {
       setRolesReferenceLoading(false);
     }
@@ -79,25 +76,42 @@ export function useSuperAdminRolesState(params: RolesParams) {
     void reloadRolesReference();
   }, [activeTab, allPharmacyIds.join("|")]);
 
-  const programRoleListRows = useMemo((): ProgramRoleRow[] => {
-    const rows: ProgramRoleRow[] = [];
-
-    for (const roleKey of loginAccountRoleOptions) {
+  const defaultRoleListRows = useMemo((): ProgramRoleRow[] => {
+    return loginAccountRoleOptions.map((roleKey) => {
       const matrix = rolePermissionMatrix.find((row) => row.role === roleKey);
       const config = rolesReferenceRoleConfigs.find((row) => row.roleKey === roleKey);
       const labelAr = config?.labelAr?.trim() || matrix?.labelAr || getRoleLabel(roleKey, true);
       const labelEn = config?.labelEn?.trim() || matrix?.labelEn || getRoleLabel(roleKey, false);
-      rows.push({
+      return {
         id: `builtin:${roleKey}`,
         roleKey,
         label: isArabic ? labelAr : labelEn,
-        kind: "builtin",
+        kind: "builtin" as const,
         isPending: false,
-      });
-    }
+      };
+    });
+  }, [rolesReferenceRoleConfigs, isArabic]);
 
+  const pendingRoleSuggestionRows = useMemo((): ProgramRoleRow[] => {
+    return rolesReferenceRows
+      .filter((role) => role.isActive === false)
+      .map((role) => ({
+        id: role.id,
+        roleKey: role.roleKey,
+        label: isArabic ? role.nameAr : role.nameEn,
+        kind: "custom" as const,
+        customRole: role,
+        isPending: true,
+        pharmacyId: role.pharmacyId,
+        pharmacyName: getBranchLabel(role.pharmacyId, pharmacies, isArabic),
+      }));
+  }, [rolesReferenceRows, pharmacies, isArabic]);
+
+  const approvedCustomRoleRows = useMemo((): ProgramRoleRow[] => {
     const seenCustomKeys = new Set<string>();
+    const rows: ProgramRoleRow[] = [];
     for (const role of rolesReferenceRows) {
+      if (role.isActive === false) continue;
       if (seenCustomKeys.has(role.roleKey)) continue;
       seenCustomKeys.add(role.roleKey);
       rows.push({
@@ -106,21 +120,45 @@ export function useSuperAdminRolesState(params: RolesParams) {
         label: isArabic ? role.nameAr : role.nameEn,
         kind: "custom",
         customRole: role,
-        isPending: role.isActive === false,
+        isPending: false,
+        pharmacyId: role.pharmacyId,
+        pharmacyName: getBranchLabel(role.pharmacyId, pharmacies, isArabic),
       });
     }
-
     return rows;
-  }, [rolesReferenceRows, rolesReferenceRoleConfigs, isArabic]);
+  }, [rolesReferenceRows, pharmacies, isArabic]);
+
+  const programRoleListRows = useMemo(
+    () => [...pendingRoleSuggestionRows, ...defaultRoleListRows, ...approvedCustomRoleRows],
+    [pendingRoleSuggestionRows, defaultRoleListRows, approvedCustomRoleRows],
+  );
 
   const filteredProgramRoleListRows = useMemo(() => {
     const query = rolesReferenceQuery.trim().toLowerCase();
     if (!query) return programRoleListRows;
     return programRoleListRows.filter((row) => {
-      const haystack = [row.roleKey, row.label, row.kind].join(" ").toLowerCase();
+      const haystack = [row.roleKey, row.label, row.kind, row.pharmacyName || ""].join(" ").toLowerCase();
       return haystack.includes(query);
     });
   }, [programRoleListRows, rolesReferenceQuery]);
+
+  const filteredDefaultRoleListRows = useMemo(() => {
+    const query = rolesReferenceQuery.trim().toLowerCase();
+    if (!query) return defaultRoleListRows;
+    return defaultRoleListRows.filter((row) => {
+      const haystack = [row.roleKey, row.label].join(" ").toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [defaultRoleListRows, rolesReferenceQuery]);
+
+  const filteredPendingRoleSuggestionRows = useMemo(() => {
+    const query = rolesReferenceQuery.trim().toLowerCase();
+    if (!query) return pendingRoleSuggestionRows;
+    return pendingRoleSuggestionRows.filter((row) => {
+      const haystack = [row.roleKey, row.label, row.pharmacyName || ""].join(" ").toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [pendingRoleSuggestionRows, rolesReferenceQuery]);
 
   function openAddRoleModal(pharmacyId?: string) {
     setRoleForm({
@@ -234,12 +272,33 @@ export function useSuperAdminRolesState(params: RolesParams) {
     try {
       await pharmacyService.activatePharmacyCustomRole(role.id);
       if (manageModalOpen) await reloadManageRoles();
-      if (activeTab === "roles") await reloadRolesReference();
+      await reloadRolesReference();
       alert(isArabic ? "تم اعتماد الدور" : "Role approved");
     } catch (error) {
       alert(error instanceof Error ? error.message : isArabic ? "تعذر الاعتماد" : "Could not approve");
     } finally {
       setSavingRole(false);
+    }
+  }
+
+  async function rejectCustomRole(role: PharmacyCustomRole) {
+    const label = isArabic ? role.nameAr : role.nameEn;
+    const confirmed = window.confirm(
+      isArabic
+        ? `رفض وحذف طلب الدور «${label}»؟`
+        : `Reject and delete role request «${label}»?`,
+    );
+    if (!confirmed) return;
+
+    setDeletingRoleId(role.id);
+    try {
+      await pharmacyService.deletePharmacyCustomRole(role.id);
+      if (manageModalOpen) await reloadManageRoles();
+      await reloadRolesReference();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : isArabic ? "تعذر الرفض" : "Could not reject");
+    } finally {
+      setDeletingRoleId(null);
     }
   }
 
@@ -281,6 +340,9 @@ export function useSuperAdminRolesState(params: RolesParams) {
     rolesReferenceQuery,
     setRolesReferenceQuery,
     filteredProgramRoleListRows,
+    filteredDefaultRoleListRows,
+    filteredPendingRoleSuggestionRows,
+    pendingRoleSuggestionsCount: pendingRoleSuggestionRows.length,
     reloadRolesReference,
     openAddRoleModal,
     openEditBuiltinRole,
@@ -289,6 +351,7 @@ export function useSuperAdminRolesState(params: RolesParams) {
     closeRoleModal,
     saveRoleForm,
     activateCustomRole,
+    rejectCustomRole,
     deleteCustomRole,
   };
 }

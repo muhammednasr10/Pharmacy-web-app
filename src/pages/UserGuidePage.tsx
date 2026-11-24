@@ -1,4 +1,5 @@
 import { useState } from "react";
+import GettingStartedGuide from "../components/GettingStartedGuide";
 import {
   GLOBAL_SHORTCUTS,
   formatShortcutKey,
@@ -8,6 +9,24 @@ import { USER_GUIDE_SECTIONS } from "../config/userGuideSections";
 
 type UserGuidePageProps = {
   isArabic: boolean;
+  pharmacyId?: string | null;
+  totalMedicinesCount?: number;
+  hasOpenShift?: boolean;
+  hasCompletedSale?: boolean;
+  hasLogo?: boolean;
+  hasAttendanceLocation?: boolean;
+  canAccessInventory?: boolean;
+  canAccessPos?: boolean;
+  canAccessSettings?: boolean;
+  canAccessUsers?: boolean;
+  canAccessCosts?: boolean;
+  onOpenInventory?: () => void;
+  onOpenPOS?: () => void;
+  onOpenSettingsPharmacy?: () => void;
+  onOpenSettingsEmployees?: () => void;
+  onOpenUsers?: () => void;
+  onOpenInvestment?: () => void;
+  onQaStockReady?: () => void | Promise<void>;
 };
 
 type TabId = "guide" | "shortcuts";
@@ -24,9 +43,36 @@ function ShortcutKeys({ keys }: { keys: string[] }) {
   );
 }
 
-export default function UserGuidePage({ isArabic }: UserGuidePageProps) {
+export default function UserGuidePage({
+  isArabic,
+  pharmacyId = null,
+  totalMedicinesCount = 0,
+  hasOpenShift = false,
+  hasCompletedSale = false,
+  hasLogo = false,
+  hasAttendanceLocation = false,
+  canAccessInventory = false,
+  canAccessPos = false,
+  canAccessSettings = false,
+  canAccessUsers = false,
+  canAccessCosts = false,
+  onOpenInventory,
+  onOpenPOS,
+  onOpenSettingsPharmacy,
+  onOpenSettingsEmployees,
+  onOpenUsers,
+  onOpenInvestment,
+  onQaStockReady,
+}: UserGuidePageProps) {
   const [tab, setTab] = useState<TabId>("guide");
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const posShortcuts = getPosShortcutsForGuide();
+  const showGettingStarted =
+    Boolean(onOpenInventory || onOpenPOS || onOpenSettingsPharmacy || onOpenUsers || onOpenInvestment);
+
+  function toggleSection(id: string) {
+    setOpenSections((prev) => ({ ...prev, [id]: !prev[id] }));
+  }
 
   return (
     <div className="userGuidePage" dir={isArabic ? "rtl" : "ltr"}>
@@ -63,31 +109,77 @@ export default function UserGuidePage({ isArabic }: UserGuidePageProps) {
 
       {tab === "guide" && (
         <div className="userGuideSections">
-          {USER_GUIDE_SECTIONS.map((section) => (
-            <article key={section.id} className="card userGuideSection">
-              <h3>
-                <span className="userGuideSectionIcon" aria-hidden="true">
-                  {section.icon}
-                </span>
-                {isArabic ? section.titleAr : section.titleEn}
-              </h3>
-              <ul className="userGuideList">
-                {(isArabic ? section.bodyAr : section.bodyEn).map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-              {(isArabic ? section.tipsAr : section.tipsEn)?.length ? (
-                <div className="userGuideTips">
-                  <strong>{isArabic ? "نصيحة" : "Tip"}</strong>
-                  <ul>
-                    {(isArabic ? section.tipsAr : section.tipsEn)!.map((tip) => (
-                      <li key={tip}>{tip}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-            </article>
-          ))}
+          {showGettingStarted ? (
+            <GettingStartedGuide
+              isArabic={isArabic}
+              pharmacyId={pharmacyId}
+              totalMedicinesCount={totalMedicinesCount}
+              hasOpenShift={hasOpenShift}
+              hasCompletedSale={hasCompletedSale}
+              hasLogo={hasLogo}
+              hasAttendanceLocation={hasAttendanceLocation}
+              canAccessInventory={canAccessInventory}
+              canAccessPos={canAccessPos}
+              canAccessSettings={canAccessSettings}
+              canAccessUsers={canAccessUsers}
+              canAccessCosts={canAccessCosts}
+              onOpenInventory={onOpenInventory || (() => undefined)}
+              onOpenPOS={onOpenPOS || (() => undefined)}
+              onOpenSettingsPharmacy={onOpenSettingsPharmacy || (() => undefined)}
+              onOpenSettingsEmployees={onOpenSettingsEmployees || (() => undefined)}
+              onOpenUsers={onOpenUsers || (() => undefined)}
+              onOpenInvestment={onOpenInvestment || (() => undefined)}
+              onQaStockReady={onQaStockReady}
+            />
+          ) : null}
+
+          {USER_GUIDE_SECTIONS.map((section) => {
+            const isOpen = Boolean(openSections[section.id]);
+            const panelId = `user-guide-panel-${section.id}`;
+            return (
+              <article
+                key={section.id}
+                className={`card userGuideSection${isOpen ? " is-open" : ""}`}
+              >
+                <button
+                  type="button"
+                  className="userGuideSectionToggle"
+                  aria-expanded={isOpen}
+                  aria-controls={panelId}
+                  onClick={() => toggleSection(section.id)}
+                >
+                  <h3>
+                    <span className="userGuideSectionIcon" aria-hidden="true">
+                      {section.icon}
+                    </span>
+                    {isArabic ? section.titleAr : section.titleEn}
+                  </h3>
+                  <span className="userGuideSectionChevron" aria-hidden="true">
+                    {isOpen ? "▾" : "▸"}
+                  </span>
+                </button>
+                {isOpen ? (
+                  <div id={panelId} className="userGuideSectionBody">
+                    <ul className="userGuideList">
+                      {(isArabic ? section.bodyAr : section.bodyEn).map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                    {(isArabic ? section.tipsAr : section.tipsEn)?.length ? (
+                      <div className="userGuideTips">
+                        <strong>{isArabic ? "نصيحة" : "Tip"}</strong>
+                        <ul>
+                          {(isArabic ? section.tipsAr : section.tipsEn)!.map((tip) => (
+                            <li key={tip}>{tip}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </article>
+            );
+          })}
         </div>
       )}
 

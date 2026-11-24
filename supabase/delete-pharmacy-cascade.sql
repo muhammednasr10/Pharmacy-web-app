@@ -92,6 +92,7 @@ begin
   perform public.safe_delete_pharmacy_rows('medicines', p_pharmacy_id);
   perform public.safe_delete_pharmacy_rows('pharmacy_costs', p_pharmacy_id);
   perform public.safe_delete_pharmacy_rows('pharmacy_cost_plans', p_pharmacy_id);
+  perform public.safe_delete_pharmacy_rows('pharmacy_wallets', p_pharmacy_id);
   perform public.safe_delete_pharmacy_rows('subscription_requests', p_pharmacy_id);
   perform public.safe_delete_pharmacy_rows('held_invoices', p_pharmacy_id);
   perform public.safe_delete_pharmacy_rows('cashier_shifts', p_pharmacy_id);

@@ -9,9 +9,11 @@ export async function openSubscriptionSettingsTab(page: Page) {
 
 export async function expectSubscriptionPanelLoaded(page: Page) {
   await expect(
-    page.locator(".subscriptionCompareSection, .subscriptionHero, .subscriptionProgressCard"),
+    page.locator(".subscriptionCompareSection, .subscriptionHero, .subscriptionProgressCard").first(),
   ).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".subscriptionCalculatorRenew, .subscriptionHistoryCard")).toBeVisible({
+  await expect(
+    page.locator(".subscriptionCalculatorRenew, .subscriptionHistoryCard").first(),
+  ).toBeVisible({
     timeout: 15_000,
   });
 }

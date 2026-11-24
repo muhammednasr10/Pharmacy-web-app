@@ -166,6 +166,12 @@ export function isTierUpgradePlan(plan: string): boolean {
   return parseTierUpgradePlan(plan) !== null;
 }
 
+export {
+  buildLimitChangePlan,
+  parseLimitChangePlan,
+  isLimitChangePlan,
+} from "./subscriptionLimitChange";
+
 export function getNextSubscriptionTier(tier: SubscriptionTier): SubscriptionTier | null {
   if (tier === "basic") return "professional";
   if (tier === "professional") return "premium";

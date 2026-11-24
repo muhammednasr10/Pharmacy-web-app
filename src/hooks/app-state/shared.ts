@@ -61,12 +61,6 @@ export function useAppSharedState() {
   }, [isMenuOpen]);
 
   useEffect(() => {
-    if (activePage === "costs") {
-      setReportsTab("investment");
-    }
-  }, [activePage]);
-
-  useEffect(() => {
     if (activePage !== "settings") {
       setSettingsInitialTab(undefined);
     }

@@ -197,6 +197,7 @@ export async function registerPublicUser(params: {
   users?: number;
   staffAddon?: boolean;
   customersAddon?: boolean;
+  investmentAddon?: boolean;
 }): Promise<{
   pendingApproval: boolean;
   canSignIn: boolean;
@@ -248,6 +249,7 @@ export async function registerPublicUser(params: {
     p_users: Math.max(1, Math.min(200, Math.floor(Number(params.users) || 1))),
     p_staff_addon: Boolean(params.staffAddon),
     p_customers_addon: Boolean(params.customersAddon),
+    p_investment_addon: Boolean(params.investmentAddon),
   };
 
   let data: unknown = null;

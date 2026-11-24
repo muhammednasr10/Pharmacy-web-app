@@ -20,6 +20,12 @@ type PricingCalculatorRow = {
   customers_addon_title_en?: string | null;
   customers_addon_desc_ar?: string | null;
   customers_addon_desc_en?: string | null;
+  investment_addon_enabled?: boolean | null;
+  investment_addon_price?: number | string | null;
+  investment_addon_title_ar?: string | null;
+  investment_addon_title_en?: string | null;
+  investment_addon_desc_ar?: string | null;
+  investment_addon_desc_en?: string | null;
 };
 
 function toNumber(value: unknown, fallback: number): number {
@@ -59,6 +65,23 @@ export function mapPricingCalculatorRow(row?: PricingCalculatorRow | null): Pric
     customersAddonDescEn:
       String(row.customers_addon_desc_en || "").trim() ||
       DEFAULT_PRICING_CALCULATOR_CONFIG.customersAddonDescEn,
+    investmentAddonEnabled: row.investment_addon_enabled !== false,
+    investmentAddonPrice: Math.max(
+      0,
+      toNumber(row.investment_addon_price, DEFAULT_PRICING_CALCULATOR_CONFIG.investmentAddonPrice),
+    ),
+    investmentAddonTitleAr:
+      String(row.investment_addon_title_ar || "").trim() ||
+      DEFAULT_PRICING_CALCULATOR_CONFIG.investmentAddonTitleAr,
+    investmentAddonTitleEn:
+      String(row.investment_addon_title_en || "").trim() ||
+      DEFAULT_PRICING_CALCULATOR_CONFIG.investmentAddonTitleEn,
+    investmentAddonDescAr:
+      String(row.investment_addon_desc_ar || "").trim() ||
+      DEFAULT_PRICING_CALCULATOR_CONFIG.investmentAddonDescAr,
+    investmentAddonDescEn:
+      String(row.investment_addon_desc_en || "").trim() ||
+      DEFAULT_PRICING_CALCULATOR_CONFIG.investmentAddonDescEn,
   };
 }
 
@@ -101,6 +124,16 @@ export async function savePricingCalculatorConfig(
       input.customersAddonDescAr.trim() || DEFAULT_PRICING_CALCULATOR_CONFIG.customersAddonDescAr,
     customers_addon_desc_en:
       input.customersAddonDescEn.trim() || DEFAULT_PRICING_CALCULATOR_CONFIG.customersAddonDescEn,
+    investment_addon_enabled: Boolean(input.investmentAddonEnabled),
+    investment_addon_price: Math.max(0, Number(input.investmentAddonPrice) || 0),
+    investment_addon_title_ar:
+      input.investmentAddonTitleAr.trim() || DEFAULT_PRICING_CALCULATOR_CONFIG.investmentAddonTitleAr,
+    investment_addon_title_en:
+      input.investmentAddonTitleEn.trim() || DEFAULT_PRICING_CALCULATOR_CONFIG.investmentAddonTitleEn,
+    investment_addon_desc_ar:
+      input.investmentAddonDescAr.trim() || DEFAULT_PRICING_CALCULATOR_CONFIG.investmentAddonDescAr,
+    investment_addon_desc_en:
+      input.investmentAddonDescEn.trim() || DEFAULT_PRICING_CALCULATOR_CONFIG.investmentAddonDescEn,
     updated_at: new Date().toISOString(),
     updated_by: operatorUid || null,
   };
