@@ -90,7 +90,7 @@ export type Page =
   | "hr"
   | "employeePortal";
 
-export type PaymentMethod = "cash" | "visa" | "wallet" | "credit";
+export type PaymentMethod = "cash" | "visa" | "wallet" | "credit" | "delivery";
 
 export type Medicine = {
   id: number;

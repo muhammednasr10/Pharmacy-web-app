@@ -87,6 +87,7 @@ export default function InvoiceTable({
           <option value="cash">{getPaymentLabel("cash")}</option>
           <option value="visa">{getPaymentLabel("visa")}</option>
           <option value="wallet">{getPaymentLabel("wallet")}</option>
+          <option value="delivery">{getPaymentLabel("delivery")}</option>
           <option value="credit">{getPaymentLabel("credit")}</option>
         </select>
         <input

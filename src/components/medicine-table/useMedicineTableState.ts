@@ -120,6 +120,7 @@ export function useMedicineTableState({
 
       const matchesStock =
         stockFilter === "all" ||
+        (stockFilter === "in_stock" && qty > 0) ||
         (stockFilter === "low" && qty <= resolveLowStockThreshold(medicine)) ||
         (stockFilter === "expired" && expiry && expiry < todayValue) ||
         (stockFilter === "expiring" &&

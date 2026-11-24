@@ -3,10 +3,11 @@ import { getSubscriptionTierLabel } from "../config/subscriptionTiers";
 import { parseTierUpgradePlan } from "../utils/subscriptionFeatures";
 
 export function getPaymentLabel(method: string, isArabic: boolean) {
-  if (method === "cash") return isArabic ? "كاش" : "Cash";
+  if (method === "cash") return isArabic ? "كاش/صندوق" : "Cash / drawer";
   if (method === "visa") return isArabic ? "فيزا" : "Visa";
   if (method === "wallet") return isArabic ? "محفظة" : "Wallet";
   if (method === "credit") return isArabic ? "آجل" : "Credit";
+  if (method === "delivery") return isArabic ? "دليفري" : "Delivery";
   return method;
 }
 

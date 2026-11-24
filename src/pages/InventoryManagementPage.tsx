@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { AppUser, BranchStockTransfer, Medicine, NewMedicineForm, PharmacySettings } from "../types";
 import type { SubscriptionTier } from "../config/subscriptionTiers";
 import type { StockCountSession } from "../utils/stockCount";
@@ -9,6 +9,7 @@ import InventoryWarehouseBar from "../components/inventory/InventoryWarehouseBar
 import InventoryStockPanel from "../components/inventory/InventoryStockPanel";
 import InventoryMovementsPanel from "../components/inventory/InventoryMovementsPanel";
 import InventoryStockCountLogPanel from "../components/inventory/InventoryStockCountLogPanel";
+import InventoryPurchaseRequestsPanel from "../components/inventory/InventoryPurchaseRequestsPanel";
 import InventoryBranchDataModal from "../components/inventory/InventoryBranchDataModal";
 import BranchTransfersPanel from "./branches/BranchTransfersPanel";
 import { useBranchesPageState } from "./branches/useBranchesPageState";
@@ -18,6 +19,8 @@ import {
   canReviewBranchTransfersWithTier,
   canTransferStockWithTier,
 } from "../utils/subscriptionFeatures";
+import * as pharmacyService from "../services/pharmacyService";
+import { subscribePurchaseRequestsChanged } from "../utils/purchaseRequests";
 
 export type InventoryManagementPageProps = {
   initialTab?: InventoryManagementTab;
@@ -62,6 +65,8 @@ export type InventoryManagementPageProps = {
   onReloadMedicines?: () => void | Promise<void>;
   lowStockThreshold: number;
   expiringSoonDays: number;
+  stockStatusFilter?: "all" | "in_stock" | "low" | "expiring" | "expired";
+  stockFilterFocusKey?: number;
   branchAwareAlerts?: boolean;
   fallbackSettings?: PharmacySettings | null;
   stockMovementsCount?: number;
@@ -86,8 +91,31 @@ export default function InventoryManagementPage({
   const [activeTab, setActiveTab] = useState<InventoryManagementTab>(initialTab);
   const [stockCountLaunchKey, setStockCountLaunchKey] = useState(0);
   const [showBranchData, setShowBranchData] = useState(false);
+  const [purchaseRequestsCount, setPurchaseRequestsCount] = useState(0);
 
   const branchState = useBranchesPageState(branchWorkspace);
+
+  const refreshPurchaseRequestCount = useCallback(async () => {
+    if (!stockProps.pharmacyId) {
+      setPurchaseRequestsCount(0);
+      return;
+    }
+    try {
+      setPurchaseRequestsCount(await pharmacyService.countPurchaseRequests(stockProps.pharmacyId));
+    } catch {
+      setPurchaseRequestsCount(0);
+    }
+  }, [stockProps.pharmacyId]);
+
+  useEffect(() => {
+    void refreshPurchaseRequestCount();
+  }, [refreshPurchaseRequestCount, dataRefreshKey, activeTab]);
+
+  useEffect(() => {
+    return subscribePurchaseRequestsChanged((pharmacyId) => {
+      if (pharmacyId === stockProps.pharmacyId) void refreshPurchaseRequestCount();
+    });
+  }, [refreshPurchaseRequestCount, stockProps.pharmacyId]);
 
   const showTransfersTab =
     stockProps.branches.length > 1 &&
@@ -105,6 +133,11 @@ export default function InventoryManagementPage({
       setActiveTab("stock");
     }
   }, [activeTab, showTransfersTab]);
+
+  useEffect(() => {
+    if (!stockProps.stockFilterFocusKey) return;
+    setActiveTab("stock");
+  }, [stockProps.stockFilterFocusKey]);
 
   function startStockCountFromLog() {
     setActiveTab("stock");
@@ -142,6 +175,7 @@ export default function InventoryManagementPage({
         stockCount={undefined}
         movementsCount={stockMovementsCount}
         stockCountLogCount={stockCountLogCount}
+        purchaseRequestsCount={purchaseRequestsCount}
         transfersCount={branchWorkspace.branchTransfers.length}
         showTransfersTab={showTransfersTab}
         onChange={setActiveTab}
@@ -154,6 +188,19 @@ export default function InventoryManagementPage({
             enabled={activeTab === "stock"}
             refreshKey={dataRefreshKey}
             stockCountLaunchKey={stockCountLaunchKey}
+          />
+        </div>
+
+        <div
+          className={activeTab === "purchaseRequests" ? "" : "invMgmtTabHidden"}
+          aria-hidden={activeTab !== "purchaseRequests"}
+        >
+          <InventoryPurchaseRequestsPanel
+            isArabic={stockProps.isArabic}
+            pharmacyId={stockProps.pharmacyId}
+            enabled={activeTab === "purchaseRequests"}
+            canManageInventory={stockProps.canManageInventory}
+            onOpenPurchases={stockProps.onOpenPurchasesWithReorder}
           />
         </div>
 

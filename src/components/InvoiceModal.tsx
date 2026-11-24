@@ -43,6 +43,18 @@ export default function InvoiceModal({
             <span>{t.paymentMethod}</span>
             <strong>{getPaymentLabel(selectedInvoice.paymentMethod || "cash")}</strong>
           </div>
+          {selectedInvoice.customerName ? (
+            <div>
+              <span>{isArabic ? "العميل" : "Customer"}</span>
+              <strong>{selectedInvoice.customerName}</strong>
+            </div>
+          ) : null}
+          {selectedInvoice.customerPhone ? (
+            <div>
+              <span>{isArabic ? "موبايل" : "Phone"}</span>
+              <strong>{selectedInvoice.customerPhone}</strong>
+            </div>
+          ) : null}
           <div>
             <span>{t.subtotal}</span>
             <strong>

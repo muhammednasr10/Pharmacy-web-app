@@ -38,8 +38,7 @@ export type AppDashboardRouteProps = Pick<
   | "resolveBranchLabel"
   | "switchBranch"
   | "setActivePage"
-  | "setInventoryStatusFilter"
-  | "setQuery"
+  | "openInventoryWithFilter"
   | "openSubscriptionSettings"
   | "canUsePurchases"
   | "goToCustomerPaymentForm"
@@ -82,8 +81,7 @@ export default function AppDashboardRoute({
   resolveBranchLabel,
   switchBranch,
   setActivePage,
-  setInventoryStatusFilter,
-  setQuery,
+  openInventoryWithFilter,
   openSubscriptionSettings,
   canUsePurchases,
   goToCustomerPaymentForm,
@@ -125,33 +123,24 @@ export default function AppDashboardRoute({
       getBranchLabel={resolveBranchLabel}
       onOpenBranchInventory={(branchId) => {
         switchBranch(branchId);
-        setActivePage("inventory");
-        setInventoryStatusFilter("low");
-        setQuery("");
+        openInventoryWithFilter("low");
       }}
       onOpenSubscriptionSettings={openSubscriptionSettings}
       onOpenPOS={() => {
         setActivePage("pos");
-        setQuery("");
       }}
       onOpenPurchases={() => {
         setActivePage("purchases");
-        setQuery("");
       }}
       onOpenReorderSuggestions={
         canUsePurchases() && !isSubscriptionExpired
           ? () => {
               requestOpenReorderModal();
               setActivePage("purchases");
-              setQuery("");
             }
           : undefined
       }
-      onOpenInventory={(filter) => {
-        setActivePage("inventory");
-        setInventoryStatusFilter(filter);
-        setQuery("");
-      }}
+      onOpenInventory={(filter) => openInventoryWithFilter(filter)}
       onOpenCustomerPayments={goToCustomerPaymentForm}
       onNavigate={(page) => {
         setActivePage(page);

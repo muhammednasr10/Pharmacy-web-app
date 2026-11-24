@@ -18,6 +18,7 @@ export function usePosCart({
   const [discount, setDiscount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
 
   const subtotal = useMemo(
     () => cart.reduce((sum, item) => sum + item.price * item.cartQty, 0),
@@ -36,6 +37,7 @@ export function usePosCart({
     setDiscount(0);
     setPaymentMethod("cash");
     setCustomerName("");
+    setCustomerPhone("");
   }, []);
 
   const addToCart = useCallback(
@@ -121,7 +123,6 @@ export function usePosCart({
   useEffect(() => {
     if (isOnline || paymentMethod !== "credit") return;
     setPaymentMethod("cash");
-    setCustomerName("");
   }, [isOnline, paymentMethod]);
 
   return {
@@ -133,6 +134,8 @@ export function usePosCart({
     setPaymentMethod,
     customerName,
     setCustomerName,
+    customerPhone,
+    setCustomerPhone,
     subtotal,
     safeDiscount,
     total,

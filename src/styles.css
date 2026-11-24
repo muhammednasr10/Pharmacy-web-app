@@ -1830,6 +1830,56 @@ th {
 .reportFilters input:focus {
   border-color: #007b49;
 }
+.paymentMethodRow {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+.paymentMethodRow select {
+  flex: 1;
+  min-width: 0;
+}
+.posCustomerDataBtn {
+  position: relative;
+  flex: 0 0 46px;
+  width: 46px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 12px;
+  background: var(--color-bg-input);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.posCustomerDataBtn:hover,
+.posCustomerDataBtn:focus-visible,
+.posCustomerDataBtn.is-open {
+  border-color: #007b49;
+  color: #007b49;
+}
+.posCustomerDataBtn.has-data {
+  border-color: #007b49;
+}
+.posCustomerDataDot {
+  position: absolute;
+  top: 7px;
+  inset-inline-end: 7px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #007b49;
+}
+.posCustomerDataPanel {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-bg-input) 88%, #007b49 12%);
+}
 .subtotalLine {
   background: #f9fafb;
   border: 1px solid #eaecf0;
@@ -2797,28 +2847,82 @@ html[data-theme="dark"] .posPageTabBtn.active {
   z-index: 5;
 }
 
+.posSmartSearchOptionRow {
+  display: flex;
+  align-items: stretch;
+  gap: 0.25rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.posSmartSearchOptionRow:last-child {
+  border-bottom: 0;
+}
+
+.posSmartSearchOptionRow.is-readonly {
+  opacity: 0.92;
+}
+
 .posSmartSearchOption {
   display: grid;
   gap: 0.15rem;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   text-align: start;
   padding: 0.65rem 0.75rem;
   border: 0;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
   background: transparent;
   cursor: pointer;
 }
 
-.posSmartSearchOption:last-child {
-  border-bottom: 0;
-}
-
+.posSmartSearchOptionRow:hover .posSmartSearchOption,
 .posSmartSearchOption:hover {
   background: #f0fdf4;
 }
 
+.posPurchaseRequestBtn {
+  flex: 0 0 auto;
+  align-self: center;
+  margin-inline-end: 0.45rem;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 10px;
+  border: 1px solid rgba(31, 169, 122, 0.45);
+  background: rgba(31, 169, 122, 0.12);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.posPurchaseRequestBtn:hover,
+.posPurchaseRequestBtn:focus-visible {
+  background: rgba(31, 169, 122, 0.22);
+  outline: none;
+}
+
+.posPurchaseRequestBtn.is-done {
+  border-color: rgba(21, 128, 61, 0.55);
+  background: rgba(21, 128, 61, 0.18);
+  color: #166534;
+  font-weight: 700;
+}
+
 .posSmartSearchOption.is-readonly {
   opacity: 0.82;
+}
+
+.invMgmtInlineQty {
+  width: 5.5rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: inherit;
+  font: inherit;
+}
+
+.invMgmtPanelTitle {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
 }
 
 .posSmartSearchOptionName {
@@ -3340,8 +3444,15 @@ html[data-theme="dark"] .posSmartSearchResults {
   box-shadow: 0 16px 32px rgba(0, 0, 0, 0.45);
 }
 
+html[data-theme="dark"] .posSmartSearchOptionRow:hover .posSmartSearchOption,
 html[data-theme="dark"] .posSmartSearchOption:hover {
   background: rgba(18, 183, 106, 0.12);
+}
+
+html[data-theme="dark"] .posPurchaseRequestBtn {
+  border-color: rgba(142, 240, 196, 0.35);
+  background: rgba(31, 169, 122, 0.16);
+  color: #8ef0c4;
 }
 
 html[data-theme="dark"] .posSmartSearchOptionName {
@@ -3450,6 +3561,22 @@ html[data-theme="dark"] .posCartTotal strong {
   color: #86efac;
 }
 
+html[data-theme="dark"] .posCustomerDataBtn {
+  background: #0f172a;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+html[data-theme="dark"] .posCustomerDataBtn:hover,
+html[data-theme="dark"] .posCustomerDataBtn:focus-visible,
+html[data-theme="dark"] .posCustomerDataBtn.is-open,
+html[data-theme="dark"] .posCustomerDataBtn.has-data {
+  border-color: #22c55e;
+  color: #86efac;
+}
+html[data-theme="dark"] .posCustomerDataPanel {
+  background: color-mix(in srgb, #0f172a 90%, #22c55e 10%);
+  border-color: #334155;
+}
 html[data-theme="dark"] .posCartSplitSide .paymentBox input,
 html[data-theme="dark"] .posCartSplitSide .paymentBox select,
 html[data-theme="dark"] .posCartCheckout .paymentBox input,
@@ -4487,6 +4614,18 @@ html[data-theme="dark"] .posShiftGateIntro .returnsSectionHint {
   background: var(--color-bg-muted);
 }
 
+.dashboardGettingStartedStep.is-clickable {
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.dashboardGettingStartedStep.is-clickable:hover,
+.dashboardGettingStartedStep.is-clickable:focus-visible {
+  border-color: rgba(31, 169, 122, 0.55);
+  box-shadow: 0 0 0 3px rgba(31, 169, 122, 0.16);
+  outline: none;
+}
+
 .dashboardGettingStartedStep.is-done {
   opacity: 0.85;
 }
@@ -5122,6 +5261,12 @@ input.is-invalid {
 .loginWelcomePlansHeader p {
   margin: 0;
   color: #667085;
+}
+
+.loginWelcomePagesIntro {
+  max-width: 52rem;
+  line-height: 1.55;
+  font-size: 0.95rem;
 }
 
 .loginWelcomePlanGrid {

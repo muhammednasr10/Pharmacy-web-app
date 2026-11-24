@@ -1,4 +1,9 @@
-export type InventoryManagementTab = "stock" | "movements" | "stockCountLog" | "transfers";
+export type InventoryManagementTab =
+  | "stock"
+  | "movements"
+  | "stockCountLog"
+  | "purchaseRequests"
+  | "transfers";
 
 type InventoryManagementTabsProps = {
   isArabic: boolean;
@@ -6,6 +11,7 @@ type InventoryManagementTabsProps = {
   stockCount?: number;
   movementsCount?: number;
   stockCountLogCount?: number;
+  purchaseRequestsCount?: number;
   transfersCount?: number;
   showTransfersTab?: boolean;
   onChange: (tab: InventoryManagementTab) => void;
@@ -17,6 +23,7 @@ export default function InventoryManagementTabs({
   stockCount,
   movementsCount,
   stockCountLogCount,
+  purchaseRequestsCount,
   transfersCount,
   showTransfersTab = false,
   onChange,
@@ -32,6 +39,12 @@ export default function InventoryManagementTabs({
       label: isArabic ? "المخزون الحالي" : "Current stock",
       hint: isArabic ? "الأصناف والكميات" : "Items & quantities",
       count: stockCount,
+    },
+    {
+      id: "purchaseRequests",
+      label: isArabic ? "طلبات الشراء" : "Purchase requests",
+      hint: isArabic ? "من نقطة البيع" : "From POS flags",
+      count: purchaseRequestsCount,
     },
     {
       id: "movements",

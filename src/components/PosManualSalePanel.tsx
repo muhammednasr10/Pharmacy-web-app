@@ -6,6 +6,7 @@ import PosWarehouseScopeBar from "./PosWarehouseScopeBar";
 import { usePosInventorySource } from "../hooks/usePosInventorySource";
 import { isAllBranchesMode } from "../constants/branches";
 import { medicineMatchesInventorySearch } from "../utils/medicineLookup";
+import * as pharmacyService from "../services/pharmacyService";
 
 export type PosSearchScope = "current" | "all" | string;
 
@@ -24,6 +25,7 @@ type PosManualSalePanelProps = {
   inventoryRefreshKey?: string | number;
   lowStockThreshold: number;
   expiringSoonDays: number;
+  userName?: string;
   t: Record<string, string>;
   currency: string;
   canUsePOS: boolean;
@@ -50,6 +52,7 @@ export default function PosManualSalePanel({
   inventoryRefreshKey = 0,
   lowStockThreshold,
   expiringSoonDays,
+  userName,
   t,
   currency,
   canUsePOS,
@@ -123,9 +126,7 @@ export default function PosManualSalePanel({
     const pool = searchingOtherBranches
       ? medicines
       : medicines.filter((medicine) => (medicine.pharmacyId || pharmacyId) === pharmacyId);
-    return pool
-      .filter((medicine) => medicine.qty > 0)
-      .filter((medicine) => medicineMatchesInventorySearch(medicine, debouncedSearch));
+    return pool.filter((medicine) => medicineMatchesInventorySearch(medicine, debouncedSearch));
   }, [debouncedSearch, medicines, pharmacyId, searchingOtherBranches]);
 
   const tableRows = isOnline ? inventoryRows : offlineRows;
@@ -158,7 +159,34 @@ export default function PosManualSalePanel({
       );
       return;
     }
+    if (medicine.qty <= 0) {
+      window.alert(
+        isArabic
+          ? "الكمية صفر — استخدم أيقونة التوريد 🛒 لإضافته لطلبات الشراء"
+          : "Out of stock — use the 🛒 icon to add a purchase request",
+      );
+      return;
+    }
     onAddToCart(medicine);
+  }
+
+  async function handleRequestPurchase(medicine: Medicine) {
+    try {
+      await pharmacyService.addMedicineToPurchaseRequests({
+        pharmacyId,
+        medicine,
+        createdByName: userName,
+        lowStockThreshold,
+        note: isArabic ? "طلب من نقطة البيع — الزبون سأل عنه" : "POS request — customer asked",
+      });
+      window.alert(
+        isArabic
+          ? `تمت إضافة «${medicine.name_ar}» لطلبات الشراء في المخزن`
+          : `"${medicine.name_en || medicine.name_ar}" added to inventory purchase requests`,
+      );
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : String(error));
+    }
   }
 
   return (
@@ -271,6 +299,7 @@ export default function PosManualSalePanel({
               canDeleteMedicine={canDeleteMedicine}
               showCostProfitColumns={canViewPosCostProfit}
               onAddToCart={handleAddToCart}
+              onRequestPurchase={(medicine) => void handleRequestPurchase(medicine)}
               onEditMedicine={onEditMedicine}
               onDeleteMedicine={onDeleteMedicine}
               lowStockThreshold={lowStockThreshold}

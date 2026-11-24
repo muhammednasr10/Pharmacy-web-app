@@ -16,7 +16,7 @@ export type PaginatedResult<T> = {
   pageSize: number;
 };
 
-export type StockCatalogFilter = "all" | "low" | "expiring" | "expired";
+export type StockCatalogFilter = "all" | "in_stock" | "low" | "expiring" | "expired";
 
 export type MedicinesPageQuery = {
   page?: number;
@@ -94,8 +94,20 @@ function applyMedicineSearch<T extends { or: (filters: string) => T }>(
 type StockFilterQuery = {
   lte: (column: string, value: number | string) => StockFilterQuery;
   lt: (column: string, value: string) => StockFilterQuery;
+  gt: (column: string, value: number) => StockFilterQuery;
   gte: (column: string, value: string) => StockFilterQuery;
 };
+
+/** Older RPCs may not know `in_stock` — map to all + in_stock_only. */
+function resolveRpcStockFilterArgs(
+  stockFilter: StockCatalogFilter,
+  inStockOnly: boolean,
+): { stockFilter: StockCatalogFilter; inStockOnly: boolean } {
+  if (stockFilter === "in_stock") {
+    return { stockFilter: "all", inStockOnly: true };
+  }
+  return { stockFilter, inStockOnly };
+}
 
 function applyStockCatalogFilter<T extends StockFilterQuery>(
   query: T,
@@ -103,6 +115,10 @@ function applyStockCatalogFilter<T extends StockFilterQuery>(
   lowStockThreshold: number,
   expiringSoonDays: number,
 ): T {
+  if (stockFilter === "in_stock") {
+    return query.gt("qty", 0) as T;
+  }
+
   if (stockFilter === "low") {
     return query.lte("qty", Math.max(0, lowStockThreshold)) as T;
   }
@@ -128,13 +144,14 @@ async function countMedicinesForPage(
   lowStockThreshold: number,
   expiringSoonDays: number,
 ): Promise<number | null> {
+  const rpcFilter = resolveRpcStockFilterArgs(stockFilter, query.inStockOnly ?? false);
   const { data, error } = await supabase.rpc("count_pharmacy_medicines", {
     p_pharmacy_id: pharmacyId,
     p_search: query.search?.trim() || null,
-    p_stock_filter: stockFilter,
+    p_stock_filter: rpcFilter.stockFilter,
     p_low_stock_threshold: lowStockThreshold,
     p_expiring_soon_days: expiringSoonDays,
-    p_in_stock_only: query.inStockOnly ?? false,
+    p_in_stock_only: rpcFilter.inStockOnly,
   });
 
   if (error) {
@@ -156,15 +173,16 @@ async function fetchMedicinesPageViaRpc(
   lowStockThreshold: number,
   expiringSoonDays: number,
 ): Promise<PaginatedResult<Medicine> | null> {
+  const rpcFilter = resolveRpcStockFilterArgs(stockFilter, query.inStockOnly ?? false);
   const { data, error } = await supabase.rpc("fetch_pharmacy_medicines_page", {
     p_pharmacy_id: pharmacyId,
     p_page: page,
     p_page_size: pageSize,
     p_search: query.search?.trim() || null,
-    p_stock_filter: stockFilter,
+    p_stock_filter: rpcFilter.stockFilter,
     p_low_stock_threshold: lowStockThreshold,
     p_expiring_soon_days: expiringSoonDays,
-    p_in_stock_only: query.inStockOnly ?? false,
+    p_in_stock_only: rpcFilter.inStockOnly,
   });
 
   if (error) {

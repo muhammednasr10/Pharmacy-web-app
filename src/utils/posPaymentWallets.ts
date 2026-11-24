@@ -1,5 +1,8 @@
 import type { PaymentMethod, PharmacyWallet, PharmacyWalletType } from "../types";
 
+/** Synthetic POS option when payment methods come from investment wallets. */
+export const POS_DELIVERY_PAYMENT_VALUE = "__pos_delivery__";
+
 export function walletTypeToPaymentMethod(type: PharmacyWalletType | string): PaymentMethod {
   if (type === "bank") return "visa";
   if (type === "ewallet") return "wallet";
@@ -16,7 +19,7 @@ export function buildPosWalletPaymentOptions(
   wallets: PharmacyWallet[],
   isArabic: boolean,
 ): { value: string; label: string }[] {
-  return wallets
+  const walletOptions = wallets
     .filter((item) => item.isActive !== false)
     .map((wallet) => ({
       value: String(wallet.id),
@@ -24,4 +27,11 @@ export function buildPosWalletPaymentOptions(
         ? `${wallet.name}${wallet.isDefaultPos ? " (افتراضي)" : ""}`
         : `${wallet.name}${wallet.isDefaultPos ? " (default)" : ""}`,
     }));
+  return [
+    ...walletOptions,
+    {
+      value: POS_DELIVERY_PAYMENT_VALUE,
+      label: isArabic ? "دليفري" : "Delivery",
+    },
+  ];
 }

@@ -20,6 +20,7 @@ export default function MedicineTable({
   canManageInventory,
   canDeleteMedicine,
   onAddToCart,
+  onRequestPurchase,
   addToCartLabel,
   onEditMedicine,
   onDeleteMedicine,
@@ -96,6 +97,7 @@ export default function MedicineTable({
         canDeleteMedicine={canDeleteMedicine}
         getBranchLabel={getBranchLabel}
         onAddToCart={onAddToCart}
+        onRequestPurchase={onRequestPurchase}
         addToCartLabel={addToCartLabel}
         onEditMedicine={onEditMedicine}
         onDeleteMedicine={onDeleteMedicine}

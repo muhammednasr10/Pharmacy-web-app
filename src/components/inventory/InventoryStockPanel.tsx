@@ -57,6 +57,8 @@ type InventoryStockPanelProps = {
   onReloadMedicines?: () => void | Promise<void>;
   lowStockThreshold: number;
   expiringSoonDays: number;
+  stockStatusFilter?: StockCatalogFilter;
+  stockFilterFocusKey?: number;
   branchAwareAlerts?: boolean;
   fallbackSettings?: PharmacySettings | null;
   refreshKey?: number;
@@ -100,6 +102,8 @@ export default function InventoryStockPanel({
   onReloadMedicines,
   lowStockThreshold,
   expiringSoonDays,
+  stockStatusFilter = "all",
+  stockFilterFocusKey = 0,
   branchAwareAlerts = false,
   fallbackSettings = null,
   refreshKey = 0,
@@ -115,7 +119,7 @@ export default function InventoryStockPanel({
   const [showCatalogImportModal, setShowCatalogImportModal] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [stockFilter, setStockFilter] = useState<StockCatalogFilter>("all");
+  const [stockFilter, setStockFilter] = useState<StockCatalogFilter>(stockStatusFilter);
   const [buyPriceUnlocked, setBuyPriceUnlocked] = useState(false);
   const [showBuyPriceUnlockModal, setShowBuyPriceUnlockModal] = useState(false);
 
@@ -123,6 +127,12 @@ export default function InventoryStockPanel({
     const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
     return () => window.clearTimeout(timer);
   }, [search]);
+
+  useEffect(() => {
+    if (!stockFilterFocusKey) return;
+    setStockFilter(stockStatusFilter);
+    setSearch("");
+  }, [stockFilterFocusKey, stockStatusFilter]);
 
   useEffect(() => {
     if (!stockCountLaunchKey || !canManageInventory || !onApplyStockCount) return;

@@ -172,11 +172,19 @@ export async function printSaleInvoice({
   );
 
   const customerName = (invoice as Invoice & { customerName?: string }).customerName;
+  const customerPhone = (invoice as Invoice & { customerPhone?: string }).customerPhone;
   if (customerName) {
     docPdf.text(
       `${pdfLabel("العميل", "Customer", isArabic)}: ${customerName}`,
       pageWidth / 2,
       y + 9,
+    );
+  }
+  if (customerPhone) {
+    docPdf.text(
+      `${pdfLabel("موبايل", "Phone", isArabic)}: ${customerPhone}`,
+      pageWidth / 2,
+      y + 27,
     );
   }
 

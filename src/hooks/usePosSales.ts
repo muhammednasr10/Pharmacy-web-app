@@ -61,10 +61,12 @@ type UsePosSalesOptions = {
   total: number;
   paymentMethod: PaymentMethod;
   customerName: string;
+  customerPhone: string;
   setCart: Dispatch<SetStateAction<CartItem[]>>;
   setDiscount: Dispatch<SetStateAction<number>>;
   setPaymentMethod: Dispatch<SetStateAction<PaymentMethod>>;
   setCustomerName: Dispatch<SetStateAction<string>>;
+  setCustomerPhone: Dispatch<SetStateAction<string>>;
   resetCart: () => void;
   getPharmacyId: () => string;
   getPaymentLabel: (method: string) => string;
@@ -96,10 +98,12 @@ export function usePosSales({
   total,
   paymentMethod,
   customerName,
+  customerPhone,
   setCart,
   setDiscount,
   setPaymentMethod,
   setCustomerName,
+  setCustomerPhone,
   resetCart,
   getPharmacyId,
   getPaymentLabel,
@@ -176,12 +180,19 @@ export function usePosSales({
       return false;
     }
 
-    if (paymentMethod === "credit" && !customerName.trim()) {
+    if (
+      (paymentMethod === "credit" || paymentMethod === "delivery") &&
+      !customerName.trim()
+    ) {
       setSaleFeedback({
         type: "error",
         text: isArabic
-          ? "من فضلك أدخل اسم العميل في حالة البيع الآجل"
-          : "Please enter customer name for credit sale",
+          ? paymentMethod === "delivery"
+            ? "من فضلك أدخل اسم العميل لفاتورة الدليفري"
+            : "من فضلك أدخل اسم العميل في حالة البيع الآجل"
+          : paymentMethod === "delivery"
+            ? "Please enter customer name for delivery sale"
+            : "Please enter customer name for credit sale",
       });
       return false;
     }
@@ -290,6 +301,7 @@ export function usePosSales({
         shiftId: currentWorkShiftId || undefined,
         cashierShiftId: shiftForSale?.id,
         customerName: customerName.trim(),
+        customerPhone: customerPhone.trim() || undefined,
         date: formatAppNowForStorage(isArabic),
         createdAt: new Date().toISOString(),
         items: invoiceItems,
@@ -431,6 +443,7 @@ export function usePosSales({
     canUseSystemActions,
     cart,
     customerName,
+    customerPhone,
     currentWorkShiftId,
     discount,
     getPharmacyId,
@@ -491,6 +504,7 @@ export function usePosSales({
       const held = await pharmacyService.holdInvoice({
         holdNumber,
         customerName: customerName.trim(),
+        customerPhone: customerPhone.trim() || undefined,
         cartItems: cart,
         subtotal,
         discount: safeDiscount,
@@ -536,6 +550,7 @@ export function usePosSales({
     canUseSystemActions,
     cart,
     customerName,
+    customerPhone,
     isArabic,
     isHolding,
     paymentMethod,
@@ -586,6 +601,7 @@ export function usePosSales({
         setDiscount(Number(resumed.discount) || 0);
         setPaymentMethod(resumed.paymentMethod || "cash");
         setCustomerName(resumed.customerName || "");
+        setCustomerPhone(resumed.customerPhone || "");
         setHeldInvoices((prev) => prev.filter((row) => row.id !== resumed.id));
         setShowHeldInvoicesModal(false);
 
@@ -614,6 +630,7 @@ export function usePosSales({
       medicines,
       setCart,
       setCustomerName,
+      setCustomerPhone,
       setDiscount,
       setPaymentMethod,
       t.currency,

@@ -11,6 +11,7 @@ export function prepareInvoicePayload(invoice: Invoice): Record<string, any> {
     total: invoice.total,
     paymentMethod: invoice.paymentMethod,
     customerName: invoice.customerName || "",
+    customerPhone: invoice.customerPhone || "",
     cashierId: invoice.cashierId,
     cashierName: invoice.cashierName,
     pharmacyId: invoice.pharmacyId,

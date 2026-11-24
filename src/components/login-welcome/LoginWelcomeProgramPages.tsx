@@ -36,7 +36,12 @@ export default function LoginWelcomeProgramPages({
   return (
     <section className="loginWelcomePages" aria-label={isArabic ? "صفحات البرنامج" : "App pages"}>
       <div className="loginWelcomePlansHeader">
-        <h2>{isArabic ? "صفحات البرنامج" : "What’s inside"}</h2>
+        <h2>{isArabic ? "صفحات البرنامج" : "App pages"}</h2>
+        <p className="loginWelcomePagesIntro">
+          {isArabic
+            ? "دي صفحات البرنامج الفعلية اللي بتظهر في القائمة بعد التسجيل. المتعلّم بالأحمر إضافة بالاشتراك (مش ضمن الباقة الأساسية) — تفعّلها من حاسبة الاشتراك تحت."
+            : "These are the real app pages shown in the menu after signup. Items marked in red are paid subscription add-ons (not in the basic plan) — enable them from the calculator below."}
+        </p>
       </div>
       <ul className="loginWelcomePageList">
         {PROGRAM_PAGES.map((page) => {
@@ -113,11 +118,11 @@ export default function LoginWelcomeProgramPages({
               <p className="loginWelcomePageCardHint">
                 {selectedPage.key === "employeePortal"
                   ? isArabic
-                    ? "مش إضافة منفصلة — تتفعل وتتسعر مع تشيك بوكس «الموظفين» في الحاسبة."
-                    : "Not a separate add-on — enabled and priced with the Staff checkbox in the calculator."
+                    ? "متعلّمة بالأحمر لأنها ضمن إضافة الموظفين بالاشتراك — مش سعر منفصل، تتفعل مع تشيك بوكس «الموظفين»."
+                    : "Marked red as part of the paid Staff add-on — not a separate price; enable with the Staff checkbox."
                   : isArabic
-                    ? "إضافة اختيارية — تفعّلها من تشيك بوكس حاسبة الاشتراك."
-                    : "Optional add-on — enable it from the subscription calculator checkbox."}
+                    ? "متعلّمة بالأحمر = إضافة بالاشتراك — تفعّلها من تشيك بوكس حاسبة الاشتراك."
+                    : "Marked red = paid subscription add-on — enable it from the calculator checkbox."}
               </p>
             ) : null}
           </div>

@@ -34,6 +34,8 @@ export function useAppSharedState() {
   const [inventoryStatusFilter, setInventoryStatusFilter] = useState<
     "all" | "low" | "expiring" | "expired"
   >("all");
+  /** Bumps when topbar/dashboard asks inventory to apply a stock filter + open stock tab. */
+  const [inventoryFilterFocusKey, setInventoryFilterFocusKey] = useState(0);
   const [invoiceSearch, setInvoiceSearch] = useState("");
   const [invoicePaymentFilter, setInvoicePaymentFilter] = useState<"all" | PaymentMethod>("all");
   const [invoiceFromDate, setInvoiceFromDate] = useState("");
@@ -71,11 +73,19 @@ export function useAppSharedState() {
     setActivePage("settings");
   }
 
+  const openInventoryWithFilter = useCallback(
+    (filter: "all" | "low" | "expiring" | "expired" = "all") => {
+      setActivePage("inventory");
+      setInventoryStatusFilter(filter);
+      setInventoryFilterFocusKey((value) => value + 1);
+      setQuery("");
+    },
+    [setActivePage],
+  );
+
   const onOpenInventoryExpiryView = useCallback(() => {
-    setActivePage("inventory");
-    setInventoryStatusFilter("expiring");
-    setQuery("");
-  }, [setActivePage]);
+    openInventoryWithFilter("expiring");
+  }, [openInventoryWithFilter]);
 
   const goToCustomerPaymentForm = useCallback(() => {
     setActivePage("customers");
@@ -115,6 +125,9 @@ export function useAppSharedState() {
     setCustomerPaymentModalRequest,
     inventoryStatusFilter,
     setInventoryStatusFilter,
+    inventoryFilterFocusKey,
+    setInventoryFilterFocusKey,
+    openInventoryWithFilter,
     invoiceSearch,
     setInvoiceSearch,
     invoicePaymentFilter,

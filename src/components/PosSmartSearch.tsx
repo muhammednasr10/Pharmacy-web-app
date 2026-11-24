@@ -8,6 +8,7 @@ import {
 import { readRecentBarcodes } from "../utils/offlineRecentMedicines";
 import type { PosSearchScope } from "./PosManualSalePanel";
 import { playBarcodeBeep } from "../utils/barcodeBeep";
+import * as pharmacyService from "../services/pharmacyService";
 
 type PosSmartSearchProps = {
   isArabic: boolean;
@@ -21,6 +22,7 @@ type PosSmartSearchProps = {
   inventoryRefreshKey?: string | number;
   lowStockThreshold: number;
   expiringSoonDays: number;
+  userName?: string;
   onAddToCart: (medicine: Medicine) => void;
 };
 
@@ -36,10 +38,13 @@ export default function PosSmartSearch({
   inventoryRefreshKey = 0,
   lowStockThreshold,
   expiringSoonDays,
+  userName,
   onAddToCart,
 }: PosSmartSearchProps) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [requestBusyId, setRequestBusyId] = useState<number | null>(null);
+  const [requestFlashId, setRequestFlashId] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const effectiveSearchScope: PosSearchScope =
     searchScope === pharmacyId ? "current" : searchScope;
@@ -77,10 +82,9 @@ export default function PosSmartSearch({
     const pool = searchingOtherBranches
       ? medicines
       : medicines.filter((medicine) => (medicine.pharmacyId || pharmacyId) === pharmacyId);
+    // Include zero-qty hits so cashiers can flag restock requests.
     return sortMedicinesBySearchRelevance(
-      pool
-        .filter((medicine) => medicine.qty > 0)
-        .filter((medicine) => medicineMatchesInventorySearch(medicine, debouncedSearch)),
+      pool.filter((medicine) => medicineMatchesInventorySearch(medicine, debouncedSearch)),
       debouncedSearch,
       recentBarcodes,
     ).slice(0, 12);
@@ -104,7 +108,11 @@ export default function PosSmartSearch({
       return;
     }
     if (medicine.qty <= 0) {
-      window.alert(isArabic ? "الكمية صفر في المخزن الحالي" : "Out of stock in current warehouse");
+      window.alert(
+        isArabic
+          ? "الكمية صفر — اضغط أيقونة التوريد 🛒 لإضافته لطلبات الشراء"
+          : "Out of stock — tap the 🛒 restock icon to add a purchase request",
+      );
       return;
     }
     onAddToCart(medicine);
@@ -112,6 +120,29 @@ export default function PosSmartSearch({
     setDebouncedSearch("");
     playBarcodeBeep(true);
     requestAnimationFrame(() => inputRef.current?.focus());
+  }
+
+  async function requestPurchase(medicine: Medicine) {
+    if (requestBusyId != null) return;
+    setRequestBusyId(medicine.id);
+    try {
+      await pharmacyService.addMedicineToPurchaseRequests({
+        pharmacyId,
+        medicine,
+        createdByName: userName,
+        lowStockThreshold,
+        note: isArabic ? "طلب من نقطة البيع — الزبون سأل عنه" : "POS request — customer asked",
+      });
+      setRequestFlashId(medicine.id);
+      window.setTimeout(() => setRequestFlashId((current) => (current === medicine.id ? null : current)), 1600);
+      playBarcodeBeep(true);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : String(error));
+      playBarcodeBeep(false);
+    } finally {
+      setRequestBusyId(null);
+      requestAnimationFrame(() => inputRef.current?.focus());
+    }
   }
 
   return (
@@ -170,24 +201,57 @@ export default function PosSmartSearch({
             </p>
           ) : null}
           {results.map((medicine) => {
-            const sellable = (medicine.pharmacyId || pharmacyId) === pharmacyId && medicine.qty > 0;
+            const sameBranch = (medicine.pharmacyId || pharmacyId) === pharmacyId;
+            const sellable = sameBranch && medicine.qty > 0;
+            const canRequest = sameBranch && medicine.qty <= 0;
             return (
-              <button
+              <div
                 key={`${medicine.pharmacyId || pharmacyId}-${medicine.id}`}
-                type="button"
+                className={`posSmartSearchOptionRow${sellable ? "" : " is-readonly"}`}
                 role="option"
-                className={`posSmartSearchOption${sellable ? "" : " is-readonly"}`}
-                onClick={() => pickMedicine(medicine)}
               >
-                <span className="posSmartSearchOptionName">{medicine.name_ar}</span>
-                <span className="posSmartSearchOptionMeta mutedText">
-                  {searchingOtherBranches && medicine.pharmacyId
-                    ? `${getBranchLabel?.(medicine.pharmacyId) || medicine.pharmacyId} · `
-                    : ""}
-                  {medicine.barcode || "—"} · {isArabic ? "كم" : "qty"} {medicine.qty} ·{" "}
-                  {medicine.price.toFixed(2)}
-                </span>
-              </button>
+                <button
+                  type="button"
+                  className="posSmartSearchOption"
+                  onClick={() => pickMedicine(medicine)}
+                >
+                  <span className="posSmartSearchOptionName">{medicine.name_ar}</span>
+                  <span className="posSmartSearchOptionMeta mutedText">
+                    {searchingOtherBranches && medicine.pharmacyId
+                      ? `${getBranchLabel?.(medicine.pharmacyId) || medicine.pharmacyId} · `
+                      : ""}
+                    {medicine.barcode || "—"} · {isArabic ? "كم" : "qty"} {medicine.qty} ·{" "}
+                    {medicine.price.toFixed(2)}
+                    {canRequest
+                      ? isArabic
+                        ? " · ناقص"
+                        : " · out of stock"
+                      : ""}
+                  </span>
+                </button>
+                {canRequest ? (
+                  <button
+                    type="button"
+                    className={`posPurchaseRequestBtn${
+                      requestFlashId === medicine.id ? " is-done" : ""
+                    }`}
+                    disabled={requestBusyId === medicine.id}
+                    title={
+                      isArabic
+                        ? "أضف لطلبات الشراء / التوريد"
+                        : "Add to purchase / restock requests"
+                    }
+                    aria-label={
+                      isArabic
+                        ? `طلب توريد ${medicine.name_ar}`
+                        : `Request restock for ${medicine.name_en || medicine.name_ar}`
+                    }
+                    onClick={() => void requestPurchase(medicine)}
+                  >
+                    {requestFlashId === medicine.id ? "✓" : "🛒"}
+                  </button>
+                ) : null}
+              </div>
             );
           })}
         </div>

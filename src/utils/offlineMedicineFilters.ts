@@ -44,6 +44,9 @@ export function filterMedicinesForInventoryView(
       if (!haystack.includes(term)) return false;
     }
 
+    if (stockFilter === "in_stock" && medicine.qty <= 0) {
+      return false;
+    }
     if (stockFilter === "low" && medicine.qty > Math.max(0, lowStockThreshold)) {
       return false;
     }

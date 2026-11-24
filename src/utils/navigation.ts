@@ -114,7 +114,7 @@ export function flattenNavigationEntries(entries: NavEntry[]): NavItem[] {
   return items;
 }
 
-/** Main-nav order: العملاء قبل الموظفين، واستثمارى بعد الموظفين. */
+/** Main-nav order: التقارير ثم العملاء، ثم الموظفين والاستثمار. */
 const MAIN_NAV_PAGE_ORDER: Page[] = [
   "dashboard",
   "employeePortal",
@@ -123,8 +123,8 @@ const MAIN_NAV_PAGE_ORDER: Page[] = [
   "invoices",
   "returns",
   "purchases",
-  "customers",
   "reports",
+  "customers",
   "users",
   "costs",
   "settings",

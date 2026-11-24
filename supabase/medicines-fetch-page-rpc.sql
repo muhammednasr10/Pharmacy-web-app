@@ -51,6 +51,7 @@ begin
     )
     and (
       coalesce(p_stock_filter, 'all') = 'all'
+      or (p_stock_filter = 'in_stock' and coalesce(m.qty, 0) > 0)
       or (
         p_stock_filter = 'low'
         and coalesce(m.qty, 0) > 0
@@ -81,6 +82,7 @@ begin
       )
       and (
         coalesce(p_stock_filter, 'all') = 'all'
+        or (p_stock_filter = 'in_stock' and coalesce(m.qty, 0) > 0)
         or (
           p_stock_filter = 'low'
           and coalesce(m.qty, 0) > 0

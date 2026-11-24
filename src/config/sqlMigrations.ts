@@ -693,6 +693,16 @@ export const SQL_MIGRATIONS: SqlMigrationDefinition[] = [
     probe: { type: "rpc", name: "fetch_pharmacy_medicines_page", args: {} },
   },
   {
+    id: "pharmacy-purchase-requests",
+    file: "pharmacy-purchase-requests.sql",
+    group: "pos",
+    titleAr: "طلبات الشراء من نقطة البيع",
+    titleEn: "POS purchase / restock requests",
+    noteAr: "جدول طلبات التوريد اللي بتتسجل من أيقونة 🛒 في البحث عند نفاد الكمية",
+    noteEn: "Table for restock requests flagged from the POS 🛒 icon when qty is zero",
+    probe: { type: "table", name: "pharmacy_purchase_requests" },
+  },
+  {
     id: "subscription-readonly-expired",
     file: "subscription-readonly-expired.sql",
     group: "saas",

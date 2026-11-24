@@ -15,8 +15,7 @@ export type AppUserGuideRouteProps = Pick<
   | "pharmacySettings"
   | "getPharmacyId"
   | "setActivePage"
-  | "setInventoryStatusFilter"
-  | "setQuery"
+  | "openInventoryWithFilter"
   | "setSettingsInitialTab"
   | "refreshMedicinesFromDb"
 >;
@@ -32,8 +31,7 @@ export default function AppUserGuideRoute({
   pharmacySettings,
   getPharmacyId,
   setActivePage,
-  setInventoryStatusFilter,
-  setQuery,
+  openInventoryWithFilter,
   setSettingsInitialTab,
   refreshMedicinesFromDb,
 }: AppUserGuideRouteProps) {
@@ -60,11 +58,7 @@ export default function AppUserGuideRoute({
       canAccessSettings={allowedPages.includes("settings")}
       canAccessUsers={allowedPages.includes("users")}
       canAccessCosts={allowedPages.includes("costs")}
-      onOpenInventory={() => {
-        setInventoryStatusFilter("all");
-        setQuery("");
-        setActivePage("inventory");
-      }}
+      onOpenInventory={() => openInventoryWithFilter("all")}
       onOpenPOS={() => setActivePage("pos")}
       onOpenSettingsPharmacy={() => openSettingsTab("pharmacy")}
       onOpenSettingsEmployees={() => openSettingsTab("employees")}

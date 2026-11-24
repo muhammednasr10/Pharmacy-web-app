@@ -27,6 +27,7 @@ import { isPharmacyManager, isSuperAdmin } from "../utils/roles";
 import {
   buildPosWalletPaymentOptions,
   pickDefaultPosWallet,
+  POS_DELIVERY_PAYMENT_VALUE,
   walletTypeToPaymentMethod,
 } from "../utils/posPaymentWallets";
 
@@ -52,6 +53,7 @@ type PosPageProps = {
   discount: number;
   paymentMethod: PaymentMethod;
   customerName: string;
+  customerPhone?: string;
   isSelling: boolean;
   isSubscriptionExpired: boolean;
   subscriptionBlocksSale?: boolean;
@@ -65,6 +67,7 @@ type PosPageProps = {
   onDiscountChange: (value: number) => void;
   onPaymentMethodChange: (method: PaymentMethod) => void;
   onCustomerNameChange: (value: string) => void;
+  onCustomerPhoneChange?: (value: string) => void;
   onCompleteSale: () => void | boolean | Promise<void | boolean>;
   getPaymentLabel: (method: string) => string;
   heldInvoicesCount: number;
@@ -113,6 +116,7 @@ export default function PosPage({
   discount,
   paymentMethod,
   customerName,
+  customerPhone = "",
   isSelling,
   isSubscriptionExpired,
   subscriptionBlocksSale = false,
@@ -126,6 +130,7 @@ export default function PosPage({
   onDiscountChange,
   onPaymentMethodChange,
   onCustomerNameChange,
+  onCustomerPhoneChange,
   onCompleteSale,
   getPaymentLabel,
   heldInvoicesCount,
@@ -209,6 +214,10 @@ export default function PosPage({
   const handlePosWalletChange = useCallback(
     (walletId: string) => {
       setSelectedPosWalletId(walletId);
+      if (walletId === POS_DELIVERY_PAYMENT_VALUE) {
+        onPaymentMethodChange("delivery");
+        return;
+      }
       const wallet = posWallets.find((item) => String(item.id) === walletId);
       if (wallet) {
         onPaymentMethodChange(walletTypeToPaymentMethod(wallet.walletType));
@@ -402,6 +411,7 @@ export default function PosPage({
         inventoryRefreshKey={inventoryRefreshKey}
         lowStockThreshold={lowStockThreshold}
         expiringSoonDays={expiringSoonDays}
+        userName={appUser?.name}
         onAddToCart={onAddToCart}
       />
       <div className="posCartSection posCartSection--split">
@@ -415,6 +425,7 @@ export default function PosPage({
           discount={discount}
           paymentMethod={paymentMethod}
           customerName={customerName}
+          customerPhone={customerPhone}
           isArabic={isArabic}
           t={t}
           currency={currency}
@@ -429,6 +440,7 @@ export default function PosPage({
           onDiscountChange={onDiscountChange}
           onPaymentMethodChange={onPaymentMethodChange}
           onCustomerNameChange={onCustomerNameChange}
+          onCustomerPhoneChange={onCustomerPhoneChange}
           onCompleteSale={() => void handleCompleteSale()}
           getPaymentLabel={getPaymentLabel}
           heldInvoicesCount={heldInvoicesCount}
@@ -473,6 +485,7 @@ export default function PosPage({
         inventoryRefreshKey={inventoryRefreshKey}
         lowStockThreshold={lowStockThreshold}
         expiringSoonDays={expiringSoonDays}
+        userName={appUser?.name}
         t={t}
         currency={currency}
         canUsePOS={canUsePOS && shiftReady}
@@ -493,6 +506,7 @@ export default function PosPage({
           discount={discount}
           paymentMethod={paymentMethod}
           customerName={customerName}
+          customerPhone={customerPhone}
           isArabic={isArabic}
           t={t}
           currency={currency}
@@ -507,6 +521,7 @@ export default function PosPage({
           onDiscountChange={onDiscountChange}
           onPaymentMethodChange={onPaymentMethodChange}
           onCustomerNameChange={onCustomerNameChange}
+          onCustomerPhoneChange={onCustomerPhoneChange}
           onCompleteSale={() => void handleCompleteSale()}
           getPaymentLabel={getPaymentLabel}
           heldInvoicesCount={heldInvoicesCount}

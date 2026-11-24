@@ -5,6 +5,7 @@ import {
   isGettingStartedDismissed,
   setGettingStartedDismissed,
 } from "../utils/gettingStartedGuide";
+import { requestUiSpotlight } from "../utils/uiSpotlight";
 
 type GettingStartedGuideProps = {
   isArabic: boolean;
@@ -114,7 +115,23 @@ export default function GettingStartedGuide({
           ? "افتح المخزون وأضف دواء يدويًا أو استورد من ملف"
           : "Open inventory and add a medicine or import a file",
         actionLabel: isArabic ? "فتح المخزون" : "Open inventory",
-        onClick: onOpenInventory,
+        onClick: () => {
+          requestUiSpotlight([
+            {
+              selector: '[data-tour-id="inventory-import-catalog"]',
+              labelAr: "استيراد قاعدة بيانات الأدوية",
+              labelEn: "Import medicine database",
+              durationMs: 3200,
+            },
+            {
+              selector: '[data-tour-id="inventory-add-medicine"]',
+              labelAr: "إضافة دواء جديد",
+              labelEn: "Add new medicine",
+              durationMs: 3200,
+            },
+          ]);
+          onOpenInventory();
+        },
         enabled: true,
       });
     }
@@ -312,7 +329,21 @@ export default function GettingStartedGuide({
         {steps.map((step, index) => (
           <li
             key={step.key}
-            className={`dashboardGettingStartedStep${step.done ? " is-done" : ""}`}
+            className={`dashboardGettingStartedStep${step.done ? " is-done" : ""}${
+              step.enabled ? " is-clickable" : ""
+            }`}
+            role={step.enabled ? "button" : undefined}
+            tabIndex={step.enabled ? 0 : undefined}
+            onClick={() => {
+              if (!step.enabled) return;
+              step.onClick();
+            }}
+            onKeyDown={(event) => {
+              if (!step.enabled) return;
+              if (event.key !== "Enter" && event.key !== " ") return;
+              event.preventDefault();
+              step.onClick();
+            }}
           >
             <div className="dashboardGettingStartedStepMain">
               <span className="dashboardGettingStartedIndex" aria-hidden="true">
@@ -332,7 +363,10 @@ export default function GettingStartedGuide({
                 type="button"
                 className="smallBtn"
                 disabled={!step.enabled}
-                onClick={step.onClick}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  step.onClick();
+                }}
               >
                 {step.actionLabel}
               </button>

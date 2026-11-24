@@ -1,8 +1,10 @@
 import FeatureGate from "../FeatureGate";
+import { useUiSpotlightOnMount } from "../../hooks/useUiSpotlightOnMount";
 import type { StockCatalogFilter } from "../../services/pharmacy/inventoryPaginationService";
 
 const stockFilterOptions: { value: StockCatalogFilter; ar: string; en: string }[] = [
   { value: "all", ar: "الكل", en: "All" },
+  { value: "in_stock", ar: "متوفر", en: "In stock" },
   { value: "low", ar: "ناقص", en: "Low stock" },
   { value: "expiring", ar: "قرب الانتهاء", en: "Expiring" },
   { value: "expired", ar: "منتهي", en: "Expired" },
@@ -53,6 +55,8 @@ export default function InventoryStockToolbar({
   onOpenAdd,
   onExportCSV,
 }: InventoryStockToolbarProps) {
+  useUiSpotlightOnMount(isArabic, canManageInventory);
+
   return (
     <div className="invMgmtPanelToolbar invMgmtStockToolbar">
       <div className="filtersBar invMgmtFiltersBar">
@@ -144,12 +148,22 @@ export default function InventoryStockToolbar({
           </button>
         )}
         {canManageInventory && (
-          <button type="button" className="editBtn" onClick={onOpenCatalogImport}>
+          <button
+            type="button"
+            className="editBtn"
+            data-tour-id="inventory-import-catalog"
+            onClick={onOpenCatalogImport}
+          >
             {isArabic ? "📥 استيراد قاعدة بيانات أدوية" : "📥 Import medicine database"}
           </button>
         )}
         {canManageInventory && (
-          <button type="button" className="addMedicineBtn" onClick={onOpenAdd}>
+          <button
+            type="button"
+            className="addMedicineBtn"
+            data-tour-id="inventory-add-medicine"
+            onClick={onOpenAdd}
+          >
             {isArabic ? "+ إضافة دواء جديد" : "+ Add New Medicine"}
           </button>
         )}

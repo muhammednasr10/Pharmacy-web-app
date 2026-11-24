@@ -21,6 +21,7 @@ type MedicineTableRowProps = {
   canDeleteMedicine: boolean;
   getBranchLabel?: (branchId: string | undefined) => string;
   onAddToCart?: (medicine: Medicine) => void;
+  onRequestPurchase?: (medicine: Medicine) => void;
   addToCartLabel?: string;
   onEditMedicine: (medicine: Medicine) => void;
   onDeleteMedicine: (medicine: Medicine) => void;
@@ -43,6 +44,7 @@ export default function MedicineTableRow({
   canDeleteMedicine,
   getBranchLabel,
   onAddToCart,
+  onRequestPurchase,
   addToCartLabel,
   onEditMedicine,
   onDeleteMedicine,
@@ -133,13 +135,24 @@ export default function MedicineTableRow({
       )}
       <td>
         <div className="actionButtons">
-          {canUsePOS && onAddToCart && (
+          {canUsePOS && onAddToCart && medicine.qty > 0 && (
             <button
               type="button"
               className="smallBtn"
               onClick={() => onAddToCart(medicine)}
             >
               {addToCartLabel || t.add}
+            </button>
+          )}
+          {canUsePOS && onRequestPurchase && medicine.qty <= 0 && (
+            <button
+              type="button"
+              className="posPurchaseRequestBtn"
+              title={isArabic ? "أضف لطلبات الشراء" : "Add to purchase requests"}
+              aria-label={isArabic ? "طلب توريد" : "Request restock"}
+              onClick={() => onRequestPurchase(medicine)}
+            >
+              🛒
             </button>
           )}
           {showManagementActions && canManageInventory && (

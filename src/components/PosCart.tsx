@@ -10,6 +10,7 @@ type PosCartProps = {
   discount: number;
   paymentMethod: PaymentMethod;
   customerName: string;
+  customerPhone?: string;
   isArabic: boolean;
   t: Record<string, string>;
   currency: string;
@@ -25,6 +26,7 @@ type PosCartProps = {
   onDiscountChange: (value: number) => void;
   onPaymentMethodChange: (method: PaymentMethod) => void;
   onCustomerNameChange: (value: string) => void;
+  onCustomerPhoneChange?: (value: string) => void;
   onCompleteSale: () => void;
   getPaymentLabel: (method: string) => string;
   heldInvoicesCount: number;
@@ -47,6 +49,7 @@ export default function PosCart({
   discount,
   paymentMethod,
   customerName,
+  customerPhone = "",
   isArabic,
   t,
   currency,
@@ -62,6 +65,7 @@ export default function PosCart({
   onDiscountChange,
   onPaymentMethodChange,
   onCustomerNameChange,
+  onCustomerPhoneChange,
   onCompleteSale,
   getPaymentLabel,
   heldInvoicesCount,
@@ -177,11 +181,13 @@ export default function PosCart({
         discount={discount}
         paymentMethod={paymentMethod}
         customerName={customerName}
+        customerPhone={customerPhone}
         isArabic={isArabic}
         t={t}
         onDiscountChange={onDiscountChange}
         onPaymentMethodChange={onPaymentMethodChange}
         onCustomerNameChange={onCustomerNameChange}
+        onCustomerPhoneChange={onCustomerPhoneChange}
         getPaymentLabel={getPaymentLabel}
         disableCredit={!isOnline}
         paymentOptions={paymentOptions}

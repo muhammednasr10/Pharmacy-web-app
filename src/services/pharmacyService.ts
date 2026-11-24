@@ -11,6 +11,7 @@ export * from "./pharmacy/roleConfigService";
 export * from "./pharmacy/subscriptionTierService";
 export * from "./pharmacy/pricingCalculatorService";
 export * from "./pharmacy/inventoryPaginationService";
+export * from "./pharmacy/purchaseRequestService";
 export * from "./pharmacy/medicineStatsService";
 export * from "./pharmacy/customerCrmService";
 export * from "./secureAttendanceService";

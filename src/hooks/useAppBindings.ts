@@ -272,8 +272,7 @@ export function useAppBindings(input: UseAppBindingsInput): AppBindingsResult {
     onSwitchBranch: input.switchBranch,
     onSelectPage: setActivePage,
     onAlertNavigate: (filter: InventoryAlertFilter) => {
-      setActivePage("inventory");
-      setInventoryStatusFilter(filter);
+      input.openInventoryWithFilter(filter);
       setIsMenuOpen(false);
     },
     onCloseMenu: () => setIsMenuOpen(false),

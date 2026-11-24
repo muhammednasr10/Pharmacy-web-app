@@ -297,7 +297,6 @@ export default function Topbar({
                     type="button"
                     className="alertRow alertSummaryRow"
                     onClick={() => navigateInventory(filter)}
-                    disabled={count <= 0}
                   >
                     <span className="alertDot" style={{ background: meta.dot }} />
                     <span className="alertText">

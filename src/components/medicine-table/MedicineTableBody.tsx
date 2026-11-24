@@ -18,6 +18,7 @@ type MedicineTableBodyProps = {
   canDeleteMedicine: boolean;
   getBranchLabel?: (branchId: string | undefined) => string;
   onAddToCart?: (medicine: Medicine) => void;
+  onRequestPurchase?: (medicine: Medicine) => void;
   addToCartLabel?: string;
   onEditMedicine: (medicine: Medicine) => void;
   onDeleteMedicine: (medicine: Medicine) => void;
@@ -42,6 +43,7 @@ export default function MedicineTableBody({
   canDeleteMedicine,
   getBranchLabel,
   onAddToCart,
+  onRequestPurchase,
   addToCartLabel,
   onEditMedicine,
   onDeleteMedicine,
@@ -119,6 +121,7 @@ export default function MedicineTableBody({
                 canDeleteMedicine={canDeleteMedicine}
                 getBranchLabel={getBranchLabel}
                 onAddToCart={onAddToCart}
+                onRequestPurchase={onRequestPurchase}
                 addToCartLabel={addToCartLabel}
                 onEditMedicine={onEditMedicine}
                 onDeleteMedicine={onDeleteMedicine}

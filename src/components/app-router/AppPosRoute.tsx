@@ -21,6 +21,7 @@ export type AppPosRouteProps = Pick<
   | "discount"
   | "paymentMethod"
   | "customerName"
+  | "customerPhone"
   | "isSelling"
   | "isSubscriptionExpired"
   | "addToCart"
@@ -32,6 +33,7 @@ export type AppPosRouteProps = Pick<
   | "setDiscount"
   | "setPaymentMethod"
   | "setCustomerName"
+  | "setCustomerPhone"
   | "completeSale"
   | "getPaymentLabel"
   | "heldInvoices"
@@ -79,6 +81,7 @@ export default function AppPosRoute({
   discount,
   paymentMethod,
   customerName,
+  customerPhone,
   isSelling,
   isSubscriptionExpired,
   addToCart,
@@ -90,6 +93,7 @@ export default function AppPosRoute({
   setDiscount,
   setPaymentMethod,
   setCustomerName,
+  setCustomerPhone,
   completeSale,
   getPaymentLabel,
   heldInvoices,
@@ -137,6 +141,7 @@ export default function AppPosRoute({
       discount={discount}
       paymentMethod={paymentMethod}
       customerName={customerName}
+      customerPhone={customerPhone}
       isSelling={isSelling}
       isSubscriptionExpired={isSubscriptionExpired}
       subscriptionBlocksSale={subscriptionBlocksWrite}
@@ -150,6 +155,7 @@ export default function AppPosRoute({
       onDiscountChange={setDiscount}
       onPaymentMethodChange={(value) => setPaymentMethod(value)}
       onCustomerNameChange={setCustomerName}
+      onCustomerPhoneChange={setCustomerPhone}
       onCompleteSale={completeSale}
       getPaymentLabel={getPaymentLabel}
       heldInvoicesCount={heldInvoices.length}

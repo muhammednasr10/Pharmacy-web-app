@@ -17,6 +17,7 @@ export type MedicineTableProps = {
   canManageInventory: boolean;
   canDeleteMedicine: boolean;
   onAddToCart?: (medicine: Medicine) => void;
+  onRequestPurchase?: (medicine: Medicine) => void;
   addToCartLabel?: string;
   onEditMedicine: (medicine: Medicine) => void;
   onDeleteMedicine: (medicine: Medicine) => void;
@@ -35,10 +36,11 @@ export type MedicineTableProps = {
   };
 };
 
-export type StockFilter = "all" | "low" | "expiring" | "expired";
+export type StockFilter = "all" | "in_stock" | "low" | "expiring" | "expired";
 
 export const stockFilterOptions: { value: StockFilter; ar: string; en: string }[] = [
   { value: "all", ar: "الكل", en: "All" },
+  { value: "in_stock", ar: "متوفر", en: "In stock" },
   { value: "low", ar: "ناقص", en: "Low stock" },
   { value: "expiring", ar: "قرب الانتهاء", en: "Expiring" },
   { value: "expired", ar: "منتهي", en: "Expired" },

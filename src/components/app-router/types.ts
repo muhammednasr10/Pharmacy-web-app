@@ -53,6 +53,9 @@ export type AppPageRouterProps = {
   setActivePage: (page: Page) => void;
   setQuery: (value: string) => void;
   setInventoryStatusFilter: (value: "all" | "low" | "expiring" | "expired") => void;
+  inventoryStatusFilter: "all" | "low" | "expiring" | "expired";
+  inventoryFilterFocusKey: number;
+  openInventoryWithFilter: (filter?: "all" | "low" | "expiring" | "expired") => void;
   goToCustomerPaymentForm: () => void;
   openSubscriptionSettings: () => void;
   switchBranch: (branchId: string) => void;
@@ -185,6 +188,7 @@ export type AppPageRouterProps = {
   discount: number;
   paymentMethod: PaymentMethod;
   customerName: string;
+  customerPhone: string;
   isSelling: boolean;
   heldInvoices: import("../../types").HeldInvoice[];
   isHolding: boolean;
@@ -241,6 +245,7 @@ export type AppPageRouterProps = {
   setDiscount: (value: number) => void;
   setPaymentMethod: (value: PaymentMethod) => void;
   setCustomerName: (value: string) => void;
+  setCustomerPhone: (value: string) => void;
   completeSale: () => boolean | Promise<boolean>;
   handleHoldInvoice: () => void | Promise<void | import("../../hooks/usePosSales").PosActionFeedback>;
   openHeldInvoicesModal: () => void | Promise<void>;

@@ -45,6 +45,8 @@ export type AppInventoryRouteProps = Pick<
   | "getPharmacyId"
   | "lowStockThreshold"
   | "expiringSoonDays"
+  | "inventoryStatusFilter"
+  | "inventoryFilterFocusKey"
   | "pharmacySettings"
   | "stockMovements"
   | "activityLogs"
@@ -96,6 +98,8 @@ export default function AppInventoryRoute({
   getPharmacyId,
   lowStockThreshold,
   expiringSoonDays,
+  inventoryStatusFilter,
+  inventoryFilterFocusKey,
   pharmacySettings,
   stockMovements,
   activityLogs,
@@ -161,6 +165,8 @@ export default function AppInventoryRoute({
       onReloadMedicines={refreshMedicinesFromDb}
       lowStockThreshold={lowStockThreshold}
       expiringSoonDays={expiringSoonDays}
+      stockStatusFilter={inventoryStatusFilter}
+      stockFilterFocusKey={inventoryFilterFocusKey}
       branchAwareAlerts={isViewingAllBranches}
       fallbackSettings={pharmacySettings}
       stockMovementsCount={stockMovements.length}

@@ -47,6 +47,7 @@ begin
     )
     and (
       coalesce(p_stock_filter, 'all') = 'all'
+      or (p_stock_filter = 'in_stock' and coalesce(m.qty, 0) > 0)
       or (p_stock_filter = 'low' and coalesce(m.qty, 0) <= greatest(0, coalesce(p_low_stock_threshold, 10)))
       or (p_stock_filter = 'expired' and m.expiry is not null and m.expiry::date < v_today)
       or (
