@@ -12,3 +12,6 @@ dev-dist
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+.playwright-browsers/
+e2e-run.log
+e2e-failed.log

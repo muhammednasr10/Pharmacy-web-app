@@ -62,11 +62,17 @@ type UsePosSalesOptions = {
   paymentMethod: PaymentMethod;
   customerName: string;
   customerPhone: string;
+  customerAddress: string;
+  deliveryEmployeeId: string;
+  deliveryEmployeeName: string;
+  /** True when staff addon is on and at least one delivery-role employee exists. */
+  deliveryAssignmentAvailable?: boolean;
   setCart: Dispatch<SetStateAction<CartItem[]>>;
   setDiscount: Dispatch<SetStateAction<number>>;
   setPaymentMethod: Dispatch<SetStateAction<PaymentMethod>>;
   setCustomerName: Dispatch<SetStateAction<string>>;
   setCustomerPhone: Dispatch<SetStateAction<string>>;
+  setCustomerAddress: Dispatch<SetStateAction<string>>;
   resetCart: () => void;
   getPharmacyId: () => string;
   getPaymentLabel: (method: string) => string;
@@ -99,11 +105,16 @@ export function usePosSales({
   paymentMethod,
   customerName,
   customerPhone,
+  customerAddress,
+  deliveryEmployeeId,
+  deliveryEmployeeName,
+  deliveryAssignmentAvailable = false,
   setCart,
   setDiscount,
   setPaymentMethod,
   setCustomerName,
   setCustomerPhone,
+  setCustomerAddress,
   resetCart,
   getPharmacyId,
   getPaymentLabel,
@@ -193,6 +204,20 @@ export function usePosSales({
           : paymentMethod === "delivery"
             ? "Please enter customer name for delivery sale"
             : "Please enter customer name for credit sale",
+      });
+      return false;
+    }
+
+    if (
+      paymentMethod === "delivery" &&
+      deliveryAssignmentAvailable &&
+      !deliveryEmployeeId.trim()
+    ) {
+      setSaleFeedback({
+        type: "error",
+        text: isArabic
+          ? "اختر موظف الدليفري من أيقونة الدليفري في السلة"
+          : "Select a delivery employee from the cart delivery icon",
       });
       return false;
     }
@@ -302,6 +327,9 @@ export function usePosSales({
         cashierShiftId: shiftForSale?.id,
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim() || undefined,
+        customerAddress: customerAddress.trim() || undefined,
+        deliveryEmployeeId: deliveryEmployeeId.trim() || undefined,
+        deliveryEmployeeName: deliveryEmployeeName.trim() || undefined,
         date: formatAppNowForStorage(isArabic),
         createdAt: new Date().toISOString(),
         items: invoiceItems,
@@ -442,8 +470,12 @@ export function usePosSales({
     canUsePOS,
     canUseSystemActions,
     cart,
+    customerAddress,
     customerName,
     customerPhone,
+    deliveryEmployeeId,
+    deliveryEmployeeName,
+    deliveryAssignmentAvailable,
     currentWorkShiftId,
     discount,
     getPharmacyId,
@@ -505,6 +537,7 @@ export function usePosSales({
         holdNumber,
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim() || undefined,
+        customerAddress: customerAddress.trim() || undefined,
         cartItems: cart,
         subtotal,
         discount: safeDiscount,
@@ -549,6 +582,7 @@ export function usePosSales({
     canUsePOS,
     canUseSystemActions,
     cart,
+    customerAddress,
     customerName,
     customerPhone,
     isArabic,
@@ -602,6 +636,7 @@ export function usePosSales({
         setPaymentMethod(resumed.paymentMethod || "cash");
         setCustomerName(resumed.customerName || "");
         setCustomerPhone(resumed.customerPhone || "");
+        setCustomerAddress(resumed.customerAddress || "");
         setHeldInvoices((prev) => prev.filter((row) => row.id !== resumed.id));
         setShowHeldInvoicesModal(false);
 
@@ -629,6 +664,7 @@ export function usePosSales({
       isHeldInvoiceProcessing,
       medicines,
       setCart,
+      setCustomerAddress,
       setCustomerName,
       setCustomerPhone,
       setDiscount,

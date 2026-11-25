@@ -1,3 +1,4 @@
+import StaffEmployeeActionButton from "../../components/staff/StaffEmployeeActionButton";
 import type { SuperAdminPageState } from "./useSuperAdminPageState";
 
 type Props = { state: SuperAdminPageState };
@@ -10,21 +11,70 @@ function formatMoney(value: number | null | undefined, isArabic: boolean) {
   });
 }
 
-function formatChange(
+function valuesEqual(
   oldValue: string | number | null | undefined,
   newValue: string | number | null | undefined,
-  isArabic: boolean,
-  asMoney = false,
+  asMoney: boolean,
 ) {
+  if (asMoney) {
+    const oldNum = oldValue == null || oldValue === "" ? null : Number(oldValue);
+    const newNum = newValue == null || newValue === "" ? null : Number(newValue);
+    if (oldNum == null && newNum == null) return true;
+    if (oldNum == null || newNum == null) return false;
+    return Number.isFinite(oldNum) && Number.isFinite(newNum) && oldNum === newNum;
+  }
+  return String(oldValue ?? "").trim() === String(newValue ?? "").trim();
+}
+
+function SuggestionCompareCell({
+  isArabic,
+  currentValue,
+  proposedValue,
+  asMoney = false,
+}: {
+  isArabic: boolean;
+  currentValue: string | number | null | undefined;
+  proposedValue: string | number | null | undefined;
+  asMoney?: boolean;
+}) {
   const format = (value: string | number | null | undefined) => {
     if (value == null || value === "") return "—";
-    if (asMoney) return formatMoney(Number(value), isArabic);
+    if (asMoney) {
+      if (!Number.isFinite(Number(value))) return "—";
+      return formatMoney(Number(value), isArabic);
+    }
     return String(value);
   };
-  const from = format(oldValue);
-  const to = format(newValue);
-  if (from === to) return from;
-  return `${from} → ${to}`;
+
+  const current = format(currentValue);
+  const proposed = format(proposedValue);
+  const changed = !valuesEqual(currentValue, proposedValue, asMoney);
+
+  if (!changed) {
+    return (
+      <div className="suggestionCompare suggestionCompare--same" dir="ltr">
+        <span className="suggestionCompareValue">{current}</span>
+        <span className="suggestionCompareNote">
+          {isArabic ? "بدون تغيير" : "No change"}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="suggestionCompare suggestionCompare--changed" dir="ltr">
+      <div className="suggestionCompareRow">
+        <span className="suggestionCompareLabel">
+          {isArabic ? "الحالي (قاعدة الأدوية)" : "Current (catalog)"}
+        </span>
+        <span className="suggestionCompareValue suggestionCompareValue--old">{current}</span>
+      </div>
+      <div className="suggestionCompareRow">
+        <span className="suggestionCompareLabel">{isArabic ? "المقترح" : "Proposed"}</span>
+        <span className="suggestionCompareValue suggestionCompareValue--new">{proposed}</span>
+      </div>
+    </div>
+  );
 }
 
 export default function SuperAdminSuggestionsTab({ state }: Props) {
@@ -47,8 +97,8 @@ export default function SuperAdminSuggestionsTab({ state }: Props) {
           <h3>{isArabic ? "اقتراحات الأدوية" : "Medicine suggestions"}</h3>
           <p className="pageHint">
             {isArabic
-              ? "تغييرات سعر الشراء أو البيع أو الباركود من الصيدليات — اعتمد لتحديث قاعدة بيانات الأدوية، أو ارفض"
-              : "Buy/sell price or barcode changes from pharmacies — approve to update the medicine catalog, or reject"}
+              ? "الحالي = قيمة قاعدة الأدوية الآن، والمقترح = تعديل الصيدلية. يظهر هنا فقط لو في اختلاف حقيقي."
+              : "Current = catalog value now, Proposed = pharmacy change. Only real differences appear here."}
           </p>
         </div>
         <span className={`saasRequestsCount${pendingSuggestionsCount ? " active" : ""}`}>
@@ -67,7 +117,7 @@ export default function SuperAdminSuggestionsTab({ state }: Props) {
         </p>
       ) : (
         <div className="tableWrap">
-          <table className="dataTable saasRequestsTable">
+          <table className="dataTable saasRequestsTable suggestionCompareTable">
             <thead>
               <tr>
                 <th>{isArabic ? "الصيدلية" : "Pharmacy"}</th>
@@ -84,7 +134,7 @@ export default function SuperAdminSuggestionsTab({ state }: Props) {
               {suggestions.map((row) => {
                 const busy = suggestionBusyId === row.id;
                 const pharmacyName =
-                  pharmacyNameById[row.pharmacyId] || row.pharmacyId || (isArabic ? "—" : "—");
+                  pharmacyNameById[row.pharmacyId] || row.pharmacyId || "—";
                 return (
                   <tr key={row.id}>
                     <td>{pharmacyName}</td>
@@ -94,14 +144,28 @@ export default function SuperAdminSuggestionsTab({ state }: Props) {
                         {isArabic ? row.medicineName_en : row.medicineName_ar}
                       </div>
                     </td>
-                    <td dir="ltr">
-                      {formatChange(row.oldBarcode, row.newBarcode, isArabic)}
+                    <td>
+                      <SuggestionCompareCell
+                        isArabic={isArabic}
+                        currentValue={row.oldBarcode}
+                        proposedValue={row.newBarcode}
+                      />
                     </td>
-                    <td dir="ltr">
-                      {formatChange(row.oldBuyPrice, row.newBuyPrice, isArabic, true)}
+                    <td>
+                      <SuggestionCompareCell
+                        isArabic={isArabic}
+                        currentValue={row.oldBuyPrice}
+                        proposedValue={row.newBuyPrice}
+                        asMoney
+                      />
                     </td>
-                    <td dir="ltr">
-                      {formatChange(row.oldSellPrice, row.newSellPrice, isArabic, true)}
+                    <td>
+                      <SuggestionCompareCell
+                        isArabic={isArabic}
+                        currentValue={row.oldSellPrice}
+                        proposedValue={row.newSellPrice}
+                        asMoney
+                      />
                     </td>
                     <td>{row.requestedByName || "—"}</td>
                     <td>
@@ -110,29 +174,21 @@ export default function SuperAdminSuggestionsTab({ state }: Props) {
                         : "—"}
                     </td>
                     <td>
-                      <div className="actionButtons">
-                        <button
-                          type="button"
-                          className="completeBtn"
+                      <div className="saasActions">
+                        <StaffEmployeeActionButton
+                          icon="activate"
+                          tone="success"
+                          label={busy ? "..." : isArabic ? "اعتماد" : "Approve"}
                           disabled={busy}
                           onClick={() => void handleApproveSuggestion(row.id)}
-                        >
-                          {busy
-                            ? isArabic
-                              ? "..."
-                              : "..."
-                            : isArabic
-                              ? "اعتماد"
-                              : "Approve"}
-                        </button>
-                        <button
-                          type="button"
-                          className="deleteSmallBtn"
+                        />
+                        <StaffEmployeeActionButton
+                          icon="delete"
+                          tone="delete"
+                          label={busy ? "..." : isArabic ? "رفض" : "Reject"}
                           disabled={busy}
                           onClick={() => void handleRejectSuggestion(row.id)}
-                        >
-                          {isArabic ? "رفض" : "Reject"}
-                        </button>
+                        />
                       </div>
                     </td>
                   </tr>

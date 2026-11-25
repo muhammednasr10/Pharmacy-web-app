@@ -1,8 +1,5 @@
 import HrAttendanceTab from "./hr/HrAttendanceTab";
-import HrPayrollTab from "./hr/HrPayrollTab";
 import HrRequestsTab from "./hr/HrRequestsTab";
-import HrPayrollAdditionsModal from "./hr/modals/HrPayrollAdditionsModal";
-import HrPayrollDeductionsModal from "./hr/modals/HrPayrollDeductionsModal";
 import { useHrPageState } from "./hr/useHrPageState";
 import type { HrPageProps } from "./hr/types";
 
@@ -41,51 +38,40 @@ export default function HrPage(props: HrPageProps) {
 
       <HrAttendanceTab state={state} />
       <HrRequestsTab state={state} />
-      <HrPayrollTab state={state} />
     </>
   );
 
   if (embedded) {
-    return (
-      <>
-        {panelContent}
-        <HrPayrollAdditionsModal state={state} />
-        <HrPayrollDeductionsModal state={state} />
-      </>
-    );
+    return panelContent;
   }
 
   return (
-    <>
-      <section className="card settingsPage hrPage">
-        <div className="cardHeader">
-          <div>
-            <h2>{isArabic ? "الموظفين والمرتبات" : "Employees & Payroll"}</h2>
-            <p className="returnsSectionHint">
-              {isArabic
-                ? "تسجيل حضور وانصراف الموظفين وحساب المرتبات الشهرية"
-                : "Track attendance and calculate monthly payroll"}
-            </p>
-          </div>
+    <section className="card settingsPage hrPage">
+      <div className="cardHeader">
+        <div>
+          <h2>{isArabic ? "الموظفين" : "Employees"}</h2>
+          <p className="returnsSectionHint">
+            {isArabic
+              ? "تسجيل حضور وانصراف الموظفين وطلبات الإجازات"
+              : "Track attendance and employee leave requests"}
+          </p>
         </div>
+      </div>
 
-        <nav className="settingsTabsNav" aria-label={isArabic ? "أقسام الموظفين" : "HR sections"}>
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              className={`settingsTabBtn ${activeTab === tab.id ? "active" : ""}`}
-              onClick={() => setInternalTab(tab.id)}
-            >
-              {isArabic ? tab.ar : tab.en}
-            </button>
-          ))}
-        </nav>
+      <nav className="settingsTabsNav" aria-label={isArabic ? "أقسام الموظفين" : "HR sections"}>
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={`settingsTabBtn ${activeTab === tab.id ? "active" : ""}`}
+            onClick={() => setInternalTab(tab.id)}
+          >
+            {isArabic ? tab.ar : tab.en}
+          </button>
+        ))}
+      </nav>
 
-        {panelContent}
-      </section>
-      <HrPayrollAdditionsModal state={state} />
-      <HrPayrollDeductionsModal state={state} />
-    </>
+      {panelContent}
+    </section>
   );
 }

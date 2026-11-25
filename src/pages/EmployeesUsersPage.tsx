@@ -3,12 +3,11 @@ import { resolveBranchDisplay } from "../utils/branchDisplay";
 import RolePermissionsEditorModal from "../components/staff/RolePermissionsEditorModal";
 import { LazyEmployeeAttendanceBadgeModal } from "./staff/lazyStaffModules";
 import StaffEmployeesTab from "./staff/StaffEmployeesTab";
-import StaffPermissionsTab from "./staff/StaffPermissionsTab";
 import StaffActivityTab from "./staff/StaffActivityTab";
 import StaffHrSection from "./staff/StaffHrSection";
-import StaffBranchHrSummaryCard from "./staff/StaffBranchHrSummaryCard";
 import StaffEmployeeFormModal from "./staff/modals/StaffEmployeeFormModal";
-import StaffCustomRoleModal from "./staff/modals/StaffCustomRoleModal";
+import StaffEmployeeProfileModal from "./staff/modals/StaffEmployeeProfileModal";
+import StaffEmployeeSalaryModal from "./staff/modals/StaffEmployeeSalaryModal";
 import StaffTransferEmployeeModal from "./staff/modals/StaffTransferEmployeeModal";
 import StaffLoginAccountsPanelModal from "./staff/modals/StaffLoginAccountsPanelModal";
 import StaffLoginAccountFormModal from "./staff/modals/StaffLoginAccountFormModal";
@@ -111,9 +110,7 @@ export default function EmployeesUsersPage(props: EmployeesUsersPageProps) {
       )}
 
       <StaffHrSection state={state} />
-      <StaffBranchHrSummaryCard state={state} />
       <StaffEmployeesTab state={state} />
-      <StaffPermissionsTab state={state} />
 
       <RolePermissionsEditorModal
         isArabic={isArabic}
@@ -144,7 +141,8 @@ export default function EmployeesUsersPage(props: EmployeesUsersPageProps) {
 
       <StaffLoginAccountsPanelModal state={state} />
       <StaffEmployeeFormModal state={state} />
-      <StaffCustomRoleModal state={state} />
+      <StaffEmployeeProfileModal state={state} />
+      <StaffEmployeeSalaryModal state={state} />
       <StaffTransferEmployeeModal state={state} />
       <StaffLoginAccountFormModal state={state} />
     </section>

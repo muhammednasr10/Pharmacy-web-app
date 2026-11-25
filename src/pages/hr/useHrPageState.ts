@@ -86,12 +86,12 @@ export function useHrPageState(props: HrPageProps) {
       void loadStaffRef.current();
       void loadAttendanceRef.current?.();
       void loadEmployeeRequestsRef.current?.();
-    } else if (shared.activeTab === "requests") {
-      void loadEmployeeRequestsRef.current?.();
-    } else {
-      void loadPayrollRef.current?.();
+      return;
     }
-  }, [shared.activeTab, attendance.attendanceMonth]);
+    if (shared.activeTab === "requests") {
+      void loadEmployeeRequestsRef.current?.();
+    }
+  }, [shared.activeTab, attendance.attendanceMonth, attendance.attendanceYear, attendance.attendancePeriodView]);
 
   const employeeRequestColSpan =
     5 + (attendance.showBranchColumn ? 1 : 0) + (shared.canManage ? 1 : 0);
@@ -113,8 +113,14 @@ export function useHrPageState(props: HrPageProps) {
     internalTab: shared.internalTab,
     setInternalTab: shared.setInternalTab,
     activeTab: shared.activeTab,
+    attendancePeriodView: attendance.attendancePeriodView,
+    setAttendancePeriodView: attendance.setAttendancePeriodView,
+    changeAttendancePeriodView: attendance.changeAttendancePeriodView,
     attendanceMonth: attendance.attendanceMonth,
     setAttendanceMonth: attendance.setAttendanceMonth,
+    attendanceYear: attendance.attendanceYear,
+    setAttendanceYear: attendance.setAttendanceYear,
+    attendancePeriodSummaries: attendance.attendancePeriodSummaries,
     attendanceEmployeeFilter: attendance.attendanceEmployeeFilter,
     setAttendanceEmployeeFilter: attendance.setAttendanceEmployeeFilter,
     attendanceBranchFilter: attendance.attendanceBranchFilter,

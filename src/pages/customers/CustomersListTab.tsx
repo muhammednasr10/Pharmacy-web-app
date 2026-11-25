@@ -8,6 +8,7 @@ export default function CustomersListTab({ state }: Props) {
     isArabic,
     t,
     activeTab,
+    pharmacySubTab,
     filteredCrmProfiles,
     crmSearch,
     crmSegmentFilter,
@@ -16,10 +17,13 @@ export default function CustomersListTab({ state }: Props) {
     setCustomerFormInitial,
     setCustomerFormOpen,
     openProfile,
+    openEditCustomer,
+    deleteCrmCustomer,
     openRegisterInferred,
+    getPaymentLabel,
   } = state;
 
-  if (activeTab !== "customers") return null;
+  if (activeTab !== "pharmacy" || pharmacySubTab !== "list") return null;
 
   return (
     <CustomerCrmList
@@ -35,11 +39,14 @@ export default function CustomersListTab({ state }: Props) {
         setCrmSegmentFilter("all");
       }}
       onAddCustomer={() => {
-        setCustomerFormInitial({ id: Date.now() });
+        setCustomerFormInitial(null);
         setCustomerFormOpen(true);
       }}
       onOpenProfile={openProfile}
+      onEditCustomer={openEditCustomer}
+      onDeleteCustomer={(profile) => void deleteCrmCustomer(profile)}
       onRegisterInferred={openRegisterInferred}
+      getPaymentLabel={getPaymentLabel}
     />
   );
 }

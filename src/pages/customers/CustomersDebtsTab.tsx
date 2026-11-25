@@ -8,6 +8,7 @@ export default function CustomersDebtsTab({ state }: Props) {
     isArabic,
     t,
     activeTab,
+    creditSubTab,
     filteredCustomerDebts,
     customerSearch,
     setCustomerSearch,
@@ -20,7 +21,7 @@ export default function CustomersDebtsTab({ state }: Props) {
     setSelectedCustomer,
   } = state;
 
-  if (activeTab !== "debts") return null;
+  if (activeTab !== "credit" || creditSubTab !== "debts") return null;
 
   return (
     <>

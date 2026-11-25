@@ -1,12 +1,15 @@
-import type { AppUser, Page, PharmacySettings } from "../../types";
+import type { AppUser, PharmacySettings } from "../../types";
 import type { HrTab } from "../hr/types";
 import {
   DEFAULT_PHARMACY_SHIFTS,
   type ShiftId,
 } from "../../utils/workSchedule";
-import { defaultPagesForCustomRoleTemplate } from "../../utils/customRolePages";
 import type { UserRole } from "../../types";
 
+/**
+ * `permissions` / `payroll` kept for deep-link / stale state redirect only.
+ * Role toggles live in Settings; salary opens from the employees table.
+ */
 export type TabId = "employees" | "permissions" | "activity" | HrTab;
 
 export type ActivityInput = {
@@ -30,12 +33,25 @@ export type EmployeesUsersPageProps = {
   subscriptionBlocksWrite?: boolean;
 };
 
+export const EMPLOYEE_MILITARY_STATUS_OPTIONS = [
+  { value: "", ar: "—", en: "—" },
+  { value: "completed", ar: "أدى الخدمة", en: "Completed service" },
+  { value: "postponed", ar: "مؤجل", en: "Postponed" },
+  { value: "exempt", ar: "أعفى", en: "Exempt" },
+  { value: "not_served", ar: "لم يؤدِّ الخدمة", en: "Not served" },
+  { value: "not_applicable", ar: "لا ينطبق", en: "Not applicable" },
+] as const;
+
 export const emptyEmployeeForm = {
   pharmacyId: "",
   employeeCode: "",
   photoBase64: "",
   name: "",
   phone: "",
+  address: "",
+  militaryStatus: "" as string,
+  birthDate: "",
+  birthPlace: "",
   salary: 0,
   commissionRate: 0,
   requiredWorkHours: 8,
@@ -48,13 +64,6 @@ export const emptyEmployeeForm = {
   notes: "",
   isActive: true,
 };
-
-export const emptyCustomRoleForm = () => ({
-  nameAr: "",
-  nameEn: "",
-  baseRole: "cashier" as UserRole,
-  allowedPages: defaultPagesForCustomRoleTemplate("cashier"),
-});
 
 export const emptyCatalogForm = () => ({
   role: "cashier" as UserRole,

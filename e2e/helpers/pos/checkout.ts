@@ -77,21 +77,3 @@ export async function selectPosPaymentMethod(
 
   throw new Error(`Payment method option not found: ${method}`);
 }
-
-export async function fillPosCustomerDetails(
-  page: Page,
-  customer: { name: string; phone?: string },
-) {
-  const btn = page.locator(".posCustomerDataBtn").first();
-  await expect(btn).toBeVisible({ timeout: 10_000 });
-  if ((await btn.getAttribute("aria-expanded")) !== "true") {
-    await btn.click();
-  }
-  const panel = page.locator(".posCustomerDataPanel");
-  await expect(panel).toBeVisible({ timeout: 10_000 });
-  await panel.locator("input").nth(0).fill(customer.name);
-  if (customer.phone) {
-    await panel.locator('input[type="tel"]').fill(customer.phone);
-  }
-  await expect(btn).toHaveClass(/has-data/);
-}

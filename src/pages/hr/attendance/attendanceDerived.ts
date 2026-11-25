@@ -176,6 +176,74 @@ export function buildAttendanceHoursSummary(params: {
   };
 }
 
+export type AttendancePeriodSummary = {
+  emp: HrStaffRow;
+  presentDays: number;
+  absentDays: number;
+  sickDays: number;
+  leaveDays: number;
+  lateDays: number;
+  workMinutes: number;
+};
+
+export function buildAttendancePeriodSummaries(params: {
+  employees: HrStaffRow[];
+  attendanceRecords: AttendanceRecord[];
+}): AttendancePeriodSummary[] {
+  const { employees, attendanceRecords } = params;
+  return employees.map((emp) => {
+    const empRecords = pharmacyService.filterAttendanceForEmployee(
+      attendanceRecords,
+      emp.attendanceKey,
+      emp.employeeId,
+    );
+    let presentDays = 0;
+    let absentDays = 0;
+    let sickDays = 0;
+    let leaveDays = 0;
+    let lateDays = 0;
+    let workMinutes = 0;
+
+    for (const record of empRecords) {
+      if (record.status === "absent") {
+        absentDays += 1;
+        continue;
+      }
+      if (record.status === "sick") {
+        sickDays += 1;
+        continue;
+      }
+      if (record.status === "leave") {
+        leaveDays += 1;
+        continue;
+      }
+      if (record.status === "late") lateDays += 1;
+      if (
+        record.status === "present" ||
+        record.status === "late" ||
+        (record.checkIn &&
+          record.status !== "absent" &&
+          record.status !== "leave" &&
+          record.status !== "sick")
+      ) {
+        presentDays += 1;
+      }
+      workMinutes +=
+        pharmacyService.calcAttendanceWorkedMinutes(record.checkIn, record.checkOut) ?? 0;
+    }
+
+    return {
+      emp,
+      presentDays,
+      absentDays,
+      sickDays,
+      leaveDays,
+      lateDays,
+      workMinutes,
+    };
+  });
+}
+
 export function filterEmployeesBySearch(
   employees: HrStaffRow[],
   search: string,

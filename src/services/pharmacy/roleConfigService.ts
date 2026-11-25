@@ -152,4 +152,11 @@ export async function loadPharmacyRoleAccessIntoScope(
 
   setPharmacyRoleConfigs(configs);
   setPharmacyCustomRoles(customRoles);
+
+  try {
+    const { listPlatformRoleDefaults } = await import("./platformRoleDefaultsService");
+    await listPlatformRoleDefaults({ ensureSeeded: true });
+  } catch (error) {
+    console.error("[roleAccess] platform defaults load failed", error);
+  }
 }

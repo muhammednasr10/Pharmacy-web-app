@@ -76,14 +76,20 @@ export async function completeSaleWithStockDeduction(
   await patchInvoiceExtrasAfterSale(invoice, pharmacyId);
 }
 
-/** Older RPC builds omit customer_phone / cashier_shift_id — patch after insert. */
+/** Older RPC builds omit customer/delivery/shift extras — patch after insert. */
 async function patchInvoiceExtrasAfterSale(invoice: Invoice, pharmacyId: string) {
   const phone = String(invoice.customerPhone || "").trim();
+  const address = String(invoice.customerAddress || "").trim();
+  const deliveryEmployeeId = String(invoice.deliveryEmployeeId || "").trim();
+  const deliveryEmployeeName = String(invoice.deliveryEmployeeName || "").trim();
   const cashierShiftId = invoice.cashierShiftId;
-  if (!phone && !cashierShiftId) return;
+  if (!phone && !address && !deliveryEmployeeId && !deliveryEmployeeName && !cashierShiftId) return;
 
   const patch: Record<string, unknown> = {};
   if (phone) patch.customer_phone = phone;
+  if (address) patch.customer_address = address;
+  if (deliveryEmployeeId) patch.delivery_employee_id = deliveryEmployeeId;
+  if (deliveryEmployeeName) patch.delivery_employee_name = deliveryEmployeeName;
   if (cashierShiftId) patch.cashier_shift_id = cashierShiftId;
 
   const { error: patchError } = await supabase

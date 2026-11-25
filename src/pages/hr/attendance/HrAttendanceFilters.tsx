@@ -8,8 +8,11 @@ type Props = { state: HrPageState };
 export default function HrAttendanceFilters({ state }: Props) {
   const {
     isArabic,
+    attendancePeriodView,
     attendanceMonth,
     setAttendanceMonth,
+    attendanceYear,
+    setAttendanceYear,
     attendanceEmployeeFilter,
     setAttendanceEmployeeFilter,
     attendanceBranchFilter,
@@ -26,6 +29,8 @@ export default function HrAttendanceFilters({ state }: Props) {
     ? activeEmployees.find((emp) => emp.attendanceKey === attendanceEmployeeFilter)
     : null;
   const detailMode = Boolean(selectedEmployee);
+  const showMonthPicker = detailMode || attendancePeriodView === "monthly";
+  const showYearPicker = !detailMode && attendancePeriodView === "yearly";
 
   return (
     <div className="hrFilters hrAttendanceFilters">
@@ -63,15 +68,31 @@ export default function HrAttendanceFilters({ state }: Props) {
       ) : null}
 
       <div className="hrFiltersFields">
-        <label>
-          {isArabic ? "الشهر" : "Month"}
-          <input
-            type="month"
-            className="tableInput hrMonthInput"
-            value={attendanceMonth}
-            onChange={(e) => setAttendanceMonth(e.target.value)}
-          />
-        </label>
+        {showMonthPicker ? (
+          <label>
+            {isArabic ? "الشهر" : "Month"}
+            <input
+              type="month"
+              className="tableInput hrMonthInput"
+              value={attendanceMonth}
+              onChange={(e) => setAttendanceMonth(e.target.value)}
+            />
+          </label>
+        ) : null}
+        {showYearPicker ? (
+          <label>
+            {isArabic ? "السنة" : "Year"}
+            <input
+              type="number"
+              className="tableInput hrMonthInput"
+              min={2000}
+              max={2100}
+              step={1}
+              value={attendanceYear}
+              onChange={(e) => setAttendanceYear(e.target.value)}
+            />
+          </label>
+        ) : null}
         {showOrgHr && orgBranchIds.length > 1 && !detailMode && (
           <label>
             {isArabic ? "الفرع" : "Branch"}

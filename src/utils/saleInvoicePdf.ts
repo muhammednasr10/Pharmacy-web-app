@@ -173,6 +173,7 @@ export async function printSaleInvoice({
 
   const customerName = (invoice as Invoice & { customerName?: string }).customerName;
   const customerPhone = (invoice as Invoice & { customerPhone?: string }).customerPhone;
+  const customerAddress = (invoice as Invoice & { customerAddress?: string }).customerAddress;
   if (customerName) {
     docPdf.text(
       `${pdfLabel("العميل", "Customer", isArabic)}: ${customerName}`,
@@ -185,6 +186,13 @@ export async function printSaleInvoice({
       `${pdfLabel("موبايل", "Phone", isArabic)}: ${customerPhone}`,
       pageWidth / 2,
       y + 27,
+    );
+  }
+  if (customerAddress) {
+    docPdf.text(
+      `${pdfLabel("العنوان", "Address", isArabic)}: ${customerAddress}`,
+      pageWidth / 2,
+      y + 36,
     );
   }
 

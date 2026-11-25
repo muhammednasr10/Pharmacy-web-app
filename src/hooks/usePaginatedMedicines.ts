@@ -19,6 +19,7 @@ type UsePaginatedMedicinesOptions = {
   pageSize?: number;
   search?: string;
   stockFilter?: StockCatalogFilter;
+  inStockOnly?: boolean;
   lowStockThreshold?: number;
   expiringSoonDays?: number;
   refreshKey?: number;
@@ -34,6 +35,7 @@ function filterOfflinePage(
     pharmacyId?: string;
     search?: string;
     stockFilter?: StockCatalogFilter;
+    inStockOnly?: boolean;
     lowStockThreshold?: number;
     expiringSoonDays?: number;
     page: number;
@@ -44,6 +46,7 @@ function filterOfflinePage(
     pharmacyId: options.pharmacyId,
     search: options.search,
     stockFilter: options.stockFilter,
+    inStockOnly: options.inStockOnly,
     lowStockThreshold: options.lowStockThreshold,
     expiringSoonDays: options.expiringSoonDays,
   });
@@ -63,6 +66,7 @@ export function usePaginatedMedicines({
   pageSize = INVENTORY_PAGE_SIZE,
   search = "",
   stockFilter = "all",
+  inStockOnly = false,
   lowStockThreshold = 10,
   expiringSoonDays = 90,
   refreshKey = 0,
@@ -101,7 +105,7 @@ export function usePaginatedMedicines({
 
   useEffect(() => {
     setPage(1);
-  }, [search, stockFilter, lowStockThreshold, expiringSoonDays, pageSize, isOfflineMode]);
+  }, [search, stockFilter, inStockOnly, lowStockThreshold, expiringSoonDays, pageSize, isOfflineMode]);
 
   const pageQueryKey = useMemo(
     () =>
@@ -110,6 +114,7 @@ export function usePaginatedMedicines({
         pageSize,
         search,
         stockFilter,
+        inStockOnly,
         lowStockThreshold,
         expiringSoonDays,
         pharmacyId,
@@ -120,6 +125,7 @@ export function usePaginatedMedicines({
       pageSize,
       search,
       stockFilter,
+      inStockOnly,
       lowStockThreshold,
       expiringSoonDays,
       pharmacyId,
@@ -147,6 +153,7 @@ export function usePaginatedMedicines({
         pageSize,
         search,
         stockFilter,
+        inStockOnly,
         lowStockThreshold,
         expiringSoonDays,
       });
@@ -173,6 +180,7 @@ export function usePaginatedMedicines({
         pharmacyId,
         search,
         stockFilter,
+        inStockOnly,
         lowStockThreshold,
         expiringSoonDays,
         page,
@@ -192,6 +200,7 @@ export function usePaginatedMedicines({
           pharmacyId,
           search,
           stockFilter,
+          inStockOnly,
           lowStockThreshold,
           expiringSoonDays,
           page,
@@ -225,6 +234,7 @@ export function usePaginatedMedicines({
     pharmacyId,
     search,
     stockFilter,
+    inStockOnly,
     lowStockThreshold,
     expiringSoonDays,
     refreshKey,

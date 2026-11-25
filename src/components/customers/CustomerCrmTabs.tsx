@@ -1,63 +1,52 @@
-export type CustomerCrmTab = "overview" | "customers" | "debts" | "payments" | "followups";
+export type CustomerCrmTab = "suppliers" | "credit" | "pharmacy";
+export type CreditSubTab = "debts" | "payments";
+export type PharmacySubTab = "list" | "overview" | "followups";
 
 type CustomerCrmTabsProps = {
   isArabic: boolean;
   activeTab: CustomerCrmTab;
-  customersCount: number;
-  debtsCount: number;
-  paymentsCount: number;
-  openFollowUpsCount: number;
+  suppliersCount: number;
+  creditCount: number;
+  pharmacyCount: number;
   onChange: (tab: CustomerCrmTab) => void;
 };
 
 export default function CustomerCrmTabs({
   isArabic,
   activeTab,
-  customersCount,
-  debtsCount,
-  paymentsCount,
-  openFollowUpsCount,
+  suppliersCount,
+  creditCount,
+  pharmacyCount,
   onChange,
 }: CustomerCrmTabsProps) {
   const tabs: {
     id: CustomerCrmTab;
     label: string;
     hint: string;
-    count?: number;
+    count: number;
   }[] = [
     {
-      id: "overview",
-      label: isArabic ? "نظرة عامة" : "Overview",
-      hint: isArabic ? "مؤشرات CRM" : "CRM metrics",
+      id: "suppliers",
+      label: isArabic ? "موردين" : "Suppliers",
+      hint: isArabic ? "موردين الصيدلية" : "Pharmacy suppliers",
+      count: suppliersCount,
     },
     {
-      id: "customers",
-      label: isArabic ? "العملاء" : "Customers",
-      hint: isArabic ? "ملفات العملاء" : "Customer profiles",
-      count: customersCount,
+      id: "credit",
+      label: isArabic ? "عملاء آجل" : "Credit customers",
+      hint: isArabic ? "مديونيات وتحصيل" : "Debts & collections",
+      count: creditCount,
     },
     {
-      id: "debts",
-      label: isArabic ? "المديونيات" : "Debts",
-      hint: isArabic ? "الآجل والتحصيل" : "Credit balances",
-      count: debtsCount,
-    },
-    {
-      id: "payments",
-      label: isArabic ? "التحصيلات" : "Payments",
-      hint: isArabic ? "سجل التحصيل" : "Payment history",
-      count: paymentsCount,
-    },
-    {
-      id: "followups",
-      label: isArabic ? "المتابعات" : "Follow-ups",
-      hint: isArabic ? "مهام ومكالمات" : "Tasks & calls",
-      count: openFollowUpsCount,
+      id: "pharmacy",
+      label: isArabic ? "عملاء الصيدلية" : "Pharmacy customers",
+      hint: isArabic ? "سجل العملاء" : "Customer registry",
+      count: pharmacyCount,
     },
   ];
 
   return (
-    <div className="crmTabs" role="tablist" aria-label={isArabic ? "تبويبات CRM" : "CRM tabs"}>
+    <div className="crmTabs" role="tablist" aria-label={isArabic ? "تبويبات العملاء" : "Customers tabs"}>
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
         return (
@@ -71,9 +60,7 @@ export default function CustomerCrmTabs({
           >
             <span className="crmTabLabel">{tab.label}</span>
             <span className="crmTabHint">{tab.hint}</span>
-            {typeof tab.count === "number" ? (
-              <span className="crmTabCount">{tab.count.toLocaleString()}</span>
-            ) : null}
+            <span className="crmTabCount">{tab.count.toLocaleString()}</span>
           </button>
         );
       })}

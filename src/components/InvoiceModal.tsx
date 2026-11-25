@@ -55,6 +55,18 @@ export default function InvoiceModal({
               <strong>{selectedInvoice.customerPhone}</strong>
             </div>
           ) : null}
+          {selectedInvoice.customerAddress ? (
+            <div>
+              <span>{isArabic ? "العنوان" : "Address"}</span>
+              <strong>{selectedInvoice.customerAddress}</strong>
+            </div>
+          ) : null}
+          {selectedInvoice.deliveryEmployeeName ? (
+            <div>
+              <span>{isArabic ? "الدليفري" : "Delivery"}</span>
+              <strong>{selectedInvoice.deliveryEmployeeName}</strong>
+            </div>
+          ) : null}
           <div>
             <span>{t.subtotal}</span>
             <strong>

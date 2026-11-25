@@ -109,22 +109,34 @@ export function useStaffLoginCatalogData(params: StaffLoginCatalogDataParams) {
     });
   }, [systemUsers, loginAccountsPanelBranchFilter, orgBranchIds, isArabic]);
 
+  const catalogEnabledRoleKeys = useMemo(() => {
+    const branch = branchDirectory.find((item) => item.id === catalogTargetPharmacyId);
+    return branch?.enabledRoleKeys ?? null;
+  }, [branchDirectory, catalogTargetPharmacyId]);
+
   const loginAccountRoleSelectOptions = useMemo(() => {
     const editingAccount = editCatalogId
       ? branchLoginCatalog.find((item) => item.id === editCatalogId)
       : undefined;
-    return buildPharmacyRoleSelectOptions({
+    const options = buildPharmacyRoleSelectOptions({
       pharmacyId: catalogTargetPharmacyId,
       customRoles,
       appUser,
+      enabledRoleKeys: catalogEnabledRoleKeys,
       generalManagerScope,
       accountId: editCatalogId || undefined,
       currentRole: editingAccount?.role,
     });
+    // Keep the account's current role visible even if it was later disabled.
+    if (editingAccount?.role && !options.includes(editingAccount.role)) {
+      return [...options, editingAccount.role];
+    }
+    return options;
   }, [
     customRoles,
     catalogTargetPharmacyId,
     appUser,
+    catalogEnabledRoleKeys,
     generalManagerScope,
     editCatalogId,
     branchLoginCatalog,

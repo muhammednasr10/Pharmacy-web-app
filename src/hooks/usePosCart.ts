@@ -19,6 +19,10 @@ export function usePosCart({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [customerAddress, setCustomerAddress] = useState("");
+  const [deliveryEmployeeId, setDeliveryEmployeeId] = useState("");
+  const [deliveryEmployeeName, setDeliveryEmployeeName] = useState("");
+  const [deliveryAssignmentAvailable, setDeliveryAssignmentAvailable] = useState(false);
 
   const subtotal = useMemo(
     () => cart.reduce((sum, item) => sum + item.price * item.cartQty, 0),
@@ -38,7 +42,16 @@ export function usePosCart({
     setPaymentMethod("cash");
     setCustomerName("");
     setCustomerPhone("");
+    setCustomerAddress("");
+    setDeliveryEmployeeId("");
+    setDeliveryEmployeeName("");
   }, []);
+
+  useEffect(() => {
+    if (paymentMethod === "delivery") return;
+    setDeliveryEmployeeId("");
+    setDeliveryEmployeeName("");
+  }, [paymentMethod]);
 
   const addToCart = useCallback(
     (medicine: Medicine) => {
@@ -136,6 +149,14 @@ export function usePosCart({
     setCustomerName,
     customerPhone,
     setCustomerPhone,
+    customerAddress,
+    setCustomerAddress,
+    deliveryEmployeeId,
+    setDeliveryEmployeeId,
+    deliveryEmployeeName,
+    setDeliveryEmployeeName,
+    deliveryAssignmentAvailable,
+    setDeliveryAssignmentAvailable,
     subtotal,
     safeDiscount,
     total,

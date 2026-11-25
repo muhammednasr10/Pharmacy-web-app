@@ -11,10 +11,11 @@ function RoleRowsTable({
   deletingRoleId,
   activateCustomRole,
   rejectCustomRole,
-  openEditBuiltinRole,
+  openEditPlatformRole,
   openEditRoleModal,
   tryDeleteBuiltinRole,
   deleteCustomRole,
+  deletePlatformCustomRole,
   showPharmacy,
 }: {
   isArabic: boolean;
@@ -23,97 +24,105 @@ function RoleRowsTable({
   deletingRoleId: string | null;
   activateCustomRole: SuperAdminPageState["activateCustomRole"];
   rejectCustomRole: SuperAdminPageState["rejectCustomRole"];
-  openEditBuiltinRole: SuperAdminPageState["openEditBuiltinRole"];
+  openEditPlatformRole: SuperAdminPageState["openEditPlatformRole"];
   openEditRoleModal: SuperAdminPageState["openEditRoleModal"];
   tryDeleteBuiltinRole: SuperAdminPageState["tryDeleteBuiltinRole"];
   deleteCustomRole: SuperAdminPageState["deleteCustomRole"];
+  deletePlatformCustomRole: SuperAdminPageState["deletePlatformCustomRole"];
   showPharmacy?: boolean;
 }) {
   if (rows.length === 0) return null;
 
   return (
-    <div className="saasProgramRolesTable">
-      <div className="saasProgramRolesTableHead saasProgramRolesGridRow">
-        <span className="saasProgramRolesColId">{isArabic ? "المعرف" : "ID"}</span>
-        <span className="saasProgramRolesColName">{isArabic ? "الدور" : "Role"}</span>
-        <span className="saasProgramRolesColActions">{isArabic ? "الإجراءات" : "Actions"}</span>
-      </div>
-      <ul className="saasManageRolesList saasProgramRolesList">
-        {rows.map((row) => {
-          const rowBusy = savingRole || deletingRoleId === row.customRole?.id;
-          return (
-            <li
-              key={row.id}
-              className={`saasManageRoleItem saasProgramRolesGridRow${row.isPending ? " pending" : ""}`}
-            >
-              <code className="saasProgramRolesRoleKey saasProgramRolesColId" dir="ltr">
-                {row.roleKey}
-              </code>
-              <div className="saasManageRoleNameWrap saasProgramRolesColName">
-                <span className="saasManageRoleName">{row.label}</span>
-                {showPharmacy && row.pharmacyName ? (
-                  <span className="saasManageRolePharmacy" title={row.pharmacyId}>
-                    {row.pharmacyName}
-                  </span>
-                ) : null}
-                {row.isPending ? (
-                  <span className="badge warn">
-                    {isArabic ? "اقتراح بانتظار الاعتماد" : "Suggestion pending"}
-                  </span>
-                ) : null}
-              </div>
-              <div className="saasManageRoleItemActions saasProgramRolesColActions">
-                {row.isPending && row.customRole ? (
-                  <>
-                    <StaffEmployeeActionButton
-                      icon="activate"
-                      tone="success"
-                      label={isArabic ? "اعتماد" : "Approve"}
-                      disabled={rowBusy}
-                      loading={savingRole}
-                      onClick={() => void activateCustomRole(row.customRole!)}
-                    />
-                    <StaffEmployeeActionButton
-                      icon="delete"
-                      tone="delete"
-                      label={isArabic ? "رفض" : "Reject"}
-                      disabled={rowBusy}
-                      loading={deletingRoleId === row.customRole.id}
-                      onClick={() => void rejectCustomRole(row.customRole!)}
-                    />
-                  </>
-                ) : (
-                  <>
-                    <StaffEmployeeActionButton
-                      icon="edit"
-                      tone="edit"
-                      label={isArabic ? "تعديل" : "Edit"}
-                      disabled={rowBusy}
-                      onClick={() =>
-                        row.kind === "builtin"
-                          ? openEditBuiltinRole(row.roleKey)
-                          : row.customRole && openEditRoleModal(row.customRole)
-                      }
-                    />
-                    <StaffEmployeeActionButton
-                      icon="delete"
-                      tone="delete"
-                      label={isArabic ? "حذف" : "Delete"}
-                      disabled={rowBusy}
-                      loading={deletingRoleId === row.customRole?.id}
-                      onClick={() =>
-                        row.kind === "builtin"
-                          ? tryDeleteBuiltinRole(row.roleKey)
-                          : row.customRole && void deleteCustomRole(row.customRole)
-                      }
-                    />
-                  </>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+    <div className="tableWrap saasProgramRolesTable">
+      <table>
+        <thead>
+          <tr>
+            <th>{isArabic ? "الدور" : "Role"}</th>
+            <th>{isArabic ? "صلاحيات الدور" : "Role permissions"}</th>
+            <th>{isArabic ? "الإجراءات" : "Actions"}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => {
+            const rowBusy = savingRole || deletingRoleId === row.id || deletingRoleId === row.customRole?.id;
+            return (
+              <tr key={row.id} className={row.isPending ? "pending" : undefined}>
+                <td>
+                  <div className="saasManageRoleNameWrap">
+                    <strong className="saasManageRoleName">{row.label}</strong>
+                    {showPharmacy && row.pharmacyName ? (
+                      <span className="saasManageRolePharmacy" title={row.pharmacyId}>
+                        {row.pharmacyName}
+                      </span>
+                    ) : null}
+                    {row.isPending ? (
+                      <span className="badge warn">
+                        {isArabic ? "بانتظار الاعتماد" : "Pending approval"}
+                      </span>
+                    ) : null}
+                  </div>
+                </td>
+                <td title={row.summaryTitle}>
+                  {row.summary || (isArabic ? "—" : "—")}
+                </td>
+                <td>
+                  <div className="saasManageRoleItemActions catalogAccountActions">
+                    {row.isPending && row.customRole ? (
+                      <>
+                        <StaffEmployeeActionButton
+                          icon="activate"
+                          tone="success"
+                          label={isArabic ? "اعتماد كافتراضي" : "Approve as default"}
+                          disabled={rowBusy}
+                          loading={savingRole}
+                          onClick={() => void activateCustomRole(row.customRole!)}
+                        />
+                        <StaffEmployeeActionButton
+                          icon="delete"
+                          tone="delete"
+                          label={isArabic ? "رفض" : "Reject"}
+                          disabled={rowBusy}
+                          loading={deletingRoleId === row.customRole.id}
+                          onClick={() => void rejectCustomRole(row.customRole!)}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <StaffEmployeeActionButton
+                          icon="edit"
+                          tone="edit"
+                          label={isArabic ? "تعديل الصلاحيات" : "Edit permissions"}
+                          disabled={rowBusy}
+                          onClick={() =>
+                            row.isPending && row.customRole
+                              ? openEditRoleModal(row.customRole)
+                              : openEditPlatformRole(row)
+                          }
+                        />
+                        <StaffEmployeeActionButton
+                          icon="delete"
+                          tone="delete"
+                          label={isArabic ? "حذف" : "Delete"}
+                          disabled={rowBusy}
+                          loading={deletingRoleId === row.id || deletingRoleId === row.customRole?.id}
+                          onClick={() =>
+                            row.kind === "builtin"
+                              ? tryDeleteBuiltinRole(row.roleKey)
+                              : row.isPending && row.customRole
+                                ? void deleteCustomRole(row.customRole)
+                                : void deletePlatformCustomRole(row)
+                          }
+                        />
+                      </>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -127,35 +136,49 @@ export default function SuperAdminRolesTab({ state }: Props) {
     filteredDefaultRoleListRows,
     filteredPendingRoleSuggestionRows,
     reloadRolesReference,
+    openAddRoleModal,
     savingRole,
     deletingRoleId,
     activateCustomRole,
     rejectCustomRole,
-    openEditBuiltinRole,
+    openEditPlatformRole,
     openEditRoleModal,
     tryDeleteBuiltinRole,
     deleteCustomRole,
+    deletePlatformCustomRole,
   } = state;
+
+  const hasPending = filteredPendingRoleSuggestionRows.length > 0;
 
   return (
     <section className="settingsTabPanel saasRolesReferencePanel">
       <div className="saasPageHeader">
         <div>
-          <h3>{isArabic ? "مرجع الأدوار" : "Roles catalog"}</h3>
+          <h3>{isArabic ? "الأدوار الافتراضية" : "Default roles"}</h3>
           <p className="pageHint">
             {isArabic
-              ? "الأدوار الافتراضية لأي تسجيل جديد. لو عميل طلب دورًا من الإعدادات/الموظفين يظهر هنا كاقتراح للاعتماد."
-              : "Default roles for every new registration. Customer role requests from Settings/Employees appear here as suggestions to approve."}
+              ? "كل الأدوار في هذه الصفحة افتراضية لأي صيدلية جديدة. عدّل صلاحيات أي دور أو أضف دوراً جديداً وسيُنسخ تلقائياً عند التسجيل."
+              : "Every role on this page is a default for new pharmacies. Edit any role’s permissions or add a new role — it is copied automatically on registration."}
           </p>
         </div>
-        <button
-          type="button"
-          className="printBtn"
-          disabled={rolesReferenceLoading}
-          onClick={() => void reloadRolesReference()}
-        >
-          {isArabic ? "تحديث" : "Refresh"}
-        </button>
+        <div className="saasPageHeaderActions">
+          <button
+            type="button"
+            className="completeBtn"
+            disabled={rolesReferenceLoading || savingRole}
+            onClick={() => openAddRoleModal()}
+          >
+            {isArabic ? "إضافة دور افتراضي" : "Add default role"}
+          </button>
+          <button
+            type="button"
+            className="printBtn"
+            disabled={rolesReferenceLoading}
+            onClick={() => void reloadRolesReference()}
+          >
+            {isArabic ? "تحديث" : "Refresh"}
+          </button>
+        </div>
       </div>
 
       <div className="saasRolesReferenceToolbar">
@@ -166,7 +189,7 @@ export default function SuperAdminRolesTab({ state }: Props) {
             className="searchInput saasRolesReferenceSearchInput"
             value={rolesReferenceQuery}
             onChange={(e) => setRolesReferenceQuery(e.target.value)}
-            placeholder={isArabic ? "ابحث بالمعرف أو اسم الدور..." : "Search by ID or role name..."}
+            placeholder={isArabic ? "ابحث بالدور أو الصلاحيات..." : "Search role or permissions..."}
           />
         </label>
       </div>
@@ -175,20 +198,16 @@ export default function SuperAdminRolesTab({ state }: Props) {
         <p className="empty saasProgramRolesEmpty">{isArabic ? "جاري التحميل..." : "Loading..."}</p>
       ) : (
         <>
-          <section className="saasRolesReferenceBlock saasProgramRolesCard">
-            <div className="saasRolesSectionHead">
-              <h4>{isArabic ? "اقتراحات أدوار من العملاء" : "Customer role suggestions"}</h4>
-              <p className="pageHint">
-                {isArabic
-                  ? "طلبات أدوار جديدة من تبويب الإعدادات ← الموظفين"
-                  : "New role requests from Settings → Employees"}
-              </p>
-            </div>
-            {filteredPendingRoleSuggestionRows.length === 0 ? (
-              <p className="empty saasProgramRolesEmpty">
-                {isArabic ? "لا توجد اقتراحات أدوار حالياً" : "No role suggestions right now"}
-              </p>
-            ) : (
+          {hasPending ? (
+            <section className="saasRolesReferenceBlock saasProgramRolesCard">
+              <div className="saasRolesSectionHead">
+                <h4>{isArabic ? "بانتظار الاعتماد كافتراضي" : "Pending default approval"}</h4>
+                <p className="pageHint">
+                  {isArabic
+                    ? "طلبات من العملاء — الاعتماد يضيف الدور لقائمة الأدوار الافتراضية"
+                    : "Customer requests — approving adds the role to the default roles list"}
+                </p>
+              </div>
               <RoleRowsTable
                 isArabic={isArabic}
                 rows={filteredPendingRoleSuggestionRows}
@@ -196,22 +215,23 @@ export default function SuperAdminRolesTab({ state }: Props) {
                 deletingRoleId={deletingRoleId}
                 activateCustomRole={activateCustomRole}
                 rejectCustomRole={rejectCustomRole}
-                openEditBuiltinRole={openEditBuiltinRole}
+                openEditPlatformRole={openEditPlatformRole}
                 openEditRoleModal={openEditRoleModal}
                 tryDeleteBuiltinRole={tryDeleteBuiltinRole}
                 deleteCustomRole={deleteCustomRole}
+                deletePlatformCustomRole={deletePlatformCustomRole}
                 showPharmacy
               />
-            )}
-          </section>
+            </section>
+          ) : null}
 
           <section className="saasRolesReferenceBlock saasProgramRolesCard">
             <div className="saasRolesSectionHead">
-              <h4>{isArabic ? "الأدوار الافتراضية" : "Default roles"}</h4>
+              <h4>{isArabic ? "الأدوار والصلاحيات الافتراضية" : "Default roles & permissions"}</h4>
               <p className="pageHint">
                 {isArabic
-                  ? "تُستخدم تلقائياً في أي تسجيل صيدلية جديد"
-                  : "Applied automatically to every new pharmacy registration"}
+                  ? "تُنسخ تلقائياً عند تسجيل أي صيدلية جديدة — بما فيها الأدوار المضافة منك"
+                  : "Copied automatically for every new pharmacy — including roles you add here"}
               </p>
             </div>
             {filteredDefaultRoleListRows.length === 0 ? (
@@ -226,10 +246,11 @@ export default function SuperAdminRolesTab({ state }: Props) {
                 deletingRoleId={deletingRoleId}
                 activateCustomRole={activateCustomRole}
                 rejectCustomRole={rejectCustomRole}
-                openEditBuiltinRole={openEditBuiltinRole}
+                openEditPlatformRole={openEditPlatformRole}
                 openEditRoleModal={openEditRoleModal}
                 tryDeleteBuiltinRole={tryDeleteBuiltinRole}
                 deleteCustomRole={deleteCustomRole}
+                deletePlatformCustomRole={deletePlatformCustomRole}
               />
             )}
           </section>

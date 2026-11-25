@@ -5,7 +5,6 @@ import type { HrStaffRow, HrTab } from "./types";
 export const HR_TABS: { id: HrTab; ar: string; en: string }[] = [
   { id: "attendance", ar: "الحضور والانصراف", en: "Attendance" },
   { id: "requests", ar: "طلبات الموظفين", en: "Employee requests" },
-  { id: "payroll", ar: "حساب المرتبات", en: "Payroll" },
 ];
 
 export function requestTypeLabel(type: string, isArabic: boolean) {

@@ -79,6 +79,19 @@ export function currentMonthValue() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+export function currentYearValue() {
+  return String(new Date().getFullYear());
+}
+
+export function yearBounds(yearValue: string) {
+  const year = Number(yearValue);
+  const y = Number.isFinite(year) ? year : new Date().getFullYear();
+  return {
+    start: `${y}-01-01`,
+    end: `${y}-12-31`,
+  };
+}
+
 export function monthAnchorDate(monthValue: string) {
   return `${monthValue}-01`;
 }

@@ -8,6 +8,8 @@ import type {
 
 export type HrTab = "attendance" | "payroll" | "requests";
 
+export type AttendancePeriodView = "daily" | "monthly" | "yearly";
+
 export type HrStaffRow = {
   employeeId: string;
   pharmacyId: string;

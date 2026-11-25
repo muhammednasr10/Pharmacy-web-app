@@ -123,6 +123,7 @@ export function buildPharmacyRoleSelectOptions(params: {
   pharmacyId: string;
   customRoles: Array<{ pharmacyId: string; roleKey: string; isActive?: boolean | null }>;
   appUser: AppUser | null | undefined;
+  enabledRoleKeys?: string[] | null;
   generalManagerScope?: PharmacyGeneralManagerScope;
   employeeId?: string;
   accountId?: string;
@@ -132,6 +133,7 @@ export function buildPharmacyRoleSelectOptions(params: {
     params.pharmacyId,
     params.customRoles,
     params.appUser,
+    params.enabledRoleKeys,
   );
   if (!params.generalManagerScope) return roleKeys;
   return filterRolesForGeneralManagerSlot(

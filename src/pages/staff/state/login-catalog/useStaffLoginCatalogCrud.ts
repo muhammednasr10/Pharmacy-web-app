@@ -75,6 +75,8 @@ export function useStaffLoginCatalogCrud(params: StaffLoginCatalogCrudParams) {
     employeeById,
     catalogTargetPharmacyId,
     branchLoginCatalog,
+    loginCatalog,
+    systemUsers,
     loginAccountRoleSelectOptions,
     syncSavedCatalogAccount,
     accountModal,
@@ -98,9 +100,28 @@ export function useStaffLoginCatalogCrud(params: StaffLoginCatalogCrudParams) {
     openCatalogAccountAdd();
   }
 
+  function takenEmailsOutsideCatalog() {
+    return systemUsers.map((user) => user.email || "").filter(Boolean);
+  }
+
+  function draftCredentialsForRole(role: string) {
+    return suggestLoginAccountDraft(loginCatalog, role, takenEmailsOutsideCatalog());
+  }
+
+  function isEmailAlreadyTaken(email: string, excludeAccountId?: string | null) {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) return false;
+    const inCatalog = loginCatalog.some(
+      (item) =>
+        item.id !== excludeAccountId && item.email.trim().toLowerCase() === normalized,
+    );
+    if (inCatalog) return true;
+    return systemUsers.some((user) => (user.email || "").trim().toLowerCase() === normalized);
+  }
+
   function openCatalogAccountAdd(preferredRole?: string) {
     const role = preferredRole ?? loginAccountRoleSelectOptions[0] ?? "cashier";
-    const defaults = suggestLoginAccountDraft(branchLoginCatalog, role);
+    const defaults = draftCredentialsForRole(role);
     setEditCatalogId(null);
     setCatalogForm({
       role,
@@ -123,7 +144,7 @@ export function useStaffLoginCatalogCrud(params: StaffLoginCatalogCrudParams) {
 
   function openCatalogAccountDuplicate(account: PharmacyLoginAccount) {
     const role = parseLoginAccountRole(account.role);
-    const defaults = suggestLoginAccountDraft(branchLoginCatalog, role);
+    const defaults = draftCredentialsForRole(role);
     setEditCatalogId(null);
     setCatalogForm({
       role,
@@ -136,7 +157,7 @@ export function useStaffLoginCatalogCrud(params: StaffLoginCatalogCrudParams) {
   function onCatalogFormRoleChange(nextRole: UserRole) {
     const role = parseLoginAccountRole(nextRole);
     if (accountModal === "add") {
-      const defaults = suggestLoginAccountDraft(branchLoginCatalog, role);
+      const defaults = draftCredentialsForRole(role);
       setCatalogForm({
         role,
         email: defaults.email,
@@ -240,6 +261,15 @@ export function useStaffLoginCatalogCrud(params: StaffLoginCatalogCrudParams) {
       return;
     }
 
+    if (isEmailAlreadyTaken(email, editCatalogId)) {
+      alert(
+        isArabic
+          ? "هذا الإيميل مستخدم بالفعل — اختر بريداً آخر."
+          : "This email is already in use — pick another one.",
+      );
+      return;
+    }
+
     setBusy("save-catalog");
     try {
       const withinUserLimit = !orgUserUsage || orgUserUsage.canAdd;
@@ -276,17 +306,6 @@ export function useStaffLoginCatalogCrud(params: StaffLoginCatalogCrudParams) {
             isArabic
               ? `تم الوصول للحد الأقصى للمستخدمين (${orgUserUsage.used}/${orgUserUsage.max}). زِد الحد من إدارة الصيدليات أولاً.`
               : `User limit reached (${orgUserUsage.used}/${orgUserUsage.max}). Raise the limit in Pharmacy Tenants first.`,
-          );
-          return;
-        }
-        const duplicateEmail = branchLoginCatalog.some(
-          (item) => item.email.trim().toLowerCase() === email,
-        );
-        if (duplicateEmail) {
-          alert(
-            isArabic
-              ? "هذا الإيميل مستخدم بالفعل في هذا الفرع."
-              : "This email is already used for this branch.",
           );
           return;
         }

@@ -169,8 +169,10 @@ export function useMedicineManagement({
     };
 
     try {
-      const oldMedicine = medicines.find((item) => item.id === medicineId);
+      const oldMedicine =
+        medicines.find((item) => String(item.id) === String(medicineId)) || null;
       if (editingMedicineId) {
+        // Capture previous values before update — needed for catalog suggestion comparison.
         await pharmacyService.updateMedicine(medicineId, medicine);
         try {
           await pharmacyService.submitMedicineCatalogSuggestion({

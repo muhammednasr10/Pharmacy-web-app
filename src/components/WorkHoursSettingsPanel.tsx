@@ -57,24 +57,16 @@ export default function WorkHoursSettingsPanel({
   );
 
   const shiftsMeta = useMemo(() => {
+    const count = config.workShifts.length;
     const defaultShift =
       config.workShifts.find((item) => item.id === config.defaultShiftId) || config.workShifts[0];
     if (!defaultShift) {
-      return isArabic ? "3 شيفتات" : "3 shifts";
+      return isArabic ? `${count} شيفت` : `${count} shifts`;
     }
-    const shiftLabel =
-      defaultShift.id === "A"
-        ? isArabic
-          ? "شيفت أ"
-          : "Shift A"
-        : defaultShift.id === "B"
-          ? isArabic
-            ? "شيفت ب"
-            : "Shift B"
-          : isArabic
-            ? "شيفت ج"
-            : "Shift C";
-    return `${shiftLabel} · ${defaultShift.dayStart}–${defaultShift.dayEnd}`;
+    const shiftLabel = isArabic
+      ? defaultShift.labelAr || defaultShift.label
+      : defaultShift.label || defaultShift.labelAr;
+    return `${count} · ${shiftLabel} ${defaultShift.dayStart}–${defaultShift.dayEnd}`;
   }, [config.defaultShiftId, config.workShifts, isArabic]);
 
   function toggleWorkDay(day: number, isWorkDay: boolean) {
@@ -126,8 +118,8 @@ export default function WorkHoursSettingsPanel({
         <h3>{isArabic ? "مواعيد العمل" : "Work Hours"}</h3>
         <p>
           {isArabic
-            ? "خطة أيام العمل الأسبوعية وتقسيم الشيفتات أ / ب / ج"
-            : "Weekly work-day plan and A / B / C shift schedules"}
+            ? "خطة أيام العمل الأسبوعية وجدول الشيفتات (إضافة وحذف)"
+            : "Weekly work-day plan and shift table (add or remove)"}
         </p>
       </div>
 
@@ -172,8 +164,8 @@ export default function WorkHoursSettingsPanel({
       >
         <p className="returnsSectionHint">
           {isArabic
-            ? "حدّد مواعيد كل شيفت (أ / ب / ج). يُربط الموظف بشيفت ويُستخدم في الحضور والمبيعات."
-            : "Configure each shift (A / B / C). Employees are assigned a shift for attendance and sales."}
+            ? "أضف أو احذف شيفتات من الجدول، وعدّل المواعيد والراحة. يُربط الموظف بشيفت للحضور والمبيعات."
+            : "Add or delete shifts in the table and edit times/breaks. Employees are assigned a shift for attendance and sales."}
         </p>
         <WorkShiftsEditor
           isArabic={isArabic}
@@ -181,13 +173,15 @@ export default function WorkHoursSettingsPanel({
           shifts={config.workShifts}
           defaultShiftId={config.defaultShiftId}
           onShiftsChange={(workShifts) => {
-            const shiftA = workShifts.find((item) => item.id === "A") || workShifts[0];
+            const primary =
+              workShifts.find((item) => item.id === config.defaultShiftId) || workShifts[0];
             setConfig({
               ...config,
               workShifts,
-              workDayStart: shiftA.dayStart,
-              workDayEnd: shiftA.dayEnd,
-              workBreaks: shiftA.breaks,
+              defaultShiftId: primary?.id || config.defaultShiftId,
+              workDayStart: primary?.dayStart || config.workDayStart,
+              workDayEnd: primary?.dayEnd || config.workDayEnd,
+              workBreaks: primary?.breaks || config.workBreaks,
             });
           }}
           onDefaultShiftChange={(defaultShiftId) => setConfig({ ...config, defaultShiftId })}

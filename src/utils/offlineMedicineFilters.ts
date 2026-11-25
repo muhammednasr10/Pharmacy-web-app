@@ -8,6 +8,7 @@ export function filterMedicinesForInventoryView(
     pharmacyId?: string;
     search?: string;
     stockFilter?: StockCatalogFilter;
+    inStockOnly?: boolean;
     lowStockThreshold?: number;
     expiringSoonDays?: number;
   },
@@ -16,6 +17,7 @@ export function filterMedicinesForInventoryView(
     pharmacyId,
     search = "",
     stockFilter = "all",
+    inStockOnly = false,
     lowStockThreshold = 10,
     expiringSoonDays = 90,
   } = options;
@@ -25,6 +27,7 @@ export function filterMedicinesForInventoryView(
   const expiringLimit = new Date();
   expiringLimit.setDate(expiringLimit.getDate() + Math.max(1, expiringSoonDays));
   const expiringLimitStr = formatDateInput(expiringLimit);
+  const requireInStock = inStockOnly || stockFilter === "in_stock";
 
   return medicines.filter((medicine) => {
     if (pharmacyId && medicine.pharmacyId && medicine.pharmacyId !== pharmacyId) {
@@ -44,7 +47,7 @@ export function filterMedicinesForInventoryView(
       if (!haystack.includes(term)) return false;
     }
 
-    if (stockFilter === "in_stock" && medicine.qty <= 0) {
+    if (requireInStock && medicine.qty <= 0) {
       return false;
     }
     if (stockFilter === "low" && medicine.qty > Math.max(0, lowStockThreshold)) {

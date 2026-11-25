@@ -2,6 +2,9 @@ import type { CartItem, PaymentMethod } from "../types";
 import type { PaymentOption } from "./pos/paymentTypes";
 import PosCartCheckout from "./pos/PosCartCheckout";
 import PosCartItems from "./pos/PosCartItems";
+import PosDeliveryEmployeePicker from "./pos/PosDeliveryEmployeePicker";
+import PosDeliveryEmployeeTriggerButton from "./pos/PosDeliveryEmployeeTriggerButton";
+import { usePosDeliveryAssignment } from "./pos/usePosDeliveryAssignment";
 
 type PosCartProps = {
   cart: CartItem[];
@@ -13,6 +16,12 @@ type PosCartProps = {
   paymentMethod: PaymentMethod;
   customerName: string;
   customerPhone?: string;
+  customerAddress?: string;
+  deliveryEmployeeId?: string;
+  deliveryEmployeeName?: string;
+  /** Pharmacy subscribed to staff page (employees addon). */
+  staffPageEnabled?: boolean;
+  onDeliveryAssignmentAvailableChange?: (available: boolean) => void;
   isArabic: boolean;
   t: Record<string, string>;
   currency: string;
@@ -29,6 +38,8 @@ type PosCartProps = {
   onPaymentMethodChange: (method: PaymentMethod) => void;
   onCustomerNameChange: (value: string) => void;
   onCustomerPhoneChange?: (value: string) => void;
+  onCustomerAddressChange?: (value: string) => void;
+  onDeliveryEmployeeChange?: (employee: { id: string; name: string } | null) => void;
   onCompleteSale: () => void;
   getPaymentLabel: (method: string) => string;
   heldInvoicesCount: number;
@@ -52,6 +63,11 @@ export default function PosCart({
   paymentMethod,
   customerName,
   customerPhone = "",
+  customerAddress = "",
+  deliveryEmployeeId = "",
+  deliveryEmployeeName = "",
+  staffPageEnabled = false,
+  onDeliveryAssignmentAvailableChange,
   isArabic,
   t,
   currency,
@@ -68,6 +84,8 @@ export default function PosCart({
   onPaymentMethodChange,
   onCustomerNameChange,
   onCustomerPhoneChange,
+  onCustomerAddressChange,
+  onDeliveryEmployeeChange,
   onCompleteSale,
   getPaymentLabel,
   heldInvoicesCount,
@@ -82,6 +100,19 @@ export default function PosCart({
 }: PosCartProps) {
   const saleBlocked = subscriptionBlocksSale || shiftSaleBlocked;
   const splitLayout = layout === "split";
+  const {
+    deliveryPickerOpen,
+    setDeliveryPickerOpen,
+    canAssignDeliveryEmployee,
+  } = usePosDeliveryAssignment({
+    staffPageEnabled,
+    paymentMethod,
+    paymentOptionValue,
+    deliveryEmployeeId,
+    deliveryEmployeeName,
+    onDeliveryAssignmentAvailableChange,
+    onDeliveryEmployeeChange,
+  });
 
   const cartHeader = (
     <div className="cartHeader">
@@ -96,11 +127,21 @@ export default function PosCart({
           </span>
         </div>
       </div>
-      {cart.length > 0 && (
-        <button type="button" className="clearCartBtn" onClick={onClearCart}>
-          {isArabic ? "تفريغ السلة" : "Clear Cart"}
-        </button>
-      )}
+      <div className="cartHeaderActions">
+        {canAssignDeliveryEmployee ? (
+          <PosDeliveryEmployeeTriggerButton
+            variant="header"
+            isArabic={isArabic}
+            employeeName={deliveryEmployeeName}
+            onClick={() => setDeliveryPickerOpen(true)}
+          />
+        ) : null}
+        {cart.length > 0 && (
+          <button type="button" className="clearCartBtn" onClick={onClearCart}>
+            {isArabic ? "تفريغ السلة" : "Clear Cart"}
+          </button>
+        )}
+      </div>
     </div>
   );
 
@@ -127,6 +168,7 @@ export default function PosCart({
       paymentMethod={paymentMethod}
       customerName={customerName}
       customerPhone={customerPhone}
+      customerAddress={customerAddress}
       isArabic={isArabic}
       t={t}
       currency={currency}
@@ -139,6 +181,7 @@ export default function PosCart({
       onPaymentMethodChange={onPaymentMethodChange}
       onCustomerNameChange={onCustomerNameChange}
       onCustomerPhoneChange={onCustomerPhoneChange}
+      onCustomerAddressChange={onCustomerAddressChange}
       onCompleteSale={onCompleteSale}
       getPaymentLabel={getPaymentLabel}
       heldInvoicesCount={heldInvoicesCount}
@@ -150,8 +193,21 @@ export default function PosCart({
       paymentOptions={paymentOptions}
       paymentOptionValue={paymentOptionValue}
       onPaymentOptionChange={onPaymentOptionChange}
+      canAssignDeliveryEmployee={canAssignDeliveryEmployee}
+      deliveryEmployeeName={deliveryEmployeeName}
+      onOpenDeliveryEmployeePicker={() => setDeliveryPickerOpen(true)}
     />
   );
+
+  const picker = canAssignDeliveryEmployee ? (
+    <PosDeliveryEmployeePicker
+      isArabic={isArabic}
+      open={deliveryPickerOpen}
+      selectedEmployeeId={deliveryEmployeeId}
+      onClose={() => setDeliveryPickerOpen(false)}
+      onSelect={(employee) => onDeliveryEmployeeChange?.(employee)}
+    />
+  ) : null;
 
   if (splitLayout) {
     return (
@@ -161,6 +217,7 @@ export default function PosCart({
           {cartBody}
         </div>
         <div className="posCartSplitSide">{cartCheckout}</div>
+        {picker}
       </div>
     );
   }
@@ -170,6 +227,7 @@ export default function PosCart({
       {cartHeader}
       {cartBody}
       {cartCheckout}
+      {picker}
     </div>
   );
 }

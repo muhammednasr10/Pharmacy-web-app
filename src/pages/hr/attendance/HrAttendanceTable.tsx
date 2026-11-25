@@ -24,7 +24,6 @@ import {
   resolveAllowedLateMinutes,
   resolveScheduleForShiftId,
   resolveWorkSchedule,
-  SHIFT_IDS,
 } from "../../../utils/workSchedule";
 import type { HrPageState } from "../useHrPageState";
 
@@ -210,9 +209,9 @@ export default function HrAttendanceTable({ state }: Props) {
                             })
                           }
                         >
-                          {SHIFT_IDS.map((shiftId) => (
-                            <option key={shiftId} value={shiftId}>
-                              {getShiftDisplayName(shiftId, payrollConfig.workShifts, isArabic)}
+                          {payrollConfig.workShifts.map((shift) => (
+                            <option key={shift.id} value={shift.id}>
+                              {getShiftDisplayName(shift.id, payrollConfig.workShifts, isArabic)}
                             </option>
                           ))}
                         </select>
@@ -231,9 +230,9 @@ export default function HrAttendanceTable({ state }: Props) {
                             )
                           }
                         >
-                          {SHIFT_IDS.map((shiftId) => (
-                            <option key={shiftId} value={shiftId}>
-                              {getShiftDisplayName(shiftId, payrollConfig.workShifts, isArabic)}
+                          {payrollConfig.workShifts.map((shift) => (
+                            <option key={shift.id} value={shift.id}>
+                              {getShiftDisplayName(shift.id, payrollConfig.workShifts, isArabic)}
                             </option>
                           ))}
                         </select>

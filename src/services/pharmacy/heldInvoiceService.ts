@@ -14,6 +14,7 @@ export type HoldInvoiceInput = {
   holdNumber: string;
   customerName?: string;
   customerPhone?: string;
+  customerAddress?: string;
   cartItems: CartItem[];
   subtotal: number;
   discount: number;
@@ -56,6 +57,7 @@ export async function holdInvoice(data: HoldInvoiceInput): Promise<HeldInvoice> 
       holdNumber: data.holdNumber,
       customerName: data.customerName || "",
       customerPhone: data.customerPhone || "",
+      customerAddress: data.customerAddress || "",
       cartItems: data.cartItems,
       subtotal: data.subtotal,
       discount: data.discount,

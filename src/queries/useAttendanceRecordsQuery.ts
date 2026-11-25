@@ -2,11 +2,18 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import * as pharmacyService from "../services/pharmacyService";
 import type { AttendanceRecord } from "../types";
-import { monthAnchorDate, monthBoundsFromDate } from "../utils/hrFormatters";
+import {
+  monthAnchorDate,
+  monthBoundsFromDate,
+  yearBounds,
+} from "../utils/hrFormatters";
 import { pharmacyQueryKeys } from "./queryKeys";
+import type { AttendancePeriodView } from "../pages/hr/types";
 
 type UseAttendanceRecordsQueryOptions = {
+  attendancePeriodView: AttendancePeriodView;
   attendanceMonth: string;
+  attendanceYear: string;
   pharmacyId: string;
   showOrgHr: boolean;
   orgBranchIds: string[];
@@ -14,7 +21,9 @@ type UseAttendanceRecordsQueryOptions = {
 };
 
 export function useAttendanceRecordsQuery({
+  attendancePeriodView,
   attendanceMonth,
+  attendanceYear,
   pharmacyId,
   showOrgHr,
   orgBranchIds,
@@ -27,15 +36,23 @@ export function useAttendanceRecordsQuery({
     return pharmacyId;
   }, [showOrgHr, orgBranchIds, pharmacyId]);
 
-  const queryKey = pharmacyQueryKeys.attendance(attendanceMonth, scopeKey);
+  const periodKey = useMemo(() => {
+    if (attendancePeriodView === "yearly") return `year:${attendanceYear}`;
+    return `month:${attendanceMonth}`;
+  }, [attendancePeriodView, attendanceMonth, attendanceYear]);
+
+  const queryKey = pharmacyQueryKeys.attendance(periodKey, scopeKey);
 
   const query = useQuery({
     queryKey,
     enabled: enabled && Boolean(scopeKey),
     queryFn: async (): Promise<AttendanceRecord[]> => {
-      const { start, end } = monthBoundsFromDate(monthAnchorDate(attendanceMonth));
+      const range =
+        attendancePeriodView === "yearly"
+          ? yearBounds(attendanceYear)
+          : monthBoundsFromDate(monthAnchorDate(attendanceMonth));
       const scopeIds = showOrgHr && orgBranchIds.length > 0 ? orgBranchIds : undefined;
-      return pharmacyService.getAttendanceRecords(start, end, scopeIds);
+      return pharmacyService.getAttendanceRecords(range.start, range.end, scopeIds);
     },
   });
 
@@ -44,8 +61,10 @@ export function useAttendanceRecordsQuery({
   }, [queryClient, queryKey]);
 
   const invalidateAttendance = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey });
-  }, [queryClient, queryKey]);
+    await queryClient.invalidateQueries({
+      queryKey: [...pharmacyQueryKeys.all, "attendance"],
+    });
+  }, [queryClient]);
 
   return {
     attendanceRecords: query.data ?? [],

@@ -119,6 +119,8 @@ export async function createPharmacyCustomRole(input: {
   allowedPages: Page[];
   permissions?: RolePermissionFlags;
   isActive?: boolean;
+  /** Prefer this key when seeding platform defaults (still uniquified per pharmacy). */
+  roleKey?: string;
 }): Promise<PharmacyCustomRole> {
   const nameAr = input.nameAr.trim();
   const nameEn = input.nameEn.trim();
@@ -134,7 +136,13 @@ export async function createPharmacyCustomRole(input: {
     throw new Error("custom_role_pages_required");
   }
 
-  const baseKey = slugifyCustomRoleKey(nameEn, nameAr);
+  const preferredKey = String(input.roleKey || "")
+    .trim()
+    .toLowerCase();
+  const baseKey =
+    preferredKey.startsWith("custom_") && /^custom_[a-z0-9_]+$/.test(preferredKey)
+      ? preferredKey
+      : slugifyCustomRoleKey(nameEn, nameAr);
   const roleKey = await ensureUniqueRoleKey(input.pharmacyId, baseKey);
 
   const payload = toSnakeCase({

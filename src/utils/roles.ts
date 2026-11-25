@@ -351,12 +351,20 @@ export function pharmacyManagedRoleKeysForBranch(
   pharmacyId: string,
   customRoles: Array<{ pharmacyId: string; roleKey: string; isActive?: boolean | null }>,
   appUser: AppUser | null | undefined,
+  enabledRoleKeys?: string[] | null,
 ): string[] {
   const builtin = pharmacyManagedBuiltinRoles(appUser);
   const custom = customRoles
     .filter((role) => role.pharmacyId === pharmacyId && role.isActive !== false)
     .map((role) => role.roleKey);
-  return [...builtin, ...custom];
+  const all = [...builtin, ...custom];
+  if (enabledRoleKeys == null) return all;
+  const enabled = new Set(
+    enabledRoleKeys.map((key) => String(key || "").trim().toLowerCase()).filter(Boolean),
+  );
+  // Always keep pharmacy_admin assignable for org admins managing the branch.
+  enabled.add("pharmacy_admin");
+  return all.filter((roleKey) => enabled.has(String(roleKey).trim().toLowerCase()));
 }
 
 type LoginAccountBuiltinRole =

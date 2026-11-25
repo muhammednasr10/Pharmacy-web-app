@@ -12,6 +12,7 @@ export async function getAttendanceRecords(
   fromDate: string,
   toDate: string,
   pharmacyIds?: string[],
+  userIds?: string[],
 ): Promise<AttendanceRecord[]> {
   const tableQuery = supabase.from("attendance_records").select("*");
   let query = applyPharmacyScopeFilter(
@@ -22,6 +23,13 @@ export async function getAttendanceRecords(
     .gte("work_date", fromDate)
     .lte("work_date", toDate)
     .order("work_date", { ascending: false });
+
+  const scopedUserIds = [...new Set((userIds || []).map((id) => id.trim()).filter(Boolean))];
+  if (scopedUserIds.length === 1) {
+    query = query.eq("user_id", scopedUserIds[0]);
+  } else if (scopedUserIds.length > 1) {
+    query = query.in("user_id", scopedUserIds);
+  }
 
   const { data, error } = await query;
 

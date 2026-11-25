@@ -7,6 +7,7 @@ export type StaffEmployeesParams = Pick<
   | "appUser"
   | "pharmacyId"
   | "pharmacies"
+  | "currency"
   | "onActivityLog"
   | "showOrgHrManage"
   | "canManage"
@@ -32,4 +33,5 @@ export type StaffEmployeesParams = Pick<
       accountId?: string | null,
     ) => Promise<void>;
     branchCustomRoles: import("../../../../types").PharmacyCustomRole[];
+    enabledRoleKeys?: string[] | null;
   };

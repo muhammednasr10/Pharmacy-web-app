@@ -84,10 +84,6 @@ type SettingsPageProps = {
   handleLogoUpload: (file: File | null) => void;
   savePharmacySettings: () => Promise<void>;
   exportBackupCSV: () => void;
-  onRequestExpiryNotificationPermission?: () => Promise<boolean>;
-  onSendExpiryNotifyNow?: () => Promise<void>;
-  onOpenExpiryWhatsappDigest?: () => void;
-  onOpenExpiryEmailDigest?: () => void;
   themeMode: ThemeMode;
   fontScale: FontScale;
   resolvedTheme: "light" | "dark";
@@ -123,10 +119,6 @@ export default function SettingsPage({
   handleLogoUpload,
   savePharmacySettings,
   exportBackupCSV,
-  onRequestExpiryNotificationPermission,
-  onSendExpiryNotifyNow,
-  onOpenExpiryWhatsappDigest,
-  onOpenExpiryEmailDigest,
   themeMode,
   fontScale,
   resolvedTheme,
@@ -356,163 +348,82 @@ export default function SettingsPage({
       )}
 
       {isStoreSettingsTab && (
-        <div className="settingsForm settingsTabPanel">
+        <div className="settingsForm settingsTabPanel storeAlertsSettings">
           <div className="settingsSectionTitle">
-            <h3>{isArabic ? "تنبيهات انتهاء المخزون" : "Inventory Alert Rules"}</h3>
+            <h3>{isArabic ? "تنبيهات المخزون" : "Inventory alerts"}</h3>
             <p>
               {isArabic
-                ? "تحكم في ظهور كروت «أدوية ناقصة» و«قرب انتهاء الصلاحية» في لوحة التحكم والمخزون"
-                : "Control low stock and expiring soon cards on dashboard and inventory"}
+                ? "تحدد متى يظهر الدواء في كروت الناقص وقرب الانتهاء (لوحة التحكم وجرس الإشعارات)"
+                : "When medicines appear in low-stock and expiring cards (dashboard and notification bell)"}
             </p>
           </div>
 
           {isOrgAdmin ? (
-            <div className="settingsFieldsGrid">
-              <div className="settingsField settingsField--sm">
-                <label>{isArabic ? "حد الكمية الناقصة" : "Low Stock Threshold"}</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={settingsForm.lowStockThreshold}
-                  onChange={(e) =>
-                    setSettingsForm({
-                      ...settingsForm,
-                      lowStockThreshold: e.target.value === "" ? 0 : Number(e.target.value),
-                    })
-                  }
-                  placeholder={isArabic ? "مثال: 20" : "e.g. 20"}
-                />
-                <p className="settingsFieldHint">
-                  {isArabic
-                    ? "أي دواء كميته أقل من أو تساوي هذا الرقم يظهر في كارت «أدوية ناقصة»"
-                    : "Medicines with qty at or below this value appear in the low stock card"}
-                </p>
-              </div>
+            <>
+              <section className="storeAlertsCard">
+                <div className="settingsFieldsGrid storeAlertsThresholds">
+                  <div className="settingsField storeAlertsField">
+                    <label>{isArabic ? "حد الكمية الناقصة" : "Low stock threshold"}</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={settingsForm.lowStockThreshold}
+                      onChange={(e) =>
+                        setSettingsForm({
+                          ...settingsForm,
+                          lowStockThreshold: e.target.value === "" ? 0 : Number(e.target.value),
+                        })
+                      }
+                      placeholder={isArabic ? "مثال: 20" : "e.g. 20"}
+                    />
+                    <p className="storeAlertsFieldHint">
+                      {isArabic ? (
+                        <>
+                          أي دواء كميته <strong>أقل من أو تساوي</strong> الرقم ده يظهر في كارت
+                          «أدوية ناقصة» وجرس الإشعارات.
+                        </>
+                      ) : (
+                        <>
+                          Any medicine with qty <strong>at or below</strong> this number shows in
+                          the low-stock card and notification bell.
+                        </>
+                      )}
+                    </p>
+                  </div>
 
-              <div className="settingsField settingsField--sm">
-                <label>{isArabic ? "أيام قرب انتهاء الصلاحية" : "Expiring Soon (Days)"}</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={settingsForm.expiringSoonDays}
-                  onChange={(e) =>
-                    setSettingsForm({
-                      ...settingsForm,
-                      expiringSoonDays: e.target.value === "" ? 1 : Number(e.target.value),
-                    })
-                  }
-                  placeholder={isArabic ? "مثال: 30" : "e.g. 30"}
-                />
-                <p className="settingsFieldHint">
-                  {isArabic
-                    ? "الأدوية التي تنتهي صلاحيتها خلال هذا العدد من الأيام تظهر في كارت «قرب انتهاء الصلاحية»"
-                    : "Medicines expiring within this many days appear in the expiring soon card"}
-                </p>
-              </div>
-
-              <div className="settingsField settingsFieldFull">
-                <div className="settingsSectionTitle settingsSectionTitle--compact">
-                  <h3>{isArabic ? "إشعارات انتهاء الصلاحية" : "Expiry Notifications"}</h3>
-                  <p>
-                    {isArabic
-                      ? "تنبيه يومي عند فتح النظام + إرسال يدوي عبر واتساب أو بريد"
-                      : "Daily alert on login plus manual WhatsApp or email digest"}
-                  </p>
+                  <div className="settingsField storeAlertsField">
+                    <label>{isArabic ? "أيام قرب انتهاء الصلاحية" : "Expiring soon (days)"}</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={settingsForm.expiringSoonDays}
+                      onChange={(e) =>
+                        setSettingsForm({
+                          ...settingsForm,
+                          expiringSoonDays: e.target.value === "" ? 1 : Number(e.target.value),
+                        })
+                      }
+                      placeholder={isArabic ? "مثال: 30" : "e.g. 30"}
+                    />
+                    <p className="storeAlertsFieldHint">
+                      {isArabic ? (
+                        <>
+                          الأدوية اللي صلاحيتها تنتهي خلال <strong>عدد الأيام ده</strong> تظهر في
+                          كارت «قرب انتهاء الصلاحية» وجرس الإشعارات.
+                        </>
+                      ) : (
+                        <>
+                          Medicines expiring within <strong>this many days</strong> show in the
+                          expiring-soon card and notification bell.
+                        </>
+                      )}
+                    </p>
+                  </div>
                 </div>
-              </div>
-
-              <div className="settingsField settingsFieldFull">
-                <label className="settingsCheckboxLabel">
-                  <input
-                    type="checkbox"
-                    checked={settingsForm.expiryNotifyEnabled}
-                    onChange={(e) =>
-                      setSettingsForm({
-                        ...settingsForm,
-                        expiryNotifyEnabled: e.target.checked,
-                      })
-                    }
-                  />
-                  <span>{isArabic ? "تفعيل التنبيهات اليومية" : "Enable daily alerts"}</span>
-                </label>
-                <p className="settingsFieldHint">
-                  {isArabic
-                    ? "مرة واحدة يومياً عند دخول المدير — إشعار المتصفح + webhook إن وُجد"
-                    : "Once per day when a manager logs in — browser notification + optional webhook"}
-                </p>
-              </div>
-
-              <div className="settingsField settingsField--md">
-                <label>
-                  {isArabic ? "واتساب للتنبيهات (اختياري)" : "WhatsApp number (optional)"}
-                </label>
-                <input
-                  type="tel"
-                  value={settingsForm.expiryNotifyPhone}
-                  onChange={(e) =>
-                    setSettingsForm({ ...settingsForm, expiryNotifyPhone: e.target.value })
-                  }
-                  placeholder={
-                    isArabic
-                      ? "اتركه فارغاً لاستخدام هاتف الصيدلية"
-                      : "Leave empty to use pharmacy phone"
-                  }
-                />
-              </div>
-
-              <div className="settingsField settingsField--md">
-                <label>{isArabic ? "بريد للتنبيهات (اختياري)" : "Alert email (optional)"}</label>
-                <input
-                  type="email"
-                  value={settingsForm.expiryNotifyEmail}
-                  onChange={(e) =>
-                    setSettingsForm({ ...settingsForm, expiryNotifyEmail: e.target.value })
-                  }
-                  placeholder={isArabic ? "example@mail.com" : "example@mail.com"}
-                />
-              </div>
-
-              <div className="settingsField settingsFieldFull expiryNotifyActions">
-                {onRequestExpiryNotificationPermission && (
-                  <button
-                    type="button"
-                    className="alertFooterBtn"
-                    onClick={() => void onRequestExpiryNotificationPermission()}
-                  >
-                    {isArabic ? "تفعيل إشعارات المتصفح" : "Enable browser notifications"}
-                  </button>
-                )}
-                {onSendExpiryNotifyNow && (
-                  <button
-                    type="button"
-                    className="alertFooterBtn"
-                    onClick={() => void onSendExpiryNotifyNow()}
-                  >
-                    {isArabic ? "إرسال تنبيه الآن" : "Send alert now"}
-                  </button>
-                )}
-                {onOpenExpiryWhatsappDigest && (
-                  <button
-                    type="button"
-                    className="alertFooterBtn"
-                    onClick={onOpenExpiryWhatsappDigest}
-                  >
-                    {isArabic ? "ملخص واتساب" : "WhatsApp digest"}
-                  </button>
-                )}
-                {onOpenExpiryEmailDigest && settingsForm.expiryNotifyEmail.trim() && (
-                  <button
-                    type="button"
-                    className="alertFooterBtn"
-                    onClick={onOpenExpiryEmailDigest}
-                  >
-                    {isArabic ? "ملخص بريد" : "Email digest"}
-                  </button>
-                )}
-              </div>
+              </section>
 
               {renderSaveActions()}
-            </div>
+            </>
           ) : (
             <p className="empty">
               {isArabic

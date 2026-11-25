@@ -8,13 +8,14 @@ export default function CustomersOverviewTab({ state }: Props) {
     isArabic,
     t,
     activeTab,
+    pharmacySubTab,
     crmProfiles,
     customerActivities,
     totalRemaining,
     totalCustomerPayments,
   } = state;
 
-  if (activeTab !== "overview") return null;
+  if (activeTab !== "pharmacy" || pharmacySubTab !== "overview") return null;
 
   return (
     <CustomerCrmOverview

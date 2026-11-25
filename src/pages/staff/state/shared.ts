@@ -15,7 +15,6 @@ import {
   resolveOrganizationTier,
 } from "../../../utils/subscriptionFeatures";
 import { getOrganizationUserUsage } from "../../../utils/userLimits";
-import { buildBranchHrSummaryRows } from "../../../utils/branchHrSummary";
 import type { PharmacyGeneralManagerScope } from "../../../utils/pharmacyGeneralManager";
 import {
   hasRole,
@@ -55,11 +54,8 @@ export type StaffSharedContext = {
   setLoginAccountsPanelBranchFilter: React.Dispatch<React.SetStateAction<string>>;
   employeesAccessPanel: "login" | null;
   setEmployeesAccessPanel: React.Dispatch<React.SetStateAction<"login" | null>>;
-  branchHrSummaryOpen: boolean;
-  setBranchHrSummaryOpen: React.Dispatch<React.SetStateAction<boolean>>;
   canManage: boolean;
   canManageRolePermissions: boolean;
-  canManageRolesOnEmployeesPage: boolean;
   isOrgManager: boolean;
   isTenantScopedView: boolean;
   branchDirectory: PharmacySettings[];
@@ -95,7 +91,6 @@ export type StaffSharedDerived = {
   loginCatalogByPharmacy: Map<string, PharmacyLoginAccount[]>;
   generalManagerScope: PharmacyGeneralManagerScope;
   systemUserByEmail: Map<string, SystemUser>;
-  branchHrSummaryRows: ReturnType<typeof buildBranchHrSummaryRows>;
   filteredEmployees: Employee[];
   employeesPanelPharmacyId: string;
 };
@@ -121,14 +116,11 @@ export function useStaffSharedContext({
   const [catalogBranchFilter, setCatalogBranchFilter] = useState("");
   const [loginAccountsPanelBranchFilter, setLoginAccountsPanelBranchFilter] = useState("all");
   const [employeesAccessPanel, setEmployeesAccessPanel] = useState<"login" | null>(null);
-  const [branchHrSummaryOpen, setBranchHrSummaryOpen] = useState(false);
 
   const canManage =
     (isPharmacyManager(appUser) || isSuperAdmin(appUser)) && !subscriptionBlocksWrite;
   const canManageRolePermissions =
     canManageStaffRolePermissions(appUser) && !subscriptionBlocksWrite;
-  const canManageRolesOnEmployeesPage =
-    canManageRolePermissions && !isSuperAdmin(appUser);
 
   const isOrgManager = isOrgPharmacyAdmin(appUser);
   const isTenantScopedView = Boolean(tenantScopePharmacyId && isSuperAdmin(appUser));
@@ -184,23 +176,17 @@ export function useStaffSharedContext({
       { id: "employees", ar: "الموظفين", en: "Employees" },
       { id: "attendance", ar: "الحضور والانصراف", en: "Attendance" },
       { id: "requests", ar: "طلبات الموظفين", en: "Employee requests" },
-      { id: "payroll", ar: "حساب المرتبات", en: "Payroll" },
-      { id: "permissions", ar: "الصلاحيات", en: "Permissions" },
       { id: "activity", ar: "سجل النشاط", en: "Activity Log" },
     ];
     if (isAccountantOnly) {
       return all.filter(
-        (tab) =>
-          tab.id === "attendance" ||
-          tab.id === "requests" ||
-          tab.id === "payroll" ||
-          tab.id === "activity",
+        (tab) => tab.id === "attendance" || tab.id === "requests" || tab.id === "activity",
       );
     }
     return all;
   }, [isAccountantOnly]);
 
-  const isHrTab = activeTab === "attendance" || activeTab === "payroll" || activeTab === "requests";
+  const isHrTab = activeTab === "attendance" || activeTab === "requests";
 
   useEffect(() => {
     if (!tenantScopePharmacyId || !isSuperAdmin(appUser)) return;
@@ -208,6 +194,13 @@ export function useStaffSharedContext({
     setCatalogBranchFilter(tenantScopePharmacyId);
     setActiveTab("employees");
   }, [tenantScopePharmacyId, appUser]);
+
+  useEffect(() => {
+    // Role toggles live in Settings; payroll is per-employee from the staff table.
+    if (activeTab === "permissions" || activeTab === "payroll") {
+      setActiveTab(isAccountantOnly ? "attendance" : "employees");
+    }
+  }, [activeTab, isAccountantOnly]);
 
   useEffect(() => {
     if (activeTab !== "employees") {
@@ -242,11 +235,8 @@ export function useStaffSharedContext({
     setLoginAccountsPanelBranchFilter,
     employeesAccessPanel,
     setEmployeesAccessPanel,
-    branchHrSummaryOpen,
-    setBranchHrSummaryOpen,
     canManage,
     canManageRolePermissions,
-    canManageRolesOnEmployeesPage,
     isOrgManager,
     isTenantScopedView,
     branchDirectory,
@@ -396,12 +386,6 @@ export function useStaffSharedDerived(
     return getOrganizationUserUsage(systemUsers, branchDirectory, anchorPharmacy);
   }, [systemUsers, branchDirectory, pharmacyId, tenantScopePharmacyId, appUser?.pharmacyId]);
 
-  const branchHrSummaryRows = useMemo(
-    () =>
-      showOrgHr ? buildBranchHrSummaryRows({ employees, branches: pharmacies, isArabic }) : [],
-    [showOrgHr, employees, pharmacies, isArabic],
-  );
-
   const filteredEmployees = useMemo(() => {
     if (isTenantScopedView) {
       if (employeeBranchFilter === "all") {
@@ -440,7 +424,6 @@ export function useStaffSharedDerived(
     generalManagerScope,
     systemUserByEmail,
     orgUserUsage,
-    branchHrSummaryRows,
     filteredEmployees,
     employeesPanelPharmacyId,
   };

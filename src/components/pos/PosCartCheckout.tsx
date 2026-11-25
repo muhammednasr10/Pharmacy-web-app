@@ -10,6 +10,7 @@ type PosCartCheckoutProps = {
   paymentMethod: PaymentMethod;
   customerName: string;
   customerPhone?: string;
+  customerAddress?: string;
   isArabic: boolean;
   t: Record<string, string>;
   currency: string;
@@ -22,6 +23,7 @@ type PosCartCheckoutProps = {
   onPaymentMethodChange: (method: PaymentMethod) => void;
   onCustomerNameChange: (value: string) => void;
   onCustomerPhoneChange?: (value: string) => void;
+  onCustomerAddressChange?: (value: string) => void;
   onCompleteSale: () => void;
   getPaymentLabel: (method: string) => string;
   heldInvoicesCount: number;
@@ -33,6 +35,9 @@ type PosCartCheckoutProps = {
   paymentOptions?: PaymentOption[];
   paymentOptionValue?: string;
   onPaymentOptionChange?: (value: string) => void;
+  canAssignDeliveryEmployee?: boolean;
+  deliveryEmployeeName?: string;
+  onOpenDeliveryEmployeePicker?: () => void;
 };
 
 export default function PosCartCheckout({
@@ -43,6 +48,7 @@ export default function PosCartCheckout({
   paymentMethod,
   customerName,
   customerPhone = "",
+  customerAddress = "",
   isArabic,
   t,
   currency,
@@ -55,6 +61,7 @@ export default function PosCartCheckout({
   onPaymentMethodChange,
   onCustomerNameChange,
   onCustomerPhoneChange,
+  onCustomerAddressChange,
   onCompleteSale,
   getPaymentLabel,
   heldInvoicesCount,
@@ -66,6 +73,9 @@ export default function PosCartCheckout({
   paymentOptions,
   paymentOptionValue,
   onPaymentOptionChange,
+  canAssignDeliveryEmployee = false,
+  deliveryEmployeeName = "",
+  onOpenDeliveryEmployeePicker,
 }: PosCartCheckoutProps) {
   return (
     <div className="posCartCheckout">
@@ -74,17 +84,22 @@ export default function PosCartCheckout({
         paymentMethod={paymentMethod}
         customerName={customerName}
         customerPhone={customerPhone}
+        customerAddress={customerAddress}
         isArabic={isArabic}
         t={t}
         onDiscountChange={onDiscountChange}
         onPaymentMethodChange={onPaymentMethodChange}
         onCustomerNameChange={onCustomerNameChange}
         onCustomerPhoneChange={onCustomerPhoneChange}
+        onCustomerAddressChange={onCustomerAddressChange}
         getPaymentLabel={getPaymentLabel}
         disableCredit={!isOnline}
         paymentOptions={paymentOptions}
         paymentOptionValue={paymentOptionValue}
         onPaymentOptionChange={onPaymentOptionChange}
+        canAssignDeliveryEmployee={canAssignDeliveryEmployee}
+        deliveryEmployeeName={deliveryEmployeeName}
+        onOpenDeliveryEmployeePicker={onOpenDeliveryEmployeePicker}
       />
       <div className="subtotalLine posCartSubtotal">
         <span>{t.subtotal}</span>

@@ -35,6 +35,7 @@ export async function getPayrollRecords(
   periodStart: string,
   periodEnd: string,
   pharmacyIds?: string[],
+  userIds?: string[],
 ): Promise<PayrollRecord[]> {
   const tableQuery = supabase.from("payroll_records").select("*");
   let query = applyPharmacyScopeFilter(tableQuery as never, pharmacyIds) as typeof tableQuery;
@@ -42,6 +43,13 @@ export async function getPayrollRecords(
     .eq("period_start", periodStart)
     .eq("period_end", periodEnd)
     .order("user_name", { ascending: true });
+
+  const scopedUserIds = [...new Set((userIds || []).map((id) => id.trim()).filter(Boolean))];
+  if (scopedUserIds.length === 1) {
+    query = query.eq("user_id", scopedUserIds[0]);
+  } else if (scopedUserIds.length > 1) {
+    query = query.in("user_id", scopedUserIds);
+  }
 
   const { data, error } = await query;
 
@@ -265,6 +273,155 @@ export async function generatePayroll(
   }
 
   return results;
+}
+
+/** Fast path for one employee salary card — skips org-wide employee/profile fetches. */
+export async function generateSingleEmployeePayroll(
+  periodStart: string,
+  periodEnd: string,
+  employee: Employee,
+  userId: string,
+  options: {
+    sickDeductionPercent?: number;
+    absentDeductionPercent?: number;
+    maxLeaveDays?: number;
+    standardWorkHours?: number;
+    overtimePercent?: number;
+    defaultTaxes?: number;
+    defaultInsurance?: number;
+    workShifts?: PharmacyShift[];
+    defaultShiftId?: ShiftId;
+  } = {},
+): Promise<PayrollRecord> {
+  const pharmacyIds = employee.pharmacyId ? [employee.pharmacyId] : undefined;
+  const identityIds = [...new Set([userId, employee.id].filter(Boolean))];
+  const commissionRate = Number(employee.commissionRate ?? 0);
+  const sickPct = Number(options.sickDeductionPercent ?? 25);
+  const absentPct = Number(options.absentDeductionPercent ?? 100);
+  const maxLeaveDays = Math.max(
+    0,
+    Math.floor(Number(options.maxLeaveDays ?? PAYROLL_DEFAULTS.maxLeaveDays)),
+  );
+  const overtimePercent = Math.max(
+    0,
+    Number(options.overtimePercent ?? PAYROLL_DEFAULTS.overtimePercent),
+  );
+  const defaultTaxesPercent = Math.min(
+    100,
+    Math.max(0, Number(options.defaultTaxes ?? PAYROLL_DEFAULTS.defaultTaxes)),
+  );
+  const defaultInsurancePercent = Math.min(
+    100,
+    Math.max(0, Number(options.defaultInsurance ?? PAYROLL_DEFAULTS.defaultInsurance)),
+  );
+
+  const [attendance, existingPayroll, periodInvoices] = await Promise.all([
+    getAttendanceRecords(periodStart, periodEnd, pharmacyIds, identityIds),
+    getPayrollRecords(periodStart, periodEnd, pharmacyIds, identityIds),
+    commissionRate > 0
+      ? getInvoicesForPeriod(periodStart, periodEnd, pharmacyIds)
+      : Promise.resolve([]),
+  ]);
+
+  const existing =
+    existingPayroll.find((row) => row.userId === userId || row.userId === employee.id) || null;
+  if (existing && existing.status === "paid") {
+    return existing;
+  }
+
+  const workingDays = countDaysInclusive(periodStart, periodEnd);
+  const baseSalary = Number(employee.salary ?? existing?.baseSalary ?? 0);
+  const empAttendance = filterAttendanceForEmployee(attendance, userId, employee.id);
+  const presentDays = empAttendance.filter(
+    (a) =>
+      a.status === "present" ||
+      a.status === "late" ||
+      (a.checkIn && a.status !== "absent" && a.status !== "leave" && a.status !== "sick"),
+  ).length;
+  const sickDays = empAttendance.filter((a) => a.status === "sick").length;
+  const rawAbsentDays = empAttendance.filter((a) => a.status === "absent").length;
+  const rawLeaveDays = empAttendance.filter((a) => a.status === "leave").length;
+  const leavePolicy = applyMaxLeavePolicy(rawLeaveDays, rawAbsentDays, maxLeaveDays);
+  const absentDays = leavePolicy.absentDays;
+  const leaveDays = leavePolicy.leaveDays;
+  const requiredWorkHours = Math.max(
+    1,
+    computeWorkHoursFromSchedule(
+      resolveWorkSchedule(
+        employee,
+        options.workShifts || PAYROLL_DEFAULTS.workShifts,
+        options.defaultShiftId || "A",
+      ),
+    ) || Number(employee.requiredWorkHours ?? 8),
+  );
+  const earned = computePayrollEarnedFromAttendance(
+    baseSalary,
+    empAttendance,
+    requiredWorkHours,
+    requiredWorkHours,
+    overtimePercent,
+  );
+  const attendanceBreakdown = computeAttendanceDeductionBreakdown(
+    { baseSalary, absentDays, sickDays, leaveDays },
+    { absentPct, sickPct },
+  );
+  const specialAllowances = existing?.specialAllowances ?? 0;
+  const bonuses = existing?.bonuses ?? 0;
+  const incentives = earned.overtimePay;
+  const commission =
+    commissionRate > 0
+      ? computeCashierCommissionFromInvoices(
+          periodInvoices,
+          {
+            userId,
+            employeeId: employee.id,
+            userName: employee.name,
+          },
+          commissionRate,
+          { periodStart, periodEnd },
+        ).commission
+      : (existing?.commission ?? 0);
+  const draftForTax: Partial<PayrollRecord> = {
+    calculatedSalary: earned.calculatedSalary,
+    specialAllowances,
+    bonuses,
+    incentives,
+    commission,
+  };
+  const { taxes, insurance } = computeTaxInsuranceFromPercent(
+    draftForTax,
+    defaultTaxesPercent,
+    defaultInsurancePercent,
+  );
+  const draftRecord: PayrollRecord = {
+    id: existing?.id ?? Date.now(),
+    pharmacyId: employee.pharmacyId,
+    userId,
+    userName: employee.name,
+    periodStart,
+    periodEnd,
+    workingDays,
+    presentDays,
+    absentDays,
+    sickDays,
+    leaveDays,
+    workMinutes: earned.workMinutes,
+    baseSalary,
+    calculatedSalary: earned.calculatedSalary,
+    specialAllowances,
+    bonuses,
+    incentives,
+    commission,
+    deductions: attendanceBreakdown.attendanceTotal,
+    taxes,
+    insurance,
+    netPay: 0,
+    status: existing?.status === "paid" ? "paid" : "draft",
+    notes: existing?.notes,
+  };
+  draftRecord.netPay = computePayrollNet(draftRecord);
+  await upsertPayrollRecord(draftRecord);
+  return draftRecord;
 }
 
 export async function resolvePayrollSalesCommission(

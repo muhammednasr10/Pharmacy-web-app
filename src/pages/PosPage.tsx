@@ -54,6 +54,11 @@ type PosPageProps = {
   paymentMethod: PaymentMethod;
   customerName: string;
   customerPhone?: string;
+  customerAddress?: string;
+  deliveryEmployeeId?: string;
+  deliveryEmployeeName?: string;
+  staffPageEnabled?: boolean;
+  onDeliveryAssignmentAvailableChange?: (available: boolean) => void;
   isSelling: boolean;
   isSubscriptionExpired: boolean;
   subscriptionBlocksSale?: boolean;
@@ -68,6 +73,8 @@ type PosPageProps = {
   onPaymentMethodChange: (method: PaymentMethod) => void;
   onCustomerNameChange: (value: string) => void;
   onCustomerPhoneChange?: (value: string) => void;
+  onCustomerAddressChange?: (value: string) => void;
+  onDeliveryEmployeeChange?: (employee: { id: string; name: string } | null) => void;
   onCompleteSale: () => void | boolean | Promise<void | boolean>;
   getPaymentLabel: (method: string) => string;
   heldInvoicesCount: number;
@@ -117,6 +124,11 @@ export default function PosPage({
   paymentMethod,
   customerName,
   customerPhone = "",
+  customerAddress = "",
+  deliveryEmployeeId = "",
+  deliveryEmployeeName = "",
+  staffPageEnabled = false,
+  onDeliveryAssignmentAvailableChange,
   isSelling,
   isSubscriptionExpired,
   subscriptionBlocksSale = false,
@@ -131,6 +143,8 @@ export default function PosPage({
   onPaymentMethodChange,
   onCustomerNameChange,
   onCustomerPhoneChange,
+  onCustomerAddressChange,
+  onDeliveryEmployeeChange,
   onCompleteSale,
   getPaymentLabel,
   heldInvoicesCount,
@@ -426,6 +440,11 @@ export default function PosPage({
           paymentMethod={paymentMethod}
           customerName={customerName}
           customerPhone={customerPhone}
+          customerAddress={customerAddress}
+          deliveryEmployeeId={deliveryEmployeeId}
+          deliveryEmployeeName={deliveryEmployeeName}
+          staffPageEnabled={staffPageEnabled}
+          onDeliveryAssignmentAvailableChange={onDeliveryAssignmentAvailableChange}
           isArabic={isArabic}
           t={t}
           currency={currency}
@@ -441,6 +460,8 @@ export default function PosPage({
           onPaymentMethodChange={onPaymentMethodChange}
           onCustomerNameChange={onCustomerNameChange}
           onCustomerPhoneChange={onCustomerPhoneChange}
+          onCustomerAddressChange={onCustomerAddressChange}
+          onDeliveryEmployeeChange={onDeliveryEmployeeChange}
           onCompleteSale={() => void handleCompleteSale()}
           getPaymentLabel={getPaymentLabel}
           heldInvoicesCount={heldInvoicesCount}
@@ -507,6 +528,11 @@ export default function PosPage({
           paymentMethod={paymentMethod}
           customerName={customerName}
           customerPhone={customerPhone}
+          customerAddress={customerAddress}
+          deliveryEmployeeId={deliveryEmployeeId}
+          deliveryEmployeeName={deliveryEmployeeName}
+          staffPageEnabled={staffPageEnabled}
+          onDeliveryAssignmentAvailableChange={onDeliveryAssignmentAvailableChange}
           isArabic={isArabic}
           t={t}
           currency={currency}
@@ -522,6 +548,8 @@ export default function PosPage({
           onPaymentMethodChange={onPaymentMethodChange}
           onCustomerNameChange={onCustomerNameChange}
           onCustomerPhoneChange={onCustomerPhoneChange}
+          onCustomerAddressChange={onCustomerAddressChange}
+          onDeliveryEmployeeChange={onDeliveryEmployeeChange}
           onCompleteSale={() => void handleCompleteSale()}
           getPaymentLabel={getPaymentLabel}
           heldInvoicesCount={heldInvoicesCount}

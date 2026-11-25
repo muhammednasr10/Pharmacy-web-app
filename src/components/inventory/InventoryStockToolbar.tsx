@@ -4,7 +4,6 @@ import type { StockCatalogFilter } from "../../services/pharmacy/inventoryPagina
 
 const stockFilterOptions: { value: StockCatalogFilter; ar: string; en: string }[] = [
   { value: "all", ar: "الكل", en: "All" },
-  { value: "in_stock", ar: "متوفر", en: "In stock" },
   { value: "low", ar: "ناقص", en: "Low stock" },
   { value: "expiring", ar: "قرب الانتهاء", en: "Expiring" },
   { value: "expired", ar: "منتهي", en: "Expired" },
@@ -16,6 +15,8 @@ type InventoryStockToolbarProps = {
   onSearchChange: (value: string) => void;
   stockFilter: StockCatalogFilter;
   onStockFilterChange: (value: StockCatalogFilter) => void;
+  inStockOnly: boolean;
+  onInStockOnlyChange: (value: boolean) => void;
   branchesCount: number;
   canTransferStock: boolean;
   transferUpgradeNotice: string | null;
@@ -39,6 +40,8 @@ export default function InventoryStockToolbar({
   onSearchChange,
   stockFilter,
   onStockFilterChange,
+  inStockOnly,
+  onInStockOnlyChange,
   branchesCount,
   canTransferStock,
   transferUpgradeNotice,
@@ -73,6 +76,14 @@ export default function InventoryStockToolbar({
             isArabic ? "بحث بالاسم أو المادة الفعالة أو الباركود" : "Search name, ingredient, or barcode"
           }
         />
+        <label className="invMgmtInStockCheck">
+          <input
+            type="checkbox"
+            checked={inStockOnly}
+            onChange={(event) => onInStockOnlyChange(event.target.checked)}
+          />
+          <span>{isArabic ? "متوفر" : "In stock"}</span>
+        </label>
         <div className="invMgmtStockChips" role="group" aria-label={isArabic ? "فلتر المخزون" : "Stock filter"}>
           {stockFilterOptions.map((option) => (
             <button

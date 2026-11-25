@@ -74,11 +74,7 @@ export function resolvePharmacyShifts(
     dayEnd: normalizeTimeValue(settings?.payrollWorkDayEnd, WORK_SCHEDULE_DEFAULTS.dayEnd),
     breaks: parseWorkBreaks(settings?.payrollWorkBreaks),
   };
-  const hasStoredShifts = Array.isArray(settings?.workShifts) && settings!.workShifts!.length >= 3;
-  const parsed = parsePharmacyShifts(
-    hasStoredShifts ? settings?.workShifts : settings?.workShifts,
-    legacy,
-  );
+  const parsed = parsePharmacyShifts(settings?.workShifts, legacy);
   return clonePharmacyShifts(parsed);
 }
 

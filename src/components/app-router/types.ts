@@ -189,6 +189,9 @@ export type AppPageRouterProps = {
   paymentMethod: PaymentMethod;
   customerName: string;
   customerPhone: string;
+  customerAddress: string;
+  deliveryEmployeeId: string;
+  deliveryEmployeeName: string;
   isSelling: boolean;
   heldInvoices: import("../../types").HeldInvoice[];
   isHolding: boolean;
@@ -246,6 +249,10 @@ export type AppPageRouterProps = {
   setPaymentMethod: (value: PaymentMethod) => void;
   setCustomerName: (value: string) => void;
   setCustomerPhone: (value: string) => void;
+  setCustomerAddress: (value: string) => void;
+  setDeliveryEmployeeId: (value: string) => void;
+  setDeliveryEmployeeName: (value: string) => void;
+  setDeliveryAssignmentAvailable: (value: boolean) => void;
   completeSale: () => boolean | Promise<boolean>;
   handleHoldInvoice: () => void | Promise<void | import("../../hooks/usePosSales").PosActionFeedback>;
   openHeldInvoicesModal: () => void | Promise<void>;

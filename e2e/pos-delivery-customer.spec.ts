@@ -5,6 +5,7 @@ import {
   completePosSale,
   ensurePosReady,
   fillPosCustomerDetails,
+  selectPosDeliveryEmployee,
   selectPosPaymentMethod,
 } from "./helpers/pos";
 
@@ -31,6 +32,8 @@ test.describe("POS delivery + customer details", () => {
     await addBarcodeToCart(page, env!.barcode);
     await selectPosPaymentMethod(page, "delivery");
     await fillPosCustomerDetails(page, { name: customerName, phone: customerPhone });
+    const assignedDelivery = await selectPosDeliveryEmployee(page);
+    expect(assignedDelivery).toBe(true);
 
     const invoiceNumber = await completePosSale(page);
     expect(invoiceNumber).toMatch(/^INV-\d+$/);

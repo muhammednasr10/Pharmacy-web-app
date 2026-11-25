@@ -9,8 +9,9 @@ export type WorkSchedule = {
   breaks: WorkBreak[];
 };
 
-export type ShiftId = "A" | "B" | "C";
+export type ShiftId = string;
 
+/** Built-in starter shift keys (new pharmacies still seed A/B/C). */
 export const SHIFT_IDS: ShiftId[] = ["A", "B", "C"];
 
 export type PharmacyShift = {
@@ -103,11 +104,40 @@ export function parseWorkBreaks(raw: unknown): WorkBreak[] {
     .filter((item): item is WorkBreak => item !== null);
 }
 
-function normalizeShiftId(value: unknown, fallback: ShiftId): ShiftId {
+export function normalizeShiftId(value: unknown, fallback: ShiftId = "A"): ShiftId {
   const id = String(value || "")
     .trim()
-    .toUpperCase();
-  return SHIFT_IDS.includes(id as ShiftId) ? (id as ShiftId) : fallback;
+    .toUpperCase()
+    .replace(/[^A-Z0-9_]/g, "");
+  return id || fallback;
+}
+
+export function createNextShiftId(existing: PharmacyShift[]): ShiftId {
+  const taken = new Set(existing.map((shift) => normalizeShiftId(shift.id)));
+  for (const letter of "ABCDEFGHIJKLMNOPQRSTUVWXYZ") {
+    if (!taken.has(letter)) return letter;
+  }
+  let index = 1;
+  while (taken.has(`S${index}`)) index += 1;
+  return `S${index}`;
+}
+
+export function createPharmacyShift(partial?: Partial<PharmacyShift> & { id: ShiftId }): PharmacyShift {
+  const id = normalizeShiftId(partial?.id, "A");
+  return {
+    id,
+    label: String(partial?.label || `Shift ${id}`).trim() || `Shift ${id}`,
+    labelAr: String(partial?.labelAr || `شيفت ${id}`).trim() || `شيفت ${id}`,
+    dayStart: normalizeTimeValue(partial?.dayStart, "08:00"),
+    dayEnd: normalizeTimeValue(partial?.dayEnd, "17:00"),
+    breaks: Array.isArray(partial?.breaks)
+      ? partial!.breaks.map((item) => ({ ...item }))
+      : [],
+    allowedLateMinutes: normalizeAllowedLateMinutes(
+      partial?.allowedLateMinutes,
+      DEFAULT_ALLOWED_LATE_MINUTES,
+    ),
+  };
 }
 
 function normalizeAllowedLateMinutes(
@@ -140,41 +170,59 @@ export function parsePharmacyShifts(raw: unknown, legacySchedule?: WorkSchedule)
     }
   }
 
-  const byId = new Map<ShiftId, PharmacyShift>();
-  for (const template of DEFAULT_PHARMACY_SHIFTS) {
-    byId.set(template.id, { ...template, breaks: template.breaks.map((item) => ({ ...item })) });
-  }
+  const parsed: PharmacyShift[] = [];
+  const seen = new Set<string>();
 
   for (const item of list) {
     if (!item || typeof item !== "object") continue;
     const row = item as Record<string, unknown>;
-    const id = normalizeShiftId(row.id, "A");
-    const template = byId.get(id)!;
-    byId.set(id, {
-      id,
-      label: String(row.label || template.label),
-      labelAr: String(row.labelAr || template.labelAr),
-      dayStart: normalizeTimeValue(String(row.dayStart ?? ""), template.dayStart),
-      dayEnd: normalizeTimeValue(String(row.dayEnd ?? ""), template.dayEnd),
-      breaks: parseWorkBreaks(row.breaks),
-      allowedLateMinutes: normalizeAllowedLateMinutes(
-        row.allowedLateMinutes,
-        template.allowedLateMinutes,
-      ),
-    });
+    const template =
+      DEFAULT_PHARMACY_SHIFTS.find((shift) => shift.id === normalizeShiftId(row.id, "")) ||
+      DEFAULT_PHARMACY_SHIFTS[0];
+    const id = normalizeShiftId(row.id, template.id);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    parsed.push(
+      createPharmacyShift({
+        id,
+        label: String(row.label || template.label),
+        labelAr: String(row.labelAr || template.labelAr),
+        dayStart: normalizeTimeValue(String(row.dayStart ?? ""), template.dayStart),
+        dayEnd: normalizeTimeValue(String(row.dayEnd ?? ""), template.dayEnd),
+        breaks: parseWorkBreaks(row.breaks),
+        allowedLateMinutes: normalizeAllowedLateMinutes(
+          row.allowedLateMinutes,
+          template.allowedLateMinutes,
+        ),
+      }),
+    );
+  }
+
+  if (parsed.length === 0) {
+    const defaults = clonePharmacyShifts(DEFAULT_PHARMACY_SHIFTS);
+    if (legacySchedule) {
+      defaults[0] = {
+        ...defaults[0],
+        dayStart: legacySchedule.dayStart,
+        dayEnd: legacySchedule.dayEnd,
+        breaks: legacySchedule.breaks.map((item) => ({ ...item })),
+      };
+    }
+    return defaults;
   }
 
   if (legacySchedule) {
-    const shiftA = byId.get("A")!;
-    byId.set("A", {
-      ...shiftA,
+    const targetIndex = parsed.findIndex((shift) => shift.id === "A");
+    const index = targetIndex >= 0 ? targetIndex : 0;
+    parsed[index] = {
+      ...parsed[index],
       dayStart: legacySchedule.dayStart,
       dayEnd: legacySchedule.dayEnd,
       breaks: legacySchedule.breaks.map((item) => ({ ...item })),
-    });
+    };
   }
 
-  return SHIFT_IDS.map((id) => byId.get(id)!);
+  return parsed;
 }
 
 export function clonePharmacyShifts(shifts: PharmacyShift[]): PharmacyShift[] {
@@ -192,6 +240,18 @@ export function getShiftDisplayName(
   const shift = shifts.find((item) => item.id === shiftId);
   if (!shift) return isArabic ? `شيفت ${shiftId}` : `Shift ${shiftId}`;
   return isArabic ? shift.labelAr || shift.label : shift.label;
+}
+
+/** e.g. "شيفت أ (08:00 - 16:00)" */
+export function getShiftDisplayNameWithHours(
+  shiftId: ShiftId,
+  shifts: PharmacyShift[],
+  isArabic: boolean,
+): string {
+  const name = getShiftDisplayName(shiftId, shifts, isArabic);
+  const shift = shifts.find((item) => item.id === shiftId);
+  if (!shift?.dayStart || !shift?.dayEnd) return name;
+  return `${name} (${shift.dayStart} - ${shift.dayEnd})`;
 }
 
 export function timeToMinutes(time: string): number {

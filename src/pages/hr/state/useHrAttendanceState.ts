@@ -3,14 +3,16 @@ import type { EmployeeRequest } from "../../../types";
 import { useAttendanceRecordsQuery } from "../../../queries/useAttendanceRecordsQuery";
 import {
   currentMonthValue,
+  currentYearValue,
   monthAnchorDate,
   monthBoundsFromDate,
 } from "../../../utils/hrFormatters";
-import type { AttendanceLogDraft, HrStaffRow } from "../types";
+import type { AttendanceLogDraft, AttendancePeriodView, HrStaffRow } from "../types";
 import type { HrSharedContext } from "./shared";
 import { useHrAttendanceActions } from "./useHrAttendanceActions";
 import {
   buildAttendanceHoursSummary,
+  buildAttendancePeriodSummaries,
   buildAttendanceTableRows,
   filterAttendanceEmployees,
 } from "../attendance/attendanceDerived";
@@ -52,7 +54,10 @@ export function useHrAttendanceState(params: AttendanceParams) {
     employeeRequests,
   } = params;
 
+  const [attendancePeriodView, setAttendancePeriodView] =
+    useState<AttendancePeriodView>("daily");
   const [attendanceMonth, setAttendanceMonth] = useState(currentMonthValue);
+  const [attendanceYear, setAttendanceYear] = useState(currentYearValue);
   const [attendanceEmployeeFilter, setAttendanceEmployeeFilter] = useState("");
   const [attendanceEmployeeSearch, setAttendanceEmployeeSearch] = useState("");
   const [attendanceBranchFilter, setAttendanceBranchFilter] = useState("all");
@@ -66,7 +71,9 @@ export function useHrAttendanceState(params: AttendanceParams) {
     isAttendanceFetching,
     attendanceError,
   } = useAttendanceRecordsQuery({
+    attendancePeriodView: attendanceEmployeeFilter ? "monthly" : attendancePeriodView,
     attendanceMonth,
+    attendanceYear,
     pharmacyId,
     showOrgHr,
     orgBranchIds,
@@ -142,15 +149,35 @@ export function useHrAttendanceState(params: AttendanceParams) {
     ],
   );
 
+  const attendancePeriodSummaries = useMemo(
+    () =>
+      buildAttendancePeriodSummaries({
+        employees: filteredAttendanceEmployees,
+        attendanceRecords,
+      }),
+    [filteredAttendanceEmployees, attendanceRecords],
+  );
+
   const showEmployeeColumn = !attendanceEmployeeFilter;
   const showBranchColumn = showOrgHr && showEmployeeColumn;
   const showAttendanceActions = canManage || canEditAttendanceLog;
   const attendanceTableColSpan =
     7 + (showEmployeeColumn ? 1 : 0) + (showBranchColumn ? 1 : 0) + (showAttendanceActions ? 1 : 0);
 
+  function changeAttendancePeriodView(next: AttendancePeriodView) {
+    setAttendancePeriodView(next);
+    setAttendanceEmployeeFilter("");
+    setAttendanceLogEdit(null);
+  }
+
   return {
+    attendancePeriodView,
+    setAttendancePeriodView,
+    changeAttendancePeriodView,
     attendanceMonth,
     setAttendanceMonth,
+    attendanceYear,
+    setAttendanceYear,
     attendanceEmployeeFilter,
     setAttendanceEmployeeFilter,
     attendanceEmployeeSearch,
@@ -164,6 +191,7 @@ export function useHrAttendanceState(params: AttendanceParams) {
     ...actions,
     filteredAttendanceEmployees,
     attendanceTableRows,
+    attendancePeriodSummaries,
     attendanceHoursSummary,
     showEmployeeColumn,
     showBranchColumn,

@@ -32,7 +32,8 @@ export type WorkBreak = {
   end: string;
 };
 
-export type ShiftId = "A" | "B" | "C";
+/** Stable shift key (e.g. A, B, C, or custom S1…). */
+export type ShiftId = string;
 
 export type PharmacyShift = {
   id: ShiftId;
@@ -44,6 +45,14 @@ export type PharmacyShift = {
   allowedLateMinutes: number;
 };
 
+export type EmployeeMilitaryStatus =
+  | "completed"
+  | "postponed"
+  | "exempt"
+  | "not_applicable"
+  | "not_served"
+  | "";
+
 export type Employee = {
   id: string;
   pharmacyId: string;
@@ -51,6 +60,10 @@ export type Employee = {
   photoBase64?: string;
   name: string;
   phone?: string;
+  address?: string;
+  militaryStatus?: EmployeeMilitaryStatus | string;
+  birthDate?: string;
+  birthPlace?: string;
   jobTitle?: string;
   salary: number;
   commissionRate: number;
@@ -149,6 +162,11 @@ export type PharmacySettings = {
   payrollWorkBreaks?: WorkBreak[];
   workShifts?: PharmacyShift[];
   defaultShiftId?: ShiftId;
+  /**
+   * Role keys available when assigning staff/login accounts.
+   * null/undefined = all available roles enabled.
+   */
+  enabledRoleKeys?: string[] | null;
   /** JS weekday numbers that are rest days (0=Sun … 6=Sat). */
   restWeekdays?: number[];
   createdAt?: string;
@@ -200,6 +218,9 @@ export type Invoice = {
   items: InvoiceItem[];
   paymentMethodLabel?: string;
   customerPhone?: string;
+  customerAddress?: string;
+  deliveryEmployeeId?: string;
+  deliveryEmployeeName?: string;
   status?: string;
   paid?: number;
   remaining?: number;
@@ -230,6 +251,20 @@ export type CrmCustomer = {
   gender?: "" | "male" | "female";
   segment: CustomerSegment;
   tags: string[];
+  notes?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type PharmacySupplier = {
+  id: number;
+  pharmacyId?: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  company?: string;
   notes?: string;
   isActive?: boolean;
   createdAt?: string;
@@ -268,6 +303,7 @@ export type CrmCustomerProfile = CrmCustomer & {
   creditInvoicesCount: number;
   paymentsCount: number;
   openFollowUps: number;
+  invoicesByPaymentMethod: Record<string, number>;
 };
 
 export type PharmacyCost = {
@@ -411,6 +447,7 @@ export type HeldInvoice = {
   holdNumber: string;
   customerName?: string;
   customerPhone?: string;
+  customerAddress?: string;
   cartItems: CartItem[];
   subtotal: number;
   discount: number;
@@ -588,6 +625,22 @@ export type PharmacyRoleConfig = {
   permissions: RolePermissionFlags;
   labelAr?: string;
   labelEn?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+/** Super-admin editable defaults seeded into every new pharmacy. */
+export type PlatformRoleDefault = {
+  id: string;
+  roleKey: string;
+  kind: "builtin" | "custom";
+  nameAr: string;
+  nameEn: string;
+  baseRole: BuiltinUserRole;
+  allowedPages: Page[];
+  permissions: RolePermissionFlags;
+  sortOrder: number;
+  isActive: boolean;
   createdAt?: string;
   updatedAt?: string;
 };

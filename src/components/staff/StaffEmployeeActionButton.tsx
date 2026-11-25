@@ -2,6 +2,7 @@ type StaffActionIcon =
   | "qr"
   | "permissions"
   | "transfer"
+  | "salary"
   | "edit"
   | "manage"
   | "view"
@@ -9,7 +10,7 @@ type StaffActionIcon =
   | "activate"
   | "delete";
 
-type StaffActionTone = "primary" | "edit" | "danger" | "delete" | "success";
+type StaffActionTone = "primary" | "edit" | "danger" | "delete" | "success" | "salary";
 
 type StaffEmployeeActionButtonProps = {
   icon: StaffActionIcon;
@@ -72,6 +73,27 @@ function ActionIcon({ icon }: { icon: StaffActionIcon }) {
             strokeLinecap="round"
             strokeLinejoin="round"
           />
+        </svg>
+      );
+    case "salary":
+      return (
+        <svg {...common}>
+          <rect
+            x="3.5"
+            y="6"
+            width="17"
+            height="12"
+            rx="2"
+            stroke="currentColor"
+            strokeWidth="1.75"
+          />
+          <path
+            d="M3.5 10h17"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+          />
+          <circle cx="12" cy="14" r="1.75" stroke="currentColor" strokeWidth="1.75" />
         </svg>
       );
     case "edit":

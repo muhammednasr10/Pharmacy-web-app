@@ -1,5 +1,6 @@
 import type { CrmCustomerProfile } from "../../types";
 import { getCustomerSegmentLabel } from "../../utils/crmLabels";
+import CustomerCrmListRow from "./CustomerCrmListRow";
 
 type CustomerCrmListProps = {
   isArabic: boolean;
@@ -12,7 +13,10 @@ type CustomerCrmListProps = {
   onClearFilters: () => void;
   onAddCustomer: () => void;
   onOpenProfile: (profile: CrmCustomerProfile) => void;
+  onEditCustomer: (profile: CrmCustomerProfile) => void;
+  onDeleteCustomer: (profile: CrmCustomerProfile) => void;
   onRegisterInferred: (profile: CrmCustomerProfile) => void;
+  getPaymentLabel: (method: string) => string;
 };
 
 export default function CustomerCrmList({
@@ -26,7 +30,10 @@ export default function CustomerCrmList({
   onClearFilters,
   onAddCustomer,
   onOpenProfile,
+  onEditCustomer,
+  onDeleteCustomer,
   onRegisterInferred,
+  getPaymentLabel,
 }: CustomerCrmListProps) {
   return (
     <div className="crmCustomersPanel">
@@ -61,70 +68,28 @@ export default function CustomerCrmList({
           <table>
             <thead>
               <tr>
-                <th>{isArabic ? "العميل" : "Customer"}</th>
-                <th>{isArabic ? "الهاتف" : "Phone"}</th>
-                <th>{isArabic ? "الشريحة" : "Segment"}</th>
-                <th>{isArabic ? "المبيعات" : "Sales"}</th>
-                <th>{isArabic ? "الطلبات" : "Orders"}</th>
-                <th>{isArabic ? "المتبقي" : "Debt"}</th>
-                <th>{isArabic ? "آخر شراء" : "Last purchase"}</th>
-                <th>{isArabic ? "الحالة" : "Status"}</th>
+                <th>{isArabic ? "اسم العميل" : "Customer name"}</th>
+                <th>{isArabic ? "العنوان" : "Address"}</th>
+                <th>{isArabic ? "رقم التليفون" : "Phone"}</th>
+                <th>{isArabic ? "قيمة الشراء" : "Purchase value"}</th>
+                <th>{isArabic ? "عدد الفواتير" : "Invoices"}</th>
+                <th>{isArabic ? "نوع العميل" : "Customer type"}</th>
                 <th>{isArabic ? "إجراءات" : "Actions"}</th>
               </tr>
             </thead>
             <tbody>
               {profiles.map((profile) => (
-                <tr key={`${profile.id}-${profile.name}`}>
-                  <td>
-                    <strong>{profile.name}</strong>
-                    {profile.source === "inferred" ? (
-                      <small className="crmInferredBadge">
-                        {isArabic ? "من الفواتير" : "From invoices"}
-                      </small>
-                    ) : null}
-                  </td>
-                  <td dir="ltr">{profile.phone || "—"}</td>
-                  <td>{getCustomerSegmentLabel(profile.segment, isArabic)}</td>
-                  <td>
-                    {profile.totalPurchases.toFixed(2)} {currency}
-                  </td>
-                  <td>{profile.purchaseCount}</td>
-                  <td>
-                    {profile.remainingDebt > 0 ? (
-                      <span className="badge danger">
-                        {profile.remainingDebt.toFixed(2)} {currency}
-                      </span>
-                    ) : (
-                      <span className="badge ok">0</span>
-                    )}
-                  </td>
-                  <td>{profile.lastPurchaseDate || "—"}</td>
-                  <td>
-                    {profile.openFollowUps > 0 ? (
-                      <span className="badge warn">
-                        {profile.openFollowUps} {isArabic ? "متابعة" : "follow-up"}
-                      </span>
-                    ) : (
-                      <span className="badge ok">{isArabic ? "نشط" : "Active"}</span>
-                    )}
-                  </td>
-                  <td>
-                    <div className="actionButtons">
-                      <button type="button" className="smallBtn" onClick={() => onOpenProfile(profile)}>
-                        {isArabic ? "الملف" : "Profile"}
-                      </button>
-                      {profile.source === "inferred" ? (
-                        <button
-                          type="button"
-                          className="printBtn"
-                          onClick={() => onRegisterInferred(profile)}
-                        >
-                          {isArabic ? "تسجيل" : "Register"}
-                        </button>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
+                <CustomerCrmListRow
+                  key={`${profile.id}-${profile.name}`}
+                  isArabic={isArabic}
+                  currency={currency}
+                  profile={profile}
+                  onOpenProfile={onOpenProfile}
+                  onEditCustomer={onEditCustomer}
+                  onDeleteCustomer={onDeleteCustomer}
+                  onRegisterInferred={onRegisterInferred}
+                  getPaymentLabel={getPaymentLabel}
+                />
               ))}
             </tbody>
           </table>

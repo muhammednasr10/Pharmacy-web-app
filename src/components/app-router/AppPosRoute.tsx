@@ -1,5 +1,6 @@
 import { PosPage } from "../../pages/lazyPages";
 import { filterMedicinesForPharmacy } from "../../utils/medicineLookup";
+import { resolveStaffPageEnabled } from "../../utils/resolveStaffPageEnabled";
 import type { AppPageRouterProps } from "./types";
 
 export type AppPosRouteProps = Pick<
@@ -22,6 +23,9 @@ export type AppPosRouteProps = Pick<
   | "paymentMethod"
   | "customerName"
   | "customerPhone"
+  | "customerAddress"
+  | "deliveryEmployeeId"
+  | "deliveryEmployeeName"
   | "isSelling"
   | "isSubscriptionExpired"
   | "addToCart"
@@ -34,6 +38,10 @@ export type AppPosRouteProps = Pick<
   | "setPaymentMethod"
   | "setCustomerName"
   | "setCustomerPhone"
+  | "setCustomerAddress"
+  | "setDeliveryEmployeeId"
+  | "setDeliveryEmployeeName"
+  | "setDeliveryAssignmentAvailable"
   | "completeSale"
   | "getPaymentLabel"
   | "heldInvoices"
@@ -82,6 +90,9 @@ export default function AppPosRoute({
   paymentMethod,
   customerName,
   customerPhone,
+  customerAddress,
+  deliveryEmployeeId,
+  deliveryEmployeeName,
   isSelling,
   isSubscriptionExpired,
   addToCart,
@@ -94,6 +105,10 @@ export default function AppPosRoute({
   setPaymentMethod,
   setCustomerName,
   setCustomerPhone,
+  setCustomerAddress,
+  setDeliveryEmployeeId,
+  setDeliveryEmployeeName,
+  setDeliveryAssignmentAvailable,
   completeSale,
   getPaymentLabel,
   heldInvoices,
@@ -142,6 +157,9 @@ export default function AppPosRoute({
       paymentMethod={paymentMethod}
       customerName={customerName}
       customerPhone={customerPhone}
+      customerAddress={customerAddress}
+      deliveryEmployeeId={deliveryEmployeeId}
+      deliveryEmployeeName={deliveryEmployeeName}
       isSelling={isSelling}
       isSubscriptionExpired={isSubscriptionExpired}
       subscriptionBlocksSale={subscriptionBlocksWrite}
@@ -156,6 +174,13 @@ export default function AppPosRoute({
       onPaymentMethodChange={(value) => setPaymentMethod(value)}
       onCustomerNameChange={setCustomerName}
       onCustomerPhoneChange={setCustomerPhone}
+      onCustomerAddressChange={setCustomerAddress}
+      onDeliveryEmployeeChange={(employee) => {
+        setDeliveryEmployeeId(employee?.id || "");
+        setDeliveryEmployeeName(employee?.name || "");
+      }}
+      staffPageEnabled={resolveStaffPageEnabled(pharmacySettings)}
+      onDeliveryAssignmentAvailableChange={setDeliveryAssignmentAvailable}
       onCompleteSale={completeSale}
       getPaymentLabel={getPaymentLabel}
       heldInvoicesCount={heldInvoices.length}

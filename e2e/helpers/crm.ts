@@ -1,107 +1,13 @@
-import { expect, type Page } from "@playwright/test";
-import { acceptNextDialog } from "./app";
-
-export type CrmCustomerInput = {
-  name: string;
-  phone?: string;
-  email?: string;
-};
-
-export type CrmFollowUpInput = {
-  title: string;
-  details: string;
-  dueDate?: string;
-};
-
-export async function openCustomersTab(page: Page) {
-  await page.getByRole("tab", { name: /العملاء|Customers/ }).click();
-  await expect(page.locator(".crmCustomersPanel")).toBeVisible({ timeout: 15_000 });
-}
-
-export async function createCrmCustomer(page: Page, input: CrmCustomerInput) {
-  await page.getByRole("button", { name: /\+ إضافة عميل|\+ Add customer/ }).click();
-  await expect(page.locator(".crmFormModal")).toBeVisible();
-
-  const modal = page.locator(".crmFormModal");
-  await modal
-    .locator(".saasField")
-    .filter({ has: page.locator("span", { hasText: /^الاسم$|^Name$/ }) })
-    .locator("input")
-    .fill(input.name);
-
-  if (input.phone) {
-    await modal
-      .locator(".saasField")
-      .filter({ has: page.locator("span", { hasText: /^الهاتف$|^Phone$/ }) })
-      .locator('input[dir="ltr"]')
-      .fill(input.phone);
-  }
-
-  if (input.email) {
-    await modal
-      .locator(".saasField")
-      .filter({ has: page.locator("span", { hasText: /^البريد$|^Email$/ }) })
-      .locator('input[dir="ltr"]')
-      .fill(input.email);
-  }
-
-  // Avoid empty date fields being posted as "".
-  for (const dateInput of await modal.locator('input[type="date"]').all()) {
-    const value = await dateInput.inputValue();
-    if (!value) {
-      await dateInput.fill("1990-01-01");
-    }
-  }
-
-  const dialogPromise = acceptNextDialog(page);
-  await modal.getByRole("button", { name: /^حفظ$|^Save$/ }).click();
-  const message = await dialogPromise;
-
-  expect(message).toMatch(/تم حفظ بيانات العميل|Customer saved/);
-  await expect(modal).toBeHidden({ timeout: 15_000 });
-  await expect(page.getByText(input.name, { exact: true }).first()).toBeVisible({
-    timeout: 15_000,
-  });
-}
-
-export async function openCustomerProfile(page: Page, customerName: string) {
-  const search = page.getByPlaceholder(/بحث بالاسم أو الهاتف|Search name or phone/);
-  await search.fill(customerName);
-  await expect(page.getByText(customerName, { exact: true }).first()).toBeVisible({
-    timeout: 15_000,
-  });
-
-  const row = page.locator("tr", { hasText: customerName }).first();
-  await row.getByRole("button", { name: /^الملف$|^Profile$/ }).click();
-  await expect(page.locator(".crmDetailModal")).toBeVisible({ timeout: 15_000 });
-}
-
-export async function addCustomerFollowUp(page: Page, input: CrmFollowUpInput) {
-  const modal = page.locator(".crmDetailModal");
-  const activityForm = modal.locator(".crmActivityForm");
-
-  await activityForm.locator("select").selectOption("follow_up");
-  await activityForm.getByPlaceholder(/العنوان|Title/).fill(input.title);
-
-  const dueDate = input.dueDate ?? "2027-06-15";
-  await activityForm.locator('input[type="date"]').fill(dueDate);
-  await activityForm.getByPlaceholder(/التفاصيل|Details/).fill(input.details);
-
-  await activityForm.getByRole("button", { name: /حفظ النشاط|Save activity/ }).click();
-
-  await expect(modal.locator(".crmTimelineItem", { hasText: input.title })).toBeVisible({
-    timeout: 15_000,
-  });
-}
-
-export async function openFollowUpsTab(page: Page) {
-  await page.getByRole("tab", { name: /المتابعات|Follow-ups/ }).click();
-  await expect(page.locator(".crmFollowUpsPanel")).toBeVisible({ timeout: 15_000 });
-}
-
-export async function expectFollowUpInTab(page: Page, customerName: string, title: string) {
-  await expect(page.locator(".crmFollowUpCard", { hasText: customerName })).toBeVisible({
-    timeout: 15_000,
-  });
-  await expect(page.locator(".crmFollowUpCard", { hasText: title })).toBeVisible();
-}
+/** CRM E2E helpers — barrel re-exports for stable import paths. */
+export type { CrmCustomerInput } from "./crm/customers";
+export {
+  createCrmCustomer,
+  openCustomerProfile,
+  openCustomersTab,
+} from "./crm/customers";
+export type { CrmFollowUpInput } from "./crm/followUps";
+export {
+  addCustomerFollowUp,
+  expectFollowUpInTab,
+  openFollowUpsTab,
+} from "./crm/followUps";

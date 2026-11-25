@@ -3,9 +3,10 @@ export { ensurePosReady } from "./pos/ready";
 export { addBarcodeToCart, restockBarcode } from "./pos/cart";
 export {
   completePosSale,
-  fillPosCustomerDetails,
   holdCurrentCart,
   resumeFirstHeldInvoice,
   selectPosPaymentMethod,
 } from "./pos/checkout";
+export { fillPosCustomerDetails } from "./pos/customerDetails";
+export { selectPosDeliveryEmployee } from "./pos/deliveryEmployee";
 export { requestPurchaseFromSmartSearch } from "./pos/purchaseRequest";

@@ -119,7 +119,10 @@ export default function InventoryStockPanel({
   const [showCatalogImportModal, setShowCatalogImportModal] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [stockFilter, setStockFilter] = useState<StockCatalogFilter>(stockStatusFilter);
+  const [stockFilter, setStockFilter] = useState<StockCatalogFilter>(
+    stockStatusFilter === "in_stock" ? "all" : stockStatusFilter,
+  );
+  const [inStockOnly, setInStockOnly] = useState(stockStatusFilter === "in_stock");
   const [buyPriceUnlocked, setBuyPriceUnlocked] = useState(false);
   const [showBuyPriceUnlockModal, setShowBuyPriceUnlockModal] = useState(false);
 
@@ -130,7 +133,12 @@ export default function InventoryStockPanel({
 
   useEffect(() => {
     if (!stockFilterFocusKey) return;
-    setStockFilter(stockStatusFilter);
+    if (stockStatusFilter === "in_stock") {
+      setInStockOnly(true);
+      setStockFilter("all");
+    } else {
+      setStockFilter(stockStatusFilter);
+    }
     setSearch("");
   }, [stockFilterFocusKey, stockStatusFilter]);
 
@@ -168,6 +176,7 @@ export default function InventoryStockPanel({
     isArabic,
     search: debouncedSearch,
     stockFilter,
+    inStockOnly,
     lowStockThreshold,
     expiringSoonDays,
     refreshKey,
@@ -238,6 +247,8 @@ export default function InventoryStockPanel({
         onSearchChange={setSearch}
         stockFilter={stockFilter}
         onStockFilterChange={setStockFilter}
+        inStockOnly={inStockOnly}
+        onInStockOnlyChange={setInStockOnly}
         branchesCount={branches.length}
         canTransferStock={canTransferStock}
         transferUpgradeNotice={transferUpgradeNotice}
@@ -336,6 +347,7 @@ export default function InventoryStockPanel({
                         : total > 0 ||
                           Boolean(debouncedSearch.trim()) ||
                           stockFilter !== "all" ||
+                          inStockOnly ||
                           branchMedicines.length > 0,
                     },
                   )

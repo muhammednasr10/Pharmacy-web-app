@@ -54,6 +54,7 @@ export {
   upsertPayrollRecord,
   updatePayrollRecord,
   generatePayroll,
+  generateSingleEmployeePayroll,
   resolvePayrollSalesCommission,
   syncCashierPayrollCommissionAfterSale,
 } from "./payrollRecordService";

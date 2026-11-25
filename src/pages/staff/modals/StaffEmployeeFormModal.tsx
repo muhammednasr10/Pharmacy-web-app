@@ -8,6 +8,7 @@ import {
   type ShiftId,
 } from "../../../utils/workSchedule";
 import { LazyWorkScheduleEditor } from "../lazyStaffModules";
+import { EMPLOYEE_MILITARY_STATUS_OPTIONS } from "../types";
 import type { EmployeesUsersPageState } from "../useEmployeesUsersPageState";
 
 type Props = { state: EmployeesUsersPageState };
@@ -139,6 +140,47 @@ export default function StaffEmployeeFormModal({ state }: Props) {
               value={employeeForm.phone}
               onChange={(e) => setEmployeeForm({ ...employeeForm, phone: e.target.value })}
             />
+          </label>
+          <label style={{ gridColumn: "1 / -1" }}>
+            {isArabic ? "العنوان" : "Address"}
+            <input
+              className="searchInput"
+              value={employeeForm.address}
+              onChange={(e) => setEmployeeForm({ ...employeeForm, address: e.target.value })}
+            />
+          </label>
+          <label>
+            {isArabic ? "تاريخ الميلاد" : "Date of birth"}
+            <input
+              type="date"
+              className="searchInput"
+              value={employeeForm.birthDate}
+              onChange={(e) => setEmployeeForm({ ...employeeForm, birthDate: e.target.value })}
+            />
+          </label>
+          <label>
+            {isArabic ? "محل الميلاد" : "Place of birth"}
+            <input
+              className="searchInput"
+              value={employeeForm.birthPlace}
+              onChange={(e) => setEmployeeForm({ ...employeeForm, birthPlace: e.target.value })}
+            />
+          </label>
+          <label>
+            {isArabic ? "حالة الجيش" : "Military status"}
+            <select
+              className="searchInput"
+              value={employeeForm.militaryStatus}
+              onChange={(e) =>
+                setEmployeeForm({ ...employeeForm, militaryStatus: e.target.value })
+              }
+            >
+              {EMPLOYEE_MILITARY_STATUS_OPTIONS.map((option) => (
+                <option key={option.value || "empty"} value={option.value}>
+                  {isArabic ? option.ar : option.en}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             {isArabic ? "تاريخ التعيين" : "Hire date"}

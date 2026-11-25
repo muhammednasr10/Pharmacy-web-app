@@ -44,6 +44,7 @@ type StaffEmployeeAssignmentParams = Pick<
   | "loadAll"
   | "syncSavedCatalogAccount"
   | "branchCustomRoles"
+  | "enabledRoleKeys"
 >;
 
 export function useStaffEmployeeAssignment({
@@ -63,20 +64,26 @@ export function useStaffEmployeeAssignment({
   loadAll,
   syncSavedCatalogAccount,
   branchCustomRoles,
+  enabledRoleKeys = null,
 }: StaffEmployeeAssignmentParams) {
   function employeeRoleOptionsFor(
     targetPharmacyId: string,
     excludeEmployeeId?: string,
     currentRole?: string,
   ): string[] {
-    return buildPharmacyRoleSelectOptions({
+    const options = buildPharmacyRoleSelectOptions({
       pharmacyId: targetPharmacyId,
       customRoles,
       appUser,
+      enabledRoleKeys,
       generalManagerScope,
       employeeId: excludeEmployeeId,
       currentRole,
     });
+    if (currentRole && !options.includes(currentRole)) {
+      return [...options, currentRole];
+    }
+    return options;
   }
 
   async function assignEmployeeRole(employee: Employee, roleKey: string) {

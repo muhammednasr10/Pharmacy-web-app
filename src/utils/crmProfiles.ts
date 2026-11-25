@@ -60,6 +60,7 @@ function defaultCrmCustomer(partial: {
     creditInvoicesCount: 0,
     paymentsCount: 0,
     openFollowUps: 0,
+    invoicesByPaymentMethod: {},
   };
 }
 
@@ -160,6 +161,11 @@ export function buildCrmCustomerProfiles(input: {
     const totalPurchases =
       relatedInvoices.reduce((sum, invoice) => sum + safeNumber(invoice.total), 0) ||
       profile.totalPurchases;
+    const invoicesByPaymentMethod = relatedInvoices.reduce<Record<string, number>>((acc, invoice) => {
+      const method = String(invoice.paymentMethod || "cash").trim() || "cash";
+      acc[method] = (acc[method] || 0) + 1;
+      return acc;
+    }, {});
     return {
       ...profile,
       purchaseCount,
@@ -169,6 +175,7 @@ export function buildCrmCustomerProfiles(input: {
       openFollowUps: relatedActivities.filter(
         (activity) => activity.status === "open" && activity.activityType === "follow_up",
       ).length,
+      invoicesByPaymentMethod,
       lastPurchaseDate:
         profile.lastPurchaseDate ||
         relatedInvoices[0]?.date ||

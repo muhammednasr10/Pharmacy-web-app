@@ -47,6 +47,10 @@ export type RoleFormState = {
   nameEn: string;
   baseRole: UserRole;
   pharmacyId: string;
+  allowedPages: import("../../types").Page[];
+  permissions: import("../../utils/rolePermissions").RolePermissionFlags;
+  /** When true, save writes platform defaults (SaaS Roles tab). */
+  asPlatformDefault?: boolean;
 };
 
 export const emptyRoleForm: RoleFormState = {
@@ -57,6 +61,9 @@ export const emptyRoleForm: RoleFormState = {
   nameEn: "",
   baseRole: "cashier",
   pharmacyId: "",
+  allowedPages: [],
+  permissions: {},
+  asPlatformDefault: true,
 };
 
 export type ProgramRoleRow = {
@@ -68,6 +75,10 @@ export type ProgramRoleRow = {
   isPending: boolean;
   pharmacyId?: string;
   pharmacyName?: string;
+  allowedPages?: import("../../types").Page[];
+  permissions?: import("../../utils/rolePermissions").RolePermissionFlags;
+  summary?: string;
+  summaryTitle?: string;
 };
 
 export type ManageUnifiedRoleRow = {

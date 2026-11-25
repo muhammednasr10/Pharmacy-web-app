@@ -8,6 +8,7 @@ export default function CustomersPaymentsTab({ state }: Props) {
     isArabic,
     t,
     activeTab,
+    creditSubTab,
     filteredCustomerPayments,
     paymentSearch,
     setPaymentSearch,
@@ -17,7 +18,7 @@ export default function CustomersPaymentsTab({ state }: Props) {
     deleteCustomerPayment,
   } = state;
 
-  if (activeTab !== "payments") return null;
+  if (activeTab !== "credit" || creditSubTab !== "payments") return null;
 
   return (
     <>

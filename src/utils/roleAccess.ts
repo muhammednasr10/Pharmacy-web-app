@@ -1,6 +1,7 @@
 import type { BuiltinUserRole, Page } from "../types";
 import { getPharmacyCustomRoleByKey } from "../services/pharmacy/customRoleCache";
 import { getPharmacyRoleConfig } from "../services/pharmacy/roleConfigCache";
+import { getPlatformRoleDefault } from "../services/pharmacy/platformRoleDefaultsCache";
 import {
   defaultPagesForBuiltinRole,
   defaultPermissionsByRole,
@@ -71,6 +72,19 @@ export function getEffectiveRoleAccess(
         isCustomized: true,
       });
     }
+    const platformCustom = getPlatformRoleDefault(role);
+    if (platformCustom) {
+      return finishRoleAccess(roleKey, {
+        allowedPages: platformCustom.allowedPages?.length
+          ? platformCustom.allowedPages
+          : defaultPagesForBuiltinRole(platformCustom.baseRole),
+        permissions: normalizeRolePermissionFlags(
+          platformCustom.baseRole,
+          platformCustom.permissions || {},
+        ),
+        isCustomized: false,
+      });
+    }
     return finishRoleAccess(roleKey, {
       allowedPages: defaultPagesForBuiltinRole("cashier"),
       permissions: { ...defaultPermissionsByRole.cashier },
@@ -88,6 +102,16 @@ export function getEffectiveRoleAccess(
             : defaultPagesForBuiltinRole(role),
         permissions: normalizeRolePermissionFlags(role, config.permissions),
         isCustomized: true,
+      });
+    }
+    const platformBuiltin = getPlatformRoleDefault(role);
+    if (platformBuiltin) {
+      return finishRoleAccess(roleKey, {
+        allowedPages: platformBuiltin.allowedPages?.length
+          ? platformBuiltin.allowedPages
+          : defaultPagesForBuiltinRole(role),
+        permissions: normalizeRolePermissionFlags(role, platformBuiltin.permissions),
+        isCustomized: false,
       });
     }
     return finishRoleAccess(roleKey, {

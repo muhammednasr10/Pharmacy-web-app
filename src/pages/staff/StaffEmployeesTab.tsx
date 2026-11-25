@@ -1,7 +1,6 @@
 import { EmployeePhotoThumb } from "../../components/staff/EmployeePhotoThumb";
 import StaffEmployeeActionButton from "../../components/staff/StaffEmployeeActionButton";
-import BranchScopeSelect from "../../components/BranchScopeSelect";
-import { getShiftDisplayName, type ShiftId } from "../../utils/workSchedule";
+import { formatEmployeeShiftLabel } from "./employeeDisplay";
 import { formatDate } from "./helpers";
 import type { EmployeesUsersPageState } from "./useEmployeesUsersPageState";
 
@@ -33,6 +32,8 @@ export default function StaffEmployeesTab({ state }: Props) {
     openPermissionEditorForEmployee,
     openTransferEmployeeModal,
     openEditEmployee,
+    openEmployeeSalaryModal,
+    openEmployeeProfileModal,
     toggleEmployeeActive,
     deleteEmployeeRecord,
     setAttendanceBadgeEmployee,
@@ -42,20 +43,35 @@ export default function StaffEmployeesTab({ state }: Props) {
 
   return (
     <div className="settingsTabPanel">
-      {canFilterEmployeesByBranch && (
-        <div className="filtersBar staffBranchFilterBar">
-          <BranchScopeSelect
-            pharmacies={branchDirectory}
-            value={employeeBranchFilter}
-            onChange={setEmployeeBranchFilter}
-            isArabic={isArabic}
-            includeAllOption={{
-              value: "all",
-              label: isArabic ? "كل الفروع" : "All branches",
-            }}
-          />
+      {canFilterEmployeesByBranch && branchDirectory.length > 1 ? (
+        <div
+          className="staffBranchFilterChips"
+          role="group"
+          aria-label={isArabic ? "تصفية حسب الفرع" : "Filter by branch"}
+        >
+          <button
+            type="button"
+            className={`staffBranchFilterChip${employeeBranchFilter === "all" ? " active" : ""}`}
+            onClick={() => setEmployeeBranchFilter("all")}
+          >
+            {isArabic ? "الكل" : "All"}
+          </button>
+          {branchDirectory.map((branch) => {
+            const label = branchLabel(branch.id);
+            return (
+              <button
+                key={branch.id}
+                type="button"
+                className={`staffBranchFilterChip${employeeBranchFilter === branch.id ? " active" : ""}`}
+                onClick={() => setEmployeeBranchFilter(branch.id)}
+                title={label}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
-      )}
+      ) : null}
       {filteredEmployees.length === 0 ? (
         <p className="empty">{isArabic ? "لا يوجد موظفون" : "No employees"}</p>
       ) : (
@@ -64,10 +80,9 @@ export default function StaffEmployeesTab({ state }: Props) {
             <thead>
               <tr>
                 {showEmployeesBranchColumn && <th>{isArabic ? "الفرع" : "Branch"}</th>}
-                <th>{isArabic ? "كود الموظف" : "Code"}</th>
                 <th className="col-photo">{isArabic ? "الصورة" : "Photo"}</th>
+                <th>{isArabic ? "كود الموظف" : "Code"}</th>
                 <th>{isArabic ? "الاسم" : "Name"}</th>
-                <th>{isArabic ? "الهاتف" : "Phone"}</th>
                 <th>{isArabic ? "الدور" : "Role"}</th>
                 <th>{isArabic ? "الشيفت" : "Shift"}</th>
                 <th>{isArabic ? "التعيين" : "Hire date"}</th>
@@ -84,25 +99,30 @@ export default function StaffEmployeesTab({ state }: Props) {
               {filteredEmployees.map((emp) => (
                 <tr key={emp.id}>
                   {showEmployeesBranchColumn && <td>{branchLabel(emp.pharmacyId)}</td>}
-                  <td dir="ltr">
-                    <code>{emp.employeeCode || "—"}</code>
-                  </td>
                   <td className="col-photo">
                     <EmployeePhotoThumb photoBase64={emp.photoBase64} name={emp.name} />
                   </td>
-                  <td>{emp.name}</td>
-                  <td>{emp.phone || "—"}</td>
+                  <td dir="ltr">
+                    <code>{emp.employeeCode || "—"}</code>
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="staffEmployeeNameLink"
+                      onClick={() => openEmployeeProfileModal(emp)}
+                      title={isArabic ? "عرض البيانات الشخصية" : "View personal details"}
+                    >
+                      {emp.name}
+                    </button>
+                  </td>
                   <td>{renderEmployeeRoleCell(emp)}</td>
                   <td>
-                    {emp.useCustomWorkSchedule
-                      ? isArabic
-                        ? "مخصص"
-                        : "Custom"
-                      : getShiftDisplayName(
-                          (emp.assignedShiftId as ShiftId) || pharmacyDefaultShiftId,
-                          pharmacyShifts,
-                          isArabic,
-                        )}
+                    {formatEmployeeShiftLabel(
+                      emp,
+                      pharmacyShifts,
+                      pharmacyDefaultShiftId,
+                      isArabic,
+                    )}
                   </td>
                   <td>{formatDate(emp.hireDate, isArabic)}</td>
                   <td>
@@ -159,6 +179,12 @@ export default function StaffEmployeesTab({ state }: Props) {
                             onClick={() => openTransferEmployeeModal(emp)}
                           />
                         )}
+                        <StaffEmployeeActionButton
+                          icon="salary"
+                          tone="salary"
+                          label={isArabic ? "المرتب" : "Salary"}
+                          onClick={() => openEmployeeSalaryModal(emp)}
+                        />
                         <StaffEmployeeActionButton
                           icon="edit"
                           tone="edit"

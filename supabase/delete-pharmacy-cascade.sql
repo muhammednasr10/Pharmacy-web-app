@@ -103,6 +103,7 @@ begin
   perform public.safe_delete_pharmacy_rows('login_account_requests', p_pharmacy_id);
   perform public.safe_delete_pharmacy_rows('pharmacy_login_accounts', p_pharmacy_id);
   perform public.safe_delete_pharmacy_rows('customers', p_pharmacy_id);
+  perform public.safe_delete_pharmacy_rows('pharmacy_suppliers', p_pharmacy_id);
   perform public.safe_delete_pharmacy_rows('pharmacy_custom_roles', p_pharmacy_id);
   perform public.safe_delete_pharmacy_rows('pharmacy_role_configs', p_pharmacy_id);
   perform public.safe_delete_pharmacy_rows('warehouses', p_pharmacy_id);

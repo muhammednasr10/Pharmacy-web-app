@@ -100,6 +100,12 @@ export async function createPharmacy(data: CreatePharmacyInput) {
       p_max_users: maxUsers,
     });
     if (!rpcError) {
+      try {
+        const { seedPlatformRoleDefaultsToPharmacy } = await import("./platformRoleDefaultsService");
+        await seedPlatformRoleDefaultsToPharmacy(data.id);
+      } catch (seedError) {
+        console.error("[createPharmacy] role defaults seed failed", seedError);
+      }
       return;
     }
 
@@ -145,6 +151,13 @@ export async function createPharmacy(data: CreatePharmacyInput) {
   const { error } = await supabase.from("pharmacies").insert([payload]);
   if (error) {
     throw new Error(error.message);
+  }
+
+  try {
+    const { seedPlatformRoleDefaultsToPharmacy } = await import("./platformRoleDefaultsService");
+    await seedPlatformRoleDefaultsToPharmacy(data.id);
+  } catch (seedError) {
+    console.error("[createPharmacy] role defaults seed failed", seedError);
   }
 }
 

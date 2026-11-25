@@ -7,6 +7,7 @@ export default function CustomersFollowUpsTab({ state }: Props) {
   const {
     isArabic,
     activeTab,
+    pharmacySubTab,
     crmProfiles,
     customerActivities,
     followUpStatusFilter,
@@ -15,7 +16,7 @@ export default function CustomersFollowUpsTab({ state }: Props) {
     updateActivityStatus,
   } = state;
 
-  if (activeTab !== "followups") return null;
+  if (activeTab !== "pharmacy" || pharmacySubTab !== "followups") return null;
 
   return (
     <CustomerCrmFollowUpsPanel

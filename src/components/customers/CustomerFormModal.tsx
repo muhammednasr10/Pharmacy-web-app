@@ -78,18 +78,27 @@ export default function CustomerFormModal({
         <div className="medicineForm purchaseModalForm">
           <div className="formGrid">
             <label className="saasField">
-              <span>{isArabic ? "الاسم" : "Name"}</span>
+              <span>{isArabic ? "رقم التليفون" : "Phone"}</span>
+              <input
+                dir="ltr"
+                type="tel"
+                inputMode="tel"
+                value={form.phone || ""}
+                onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
+              />
+            </label>
+            <label className="saasField">
+              <span>{isArabic ? "اسم العميل" : "Customer name"}</span>
               <input
                 value={form.name}
                 onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
               />
             </label>
-            <label className="saasField">
-              <span>{isArabic ? "الهاتف" : "Phone"}</span>
+            <label className="saasField fullWidth">
+              <span>{isArabic ? "العنوان" : "Address"}</span>
               <input
-                dir="ltr"
-                value={form.phone || ""}
-                onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
+                value={form.address || ""}
+                onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
               />
             </label>
             <label className="saasField">
@@ -101,7 +110,7 @@ export default function CustomerFormModal({
               />
             </label>
             <label className="saasField">
-              <span>{isArabic ? "الشريحة" : "Segment"}</span>
+              <span>{isArabic ? "نوع العميل" : "Customer type"}</span>
               <select
                 value={form.segment}
                 onChange={(e) =>
@@ -138,13 +147,6 @@ export default function CustomerFormModal({
                 <option value="male">{isArabic ? "ذكر" : "Male"}</option>
                 <option value="female">{isArabic ? "أنثى" : "Female"}</option>
               </select>
-            </label>
-            <label className="saasField fullWidth">
-              <span>{isArabic ? "العنوان" : "Address"}</span>
-              <input
-                value={form.address || ""}
-                onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
-              />
             </label>
             <label className="saasField fullWidth">
               <span>{isArabic ? "وسوم (مفصولة بفاصلة)" : "Tags (comma-separated)"}</span>

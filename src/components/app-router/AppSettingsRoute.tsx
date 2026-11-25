@@ -30,10 +30,6 @@ export type AppSettingsRouteProps = Pick<
   | "handleLogoUpload"
   | "savePharmacySettings"
   | "exportBackupCSV"
-  | "handleRequestExpiryNotificationPermission"
-  | "handleSendExpiryNotifyNow"
-  | "handleOpenExpiryWhatsappDigest"
-  | "handleOpenExpiryEmailDigest"
   | "themeMode"
   | "fontScale"
   | "resolvedTheme"
@@ -66,10 +62,6 @@ export default function AppSettingsRoute({
   handleLogoUpload,
   savePharmacySettings,
   exportBackupCSV,
-  handleRequestExpiryNotificationPermission,
-  handleSendExpiryNotifyNow,
-  handleOpenExpiryWhatsappDigest,
-  handleOpenExpiryEmailDigest,
   themeMode,
   fontScale,
   resolvedTheme,
@@ -110,10 +102,6 @@ export default function AppSettingsRoute({
       handleLogoUpload={handleLogoUpload}
       savePharmacySettings={savePharmacySettings}
       exportBackupCSV={exportBackupCSV}
-      onRequestExpiryNotificationPermission={handleRequestExpiryNotificationPermission}
-      onSendExpiryNotifyNow={handleSendExpiryNotifyNow}
-      onOpenExpiryWhatsappDigest={handleOpenExpiryWhatsappDigest}
-      onOpenExpiryEmailDigest={handleOpenExpiryEmailDigest}
       themeMode={themeMode}
       fontScale={fontScale}
       resolvedTheme={resolvedTheme}

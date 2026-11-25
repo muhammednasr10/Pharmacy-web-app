@@ -2,12 +2,25 @@ import { useMemo } from "react";
 import { EmployeePhotoThumb } from "../../../components/staff/EmployeePhotoThumb";
 import { formatTime } from "../../../utils/hrFormatters";
 import { getEmployeeJobRoleLabel } from "../../../utils/roles";
-import { getShiftDisplayName } from "../../../utils/workSchedule";
+import { getShiftDisplayNameWithHours } from "../../../utils/workSchedule";
 import type { HrPageState } from "../useHrPageState";
 import { resolveAttendanceCardStatus } from "./attendanceCardStatus";
 import { filterEmployeesBySearch } from "./attendanceDerived";
 
 type Props = { state: HrPageState };
+
+function formatAttendanceShiftLabel(
+  emp: HrPageState["filteredAttendanceEmployees"][number],
+  workShifts: HrPageState["payrollConfig"]["workShifts"],
+  isArabic: boolean,
+) {
+  if (emp.useCustomWorkSchedule) {
+    const start = emp.workDayStart || "—";
+    const end = emp.workDayEnd || "—";
+    return isArabic ? `مخصص (${start} - ${end})` : `Custom (${start} - ${end})`;
+  }
+  return getShiftDisplayNameWithHours(emp.assignedShiftId, workShifts, isArabic);
+}
 
 export default function HrAttendanceTodayTable({ state }: Props) {
   const {
@@ -75,14 +88,14 @@ export default function HrAttendanceTodayTable({ state }: Props) {
         <table className="hrAttendanceTable hrAttendanceTodayTable">
           <thead>
             <tr>
-              <th>{isArabic ? "الموظف" : "Employee"}</th>
-              <th>{isArabic ? "الكود" : "Code"}</th>
-              {showOrgHr ? <th>{isArabic ? "الفرع" : "Branch"}</th> : null}
-              <th>{isArabic ? "الشيفت" : "Shift"}</th>
-              <th>{isArabic ? "الحالة" : "Status"}</th>
-              <th>{isArabic ? "حضور" : "Check in"}</th>
-              <th>{isArabic ? "انصراف" : "Check out"}</th>
-              <th>{isArabic ? "إجراءات" : "Actions"}</th>
+              <th className="col-code">{isArabic ? "الكود" : "Code"}</th>
+              <th className="col-employee">{isArabic ? "الموظف" : "Employee"}</th>
+              {showOrgHr ? <th className="col-branch">{isArabic ? "الفرع" : "Branch"}</th> : null}
+              <th className="col-shift">{isArabic ? "الشيفت" : "Shift"}</th>
+              <th className="col-status">{isArabic ? "الحالة" : "Status"}</th>
+              <th className="col-time">{isArabic ? "حضور" : "Check in"}</th>
+              <th className="col-time">{isArabic ? "انصراف" : "Check out"}</th>
+              <th className="col-actions">{isArabic ? "إجراءات" : "Actions"}</th>
             </tr>
           </thead>
           <tbody>
@@ -107,11 +120,11 @@ export default function HrAttendanceTodayTable({ state }: Props) {
                 const canManageThis = canManageHrFor(emp.pharmacyId);
                 const inBusy = busyAction === `in-${emp.attendanceKey}`;
                 const outBusy = busyAction === `out-${emp.attendanceKey}`;
-                const shiftLabel = emp.useCustomWorkSchedule
-                  ? isArabic
-                    ? "جدول مخصص"
-                    : "Custom schedule"
-                  : getShiftDisplayName(emp.assignedShiftId, payrollConfig.workShifts, isArabic);
+                const shiftLabel = formatAttendanceShiftLabel(
+                  emp,
+                  payrollConfig.workShifts,
+                  isArabic,
+                );
                 const roleLabel = emp.jobTitle
                   ? getEmployeeJobRoleLabel(emp.jobTitle, isArabic)
                   : "";
@@ -120,7 +133,10 @@ export default function HrAttendanceTodayTable({ state }: Props) {
 
                 return (
                   <tr key={emp.employeeId} className={`hrAttendanceTodayRow is-${status.tone}`}>
-                    <td>
+                    <td className="col-code" dir="ltr">
+                      <code>{emp.employeeCode || "—"}</code>
+                    </td>
+                    <td className="col-employee">
                       <div className="hrAttendanceTodayEmployee">
                         <EmployeePhotoThumb
                           photoBase64={emp.photoBase64}
@@ -133,22 +149,19 @@ export default function HrAttendanceTodayTable({ state }: Props) {
                         </div>
                       </div>
                     </td>
-                    <td dir="ltr">
-                      <code>{emp.employeeCode || "—"}</code>
-                    </td>
-                    {showOrgHr ? <td>{branchLabel || "—"}</td> : null}
-                    <td>{shiftLabel}</td>
-                    <td>
+                    {showOrgHr ? <td className="col-branch">{branchLabel || "—"}</td> : null}
+                    <td className="col-shift">{shiftLabel}</td>
+                    <td className="col-status">
                       <span
                         className={`hrAttendanceCardStatus hrAttendanceCardStatus--${status.tone}`}
                       >
                         {status.label}
                       </span>
                     </td>
-                    <td>{formatTime(todayRecord?.checkIn, isArabic)}</td>
-                    <td>{formatTime(todayRecord?.checkOut, isArabic)}</td>
-                    <td>
-                      <div className="actionButtons purchaseRowActions">
+                    <td className="col-time">{formatTime(todayRecord?.checkIn, isArabic)}</td>
+                    <td className="col-time">{formatTime(todayRecord?.checkOut, isArabic)}</td>
+                    <td className="col-actions">
+                      <div className="actionButtons purchaseRowActions hrAttendanceTodayActions">
                         {showAttendanceActions && canManageThis ? (
                           <>
                             <button
